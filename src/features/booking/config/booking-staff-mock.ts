@@ -24,7 +24,7 @@ export const bookingStaffMock: BookingStaffItem[] = [
     role: "Massage Specialist",
     initials: "SL",
     photoUrl:
-      "https://images.unsplash.com/photo-1534528741775-53994a1da2eb?auto=format&fit=crop&w=240&h=240&q=80",
+      "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=240&h=240&q=80",
     available: true,
   },
   {

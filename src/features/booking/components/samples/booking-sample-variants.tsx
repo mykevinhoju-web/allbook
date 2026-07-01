@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 import { cn } from "@/lib/utils";
 
 import type { BookingStaffItem } from "../../config/booking-staff-mock";
@@ -9,6 +13,8 @@ function StaffPhoto({
   staff: BookingStaffItem;
   size?: "sm" | "md" | "lg" | "xl";
 }) {
+  const [imageError, setImageError] = useState(false);
+
   const sizeClass = {
     sm: "size-14",
     md: "size-16",
@@ -23,13 +29,20 @@ function StaffPhoto({
         sizeClass,
       )}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={staff.photoUrl}
-        alt={staff.name}
-        className="size-full object-cover object-top"
-        loading="lazy"
-      />
+      {imageError ? (
+        <div className="flex size-full items-center justify-center bg-primary/10 text-sm font-semibold text-primary">
+          {staff.initials}
+        </div>
+      ) : (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={staff.photoUrl}
+          alt={staff.name}
+          className="size-full object-cover object-top"
+          loading="lazy"
+          onError={() => setImageError(true)}
+        />
+      )}
     </div>
   );
 }
