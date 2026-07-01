@@ -1,0 +1,59 @@
+import Link from "next/link";
+
+import { buttonVariants } from "@/components/ui/button";
+import { siteConfig } from "@/config/site";
+import { cn } from "@/lib/utils";
+
+export default function HomePage() {
+  return (
+    <div className="mx-auto flex max-w-6xl flex-col gap-16 px-4 py-20">
+      <section className="flex flex-col gap-6">
+        <p className="text-sm font-medium uppercase tracking-widest text-muted-foreground">
+          Wellness &amp; beauty booking
+        </p>
+        <h1 className="max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
+          Book your next visit with {siteConfig.name}
+        </h1>
+        <p className="max-w-2xl text-lg text-muted-foreground">
+          Discover massage shops, salons, nail studios, and spas. Reserve
+          services online in just a few clicks.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <Link href="/shops" className={cn(buttonVariants())}>
+            Browse shops
+          </Link>
+          <Link href="/login" className={cn(buttonVariants({ variant: "outline" }))}>
+            Sign in
+          </Link>
+        </div>
+      </section>
+
+      <section className="grid gap-6 sm:grid-cols-3">
+        {[
+          {
+            title: "Massage",
+            description: "Therapeutic and relaxation treatments.",
+          },
+          {
+            title: "Beauty",
+            description: "Hair, skin, and personal care services.",
+          },
+          {
+            title: "Spa & Nail",
+            description: "Spa rituals and nail care appointments.",
+          },
+        ].map((item) => (
+          <article
+            key={item.title}
+            className="rounded-xl border bg-card p-6 text-card-foreground"
+          >
+            <h2 className="text-lg font-medium">{item.title}</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {item.description}
+            </p>
+          </article>
+        ))}
+      </section>
+    </div>
+  );
+}
