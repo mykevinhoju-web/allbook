@@ -1,5 +1,9 @@
 const ALERTS_ENABLED_KEY = "allbook-booking-alerts-enabled";
 
+/** Peak gain per note — tuned for phone speakers (louder but below clipping). */
+const NOTE_VOLUME = 0.72;
+const MASTER_VOLUME = 0.92;
+
 export function isBookingAlertsEnabled(): boolean {
   if (typeof window === "undefined") return false;
   return sessionStorage.getItem(ALERTS_ENABLED_KEY) === "1";
@@ -28,31 +32,67 @@ export async function unlockBookingAudio(): Promise<AudioContext> {
   return context;
 }
 
+/**
+ * iPhone Tri-Tone–inspired alert (E6 → C6 → G5), played twice for clarity on mobile.
+ */
 export function playBookingChime(context: AudioContext | null) {
   const audio = context ?? new AudioContext();
 
-  const playTone = (frequency: number, start: number, duration: number) => {
-    const oscillator = audio.createOscillator();
-    const gain = audio.createGain();
-    oscillator.type = "sine";
-    oscillator.frequency.value = frequency;
-    gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(0.22, start + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
-    oscillator.connect(gain);
-    gain.connect(audio.destination);
-    oscillator.start(start);
-    oscillator.stop(start + duration);
+  if (audio.state === "suspended") {
+    void audio.resume();
+  }
+
+  const master = audio.createGain();
+  master.gain.value = MASTER_VOLUME;
+  master.connect(audio.destination);
+
+  const playNote = (
+    frequency: number,
+    start: number,
+    duration: number,
+    volume = NOTE_VOLUME,
+  ) => {
+    const tone = audio.createOscillator();
+    const harmonic = audio.createOscillator();
+    const envelope = audio.createGain();
+    const harmonicMix = audio.createGain();
+
+    tone.type = "triangle";
+    tone.frequency.value = frequency;
+    harmonic.type = "sine";
+    harmonic.frequency.value = frequency * 2;
+    harmonicMix.gain.value = 0.18;
+
+    envelope.gain.setValueAtTime(0.0001, start);
+    envelope.gain.exponentialRampToValueAtTime(volume, start + 0.012);
+    envelope.gain.setValueAtTime(volume * 0.9, start + duration * 0.4);
+    envelope.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+    tone.connect(envelope);
+    harmonic.connect(harmonicMix);
+    harmonicMix.connect(envelope);
+    envelope.connect(master);
+
+    tone.start(start);
+    harmonic.start(start);
+    tone.stop(start + duration + 0.04);
+    harmonic.stop(start + duration + 0.04);
   };
 
-  const now = audio.currentTime;
-  playTone(880, now, 0.18);
-  playTone(1174.66, now + 0.16, 0.22);
+  const playTriTone = (offset: number) => {
+    const base = audio.currentTime + offset;
+    playNote(1318.51, base, 0.15); // E6
+    playNote(1046.5, base + 0.14, 0.15); // C6
+    playNote(783.99, base + 0.28, 0.32); // G5 — held slightly longer
+  };
+
+  playTriTone(0);
+  playTriTone(0.62);
 }
 
 export function vibrateForBooking() {
   if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-    navigator.vibrate([120, 60, 120, 60, 200]);
+    navigator.vibrate([160, 80, 160, 80, 240]);
   }
 }
 
