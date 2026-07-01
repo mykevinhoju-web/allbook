@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 import type { BookingAlertPayload } from "@/features/booking/types/booking-alert";
+import { sendBookingPushNotifications } from "@/lib/push/send-booking-push";
 import type { Database } from "@/types/database";
 
 function getChannelName(tenantSlug: string) {
@@ -94,13 +95,23 @@ export async function POST(request: Request) {
       staff_name: staffName,
     });
 
+  const pushResult = await sendBookingPushNotifications(tenantSlug, staffName);
+
   if (!insertError) {
-    return NextResponse.json({ ok: true, method: "database" });
+    return NextResponse.json({
+      ok: true,
+      method: "database",
+      push: pushResult,
+    });
   }
 
   try {
     await broadcastBookingAlert(tenantSlug, payload);
-    return NextResponse.json({ ok: true, method: "broadcast" });
+    return NextResponse.json({
+      ok: true,
+      method: "broadcast",
+      push: pushResult,
+    });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to send alert";

@@ -13,6 +13,7 @@ import {
 import { toast } from "@/components/common";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTenant } from "@/features/tenants";
+import { subscribeToWebPush, isPushSupported } from "@/features/pwa";
 
 import { BookingAlertEnableBanner } from "../components/booking-alert-enable-banner";
 import { subscribeToBookingAlerts } from "../lib/booking-realtime";
@@ -98,7 +99,12 @@ export function BookingAlertProvider({
     try {
       audioRef.current = await unlockBookingAudio();
 
-      if ("Notification" in window && Notification.permission === "default") {
+      if (isPushSupported()) {
+        await subscribeToWebPush(tenant.slug);
+      } else if (
+        "Notification" in window &&
+        Notification.permission === "default"
+      ) {
         await Notification.requestPermission();
       }
 
@@ -108,16 +114,21 @@ export function BookingAlertProvider({
       vibrateForBooking();
 
       toast.success("Booking alerts enabled", {
-        description: "You should hear a test chime. Keep this page open.",
+        description: isPushSupported()
+          ? "Push is on. Add to Home Screen for background alerts."
+          : "You should hear a test chime when this page is open.",
         position: isMobile ? "top-center" : "top-right",
       });
-    } catch {
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Could not enable alerts";
+
       toast.error("Could not enable alerts", {
-        description: "Turn off silent mode and tap again.",
+        description: message,
         position: isMobile ? "top-center" : "top-right",
       });
     }
-  }, [isMobile]);
+  }, [isMobile, tenant.slug]);
 
   const testSound = useCallback(async () => {
     try {
