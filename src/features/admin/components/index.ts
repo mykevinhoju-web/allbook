@@ -6,3 +6,4 @@ export { AdminPlaceholderPage } from "./admin-placeholder-page";
 export { AdminShell } from "./admin-shell";
 export { AdminSidebar } from "./admin-sidebar";
 export { AdminStatCard } from "./admin-stat-card";
+export { TenantAdminGateway } from "./tenant-admin-gateway";

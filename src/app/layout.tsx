@@ -4,7 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { AppToaster } from "@/components/common";
 import { platformConfig } from "@/config/site";
 import { TenantProvider } from "@/features/tenants";
-import { getTenant } from "@/features/tenants/server";
+import { getTenantOptional } from "@/features/tenants/server";
 
 import "./globals.css";
 
@@ -19,7 +19,18 @@ const geistMono = Geist_Mono({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const tenant = await getTenant();
+  const tenant = await getTenantOptional();
+
+  if (!tenant) {
+    return {
+      title: {
+        default: platformConfig.name,
+        template: `%s | ${platformConfig.name}`,
+      },
+      description: platformConfig.description,
+      applicationName: platformConfig.name,
+    };
+  }
 
   return {
     title: {
@@ -36,11 +47,11 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const tenant = await getTenant();
+  const tenant = await getTenantOptional();
 
   return (
     <html
-      lang={tenant.settings.locale}
+      lang={tenant?.settings.locale ?? "en-AU"}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">

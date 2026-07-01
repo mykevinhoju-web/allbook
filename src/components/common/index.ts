@@ -55,5 +55,7 @@ export { DatePicker } from "./date-picker";
 export { TimePicker } from "./time-picker";
 
 // Marketing layout (existing)
+export { PlatformLandingPage } from "./platform-landing";
 export { SiteFooter } from "./site-footer";
 export { SiteHeader } from "./site-header";
+export { TenantHomePage } from "./tenant-home";

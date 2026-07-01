@@ -1,12 +1,25 @@
 import type { NextRequest } from "next/server";
 
 import { TENANT_ENV, TENANT_SLUG_COOKIE, TENANT_SLUG_HEADER } from "../constants";
+import {
+  isPlatformHost,
+  normalizeHostname,
+} from "./resolve-host";
 
 /**
  * Resolves tenant slug from request context.
- * Priority: middleware header → cookie → subdomain → environment variable.
+ * Priority: middleware header → cookie → subdomain → environment variable (dev only).
+ * Platform hosts (allbook.com.au, localhost) return null — no tenant context.
  */
-export function resolveTenantSlugFromRequest(request: NextRequest): string {
+export function resolveTenantSlugFromRequest(
+  request: NextRequest,
+): string | null {
+  const host = request.headers.get("host") ?? request.nextUrl.host;
+
+  if (isPlatformHost(host)) {
+    return null;
+  }
+
   const headerSlug = request.headers.get(TENANT_SLUG_HEADER);
   if (headerSlug) {
     return headerSlug;
@@ -17,18 +30,16 @@ export function resolveTenantSlugFromRequest(request: NextRequest): string {
     return cookieSlug;
   }
 
-  const subdomainSlug = resolveTenantSlugFromHost(
-    request.headers.get("host") ?? request.nextUrl.host,
-  );
+  const subdomainSlug = resolveTenantSlugFromHost(host);
   if (subdomainSlug) {
     return subdomainSlug;
   }
 
-  return resolveTenantSlugFromEnv();
+  return resolveTenantSlugFromEnvOrNull();
 }
 
 export function resolveTenantSlugFromHost(host: string): string | null {
-  const hostname = host.split(":")[0]?.toLowerCase() ?? "";
+  const hostname = normalizeHostname(host);
 
   // {tenant}.allbook.com.au
   const platformMatch = hostname.match(/^([a-z0-9-]+)\.allbook\.com\.au$/);
@@ -51,6 +62,13 @@ export function resolveTenantSlugFromEnv(): string {
     process.env[TENANT_ENV.publicSlug] ??
     "default"
   );
+}
+
+function resolveTenantSlugFromEnvOrNull(): string | null {
+  const slug =
+    process.env[TENANT_ENV.slug] ?? process.env[TENANT_ENV.publicSlug];
+
+  return slug ?? null;
 }
 
 export function buildLogoInitials(name: string): string {

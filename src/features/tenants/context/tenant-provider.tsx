@@ -7,7 +7,7 @@ import type { Tenant } from "../types";
 const TenantContext = createContext<Tenant | null>(null);
 
 interface TenantProviderProps {
-  tenant: Tenant;
+  tenant: Tenant | null;
   children: React.ReactNode;
 }
 
@@ -17,11 +17,15 @@ export function TenantProvider({ tenant, children }: TenantProviderProps) {
   );
 }
 
+export function useOptionalTenant(): Tenant | null {
+  return useContext(TenantContext);
+}
+
 export function useTenant(): Tenant {
   const tenant = useContext(TenantContext);
 
   if (!tenant) {
-    throw new Error("useTenant must be used within a TenantProvider.");
+    throw new Error("useTenant must be used within a tenant context.");
   }
 
   return tenant;

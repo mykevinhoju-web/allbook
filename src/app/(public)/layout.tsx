@@ -1,10 +1,21 @@
 import type { Metadata } from "next";
 
 import { SiteFooter, SiteHeader } from "@/components/common";
-import { getTenant } from "@/features/tenants/server";
+import { platformConfig } from "@/config/site";
+import { getTenantOptional } from "@/features/tenants/server";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const tenant = await getTenant();
+  const tenant = await getTenantOptional();
+
+  if (!tenant) {
+    return {
+      title: {
+        default: platformConfig.name,
+        template: `%s | ${platformConfig.name}`,
+      },
+      description: platformConfig.description,
+    };
+  }
 
   return {
     title: {
@@ -15,7 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function PublicLayout({
+export default function PublicLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;

@@ -24,10 +24,10 @@
 
 ```
 우선순위:
-1. x-tenant-slug 헤더 (미들웨어 설정)
-2. tenant_slug 쿠키
-3. 서브도메인 ({slug}.allbook.com.au)
-4. 환경 변수 TENANT_SLUG
+1. 플랫폼 호스트(allbook.com.au, localhost) → 테넌트 없음
+2. x-tenant-slug 헤더 (미들웨어 설정)
+3. tenant_slug 쿠키
+4. 서브도메인 ({slug}.allbook.com.au 또는 {slug}.localhost)
 ```
 
 ### 로컬 개발
@@ -38,10 +38,23 @@ NEXT_PUBLIC_TENANT_DISPLAY_NAME=DaySpa
 NEXT_PUBLIC_TENANT_TAGLINE=Premium day spa and massage bookings in Sydney.
 ```
 
-### 프로덕션 (DaySpa)
+| Host | 역할 |
+|------|------|
+| `localhost:3000` | AllBook 플랫폼 랜딩 |
+| `dayspa.localhost:3000` | DaySpa 테넌트 (고객 + `/admin`) |
 
-- 도메인: `dayspa.allbook.com.au` (서브도메인 자동 해석)
-- 또는 `allbook.com.au` + `TENANT_SLUG=dayspa` (단일 Tenant 배포)
+Windows: `hosts` 파일에 `127.0.0.1 dayspa.localhost` 추가. 자세한 내용은 [LOCAL_DEV.md](./LOCAL_DEV.md).
+
+### 프로덕션
+
+| Host | 역할 |
+|------|------|
+| `allbook.com.au` | 플랫폼 랜딩 (리다이렉트 없음) |
+| `dayspa.allbook.com.au` | DaySpa 테넌트 |
+| `allbook.com.au/platform` | Super Admin |
+
+- 서브도메인 `{slug}.allbook.com.au`에서 slug 자동 해석
+- 루트 도메인은 테넌트 컨텍스트 없음 (플랫폼 모드)
 
 ## 코드 구조
 
