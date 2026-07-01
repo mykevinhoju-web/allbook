@@ -19,15 +19,17 @@ function StaffPhoto({
   return (
     <div
       className={cn(
-        "shrink-0 overflow-hidden rounded-full bg-gradient-to-br shadow-sm ring-2 ring-background",
+        "relative shrink-0 overflow-hidden rounded-full bg-muted shadow-sm ring-2 ring-background",
         sizeClass,
-        staff.accent,
       )}
-      aria-hidden="true"
     >
-      <div className="flex size-full items-center justify-center text-sm font-semibold text-white/90">
-        {staff.initials}
-      </div>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={staff.photoUrl}
+        alt={staff.name}
+        className="size-full object-cover object-top"
+        loading="lazy"
+      />
     </div>
   );
 }

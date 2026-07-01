@@ -3,17 +3,19 @@ export interface BookingStaffItem {
   name: string;
   role: string;
   initials: string;
-  accent: string;
+  photoUrl: string;
   available: boolean;
 }
 
+/** Demo portraits — Unsplash (sample UI only, not real staff). */
 export const bookingStaffMock: BookingStaffItem[] = [
   {
     id: "staff-001",
     name: "Emma Chen",
     role: "Senior Therapist",
     initials: "EC",
-    accent: "from-sky-200 via-sky-300 to-blue-400",
+    photoUrl:
+      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=240&h=240&q=80",
     available: true,
   },
   {
@@ -21,7 +23,8 @@ export const bookingStaffMock: BookingStaffItem[] = [
     name: "Sophia Lee",
     role: "Massage Specialist",
     initials: "SL",
-    accent: "from-violet-200 via-violet-300 to-purple-400",
+    photoUrl:
+      "https://images.unsplash.com/photo-1534528741775-53994a1da2eb?auto=format&fit=crop&w=240&h=240&q=80",
     available: true,
   },
   {
@@ -29,7 +32,8 @@ export const bookingStaffMock: BookingStaffItem[] = [
     name: "Olivia Park",
     role: "Beauty Therapist",
     initials: "OP",
-    accent: "from-rose-200 via-rose-300 to-pink-400",
+    photoUrl:
+      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=240&h=240&q=80",
     available: true,
   },
   {
@@ -37,7 +41,8 @@ export const bookingStaffMock: BookingStaffItem[] = [
     name: "Charlotte Williams",
     role: "Spa Therapist",
     initials: "CW",
-    accent: "from-emerald-200 via-emerald-300 to-teal-400",
+    photoUrl:
+      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=240&h=240&q=80",
     available: true,
   },
   {
@@ -45,7 +50,8 @@ export const bookingStaffMock: BookingStaffItem[] = [
     name: "Isabella Nguyen",
     role: "Nail & Beauty",
     initials: "IN",
-    accent: "from-amber-200 via-amber-300 to-orange-400",
+    photoUrl:
+      "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=240&h=240&q=80",
     available: false,
   },
 ];
