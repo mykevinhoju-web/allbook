@@ -6,7 +6,6 @@ import { toast } from "@/components/common";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useOptionalTenant } from "@/features/tenants";
 
-import { broadcastNewBooking } from "../lib/booking-realtime";
 import type { BookingStaffItem } from "../config/booking-staff-mock";
 
 export function useBookingAlertSender() {
@@ -20,19 +19,36 @@ export function useBookingAlertSender() {
     setSendingId(staff.id);
 
     try {
-      await broadcastNewBooking(tenant.slug, {
-        staffId: staff.id,
-        staffName: staff.name,
-        requestedAt: new Date().toISOString(),
+      const response = await fetch("/api/booking/alert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenantSlug: tenant.slug,
+          staffId: staff.id,
+          staffName: staff.name,
+        }),
       });
+
+      const data = (await response.json()) as {
+        ok?: boolean;
+        error?: string;
+        hint?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Request failed");
+      }
 
       toast.success("Request sent", {
         description: `Booking request for ${staff.name}`,
         position: isMobile ? "top-center" : "top-right",
       });
-    } catch {
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Could not send request";
+
       toast.error("Could not send request", {
-        description: "Check your connection and try again.",
+        description: message,
         position: isMobile ? "top-center" : "top-right",
       });
     } finally {

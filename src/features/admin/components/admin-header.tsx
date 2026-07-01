@@ -26,7 +26,8 @@ import { AdminBreadcrumb } from "./admin-breadcrumb";
 export function AdminHeader() {
   const pathname = usePathname();
   const tenant = useTenant();
-  const { alertsEnabled, isListening, bellActive } = useBookingAlerts();
+  const { alertsEnabled, isListening, bellActive, connectionStatus, testSound } =
+    useBookingAlerts();
 
   return (
     <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur-md supports-backdrop-filter:bg-background/60">
@@ -50,7 +51,26 @@ export function AdminHeader() {
       </div>
 
       <div className="flex items-center gap-1">
-        <Button variant="ghost" size="icon" className="relative">
+        {alertsEnabled ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="hidden h-8 rounded-lg px-2 text-xs sm:inline-flex"
+            onClick={() => void testSound()}
+          >
+            Test sound
+          </Button>
+        ) : null}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="relative"
+          onClick={() => {
+            if (alertsEnabled) void testSound();
+          }}
+        >
           <Bell
             className={cn("size-4", bellActive && "animate-pulse text-primary")}
           />
@@ -59,9 +79,11 @@ export function AdminHeader() {
               "absolute top-2 right-2 size-1.5 rounded-full",
               alertsEnabled && isListening
                 ? "bg-emerald-500"
-                : alertsEnabled
-                  ? "bg-amber-500"
-                  : "bg-muted-foreground/40",
+                : alertsEnabled && connectionStatus === "CHANNEL_ERROR"
+                  ? "bg-red-500"
+                  : alertsEnabled
+                    ? "bg-amber-500"
+                    : "bg-muted-foreground/40",
             )}
           />
           <span className="sr-only">Notifications</span>

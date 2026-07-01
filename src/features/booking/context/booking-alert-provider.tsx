@@ -29,8 +29,10 @@ import type { BookingAlertPayload } from "../types/booking-alert";
 interface BookingAlertContextValue {
   alertsEnabled: boolean;
   isListening: boolean;
+  connectionStatus: string;
   bellActive: boolean;
   enableAlerts: () => Promise<void>;
+  testSound: () => Promise<void>;
 }
 
 const BookingAlertContext = createContext<BookingAlertContextValue | null>(
@@ -44,9 +46,10 @@ export function BookingAlertProvider({
 }) {
   const tenant = useTenant();
   const isMobile = useIsMobile();
-  const audioRef = useRef<AudioContext | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [alertsEnabled, setAlertsEnabled] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState("IDLE");
   const [bellActive, setBellActive] = useState(false);
 
   useEffect(() => {
@@ -55,7 +58,7 @@ export function BookingAlertProvider({
 
   const handleBooking = useCallback(
     (payload: BookingAlertPayload) => {
-      triggerBookingAlert(payload.staffName, audioRef.current);
+      void triggerBookingAlert(payload.staffName, audioRef.current);
       setBellActive(true);
       window.setTimeout(() => setBellActive(false), 2500);
 
@@ -71,15 +74,23 @@ export function BookingAlertProvider({
   useEffect(() => {
     if (!alertsEnabled) {
       setIsListening(false);
+      setConnectionStatus("IDLE");
       return;
     }
 
-    setIsListening(true);
-    const unsubscribe = subscribeToBookingAlerts(tenant.slug, handleBooking);
+    const unsubscribe = subscribeToBookingAlerts(
+      tenant.slug,
+      handleBooking,
+      (status) => {
+        setConnectionStatus(status);
+        setIsListening(status === "SUBSCRIBED");
+      },
+    );
 
     return () => {
       unsubscribe();
       setIsListening(false);
+      setConnectionStatus("CLOSED");
     };
   }, [alertsEnabled, tenant.slug, handleBooking]);
 
@@ -93,16 +104,31 @@ export function BookingAlertProvider({
 
       setBookingAlertsEnabled(true);
       setAlertsEnabled(true);
-      playBookingChime(audioRef.current);
+      await playBookingChime(audioRef.current);
       vibrateForBooking();
 
       toast.success("Booking alerts enabled", {
-        description: "Sound, vibration, and live listening are active.",
+        description: "You should hear a test chime. Keep this page open.",
         position: isMobile ? "top-center" : "top-right",
       });
     } catch {
       toast.error("Could not enable alerts", {
-        description: "Please tap again or check browser permissions.",
+        description: "Turn off silent mode and tap again.",
+        position: isMobile ? "top-center" : "top-right",
+      });
+    }
+  }, [isMobile]);
+
+  const testSound = useCallback(async () => {
+    try {
+      if (!audioRef.current) {
+        audioRef.current = await unlockBookingAudio();
+      }
+      await playBookingChime(audioRef.current);
+      vibrateForBooking();
+    } catch {
+      toast.error("Sound blocked", {
+        description: "Check silent mode and tap Test sound again.",
         position: isMobile ? "top-center" : "top-right",
       });
     }
@@ -112,16 +138,27 @@ export function BookingAlertProvider({
     () => ({
       alertsEnabled,
       isListening,
+      connectionStatus,
       bellActive,
       enableAlerts,
+      testSound,
     }),
-    [alertsEnabled, isListening, bellActive, enableAlerts],
+    [
+      alertsEnabled,
+      isListening,
+      connectionStatus,
+      bellActive,
+      enableAlerts,
+      testSound,
+    ],
   );
 
   return (
     <BookingAlertContext.Provider value={value}>
       {children}
-      {!alertsEnabled ? <BookingAlertEnableBanner onEnable={enableAlerts} /> : null}
+      {!alertsEnabled ? (
+        <BookingAlertEnableBanner onEnable={enableAlerts} />
+      ) : null}
     </BookingAlertContext.Provider>
   );
 }

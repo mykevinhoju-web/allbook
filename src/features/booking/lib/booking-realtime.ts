@@ -1,3 +1,5 @@
+import type { RealtimeChannel } from "@supabase/supabase-js";
+
 import { createClient } from "@/lib/supabase/client";
 
 import type { BookingAlertPayload } from "../types/booking-alert";
@@ -6,66 +8,72 @@ function getChannelName(tenantSlug: string) {
   return `tenant:${tenantSlug}:booking-alerts`;
 }
 
+function parseBroadcastPayload(message: unknown): BookingAlertPayload | null {
+  if (!message || typeof message !== "object") return null;
+
+  const record = message as Record<string, unknown>;
+  const inner =
+    record.payload && typeof record.payload === "object"
+      ? (record.payload as Record<string, unknown>)
+      : record;
+
+  if (
+    typeof inner.staffId === "string" &&
+    typeof inner.staffName === "string" &&
+    typeof inner.requestedAt === "string"
+  ) {
+    return {
+      staffId: inner.staffId,
+      staffName: inner.staffName,
+      requestedAt: inner.requestedAt,
+    };
+  }
+
+  return null;
+}
+
 export function subscribeToBookingAlerts(
   tenantSlug: string,
   onBooking: (payload: BookingAlertPayload) => void,
+  onStatus?: (status: string) => void,
 ) {
   const supabase = createClient();
-  const channel = supabase.channel(getChannelName(tenantSlug), {
-    config: { broadcast: { self: false } },
+  const channel: RealtimeChannel = supabase.channel(getChannelName(tenantSlug), {
+    config: { broadcast: { self: true } },
   });
 
-  channel.on("broadcast", { event: "new_booking" }, ({ payload }) => {
-    onBooking(payload as BookingAlertPayload);
-  });
+  channel
+    .on("broadcast", { event: "new_booking" }, (message) => {
+      const payload = parseBroadcastPayload(message);
+      if (payload) onBooking(payload);
+    })
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "booking_alert_events",
+        filter: `tenant_slug=eq.${tenantSlug}`,
+      },
+      (payload) => {
+        const row = payload.new as {
+          staff_id: string;
+          staff_name: string;
+          created_at: string;
+        };
 
-  channel.subscribe();
+        onBooking({
+          staffId: row.staff_id,
+          staffName: row.staff_name,
+          requestedAt: row.created_at,
+        });
+      },
+    )
+    .subscribe((status) => {
+      onStatus?.(status);
+    });
 
   return () => {
     void supabase.removeChannel(channel);
   };
-}
-
-export function broadcastNewBooking(
-  tenantSlug: string,
-  payload: BookingAlertPayload,
-): Promise<void> {
-  const supabase = createClient();
-  const channel = supabase.channel(getChannelName(tenantSlug), {
-    config: { broadcast: { ack: true, self: false } },
-  });
-
-  return new Promise((resolve, reject) => {
-    const timeout = window.setTimeout(() => {
-      void supabase.removeChannel(channel);
-      reject(new Error("Realtime connection timed out"));
-    }, 8000);
-
-    channel.subscribe((status) => {
-      if (status === "SUBSCRIBED") {
-        void channel
-          .send({
-            type: "broadcast",
-            event: "new_booking",
-            payload,
-          })
-          .then(() => {
-            window.clearTimeout(timeout);
-            void supabase.removeChannel(channel);
-            resolve();
-          })
-          .catch((error: Error) => {
-            window.clearTimeout(timeout);
-            void supabase.removeChannel(channel);
-            reject(error);
-          });
-      }
-
-      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-        window.clearTimeout(timeout);
-        void supabase.removeChannel(channel);
-        reject(new Error(`Realtime ${status}`));
-      }
-    });
-  });
 }

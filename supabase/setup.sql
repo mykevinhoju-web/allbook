@@ -60,5 +60,40 @@ on conflict (slug) do update set
   primary_domain = excluded.primary_domain,
   updated_at = now();
 
--- 3. Verify
+-- 3. Booking alert events (realtime admin notifications)
+create table if not exists public.booking_alert_events (
+  id uuid primary key default gen_random_uuid(),
+  tenant_slug text not null,
+  staff_id text not null,
+  staff_name text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists booking_alert_events_tenant_slug_idx
+  on public.booking_alert_events (tenant_slug, created_at desc);
+
+alter table public.booking_alert_events enable row level security;
+
+drop policy if exists "booking_alerts_insert" on public.booking_alert_events;
+create policy "booking_alerts_insert"
+  on public.booking_alert_events
+  for insert
+  to anon, authenticated
+  with check (true);
+
+drop policy if exists "booking_alerts_select" on public.booking_alert_events;
+create policy "booking_alerts_select"
+  on public.booking_alert_events
+  for select
+  to anon, authenticated
+  using (true);
+
+do $$
+begin
+  alter publication supabase_realtime add table public.booking_alert_events;
+exception
+  when duplicate_object then null;
+end $$;
+
+-- 4. Verify
 select slug, display_name, is_active from public.tenants;

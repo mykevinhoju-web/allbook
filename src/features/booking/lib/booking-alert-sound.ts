@@ -1,8 +1,7 @@
 const ALERTS_ENABLED_KEY = "allbook-booking-alerts-enabled";
+const ALERT_SOUND_PATH = "/sounds/booking-alert.mp3";
 
-/** Peak gain per note — tuned for phone speakers (louder but below clipping). */
-const NOTE_VOLUME = 0.72;
-const MASTER_VOLUME = 0.92;
+let sharedAlertAudio: HTMLAudioElement | null = null;
 
 export function isBookingAlertsEnabled(): boolean {
   if (typeof window === "undefined") return false;
@@ -17,77 +16,69 @@ export function setBookingAlertsEnabled(enabled: boolean) {
   }
 }
 
-export async function unlockBookingAudio(): Promise<AudioContext> {
-  const context = new AudioContext();
-  await context.resume();
-
-  const oscillator = context.createOscillator();
-  const gain = context.createGain();
-  gain.gain.value = 0.0001;
-  oscillator.connect(gain);
-  gain.connect(context.destination);
-  oscillator.start();
-  oscillator.stop(context.currentTime + 0.05);
-
-  return context;
+function createAlertAudio(): HTMLAudioElement {
+  const audio = new Audio(ALERT_SOUND_PATH);
+  audio.preload = "auto";
+  audio.volume = 1;
+  audio.setAttribute("playsinline", "true");
+  return audio;
 }
 
-/**
- * iPhone Tri-Tone–inspired alert (E6 → C6 → G5), played twice for clarity on mobile.
- */
-export function playBookingChime(context: AudioContext | null) {
-  const audio = context ?? new AudioContext();
+export async function unlockBookingAudio(): Promise<HTMLAudioElement> {
+  const audio = sharedAlertAudio ?? createAlertAudio();
+  sharedAlertAudio = audio;
 
-  if (audio.state === "suspended") {
-    void audio.resume();
+  audio.currentTime = 0;
+  await audio.play();
+  audio.pause();
+  audio.currentTime = 0;
+
+  return audio;
+}
+
+export async function playBookingChime(audio?: HTMLAudioElement | null) {
+  const element = audio ?? sharedAlertAudio ?? createAlertAudio();
+  sharedAlertAudio = element;
+
+  element.volume = 1;
+  element.currentTime = 0;
+
+  try {
+    await element.play();
+    return;
+  } catch {
+    // Web Audio fallback if MP3 blocked
   }
 
-  const master = audio.createGain();
-  master.gain.value = MASTER_VOLUME;
-  master.connect(audio.destination);
+  playWebAudioFallback();
+}
 
-  const playNote = (
-    frequency: number,
-    start: number,
-    duration: number,
-    volume = NOTE_VOLUME,
-  ) => {
-    const tone = audio.createOscillator();
-    const harmonic = audio.createOscillator();
-    const envelope = audio.createGain();
-    const harmonicMix = audio.createGain();
+function playWebAudioFallback() {
+  const context = new AudioContext();
+  void context.resume().then(() => {
+    const master = context.createGain();
+    master.gain.value = 0.9;
+    master.connect(context.destination);
 
-    tone.type = "triangle";
-    tone.frequency.value = frequency;
-    harmonic.type = "sine";
-    harmonic.frequency.value = frequency * 2;
-    harmonicMix.gain.value = 0.18;
+    const playNote = (frequency: number, start: number, duration: number) => {
+      const tone = context.createOscillator();
+      const envelope = context.createGain();
+      tone.type = "triangle";
+      tone.frequency.value = frequency;
+      envelope.gain.setValueAtTime(0.0001, start);
+      envelope.gain.exponentialRampToValueAtTime(0.75, start + 0.012);
+      envelope.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      tone.connect(envelope);
+      envelope.connect(master);
+      tone.start(start);
+      tone.stop(start + duration);
+    };
 
-    envelope.gain.setValueAtTime(0.0001, start);
-    envelope.gain.exponentialRampToValueAtTime(volume, start + 0.012);
-    envelope.gain.setValueAtTime(volume * 0.9, start + duration * 0.4);
-    envelope.gain.exponentialRampToValueAtTime(0.0001, start + duration);
-
-    tone.connect(envelope);
-    harmonic.connect(harmonicMix);
-    harmonicMix.connect(envelope);
-    envelope.connect(master);
-
-    tone.start(start);
-    harmonic.start(start);
-    tone.stop(start + duration + 0.04);
-    harmonic.stop(start + duration + 0.04);
-  };
-
-  const playTriTone = (offset: number) => {
-    const base = audio.currentTime + offset;
-    playNote(1318.51, base, 0.15); // E6
-    playNote(1046.5, base + 0.14, 0.15); // C6
-    playNote(783.99, base + 0.28, 0.32); // G5 — held slightly longer
-  };
-
-  playTriTone(0);
-  playTriTone(0.62);
+    const base = context.currentTime;
+    playNote(1318.51, base, 0.15);
+    playNote(1046.5, base + 0.14, 0.15);
+    playNote(783.99, base + 0.28, 0.32);
+  });
 }
 
 export function vibrateForBooking() {
@@ -108,11 +99,11 @@ export function showBookingNotification(staffName: string) {
   });
 }
 
-export function triggerBookingAlert(
+export async function triggerBookingAlert(
   staffName: string,
-  audioContext: AudioContext | null,
+  audio: HTMLAudioElement | null,
 ) {
-  playBookingChime(audioContext);
+  await playBookingChime(audio);
   vibrateForBooking();
   showBookingNotification(staffName);
 }

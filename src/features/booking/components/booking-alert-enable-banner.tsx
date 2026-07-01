@@ -23,8 +23,8 @@ export function BookingAlertEnableBanner({
               Enable booking alerts
             </p>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Tap once to allow sound and vibration when a customer books on
-              mobile. Keep this admin page open on your phone or tablet.
+              Tap once to allow sound and vibration. Turn off iPhone silent mode.
+              You will hear a test chime — keep this admin page open.
             </p>
           </div>
         </div>

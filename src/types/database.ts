@@ -64,6 +64,30 @@ export type Database = {
         };
         Relationships: [];
       };
+      booking_alert_events: {
+        Row: {
+          id: string;
+          tenant_slug: string;
+          staff_id: string;
+          staff_name: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_slug: string;
+          staff_id: string;
+          staff_name: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_slug?: string;
+          staff_id?: string;
+          staff_name?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
