@@ -1,17 +1,21 @@
 import type { Metadata } from "next";
 
 import { SiteFooter, SiteHeader } from "@/components/common";
-import { siteConfig } from "@/config/site";
+import { getTenant } from "@/features/tenants/server";
 
-export const metadata: Metadata = {
-  title: {
-    default: siteConfig.name,
-    template: `%s | ${siteConfig.name}`,
-  },
-  description: siteConfig.description,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const tenant = await getTenant();
 
-export default function PublicLayout({
+  return {
+    title: {
+      default: tenant.branding.displayName,
+      template: `%s | ${tenant.branding.displayName}`,
+    },
+    description: tenant.branding.tagline,
+  };
+}
+
+export default async function PublicLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;

@@ -56,7 +56,7 @@ src/
 └── types/                # 공유 TypeScript 타입
 ```
 
-자세한 아키텍처는 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)를 참고하세요.
+자세한 문서는 [docs/README.md](docs/README.md)를 참고하세요.
 
 ## 스크립트
 

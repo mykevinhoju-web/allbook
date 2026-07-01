@@ -12,7 +12,59 @@ export type Json =
 
 export type Database = {
   public: {
-    Tables: Record<string, never>;
+    Tables: {
+      tenants: {
+        Row: {
+          id: string;
+          slug: string;
+          name: string;
+          display_name: string;
+          tagline: string | null;
+          logo_url: string | null;
+          primary_domain: string | null;
+          timezone: string;
+          currency: string;
+          locale: string;
+          is_active: boolean;
+          settings: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          slug: string;
+          name: string;
+          display_name: string;
+          tagline?: string | null;
+          logo_url?: string | null;
+          primary_domain?: string | null;
+          timezone?: string;
+          currency?: string;
+          locale?: string;
+          is_active?: boolean;
+          settings?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          slug?: string;
+          name?: string;
+          display_name?: string;
+          tagline?: string | null;
+          logo_url?: string | null;
+          primary_domain?: string | null;
+          timezone?: string;
+          currency?: string;
+          locale?: string;
+          is_active?: boolean;
+          settings?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+    };
     Views: Record<string, never>;
     Functions: Record<string, never>;
     Enums: Record<string, never>;

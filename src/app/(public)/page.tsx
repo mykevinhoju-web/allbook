@@ -1,10 +1,12 @@
 import Link from "next/link";
 
 import { buttonVariants } from "@/components/ui/button";
-import { siteConfig } from "@/config/site";
+import { getTenant } from "@/features/tenants/server";
 import { cn } from "@/lib/utils";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const tenant = await getTenant();
+
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-16 px-4 py-20">
       <section className="flex flex-col gap-6">
@@ -12,11 +14,10 @@ export default function HomePage() {
           Wellness &amp; beauty booking
         </p>
         <h1 className="max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
-          Book your next visit with {siteConfig.name}
+          Book your next visit with {tenant.branding.displayName}
         </h1>
         <p className="max-w-2xl text-lg text-muted-foreground">
-          Discover massage shops, salons, nail studios, and spas. Reserve
-          services online in just a few clicks.
+          {tenant.branding.tagline}
         </p>
         <div className="flex flex-wrap gap-3">
           <Link href="/shops" className={cn(buttonVariants())}>
@@ -45,7 +46,7 @@ export default function HomePage() {
         ].map((item) => (
           <article
             key={item.title}
-            className="rounded-xl border bg-card p-6 text-card-foreground"
+            className="rounded-xl border bg-card p-6 text-card-foreground shadow-soft"
           >
             <h2 className="text-lg font-medium">{item.title}</h2>
             <p className="mt-2 text-sm text-muted-foreground">
