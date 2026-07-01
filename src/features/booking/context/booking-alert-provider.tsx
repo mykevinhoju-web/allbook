@@ -46,7 +46,7 @@ export function BookingAlertProvider({
 }) {
   const tenant = useTenant();
   const isMobile = useIsMobile();
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioRef = useRef<AudioContext | null>(null);
   const [alertsEnabled, setAlertsEnabled] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState("IDLE");
@@ -58,7 +58,7 @@ export function BookingAlertProvider({
 
   const handleBooking = useCallback(
     (payload: BookingAlertPayload) => {
-      void triggerBookingAlert(payload.staffName, audioRef.current);
+      void triggerBookingAlert(payload.staffName);
       setBellActive(true);
       window.setTimeout(() => setBellActive(false), 2500);
 
@@ -104,7 +104,7 @@ export function BookingAlertProvider({
 
       setBookingAlertsEnabled(true);
       setAlertsEnabled(true);
-      await playBookingChime(audioRef.current);
+      await playBookingChime();
       vibrateForBooking();
 
       toast.success("Booking alerts enabled", {
@@ -124,7 +124,7 @@ export function BookingAlertProvider({
       if (!audioRef.current) {
         audioRef.current = await unlockBookingAudio();
       }
-      await playBookingChime(audioRef.current);
+      await playBookingChime();
       vibrateForBooking();
     } catch {
       toast.error("Sound blocked", {
