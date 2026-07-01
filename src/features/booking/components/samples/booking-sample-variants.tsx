@@ -5,6 +5,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 import type { BookingStaffItem } from "../../config/booking-staff-mock";
+import { useBookingAlertSender } from "../../hooks/use-booking-alert-sender";
 
 function StaffPhoto({
   staff,
@@ -48,14 +49,18 @@ function StaffPhoto({
 }
 
 function BookButton({
-  available,
+  staff,
   variant = "pill",
   className,
 }: {
-  available: boolean;
+  staff: BookingStaffItem;
   variant?: "pill" | "full" | "outline";
   className?: string;
 }) {
+  const { sendBookingRequest, sendingId, canSend } = useBookingAlertSender();
+  const isSending = sendingId === staff.id;
+  const available = staff.available && canSend;
+
   const base =
     "inline-flex items-center justify-center font-medium transition-all active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40";
 
@@ -84,8 +89,13 @@ function BookButton({
   };
 
   return (
-    <button type="button" className={cn(variants[variant], className)} disabled={!available}>
-      {available ? "Book" : "Unavailable"}
+    <button
+      type="button"
+      className={cn(variants[variant], className)}
+      disabled={!available || isSending}
+      onClick={() => void sendBookingRequest(staff)}
+    >
+      {isSending ? "Sending…" : available ? "Book" : "Unavailable"}
     </button>
   );
 }
@@ -108,7 +118,7 @@ export function BookingSampleList({ staff }: BookingSampleListProps) {
             <p className="truncate font-medium text-foreground">{member.name}</p>
             <p className="truncate text-xs text-muted-foreground">{member.role}</p>
           </div>
-          <BookButton available={member.available} variant="pill" />
+          <BookButton staff={member} variant="pill" />
         </li>
       ))}
     </ul>
@@ -132,7 +142,7 @@ export function BookingSampleCards({ staff }: BookingSampleListProps) {
             </div>
           </div>
           <div className="mt-4">
-            <BookButton available={member.available} variant="full" />
+            <BookButton staff={member} variant="full" />
           </div>
         </article>
       ))}
@@ -155,7 +165,7 @@ export function BookingSamplePortrait({ staff }: BookingSampleListProps) {
               <p className="text-base font-semibold">{member.name}</p>
               <p className="text-xs text-muted-foreground">{member.role}</p>
             </div>
-            <BookButton available={member.available} variant="outline" />
+            <BookButton staff={member} variant="outline" />
           </div>
         </article>
       ))}

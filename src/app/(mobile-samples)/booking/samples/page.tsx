@@ -66,7 +66,9 @@ export default function BookingSamplesIndexPage() {
         </div>
 
         <p className="mt-8 text-center text-xs text-muted-foreground">
-          Best viewed on mobile or narrow browser window (~390px).
+          Best viewed on mobile. Open{" "}
+          <span className="font-medium text-foreground">Admin → Turn on alerts</span>{" "}
+          on a phone/tablet, then tap Book here to test sound.
         </p>
       </div>
     </div>

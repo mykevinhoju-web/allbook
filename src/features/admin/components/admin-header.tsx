@@ -17,13 +17,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 import { useTenant } from "@/features/tenants";
+import { useBookingAlerts } from "@/features/booking/context/booking-alert-provider";
 
 import { AdminBreadcrumb } from "./admin-breadcrumb";
 
 export function AdminHeader() {
   const pathname = usePathname();
   const tenant = useTenant();
+  const { alertsEnabled, isListening, bellActive } = useBookingAlerts();
 
   return (
     <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur-md supports-backdrop-filter:bg-background/60">
@@ -48,8 +51,19 @@ export function AdminHeader() {
 
       <div className="flex items-center gap-1">
         <Button variant="ghost" size="icon" className="relative">
-          <Bell className="size-4" />
-          <span className="absolute top-2 right-2 size-1.5 rounded-full bg-primary" />
+          <Bell
+            className={cn("size-4", bellActive && "animate-pulse text-primary")}
+          />
+          <span
+            className={cn(
+              "absolute top-2 right-2 size-1.5 rounded-full",
+              alertsEnabled && isListening
+                ? "bg-emerald-500"
+                : alertsEnabled
+                  ? "bg-amber-500"
+                  : "bg-muted-foreground/40",
+            )}
+          />
           <span className="sr-only">Notifications</span>
         </Button>
 
