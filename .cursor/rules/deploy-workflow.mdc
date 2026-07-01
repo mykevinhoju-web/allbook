@@ -1,0 +1,43 @@
+---
+description: Auto commit/deploy workflow and proactive risk warnings for AllBook
+alwaysApply: true
+---
+
+# AllBook Deploy & Advisory Workflow
+
+## Auto commit and deploy
+
+After completing a meaningful unit of work (feature, fix, or UI screen):
+
+1. Run `npm run build` locally when changes affect the app.
+2. Commit with a clear message — do not ask for permission to commit.
+3. Push to `origin/master`.
+4. Deploy to production with `npx vercel deploy --prod --yes` if push alone does not update `allbook.com.au` within a reasonable time.
+5. Verify key routes return 200 (e.g. the pages just changed).
+6. Report the live URLs in the summary — do not ask "should I deploy?"
+
+Skip commit/deploy only when:
+- The user explicitly says not to deploy or commit in that turn.
+- Changes are clearly WIP and the user asked to stop mid-task.
+- Build fails — fix first, then commit and deploy.
+
+Never commit: `.env.local`, secrets, credentials, or API keys.
+
+## Proactive advisory
+
+When the user's request could harm the project, pause and explain briefly before executing. Examples:
+
+- Deploying broken builds or skipping tests on critical paths.
+- Committing secrets or disabling security (RLS, auth, CORS wide open).
+- Force-pushing to `master`, hard resets, or other irreversible git ops.
+- Hardcoding tenant names instead of DB/env resolution.
+- Pushing mock-only UI to production without noting it is non-functional.
+- Schema changes without migration files.
+- Disabling ESLint/TypeScript checks to "make build pass".
+
+Frame feedback as: what was asked, why it is risky, and a safer alternative. Proceed only if the user confirms or the risk is low.
+
+## Deployment target
+
+- Production: `https://allbook.com.au`
+- Repo: `mykevinhoju-web/allbook` on `master`
