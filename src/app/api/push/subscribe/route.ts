@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
     if (token) {
       const payload = await verifyStaffSession(token);
-      if (payload.role === "staff" && payload.tenantId === tenant.id) {
+      if (payload && payload.role === "staff" && payload.tenantId === tenant.id) {
         audience = "staff";
         staffId = payload.staffId;
       }

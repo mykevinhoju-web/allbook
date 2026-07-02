@@ -10,14 +10,15 @@ let bufferLoadPromise: Promise<AudioBuffer> | null = null;
 
 export function isBookingAlertsEnabled(): boolean {
   if (typeof window === "undefined") return false;
-  return sessionStorage.getItem(ALERTS_ENABLED_KEY) === "1";
+  return localStorage.getItem(ALERTS_ENABLED_KEY) === "1";
 }
 
 export function setBookingAlertsEnabled(enabled: boolean) {
+  if (typeof window === "undefined") return;
   if (enabled) {
-    sessionStorage.setItem(ALERTS_ENABLED_KEY, "1");
+    localStorage.setItem(ALERTS_ENABLED_KEY, "1");
   } else {
-    sessionStorage.removeItem(ALERTS_ENABLED_KEY);
+    localStorage.removeItem(ALERTS_ENABLED_KEY);
   }
 }
 

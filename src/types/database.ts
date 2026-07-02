@@ -130,6 +130,33 @@ export type Database = {
         };
         Relationships: [];
       };
+      admin_accounts: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          login_id: string;
+          password_hash: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          login_id: string;
+          password_hash: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          login_id?: string;
+          password_hash?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       booking_alert_events: {
         Row: {
           id: string;

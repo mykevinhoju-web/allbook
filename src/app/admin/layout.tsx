@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AdminShell, TenantAdminGateway } from "@/features/admin";
+import { AdminLayoutGate, TenantAdminGateway } from "@/features/admin";
 import { getTenantSlug } from "@/features/tenants/server";
 
 export const metadata: Metadata = {
@@ -35,7 +35,7 @@ export default async function AdminLayout({
 
   return (
     <TooltipProvider>
-      <AdminShell>{children}</AdminShell>
+      <AdminLayoutGate>{children}</AdminLayoutGate>
     </TooltipProvider>
   );
 }

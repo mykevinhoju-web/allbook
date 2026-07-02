@@ -21,9 +21,12 @@ import { useTenant } from "@/features/tenants";
 import { adminNavItems } from "../config/navigation";
 import { isAdminNavActive } from "../utils/navigation";
 
-export function AdminSidebar() {
+export function AdminSidebar({ isStaff = false }: { isStaff?: boolean }) {
   const pathname = usePathname();
   const tenant = useTenant();
+  const navItems = isStaff
+    ? adminNavItems.filter((item) => item.href === "/admin/bookings")
+    : adminNavItems;
 
   return (
     <Sidebar collapsible="icon" variant="inset">
@@ -56,7 +59,7 @@ export function AdminSidebar() {
           <SidebarGroupLabel>Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {adminNavItems.map((item) => (
+              {navItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     isActive={isAdminNavActive(item.href, pathname)}

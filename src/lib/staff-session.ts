@@ -1,38 +1,27 @@
-import { SignJWT, jwtVerify } from "jose";
+import {
+  getSessionCookieOptions,
+  signAppSession,
+  STAFF_SESSION_COOKIE,
+  verifyAppSession,
+  type StaffSessionPayload,
+} from "./app-session";
 
-export type StaffSessionPayload = {
-  tenantSlug: string;
-  tenantId: string;
-  staffId: string;
-  role: "staff";
-};
-
-const COOKIE_NAME = "allbook_staff_session";
-
-function getSecret() {
-  const value = process.env.STAFF_SESSION_SECRET;
-  if (!value) {
-    throw new Error("STAFF_SESSION_SECRET is not configured.");
-  }
-  return new TextEncoder().encode(value);
-}
+export type { StaffSessionPayload };
 
 export function getStaffSessionCookieName() {
-  return COOKIE_NAME;
+  return STAFF_SESSION_COOKIE;
 }
 
+export { getSessionCookieOptions as getStaffSessionCookieOptions };
+
 export async function signStaffSession(payload: StaffSessionPayload) {
-  const secret = getSecret();
-  return await new SignJWT(payload)
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime("30d")
-    .sign(secret);
+  return signAppSession(payload);
 }
 
 export async function verifyStaffSession(token: string) {
-  const secret = getSecret();
-  const { payload } = await jwtVerify(token, secret);
-  return payload as unknown as StaffSessionPayload;
+  const session = await verifyAppSession(token);
+  if (!session || session.role !== "staff") {
+    return null;
+  }
+  return session;
 }
-

@@ -79,17 +79,35 @@ export function BookingAlertProvider({
       return;
     }
 
-    const unsubscribe = subscribeToBookingAlerts(
-      tenant.slug,
-      handleBooking,
-      (status) => {
-        setConnectionStatus(status);
-        setIsListening(status === "SUBSCRIBED");
-      },
-    );
+    let unsubscribe: (() => void) | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+
+    const connect = () => {
+      unsubscribe?.();
+      unsubscribe = subscribeToBookingAlerts(
+        tenant.slug,
+        handleBooking,
+        (status) => {
+          setConnectionStatus(status);
+          setIsListening(status === "SUBSCRIBED");
+
+          if (
+            !cancelled &&
+            (status === "CHANNEL_ERROR" || status === "TIMED_OUT")
+          ) {
+            retryTimer = setTimeout(connect, 3000);
+          }
+        },
+      );
+    };
+
+    connect();
 
     return () => {
-      unsubscribe();
+      cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
+      unsubscribe?.();
       setIsListening(false);
       setConnectionStatus("CLOSED");
     };

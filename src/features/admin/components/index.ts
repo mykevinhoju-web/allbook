@@ -1,3 +1,4 @@
+export { AdminLayoutGate } from "./admin-layout-gate";
 export { AdminBreadcrumb } from "./admin-breadcrumb";
 export { AdminDashboardContent } from "./admin-dashboard-content";
 export { AdminHeader } from "./admin-header";

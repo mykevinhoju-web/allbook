@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import { AppButton, toast } from "@/components/common";
 import { Input } from "@/components/ui/input";
 
-export default function StaffLoginPage() {
+export default function AdminLoginPage() {
   const router = useRouter();
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
@@ -15,7 +15,7 @@ export default function StaffLoginPage() {
   const submit = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/staff/auth/login", {
+      const response = await fetch("/api/admin/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ loginId, password }),
@@ -28,8 +28,7 @@ export default function StaffLoginPage() {
       }
 
       toast.success("Signed in");
-      router.push("/admin/bookings");
-      router.refresh();
+      router.push("/admin");
       router.refresh();
     } finally {
       setLoading(false);
@@ -37,12 +36,11 @@ export default function StaffLoginPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-md p-6">
-      <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-soft">
-        <h1 className="text-2xl font-semibold tracking-tight">Staff sign in</h1>
+    <div className="flex min-h-svh items-center justify-center bg-muted/30 p-6">
+      <div className="w-full max-w-md rounded-2xl border border-border/60 bg-card p-6 shadow-soft">
+        <h1 className="text-2xl font-semibold tracking-tight">Admin sign in</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Sign in to receive booking alerts for your own schedule. You stay
-          signed in until you sign out.
+          Stay signed in until you choose to sign out.
         </p>
 
         <div className="mt-6 space-y-4">
@@ -80,4 +78,3 @@ export default function StaffLoginPage() {
     </div>
   );
 }
-

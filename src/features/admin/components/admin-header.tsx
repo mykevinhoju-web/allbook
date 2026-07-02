@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Bell, LogOut, Settings, User } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -23,11 +23,37 @@ import { useBookingAlerts } from "@/features/booking/context/booking-alert-provi
 
 import { AdminBreadcrumb } from "./admin-breadcrumb";
 
-export function AdminHeader() {
+interface AdminHeaderProps {
+  user?: {
+    role: "admin" | "staff";
+    loginId: string;
+    name: string;
+  } | null;
+}
+
+export function AdminHeader({ user }: AdminHeaderProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const tenant = useTenant();
   const { alertsEnabled, isListening, bellActive, connectionStatus, testSound } =
     useBookingAlerts();
+
+  const displayName = user?.name ?? "Admin";
+  const initials = displayName.slice(0, 2).toUpperCase();
+
+  const signOut = async () => {
+    const endpoints =
+      user?.role === "staff"
+        ? ["/api/staff/auth/logout"]
+        : ["/api/admin/auth/logout", "/api/staff/auth/logout"];
+
+    await Promise.all(
+      endpoints.map((endpoint) => fetch(endpoint, { method: "POST" })),
+    );
+
+    router.replace("/admin/login");
+    router.refresh();
+  };
 
   return (
     <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur-md supports-backdrop-filter:bg-background/60">
@@ -100,20 +126,20 @@ export function AdminHeader() {
           >
             <Avatar className="size-7">
               <AvatarFallback className="bg-muted text-xs font-medium">
-                AD
+                {initials}
               </AvatarFallback>
             </Avatar>
             <span className="hidden text-sm font-medium sm:inline">
-              Admin User
+              {displayName}
             </span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuGroup>
               <DropdownMenuLabel>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-sm font-medium">Admin User</span>
+                  <span className="text-sm font-medium">{displayName}</span>
                   <span className="text-xs font-normal text-muted-foreground">
-                    admin@{tenant.slug}.allbook.com.au
+                    {user?.loginId ?? `admin@${tenant.slug}.allbook.com.au`}
                   </span>
                 </div>
               </DropdownMenuLabel>
@@ -130,7 +156,7 @@ export function AdminHeader() {
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive">
+            <DropdownMenuItem variant="destructive" onClick={() => void signOut()}>
               <LogOut className="size-4" />
               Sign out
             </DropdownMenuItem>

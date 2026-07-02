@@ -4,7 +4,11 @@ import { NextResponse } from "next/server";
 
 import type { Database } from "@/types/database";
 import { requireTenantFromRequest, TenantContextError } from "@/lib/admin/tenant-context";
-import { getStaffSessionCookieName, signStaffSession } from "@/lib/staff-session";
+import {
+  getStaffSessionCookieName,
+  getStaffSessionCookieOptions,
+  signStaffSession,
+} from "@/lib/staff-session";
 
 export async function POST(request: Request) {
   try {
@@ -40,20 +44,19 @@ export async function POST(request: Request) {
     }
 
     const token = await signStaffSession({
+      role: "staff",
       tenantSlug: tenant.slug,
       tenantId: tenant.id,
       staffId: account.staff_id,
-      role: "staff",
+      loginId: body.loginId.trim(),
     });
 
     const response = NextResponse.json({ ok: true });
-    response.cookies.set(getStaffSessionCookieName(), token, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: true,
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30,
-    });
+    response.cookies.set(
+      getStaffSessionCookieName(),
+      token,
+      getStaffSessionCookieOptions(),
+    );
     return response;
   } catch (error) {
     if (error instanceof TenantContextError) {

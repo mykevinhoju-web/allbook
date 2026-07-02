@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     }
 
     const payload = await verifyStaffSession(token);
-    if (payload.role !== "staff" || payload.tenantId !== tenant.id) {
+    if (!payload || payload.role !== "staff" || payload.tenantId !== tenant.id) {
       return NextResponse.json({ staff: null });
     }
 

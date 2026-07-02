@@ -188,6 +188,19 @@ create table if not exists public.staff_accounts (
 create index if not exists staff_accounts_tenant_idx
   on public.staff_accounts (tenant_id, login_id);
 
+create table if not exists public.admin_accounts (
+  id uuid primary key default gen_random_uuid(),
+  tenant_id uuid not null references public.tenants (id) on delete cascade,
+  login_id text not null,
+  password_hash text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (tenant_id, login_id)
+);
+
+create index if not exists admin_accounts_tenant_idx
+  on public.admin_accounts (tenant_id, login_id);
+
 create table if not exists public.rooms (
   id uuid primary key default gen_random_uuid(),
   tenant_id uuid not null references public.tenants (id) on delete cascade,
@@ -231,6 +244,7 @@ create index if not exists bookings_room_starts_idx
 alter table public.staff enable row level security;
 alter table public.staff_photos enable row level security;
 alter table public.staff_accounts enable row level security;
+alter table public.admin_accounts enable row level security;
 alter table public.rooms enable row level security;
 alter table public.bookings enable row level security;
 
@@ -242,6 +256,9 @@ create policy "staff_photos_all" on public.staff_photos for all to anon, authent
 
 drop policy if exists "staff_accounts_all" on public.staff_accounts;
 create policy "staff_accounts_all" on public.staff_accounts for all to anon, authenticated using (true) with check (true);
+
+drop policy if exists "admin_accounts_all" on public.admin_accounts;
+create policy "admin_accounts_all" on public.admin_accounts for all to anon, authenticated using (true) with check (true);
 
 drop policy if exists "rooms_all" on public.rooms;
 create policy "rooms_all" on public.rooms for all to anon, authenticated using (true) with check (true);
