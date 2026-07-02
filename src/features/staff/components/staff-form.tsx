@@ -62,6 +62,8 @@ function mapRecordToForm(record: StaffRecord): StaffFormValues {
     languages: record.attributes.languages ?? [],
     experience: record.attributes.experience ?? "",
     introduction: record.attributes.introduction ?? "",
+    loginId: "",
+    password: "",
     workingDays: record.workingDays,
     workingHoursStart: record.workingHoursStart,
     workingHoursEnd: record.workingHoursEnd,
@@ -74,6 +76,7 @@ export function StaffForm({ staffId }: StaffFormProps) {
   const isEditing = Boolean(staffId);
   const [form, setForm] = useState<StaffFormValues>(defaultStaffFormValues);
   const [existingPhotos, setExistingPhotos] = useState<StaffPhoto[]>([]);
+  const [hasLoginAccount, setHasLoginAccount] = useState(false);
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
 
@@ -94,6 +97,22 @@ export function StaffForm({ staffId }: StaffFormProps) {
 
         setForm(mapRecordToForm(data.staff));
         setExistingPhotos(data.staff.photos);
+
+        const accountResponse = await fetch(`/api/admin/staff/${staffId}/account`);
+        const accountData = (await accountResponse.json()) as {
+          loginId?: string | null;
+          hasAccount?: boolean;
+        };
+
+        if (accountResponse.ok) {
+          setHasLoginAccount(Boolean(accountData.hasAccount));
+          if (accountData.loginId) {
+            setForm((current) => ({
+              ...current,
+              loginId: accountData.loginId ?? "",
+            }));
+          }
+        }
       } catch (error) {
         toast.error("Could not load staff", {
           description:
@@ -197,6 +216,31 @@ export function StaffForm({ staffId }: StaffFormProps) {
       }
 
       await uploadPhotos(data.staff.id, form.photos);
+
+      if (form.loginId.trim()) {
+        const accountResponse = await fetch(
+          `/api/admin/staff/${data.staff.id}/account`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              loginId: form.loginId.trim(),
+              password: form.password.trim() || undefined,
+            }),
+          },
+        );
+
+        const accountResult = (await accountResponse.json()) as {
+          error?: string;
+        };
+
+        if (!accountResponse.ok) {
+          throw new Error(accountResult.error ?? "Failed to save login credentials.");
+        }
+
+        setHasLoginAccount(true);
+        setForm((current) => ({ ...current, password: "" }));
+      }
 
       toast.success(isEditing ? "Staff updated" : "Staff created");
       router.push("/admin/staff");
@@ -445,6 +489,53 @@ export function StaffForm({ staffId }: StaffFormProps) {
               </SelectContent>
             </Select>
           </StaffFormField>
+        </StaffFormSection>
+
+        <StaffFormSection
+          title="Login credentials"
+          description="Staff use these to sign in and receive booking alerts for their own schedule only."
+        >
+          <div className="grid gap-5 sm:grid-cols-2">
+            <StaffFormField label="Login ID" htmlFor="staff-login-id">
+              <Input
+                id="staff-login-id"
+                value={form.loginId}
+                onChange={(event) => updateField("loginId", event.target.value)}
+                placeholder="e.g. anna01"
+                className={inputClassName}
+                autoComplete="off"
+              />
+            </StaffFormField>
+
+            <StaffFormField
+              label="Password"
+              htmlFor="staff-password"
+              hint={
+                hasLoginAccount
+                  ? "Leave blank to keep the current password."
+                  : "Required when creating a new login."
+              }
+            >
+              <Input
+                id="staff-password"
+                type="password"
+                value={form.password}
+                onChange={(event) => updateField("password", event.target.value)}
+                placeholder={hasLoginAccount ? "••••••••" : "Min. 6 characters"}
+                className={inputClassName}
+                autoComplete="new-password"
+              />
+            </StaffFormField>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Staff sign in at{" "}
+            <Link href="/staff/login" className="text-primary underline">
+              /staff/login
+            </Link>
+            , then tap <strong>Turn on alerts</strong> to receive push
+            notifications for their bookings.
+          </p>
         </StaffFormSection>
 
         <div className="flex flex-col-reverse gap-3 border-t border-border/40 pt-6 sm:flex-row sm:justify-end">

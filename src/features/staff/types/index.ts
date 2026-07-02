@@ -63,6 +63,8 @@ export interface StaffFormValues {
   languages: string[];
   experience: string;
   introduction: string;
+  loginId: string;
+  password: string;
   workingDays: string[];
   workingHoursStart: string;
   workingHoursEnd: string;

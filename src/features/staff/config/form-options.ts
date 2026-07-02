@@ -56,7 +56,7 @@ export const defaultStaffFormValues = {
   languages: [] as string[],
   experience: "",
   introduction: "",
-  username: "",
+  loginId: "",
   password: "",
   workingDays: ["mon", "tue", "wed", "thu", "fri"] as string[],
   workingHoursStart: "09:00",
