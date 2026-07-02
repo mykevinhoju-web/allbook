@@ -115,8 +115,8 @@ export function BookingAlertProvider({
 
       toast.success("Booking alerts enabled", {
         description: isPushSupported()
-          ? "Push is on. Add to Home Screen for background alerts."
-          : "You should hear a test chime when this page is open.",
+          ? "Push is on — background alerts use your phone notification sound."
+          : "You will hear a short chime when this page is open.",
         position: isMobile ? "top-center" : "top-right",
       });
     } catch (error) {

@@ -28,7 +28,7 @@ self.addEventListener("push", (event) => {
       badge: "/icons/icon-192.png",
       tag: "allbook-booking",
       renotify: true,
-      vibrate: [200, 100, 200, 100, 300],
+      vibrate: [200],
       data: { url: data.url },
       silent: false,
     }),
