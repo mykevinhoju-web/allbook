@@ -7,6 +7,7 @@ export interface AdminBooking {
   startsAt: string;
   endsAt: string;
   durationMinutes: number;
+  priceCents: number;
   status: string;
   customerName: string | null;
   customerPhone: string | null;

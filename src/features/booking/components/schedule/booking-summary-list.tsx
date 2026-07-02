@@ -1,5 +1,6 @@
 "use client";
 
+import { formatPriceFromCents } from "@/features/services";
 import { cn } from "@/lib/utils";
 
 import { formatBookingSummary } from "../../lib/schedule-utils";
@@ -7,6 +8,7 @@ import type { AdminBooking } from "../../types/admin-booking";
 
 interface BookingSummaryListProps {
   bookings: AdminBooking[];
+  currency?: string;
   compact?: boolean;
   emptyMessage?: string;
   className?: string;
@@ -14,6 +16,7 @@ interface BookingSummaryListProps {
 
 export function BookingSummaryList({
   bookings,
+  currency = "AUD",
   compact = false,
   emptyMessage = "No bookings yet",
   className,
@@ -44,6 +47,9 @@ export function BookingSummaryList({
         >
           <p className="font-medium text-foreground">
             {formatBookingSummary(booking)}
+            {booking.priceCents > 0
+              ? ` · ${formatPriceFromCents(booking.priceCents, currency)}`
+              : ""}
           </p>
           {!compact && booking.customerName ? (
             <p className="mt-0.5 text-muted-foreground">{booking.customerName}</p>

@@ -10,6 +10,7 @@ interface StaffScheduleColumnProps {
   name: string;
   photoUrl?: string;
   bookings: AdminBooking[];
+  currency?: string;
   selected?: boolean;
   onSelect?: () => void;
 }
@@ -18,6 +19,7 @@ export function StaffScheduleColumn({
   name,
   photoUrl,
   bookings,
+  currency = "AUD",
   selected,
   onSelect,
 }: StaffScheduleColumnProps) {
@@ -47,7 +49,7 @@ export function StaffScheduleColumn({
       </div>
 
       <div className="min-h-28 flex-1 px-2 py-2">
-        <BookingSummaryList bookings={sorted} compact />
+        <BookingSummaryList bookings={sorted} currency={currency} compact />
       </div>
 
       <div className="border-t border-border/40 px-3 py-2 text-center text-[10px] font-medium text-primary">

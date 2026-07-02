@@ -3,21 +3,16 @@ import type { AdminBooking } from "../types/admin-booking";
 const MINUTES_IN_DAY = 24 * 60;
 const SLOT_STEP_MINUTES = 5;
 
-/** Fixed treatment lengths — start times use 5-minute steps. */
-export const BOOKING_SERVICE_DURATIONS = [20, 30, 60] as const;
-export type BookingServiceDuration = (typeof BOOKING_SERVICE_DURATIONS)[number];
-
-export const BOOKING_DURATION_OPTIONS = BOOKING_SERVICE_DURATIONS;
+/** @deprecated Use service options from API instead. */
+export const BOOKING_SERVICE_DURATIONS = [20, 30, 45, 60] as const;
 
 export function formatServiceDurationLabel(minutes: number): string {
   if (minutes === 60) return "1 hour";
   return `${minutes} min`;
 }
 
-export function isValidServiceDuration(
-  minutes: number,
-): minutes is BookingServiceDuration {
-  return (BOOKING_SERVICE_DURATIONS as readonly number[]).includes(minutes);
+export function isValidServiceDuration(minutes: number, allowed: number[]): boolean {
+  return allowed.includes(minutes);
 }
 
 export function isStartTimeOnFiveMinuteSlot(iso: string): boolean {

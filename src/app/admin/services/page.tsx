@@ -1,10 +1,5 @@
-import { AdminPlaceholderPage } from "@/features/admin";
+import { ServicePricingContent } from "@/features/services";
 
 export default function AdminServicesPage() {
-  return (
-    <AdminPlaceholderPage
-      title="Services"
-      description="Manage service offerings and pricing."
-    />
-  );
+  return <ServicePricingContent />;
 }

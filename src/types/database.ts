@@ -226,6 +226,7 @@ export type Database = {
           starts_at: string;
           ends_at: string;
           duration_minutes: number;
+          price_cents: number;
           status: string;
           customer_name: string | null;
           customer_phone: string | null;
@@ -243,6 +244,7 @@ export type Database = {
           starts_at: string;
           ends_at: string;
           duration_minutes: number;
+          price_cents?: number;
           status?: string;
           customer_name?: string | null;
           customer_phone?: string | null;
@@ -260,12 +262,46 @@ export type Database = {
           starts_at?: string;
           ends_at?: string;
           duration_minutes?: number;
+          price_cents?: number;
           status?: string;
           customer_name?: string | null;
           customer_phone?: string | null;
           customer_postcode?: string | null;
           customer_email?: string | null;
           notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      service_options: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          duration_minutes: number;
+          price_cents: number;
+          sort_order: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          duration_minutes: number;
+          price_cents: number;
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          duration_minutes?: number;
+          price_cents?: number;
+          sort_order?: number;
+          is_active?: boolean;
           created_at?: string;
           updated_at?: string;
         };

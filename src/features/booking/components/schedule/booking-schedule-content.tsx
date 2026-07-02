@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarDays, Plus } from "lucide-react";
 
@@ -11,6 +12,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { formatPriceFromCents } from "@/features/services";
+import type { ServiceOption } from "@/features/services";
 import { useTenant } from "@/features/tenants";
 import type { StaffRecord } from "@/features/staff/types";
 
@@ -37,6 +40,7 @@ export function BookingScheduleContent() {
   const [date, setDate] = useState(todayDateInputValue());
   const [staff, setStaff] = useState<StaffRecord[]>([]);
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
+  const [serviceOptions, setServiceOptions] = useState<ServiceOption[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -44,18 +48,23 @@ export function BookingScheduleContent() {
 
   const loadSchedule = useCallback(async () => {
     try {
-      const [staffResponse, bookingsResponse] = await Promise.all([
+      const [staffResponse, bookingsResponse, optionsResponse] = await Promise.all([
         fetch("/api/admin/staff"),
         fetch(`/api/admin/bookings?date=${date}`),
+        fetch("/api/admin/service-options"),
       ]);
 
       const staffData = (await staffResponse.json()) as { staff?: StaffRecord[] };
       const bookingsData = (await bookingsResponse.json()) as {
         bookings?: AdminBooking[];
       };
+      const optionsData = (await optionsResponse.json()) as {
+        options?: ServiceOption[];
+      };
 
       setStaff(staffData.staff ?? []);
       setBookings(bookingsData.bookings ?? []);
+      setServiceOptions(optionsData.options ?? []);
     } catch {
       toast.error("Could not load schedule");
     }
@@ -66,6 +75,16 @@ export function BookingScheduleContent() {
   }, [loadSchedule]);
 
   useBookingRealtime(tenant.id, loadSchedule);
+
+  const allowedDurations = useMemo(
+    () => serviceOptions.map((option) => option.durationMinutes),
+    [serviceOptions],
+  );
+
+  const defaultDuration =
+    serviceOptions[0]?.durationMinutes != null
+      ? String(serviceOptions[0].durationMinutes)
+      : "";
 
   const workingStaff = useMemo(
     () =>
@@ -91,7 +110,7 @@ export function BookingScheduleContent() {
     const staffBookings = bookings.filter(
       (booking) => booking.staffId === formStaff.id,
     );
-    const duration = Number(form.durationMinutes) || 30;
+    const duration = Number(form.durationMinutes) || serviceOptions[0]?.durationMinutes || 30;
 
     return getAvailableStartSlots(
       date,
@@ -100,14 +119,14 @@ export function BookingScheduleContent() {
       staffBookings,
       duration,
     );
-  }, [bookings, date, form.durationMinutes, formStaff]);
+  }, [bookings, date, form.durationMinutes, formStaff, serviceOptions]);
 
   const openCreateForm = (partial?: Partial<BookingFormValues>) => {
     setForm({
       ...defaultBookingFormValues,
       staffId: partial?.staffId ?? selectedStaffId ?? "",
       startsAt: partial?.startsAt ?? "",
-      durationMinutes: partial?.durationMinutes ?? "30",
+      durationMinutes: partial?.durationMinutes ?? defaultDuration,
       customerName: "",
       customerPhone: "",
       customerPostcode: "",
@@ -117,8 +136,8 @@ export function BookingScheduleContent() {
   };
 
   const createBooking = async () => {
-    if (!form.staffId || !form.startsAt) {
-      toast.error("Staff and start time are required");
+    if (!form.staffId || !form.startsAt || !form.durationMinutes) {
+      toast.error("Staff, start time, and service are required");
       return;
     }
 
@@ -132,8 +151,8 @@ export function BookingScheduleContent() {
     try {
       const durationMinutes = Number(form.durationMinutes);
 
-      if (!isValidServiceDuration(durationMinutes)) {
-        toast.error("Service duration must be 20 min, 30 min, or 1 hour");
+      if (!isValidServiceDuration(durationMinutes, allowedDurations)) {
+        toast.error("Select a valid service duration");
         return;
       }
 
@@ -161,10 +180,17 @@ export function BookingScheduleContent() {
         return;
       }
 
+      const priceLabel = data.booking?.priceCents
+        ? formatPriceFromCents(
+            data.booking.priceCents,
+            tenant.settings.currency,
+          )
+        : null;
+
       toast.success("Booking created", {
-        description: data.booking?.roomName
-          ? `Assigned to ${data.booking.roomName}`
-          : undefined,
+        description: [priceLabel, data.booking?.roomName]
+          .filter(Boolean)
+          .join(" · "),
       });
 
       setShowCreate(false);
@@ -181,9 +207,11 @@ export function BookingScheduleContent() {
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Bookings</h1>
           <p className="text-sm text-muted-foreground">
-            Today&apos;s staff with booked times at a glance. Tap a card for
-            available start times (5-minute steps) — service length is 20, 30, or
-            60 minutes.
+            Service prices are set under{" "}
+            <Link href="/admin/services" className="text-primary underline">
+              Services
+            </Link>
+            . Start times use 5-minute steps.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -197,12 +225,23 @@ export function BookingScheduleContent() {
             type="button"
             className="rounded-xl"
             onClick={() => openCreateForm()}
+            disabled={serviceOptions.length === 0}
           >
             <Plus className="size-4" />
             Add booking
           </AppButton>
         </div>
       </div>
+
+      {serviceOptions.length === 0 ? (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
+          No service pricing yet.{" "}
+          <Link href="/admin/services" className="font-medium text-primary underline">
+            Add durations and prices
+          </Link>{" "}
+          before creating bookings.
+        </div>
+      ) : null}
 
       {workingStaff.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 px-6 py-10 text-center">
@@ -223,6 +262,7 @@ export function BookingScheduleContent() {
                 bookings={bookings.filter(
                   (booking) => booking.staffId === member.id,
                 )}
+                currency={tenant.settings.currency}
                 selected={selectedStaffId === member.id}
                 onSelect={() => setSelectedStaffId(member.id)}
               />
@@ -249,6 +289,8 @@ export function BookingScheduleContent() {
               bookings={bookings.filter(
                 (booking) => booking.staffId === selectedStaff.id,
               )}
+              serviceOptions={serviceOptions}
+              currency={tenant.settings.currency}
               onAddBooking={(startsAt, durationMinutes) => {
                 setSelectedStaffId(null);
                 openCreateForm({
@@ -267,6 +309,8 @@ export function BookingScheduleContent() {
         onOpenChange={setShowCreate}
         date={date}
         staffOptions={staff.map((member) => ({ id: member.id, name: member.name }))}
+        serviceOptions={serviceOptions}
+        currency={tenant.settings.currency}
         timeOptions={formTimeOptions}
         values={form}
         onChange={setForm}

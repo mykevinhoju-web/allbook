@@ -2,10 +2,8 @@ import { NextResponse } from "next/server";
 
 import { assignAvailableRoom } from "@/features/booking/lib/assign-room";
 import { hasStaffBookingConflict } from "@/features/booking/lib/staff-conflict";
-import {
-  isStartTimeOnFiveMinuteSlot,
-  isValidServiceDuration,
-} from "@/features/booking/lib/schedule-utils";
+import { isStartTimeOnFiveMinuteSlot } from "@/features/booking/lib/schedule-utils";
+import { getServicePriceCents } from "@/features/services/server/get-service-price";
 import {
   createServiceSupabase,
   requireTenantFromRequest,
@@ -20,6 +18,7 @@ function mapBooking(row: {
   starts_at: string;
   ends_at: string;
   duration_minutes: number;
+  price_cents: number;
   status: string;
   customer_name: string | null;
   customer_phone: string | null;
@@ -47,6 +46,7 @@ function mapBooking(row: {
     startsAt: row.starts_at,
     endsAt: row.ends_at,
     durationMinutes: row.duration_minutes,
+    priceCents: row.price_cents,
     status: row.status as BookingStatus,
     customerName: row.customer_name,
     customerPhone: row.customer_phone,
@@ -76,7 +76,7 @@ export async function GET(request: Request) {
     let query = supabase
       .from("bookings")
       .select(
-        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, status, customer_name, customer_phone, customer_postcode, customer_email, notes, created_at, updated_at, staff(name), rooms(name)",
+        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, status, customer_name, customer_phone, customer_postcode, customer_email, notes, created_at, updated_at, staff(name), rooms(name)",
       )
       .eq("tenant_id", tenant.id)
       .neq("status", "cancelled")
@@ -137,10 +137,17 @@ export async function POST(request: Request) {
     }
 
     const durationMinutes = body.durationMinutes;
+    const supabase = createServiceSupabase();
 
-    if (!isValidServiceDuration(durationMinutes)) {
+    const priceCents = await getServicePriceCents(
+      supabase,
+      tenant.id,
+      durationMinutes,
+    );
+
+    if (priceCents === null) {
       return NextResponse.json(
-        { error: "Service duration must be 20, 30, or 60 minutes." },
+        { error: "No price configured for this service duration." },
         { status: 400 },
       );
     }
@@ -155,8 +162,6 @@ export async function POST(request: Request) {
     }
 
     const endsAt = new Date(startsAt.getTime() + durationMinutes * 60_000);
-
-    const supabase = createServiceSupabase();
 
     if (
       await hasStaffBookingConflict(
@@ -198,6 +203,7 @@ export async function POST(request: Request) {
         starts_at: startsAt.toISOString(),
         ends_at: endsAt.toISOString(),
         duration_minutes: durationMinutes,
+        price_cents: priceCents,
         status: body.status ?? "confirmed",
         customer_name: body.customerName.trim(),
         customer_phone: body.customerPhone.trim(),
@@ -206,7 +212,7 @@ export async function POST(request: Request) {
         notes: body.notes ?? null,
       })
       .select(
-        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, status, customer_name, customer_phone, customer_postcode, customer_email, notes, created_at, updated_at, staff(name), rooms(name)",
+        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, status, customer_name, customer_phone, customer_postcode, customer_email, notes, created_at, updated_at, staff(name), rooms(name)",
       )
       .single();
 

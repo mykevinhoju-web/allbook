@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { assignAvailableRoom } from "@/features/booking/lib/assign-room";
+import { getServicePriceCents } from "@/features/services/server/get-service-price";
 import {
   createServiceSupabase,
   requireTenantFromRequest,
@@ -16,6 +17,7 @@ function mapBooking(row: {
   starts_at: string;
   ends_at: string;
   duration_minutes: number;
+  price_cents: number;
   status: string;
   customer_name: string | null;
   customer_phone: string | null;
@@ -43,6 +45,7 @@ function mapBooking(row: {
     startsAt: row.starts_at,
     endsAt: row.ends_at,
     durationMinutes: row.duration_minutes,
+    priceCents: row.price_cents,
     status: row.status as BookingStatus,
     customerName: row.customer_name,
     customerPhone: row.customer_phone,
@@ -113,6 +116,23 @@ export async function PATCH(
       updates.duration_minutes = durationMinutes;
     }
 
+    if (body.durationMinutes !== undefined) {
+      const priceCents = await getServicePriceCents(
+        supabase,
+        tenant.id,
+        durationMinutes,
+      );
+
+      if (priceCents === null) {
+        return NextResponse.json(
+          { error: "No price configured for this service duration." },
+          { status: 400 },
+        );
+      }
+
+      updates.price_cents = priceCents;
+    }
+
     if (body.roomId !== undefined || body.startsAt !== undefined || body.durationMinutes !== undefined) {
       updates.room_id =
         body.roomId ??
@@ -131,7 +151,7 @@ export async function PATCH(
       .eq("tenant_id", tenant.id)
       .eq("id", id)
       .select(
-        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, status, customer_name, customer_phone, customer_postcode, customer_email, notes, created_at, updated_at, staff(name), rooms(name)",
+        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, status, customer_name, customer_phone, customer_postcode, customer_email, notes, created_at, updated_at, staff(name), rooms(name)",
       )
       .maybeSingle();
 

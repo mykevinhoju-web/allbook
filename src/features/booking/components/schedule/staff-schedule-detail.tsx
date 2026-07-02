@@ -1,19 +1,22 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { AppButton } from "@/components/common";
 import { cn } from "@/lib/utils";
+import {
+  formatPriceFromCents,
+  formatServiceOptionLabel,
+  type ServiceOption,
+} from "@/features/services";
 import type { StaffRecord } from "@/features/staff/types";
 
 import {
-  BOOKING_DURATION_OPTIONS,
   buildStartsAtIso,
   formatAmPmTime,
   formatBookingSummary,
   formatDurationLabel,
   formatScheduleDate,
-  formatServiceDurationLabel,
   getAvailableStartSlots,
 } from "../../lib/schedule-utils";
 import type { AdminBooking } from "../../types/admin-booking";
@@ -22,6 +25,8 @@ interface StaffScheduleDetailProps {
   staff: StaffRecord;
   date: string;
   bookings: AdminBooking[];
+  serviceOptions: ServiceOption[];
+  currency?: string;
   onAddBooking: (startsAt: string, durationMinutes: number) => void;
 }
 
@@ -29,9 +34,19 @@ export function StaffScheduleDetail({
   staff,
   date,
   bookings,
+  serviceOptions,
+  currency = "AUD",
   onAddBooking,
 }: StaffScheduleDetailProps) {
-  const [durationMinutes, setDurationMinutes] = useState(30);
+  const [durationMinutes, setDurationMinutes] = useState(
+    serviceOptions[0]?.durationMinutes ?? 30,
+  );
+
+  useEffect(() => {
+    if (serviceOptions[0]?.durationMinutes) {
+      setDurationMinutes(serviceOptions[0].durationMinutes);
+    }
+  }, [serviceOptions]);
 
   const sortedBookings = useMemo(
     () =>
@@ -82,6 +97,9 @@ export function StaffScheduleDetail({
               >
                 <p className="text-sm font-medium">
                   {formatBookingSummary(booking)}
+                  {booking.priceCents > 0
+                    ? ` · ${formatPriceFromCents(booking.priceCents, currency)}`
+                    : ""}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Exact: {formatAmPmTime(booking.startsAt)} →{" "}
@@ -108,9 +126,13 @@ export function StaffScheduleDetail({
               value={durationMinutes}
               onChange={(event) => setDurationMinutes(Number(event.target.value))}
             >
-              {BOOKING_DURATION_OPTIONS.map((value) => (
-                <option key={value} value={value}>
-                  {formatServiceDurationLabel(value)}
+              {serviceOptions.map((option) => (
+                <option key={option.id} value={option.durationMinutes}>
+                  {formatServiceOptionLabel(
+                    option.durationMinutes,
+                    option.priceCents,
+                    currency,
+                  )}
                 </option>
               ))}
             </select>
@@ -138,8 +160,7 @@ export function StaffScheduleDetail({
           </div>
         )}
         <p className="text-xs text-muted-foreground">
-          Tap a time to book. Start times are in 5-minute steps; service length is
-          20 min, 30 min, or 1 hour.
+          Tap a time to book. Start times are in 5-minute steps.
         </p>
       </section>
     </div>

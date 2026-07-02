@@ -8,13 +8,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-
 import {
-  BOOKING_DURATION_OPTIONS,
-  formatAmPmTime,
-  formatServiceDurationLabel,
-  buildStartsAtIso,
-} from "../../lib/schedule-utils";
+  formatPriceFromCents,
+  formatServiceOptionLabel,
+} from "@/features/services";
+import type { ServiceOption } from "@/features/services";
+
+import { formatAmPmTime, buildStartsAtIso } from "../../lib/schedule-utils";
 
 export interface BookingFormValues {
   staffId: string;
@@ -29,7 +29,7 @@ export interface BookingFormValues {
 export const defaultBookingFormValues: BookingFormValues = {
   staffId: "",
   startsAt: "",
-  durationMinutes: "30",
+  durationMinutes: "",
   customerName: "",
   customerPhone: "",
   customerPostcode: "",
@@ -42,6 +42,8 @@ interface BookingFormSheetProps {
   title?: string;
   date: string;
   staffOptions: { id: string; name: string }[];
+  serviceOptions: ServiceOption[];
+  currency?: string;
   timeOptions: string[];
   values: BookingFormValues;
   onChange: (values: BookingFormValues) => void;
@@ -55,6 +57,8 @@ export function BookingFormSheet({
   title = "New booking",
   date,
   staffOptions,
+  serviceOptions,
+  currency = "AUD",
   timeOptions,
   values,
   onChange,
@@ -72,6 +76,10 @@ export function BookingFormSheet({
     values.startsAt.length > 0
       ? formatAmPmTime(buildStartsAtIso(date, values.startsAt))
       : null;
+
+  const selectedOption = serviceOptions.find(
+    (option) => String(option.durationMinutes) === values.durationMinutes,
+  );
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -119,18 +127,31 @@ export function BookingFormSheet({
           </label>
 
           <label className="block space-y-2 text-sm">
-            <span>Service duration</span>
+            <span>Service</span>
             <select
               className="h-10 w-full rounded-xl border border-border/60 bg-background px-3"
               value={values.durationMinutes}
               onChange={(event) => update("durationMinutes", event.target.value)}
             >
-              {BOOKING_DURATION_OPTIONS.map((value) => (
-                <option key={value} value={String(value)}>
-                  {formatServiceDurationLabel(value)}
+              <option value="">Select service</option>
+              {serviceOptions.map((option) => (
+                <option
+                  key={option.id}
+                  value={String(option.durationMinutes)}
+                >
+                  {formatServiceOptionLabel(
+                    option.durationMinutes,
+                    option.priceCents,
+                    currency,
+                  )}
                 </option>
               ))}
             </select>
+            {selectedOption ? (
+              <p className="text-xs font-medium text-primary">
+                Price: {formatPriceFromCents(selectedOption.priceCents, currency)}
+              </p>
+            ) : null}
           </label>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -184,7 +205,7 @@ export function BookingFormSheet({
           <AppButton
             type="button"
             className="w-full rounded-xl"
-            disabled={submitting}
+            disabled={submitting || serviceOptions.length === 0}
             onClick={onSubmit}
           >
             {submitting ? "Saving..." : "Create booking"}
