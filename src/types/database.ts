@@ -229,6 +229,8 @@ export type Database = {
           status: string;
           customer_name: string | null;
           customer_phone: string | null;
+          customer_postcode: string | null;
+          customer_email: string | null;
           notes: string | null;
           created_at: string;
           updated_at: string;
@@ -244,6 +246,8 @@ export type Database = {
           status?: string;
           customer_name?: string | null;
           customer_phone?: string | null;
+          customer_postcode?: string | null;
+          customer_email?: string | null;
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -259,6 +263,8 @@ export type Database = {
           status?: string;
           customer_name?: string | null;
           customer_phone?: string | null;
+          customer_postcode?: string | null;
+          customer_email?: string | null;
           notes?: string | null;
           created_at?: string;
           updated_at?: string;

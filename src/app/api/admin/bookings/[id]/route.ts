@@ -19,6 +19,8 @@ function mapBooking(row: {
   status: string;
   customer_name: string | null;
   customer_phone: string | null;
+  customer_postcode: string | null;
+  customer_email: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -44,6 +46,8 @@ function mapBooking(row: {
     status: row.status as BookingStatus,
     customerName: row.customer_name,
     customerPhone: row.customer_phone,
+    customerPostcode: row.customer_postcode,
+    customerEmail: row.customer_email,
     notes: row.notes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -64,6 +68,8 @@ export async function PATCH(
       status?: BookingStatus;
       customerName?: string;
       customerPhone?: string;
+      customerPostcode?: string;
+      customerEmail?: string;
       notes?: string;
       roomId?: string | null;
     };
@@ -88,6 +94,10 @@ export async function PATCH(
     if (body.status !== undefined) updates.status = body.status;
     if (body.customerName !== undefined) updates.customer_name = body.customerName;
     if (body.customerPhone !== undefined) updates.customer_phone = body.customerPhone;
+    if (body.customerPostcode !== undefined) {
+      updates.customer_postcode = body.customerPostcode;
+    }
+    if (body.customerEmail !== undefined) updates.customer_email = body.customerEmail;
     if (body.notes !== undefined) updates.notes = body.notes;
 
     const startsAt = body.startsAt
@@ -121,7 +131,7 @@ export async function PATCH(
       .eq("tenant_id", tenant.id)
       .eq("id", id)
       .select(
-        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, status, customer_name, customer_phone, notes, created_at, updated_at, staff(name), rooms(name)",
+        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, status, customer_name, customer_phone, customer_postcode, customer_email, notes, created_at, updated_at, staff(name), rooms(name)",
       )
       .maybeSingle();
 

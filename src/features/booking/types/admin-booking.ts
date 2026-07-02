@@ -10,6 +10,8 @@ export interface AdminBooking {
   status: string;
   customerName: string | null;
   customerPhone: string | null;
+  customerPostcode: string | null;
+  customerEmail: string | null;
   notes: string | null;
 }
 

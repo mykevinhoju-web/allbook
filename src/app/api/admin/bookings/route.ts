@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { assignAvailableRoom } from "@/features/booking/lib/assign-room";
+import { hasStaffBookingConflict } from "@/features/booking/lib/staff-conflict";
+import { roundToSlotMinutes } from "@/features/booking/lib/schedule-utils";
 import {
   createServiceSupabase,
   requireTenantFromRequest,
@@ -18,6 +20,8 @@ function mapBooking(row: {
   status: string;
   customer_name: string | null;
   customer_phone: string | null;
+  customer_postcode: string | null;
+  customer_email: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -43,6 +47,8 @@ function mapBooking(row: {
     status: row.status as BookingStatus,
     customerName: row.customer_name,
     customerPhone: row.customer_phone,
+    customerPostcode: row.customer_postcode,
+    customerEmail: row.customer_email,
     notes: row.notes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -67,7 +73,7 @@ export async function GET(request: Request) {
     let query = supabase
       .from("bookings")
       .select(
-        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, status, customer_name, customer_phone, notes, created_at, updated_at, staff(name), rooms(name)",
+        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, status, customer_name, customer_phone, customer_postcode, customer_email, notes, created_at, updated_at, staff(name), rooms(name)",
       )
       .eq("tenant_id", tenant.id)
       .neq("status", "cancelled")
@@ -106,6 +112,8 @@ export async function POST(request: Request) {
       durationMinutes?: number;
       customerName?: string;
       customerPhone?: string;
+      customerPostcode?: string;
+      customerEmail?: string;
       notes?: string;
       status?: BookingStatus;
       roomId?: string | null;
@@ -118,10 +126,33 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!body.customerName?.trim() || !body.customerPhone?.trim()) {
+      return NextResponse.json(
+        { error: "Customer name and phone are required." },
+        { status: 400 },
+      );
+    }
+
+    const durationMinutes = roundToSlotMinutes(body.durationMinutes);
     const startsAt = new Date(body.startsAt);
-    const endsAt = new Date(startsAt.getTime() + body.durationMinutes * 60_000);
+    const endsAt = new Date(startsAt.getTime() + durationMinutes * 60_000);
 
     const supabase = createServiceSupabase();
+
+    if (
+      await hasStaffBookingConflict(
+        supabase,
+        tenant.id,
+        body.staffId,
+        startsAt.toISOString(),
+        endsAt.toISOString(),
+      )
+    ) {
+      return NextResponse.json(
+        { error: "This staff member already has a booking in that time slot." },
+        { status: 409 },
+      );
+    }
 
     const roomId =
       body.roomId ??
@@ -147,14 +178,16 @@ export async function POST(request: Request) {
         room_id: roomId,
         starts_at: startsAt.toISOString(),
         ends_at: endsAt.toISOString(),
-        duration_minutes: body.durationMinutes,
+        duration_minutes: durationMinutes,
         status: body.status ?? "confirmed",
-        customer_name: body.customerName ?? null,
-        customer_phone: body.customerPhone ?? null,
+        customer_name: body.customerName.trim(),
+        customer_phone: body.customerPhone.trim(),
+        customer_postcode: body.customerPostcode?.trim() ?? null,
+        customer_email: body.customerEmail?.trim() ?? null,
         notes: body.notes ?? null,
       })
       .select(
-        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, status, customer_name, customer_phone, notes, created_at, updated_at, staff(name), rooms(name)",
+        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, status, customer_name, customer_phone, customer_postcode, customer_email, notes, created_at, updated_at, staff(name), rooms(name)",
       )
       .single();
 

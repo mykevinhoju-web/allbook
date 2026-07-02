@@ -188,6 +188,8 @@ create table if not exists public.bookings (
     check (status in ('pending', 'confirmed', 'cancelled', 'completed')),
   customer_name text,
   customer_phone text,
+  customer_postcode text,
+  customer_email text,
   notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -250,6 +252,10 @@ drop policy if exists "staff_photos_storage_delete" on storage.objects;
 create policy "staff_photos_storage_delete"
   on storage.objects for delete to anon, authenticated
   using (bucket_id = 'staff-photos');
+
+alter table public.bookings
+  add column if not exists customer_postcode text,
+  add column if not exists customer_email text;
 
 -- 7. Verify
 select slug, display_name, is_active from public.tenants;

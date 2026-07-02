@@ -16,10 +16,19 @@ import type { StaffRecord } from "@/features/staff/types";
 
 import { useBookingRealtime } from "../../lib/booking-schedule-realtime";
 import {
+  buildStartsAtIso,
+  generateTimeSlotOptions,
+  getAvailableStartSlots,
   isWorkingToday,
+  roundToSlotMinutes,
   todayDateInputValue,
 } from "../../lib/schedule-utils";
 import type { AdminBooking } from "../../types/admin-booking";
+import {
+  BookingFormSheet,
+  defaultBookingFormValues,
+  type BookingFormValues,
+} from "./booking-form-sheet";
 import { StaffScheduleColumn } from "./staff-schedule-column";
 import { StaffScheduleDetail } from "./staff-schedule-detail";
 
@@ -30,12 +39,8 @@ export function BookingScheduleContent() {
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [newBooking, setNewBooking] = useState({
-    staffId: "",
-    startsAt: "",
-    durationMinutes: "60",
-    customerName: "",
-  });
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState<BookingFormValues>(defaultBookingFormValues);
 
   const loadSchedule = useCallback(async () => {
     try {
@@ -71,51 +76,98 @@ export function BookingScheduleContent() {
     [staff],
   );
 
-  const selectedStaff = workingStaff.find(
-    (member) => member.id === selectedStaffId,
-  );
+  const selectedStaff =
+    workingStaff.find((member) => member.id === selectedStaffId) ??
+    staff.find((member) => member.id === selectedStaffId) ??
+    null;
+
+  const formStaff = staff.find((member) => member.id === form.staffId);
+
+  const formTimeOptions = useMemo(() => {
+    if (!formStaff) {
+      return generateTimeSlotOptions("09:00", "18:00");
+    }
+
+    const staffBookings = bookings.filter(
+      (booking) => booking.staffId === formStaff.id,
+    );
+    const duration = Number(form.durationMinutes) || 30;
+
+    return getAvailableStartSlots(
+      date,
+      formStaff.workingHoursStart,
+      formStaff.workingHoursEnd,
+      staffBookings,
+      duration,
+    );
+  }, [bookings, date, form.durationMinutes, formStaff]);
+
+  const openCreateForm = (partial?: Partial<BookingFormValues>) => {
+    setForm({
+      ...defaultBookingFormValues,
+      staffId: partial?.staffId ?? selectedStaffId ?? "",
+      startsAt: partial?.startsAt ?? "",
+      durationMinutes: partial?.durationMinutes ?? "30",
+      customerName: "",
+      customerPhone: "",
+      customerPostcode: "",
+      customerEmail: "",
+    });
+    setShowCreate(true);
+  };
 
   const createBooking = async () => {
-    if (!newBooking.staffId || !newBooking.startsAt) {
+    if (!form.staffId || !form.startsAt) {
       toast.error("Staff and start time are required");
       return;
     }
 
-    const response = await fetch("/api/admin/bookings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        staffId: newBooking.staffId,
-        startsAt: new Date(`${date}T${newBooking.startsAt}:00`).toISOString(),
-        durationMinutes: Number(newBooking.durationMinutes),
-        customerName: newBooking.customerName || undefined,
-      }),
-    });
-
-    const data = (await response.json()) as {
-      booking?: AdminBooking;
-      error?: string;
-    };
-
-    if (!response.ok) {
-      toast.error("Could not create booking", { description: data.error });
+    if (!form.customerName.trim() || !form.customerPhone.trim()) {
+      toast.error("Customer name and phone are required");
       return;
     }
 
-    toast.success("Booking created", {
-      description: data.booking?.roomName
-        ? `Assigned to ${data.booking.roomName}`
-        : undefined,
-    });
+    setSubmitting(true);
 
-    setShowCreate(false);
-    setNewBooking({
-      staffId: "",
-      startsAt: "",
-      durationMinutes: "60",
-      customerName: "",
-    });
-    void loadSchedule();
+    try {
+      const durationMinutes = roundToSlotMinutes(Number(form.durationMinutes));
+
+      const response = await fetch("/api/admin/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          staffId: form.staffId,
+          startsAt: buildStartsAtIso(date, form.startsAt),
+          durationMinutes,
+          customerName: form.customerName.trim(),
+          customerPhone: form.customerPhone.trim(),
+          customerPostcode: form.customerPostcode.trim() || undefined,
+          customerEmail: form.customerEmail.trim() || undefined,
+        }),
+      });
+
+      const data = (await response.json()) as {
+        booking?: AdminBooking;
+        error?: string;
+      };
+
+      if (!response.ok) {
+        toast.error("Could not create booking", { description: data.error });
+        return;
+      }
+
+      toast.success("Booking created", {
+        description: data.booking?.roomName
+          ? `Assigned to ${data.booking.roomName}`
+          : undefined,
+      });
+
+      setShowCreate(false);
+      setForm(defaultBookingFormValues);
+      void loadSchedule();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -124,8 +176,8 @@ export function BookingScheduleContent() {
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Bookings</h1>
           <p className="text-sm text-muted-foreground">
-            Live schedule for staff working today. Rooms are auto-assigned to the
-            first available treatment room.
+            Today&apos;s staff with booked times at a glance. Tap a staff card to
+            see gaps and add bookings in 5-minute slots.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -138,7 +190,7 @@ export function BookingScheduleContent() {
           <AppButton
             type="button"
             className="rounded-xl"
-            onClick={() => setShowCreate(true)}
+            onClick={() => openCreateForm()}
           >
             <Plus className="size-4" />
             Add booking
@@ -160,7 +212,6 @@ export function BookingScheduleContent() {
             {workingStaff.map((member) => (
               <StaffScheduleColumn
                 key={member.id}
-                staffId={member.id}
                 name={member.name}
                 photoUrl={member.photoUrl}
                 bookings={bookings.filter(
@@ -178,108 +229,44 @@ export function BookingScheduleContent() {
         open={selectedStaffId !== null}
         onOpenChange={(open) => !open && setSelectedStaffId(null)}
       >
-        <SheetContent side="bottom" className="max-h-[92vh] overflow-y-auto rounded-t-2xl">
+        <SheetContent
+          side="bottom"
+          className="max-h-[92vh] overflow-y-auto rounded-t-2xl"
+        >
           <SheetHeader>
             <SheetTitle>Staff schedule</SheetTitle>
           </SheetHeader>
           {selectedStaff ? (
             <StaffScheduleDetail
-              staffName={selectedStaff.name}
+              staff={selectedStaff}
               date={date}
               bookings={bookings.filter(
                 (booking) => booking.staffId === selectedStaff.id,
               )}
+              onAddBooking={(startsAt, durationMinutes) => {
+                setSelectedStaffId(null);
+                openCreateForm({
+                  staffId: selectedStaff.id,
+                  startsAt,
+                  durationMinutes: String(durationMinutes),
+                });
+              }}
             />
           ) : null}
         </SheetContent>
       </Sheet>
 
-      <Sheet open={showCreate} onOpenChange={setShowCreate}>
-        <SheetContent side="bottom" className="rounded-t-2xl">
-          <SheetHeader>
-            <SheetTitle>New booking</SheetTitle>
-          </SheetHeader>
-          <div className="space-y-4 py-4">
-            <label className="block space-y-2 text-sm">
-              <span>Staff</span>
-              <select
-                className="h-10 w-full rounded-xl border border-border/60 bg-background px-3"
-                value={newBooking.staffId}
-                onChange={(event) =>
-                  setNewBooking((current) => ({
-                    ...current,
-                    staffId: event.target.value,
-                  }))
-                }
-              >
-                <option value="">Select staff</option>
-                {staff.map((member) => (
-                  <option key={member.id} value={member.id}>
-                    {member.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block space-y-2 text-sm">
-              <span>Start time</span>
-              <Input
-                type="time"
-                value={newBooking.startsAt}
-                onChange={(event) =>
-                  setNewBooking((current) => ({
-                    ...current,
-                    startsAt: event.target.value,
-                  }))
-                }
-                className="rounded-xl"
-              />
-            </label>
-
-            <label className="block space-y-2 text-sm">
-              <span>Duration (minutes)</span>
-              <select
-                className="h-10 w-full rounded-xl border border-border/60 bg-background px-3"
-                value={newBooking.durationMinutes}
-                onChange={(event) =>
-                  setNewBooking((current) => ({
-                    ...current,
-                    durationMinutes: event.target.value,
-                  }))
-                }
-              >
-                {["15", "20", "30", "45", "60", "90", "120"].map((value) => (
-                  <option key={value} value={value}>
-                    {value} minutes
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block space-y-2 text-sm">
-              <span>Customer name (optional)</span>
-              <Input
-                value={newBooking.customerName}
-                onChange={(event) =>
-                  setNewBooking((current) => ({
-                    ...current,
-                    customerName: event.target.value,
-                  }))
-                }
-                className="rounded-xl"
-              />
-            </label>
-
-            <AppButton
-              type="button"
-              className="w-full rounded-xl"
-              onClick={() => void createBooking()}
-            >
-              Create booking
-            </AppButton>
-          </div>
-        </SheetContent>
-      </Sheet>
+      <BookingFormSheet
+        open={showCreate}
+        onOpenChange={setShowCreate}
+        date={date}
+        staffOptions={staff.map((member) => ({ id: member.id, name: member.name }))}
+        timeOptions={formTimeOptions}
+        values={form}
+        onChange={setForm}
+        onSubmit={() => void createBooking()}
+        submitting={submitting}
+      />
     </div>
   );
 }
