@@ -12,6 +12,42 @@ import {
 } from "@/lib/admin/tenant-context";
 import type { BookingStatus } from "@/types";
 
+function getTimeZoneOffsetMs(timeZone: string, utcDate: Date): number {
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+
+  const parts = dtf.formatToParts(utcDate);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value;
+  const year = Number(get("year"));
+  const month = Number(get("month"));
+  const day = Number(get("day"));
+  const hour = Number(get("hour"));
+  const minute = Number(get("minute"));
+  const second = Number(get("second"));
+
+  const asUtcMs = Date.UTC(year, month - 1, day, hour, minute, second);
+  return asUtcMs - utcDate.getTime();
+}
+
+function zonedMidnightToUtcIso(date: string, timeZone: string): string {
+  const [yearStr, monthStr, dayStr] = date.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+
+  const utcGuess = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
+  const offsetMs = getTimeZoneOffsetMs(timeZone, utcGuess);
+  return new Date(utcGuess.getTime() - offsetMs).toISOString();
+}
+
 function mapBooking(row: {
   id: string;
   staff_id: string;
@@ -70,8 +106,14 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "date is required." }, { status: 400 });
     }
 
-    const dayStart = `${date}T00:00:00.000Z`;
-    const dayEnd = `${date}T23:59:59.999Z`;
+    // Filter bookings by tenant-local day, not UTC midnight.
+    const timeZone = tenant.settings.timezone || "Australia/Sydney";
+    const dayStart = zonedMidnightToUtcIso(date, timeZone);
+    const [y, m, d] = date.split("-").map(Number);
+    const nextDay = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1, 12, 0, 0));
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+    const nextDate = nextDay.toISOString().slice(0, 10);
+    const dayEndExclusive = zonedMidnightToUtcIso(nextDate, timeZone);
 
     const supabase = createServiceSupabase();
     let query = supabase
@@ -82,7 +124,7 @@ export async function GET(request: Request) {
       .eq("tenant_id", tenant.id)
       .neq("status", "cancelled")
       .gte("starts_at", dayStart)
-      .lte("starts_at", dayEnd)
+      .lt("starts_at", dayEndExclusive)
       .order("starts_at", { ascending: true });
 
     if (staffId) {
