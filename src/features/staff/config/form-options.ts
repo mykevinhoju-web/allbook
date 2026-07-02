@@ -47,6 +47,7 @@ export const languageOptions = [
 ];
 
 export const defaultStaffFormValues = {
+  photos: [] as File[],
   name: "",
   age: "",
   height: "",

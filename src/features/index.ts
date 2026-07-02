@@ -4,5 +4,6 @@ export * from "./booking";
 export * from "./platform";
 export * from "./services";
 export * from "./shops";
+export * from "./rooms";
 export * from "./staff";
 export * from "./tenants";

@@ -49,6 +49,7 @@ export { Skeleton, SkeletonCard, SkeletonLoader, SkeletonTable } from "./skeleto
 // Media & identity
 export { AppAvatar, Avatar, AvatarFallback, AvatarImage } from "./app-avatar";
 export { ImageUploadArea } from "./image-upload-area";
+export { MultiImageUpload } from "./multi-image-upload";
 
 // Pickers
 export { DatePicker } from "./date-picker";

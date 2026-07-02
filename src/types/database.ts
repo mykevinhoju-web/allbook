@@ -118,6 +118,153 @@ export type Database = {
         };
         Relationships: [];
       };
+      staff: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          name: string;
+          status: string;
+          attributes: Json;
+          working_days: string[];
+          working_hours_start: string;
+          working_hours_end: string;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          name: string;
+          status?: string;
+          attributes?: Json;
+          working_days?: string[];
+          working_hours_start?: string;
+          working_hours_end?: string;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          name?: string;
+          status?: string;
+          attributes?: Json;
+          working_days?: string[];
+          working_hours_start?: string;
+          working_hours_end?: string;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      staff_photos: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          staff_id: string;
+          url: string;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          staff_id: string;
+          url: string;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          staff_id?: string;
+          url?: string;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      rooms: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          name: string;
+          sort_order: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          name: string;
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          name?: string;
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      bookings: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          staff_id: string;
+          room_id: string | null;
+          starts_at: string;
+          ends_at: string;
+          duration_minutes: number;
+          status: string;
+          customer_name: string | null;
+          customer_phone: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          staff_id: string;
+          room_id?: string | null;
+          starts_at: string;
+          ends_at: string;
+          duration_minutes: number;
+          status?: string;
+          customer_name?: string | null;
+          customer_phone?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          staff_id?: string;
+          room_id?: string | null;
+          starts_at?: string;
+          ends_at?: string;
+          duration_minutes?: number;
+          status?: string;
+          customer_name?: string | null;
+          customer_phone?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

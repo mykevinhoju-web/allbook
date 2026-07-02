@@ -11,6 +11,39 @@ export type StaffStatus = "active" | "inactive" | "on_leave";
 
 export type StaffFilterStatus = "all" | StaffStatus;
 
+export interface StaffPhoto {
+  id: string;
+  url: string;
+  sortOrder: number;
+}
+
+export interface StaffAttributes {
+  age?: string;
+  height?: string;
+  weight?: string;
+  languages?: string[];
+  nationality?: string;
+  experience?: string;
+  introduction?: string;
+  username?: string;
+  [key: string]: string | string[] | number | boolean | null | undefined;
+}
+
+export interface StaffRecord {
+  id: string;
+  name: string;
+  status: StaffStatus;
+  attributes: StaffAttributes;
+  workingDays: string[];
+  workingHoursStart: string;
+  workingHoursEnd: string;
+  sortOrder: number;
+  photos: StaffPhoto[];
+  photoUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AdminStaffRow {
   id: string;
   name: string;
@@ -21,8 +54,7 @@ export interface AdminStaffRow {
 }
 
 export interface StaffFormValues {
-  profilePhoto: File | null;
-  galleryPhotos: File[];
+  photos: File[];
   name: string;
   age: string;
   height: string;
@@ -31,8 +63,6 @@ export interface StaffFormValues {
   languages: string[];
   experience: string;
   introduction: string;
-  username: string;
-  password: string;
   workingDays: string[];
   workingHoursStart: string;
   workingHoursEnd: string;

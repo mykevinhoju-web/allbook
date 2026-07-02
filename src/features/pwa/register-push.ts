@@ -78,8 +78,14 @@ export async function subscribeToWebPush(tenantSlug: string): Promise<void> {
   });
 
   if (!response.ok) {
-    const data = (await response.json()) as { error?: string };
-    throw new Error(data.error ?? "Failed to save push subscription.");
+    const data = (await response.json()) as { error?: string; hint?: string };
+    const isMissingTable = data.error?.includes("push_subscriptions");
+
+    throw new Error(
+      isMissingTable
+        ? "Push database table is missing. Run setup.sql section 4 in Supabase, then try again."
+        : (data.hint ?? data.error ?? "Failed to save push subscription."),
+    );
   }
 }
 

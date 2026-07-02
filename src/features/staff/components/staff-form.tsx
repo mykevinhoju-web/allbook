@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 
-import { AppButton, ImageUploadArea } from "@/components/common";
+import { AppButton, MultiImageUpload, toast } from "@/components/common";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -23,93 +23,241 @@ import {
   staffStatusOptions,
   workingDayOptions,
 } from "../config";
-import type { StaffStatus } from "../types";
+import type { StaffFormValues, StaffPhoto, StaffRecord, StaffStatus } from "../types";
 import { StaffFormField } from "./staff-form-field";
 import { StaffFormSection } from "./staff-form-section";
 
 const inputClassName =
   "h-10 rounded-xl border-border/60 bg-background shadow-sm focus-visible:ring-2 focus-visible:ring-ring/30";
 
-export function StaffForm() {
+interface StaffFormProps {
+  staffId?: string;
+}
+
+async function uploadPhotos(staffId: string, photos: File[]) {
+  if (photos.length === 0) return;
+
+  const formData = new FormData();
+  photos.forEach((photo) => formData.append("photos", photo));
+
+  const response = await fetch(`/api/admin/staff/${staffId}/photos`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const data = (await response.json()) as { error?: string };
+    throw new Error(data.error ?? "Failed to upload photos.");
+  }
+}
+
+function mapRecordToForm(record: StaffRecord): StaffFormValues {
+  return {
+    photos: [],
+    name: record.name,
+    age: record.attributes.age ?? "",
+    height: record.attributes.height ?? "",
+    weight: record.attributes.weight ?? "",
+    nationality: record.attributes.nationality ?? "",
+    languages: record.attributes.languages ?? [],
+    experience: record.attributes.experience ?? "",
+    introduction: record.attributes.introduction ?? "",
+    workingDays: record.workingDays,
+    workingHoursStart: record.workingHoursStart,
+    workingHoursEnd: record.workingHoursEnd,
+    status: record.status,
+  };
+}
+
+export function StaffForm({ staffId }: StaffFormProps) {
   const router = useRouter();
-  const [form, setForm] = useState(defaultStaffFormValues);
-  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(
-    form.languages,
-  );
+  const isEditing = Boolean(staffId);
+  const [form, setForm] = useState<StaffFormValues>(defaultStaffFormValues);
+  const [existingPhotos, setExistingPhotos] = useState<StaffPhoto[]>([]);
+  const [loading, setLoading] = useState(isEditing);
+  const [saving, setSaving] = useState(false);
 
-  const toggleLanguage = (language: string) => {
-    setSelectedLanguages((current) =>
-      current.includes(language)
-        ? current.filter((item) => item !== language)
-        : [...current, language],
-    );
-  };
+  useEffect(() => {
+    if (!staffId) return;
 
-  const toggleWorkingDay = (day: string) => {
-    setForm((current) => ({
-      ...current,
-      workingDays: current.workingDays.includes(day)
-        ? current.workingDays.filter((item) => item !== day)
-        : [...current.workingDays, day],
-    }));
-  };
+    void (async () => {
+      try {
+        const response = await fetch(`/api/admin/staff/${staffId}`);
+        const data = (await response.json()) as {
+          staff?: StaffRecord;
+          error?: string;
+        };
 
-  const updateField = <K extends keyof typeof form>(
+        if (!response.ok || !data.staff) {
+          throw new Error(data.error ?? "Failed to load staff.");
+        }
+
+        setForm(mapRecordToForm(data.staff));
+        setExistingPhotos(data.staff.photos);
+      } catch (error) {
+        toast.error("Could not load staff", {
+          description:
+            error instanceof Error ? error.message : "Please try again.",
+        });
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [staffId]);
+
+  const updateField = <K extends keyof StaffFormValues>(
     key: K,
-    value: (typeof form)[K],
+    value: StaffFormValues[K],
   ) => {
     setForm((current) => ({ ...current, [key]: value }));
   };
 
+  const toggleLanguage = (language: string) => {
+    updateField(
+      "languages",
+      form.languages.includes(language)
+        ? form.languages.filter((item) => item !== language)
+        : [...form.languages, language],
+    );
+  };
+
+  const toggleWorkingDay = (day: string) => {
+    updateField(
+      "workingDays",
+      form.workingDays.includes(day)
+        ? form.workingDays.filter((item) => item !== day)
+        : [...form.workingDays, day],
+    );
+  };
+
+  const removeExistingPhoto = async (photoId: string) => {
+    if (!staffId) return;
+
+    const response = await fetch(
+      `/api/admin/staff/${staffId}/photos?photoId=${photoId}`,
+      { method: "DELETE" },
+    );
+
+    if (!response.ok) {
+      const data = (await response.json()) as { error?: string };
+      toast.error("Could not remove photo", { description: data.error });
+      return;
+    }
+
+    setExistingPhotos((current) =>
+      current.filter((photo) => photo.id !== photoId),
+    );
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!form.name.trim()) {
+      toast.error("Name is required");
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      const payload = {
+        name: form.name.trim(),
+        status: form.status,
+        workingDays: form.workingDays,
+        workingHoursStart: form.workingHoursStart,
+        workingHoursEnd: form.workingHoursEnd,
+        attributes: {
+          age: form.age,
+          height: form.height,
+          weight: form.weight,
+          nationality: form.nationality,
+          languages: form.languages,
+          experience: form.experience,
+          introduction: form.introduction,
+        },
+      };
+
+      const response = await fetch(
+        isEditing ? `/api/admin/staff/${staffId}` : "/api/admin/staff",
+        {
+          method: isEditing ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      const data = (await response.json()) as {
+        staff?: StaffRecord;
+        error?: string;
+        hint?: string;
+      };
+
+      if (!response.ok || !data.staff) {
+        throw new Error(data.hint ?? data.error ?? "Failed to save staff.");
+      }
+
+      await uploadPhotos(data.staff.id, form.photos);
+
+      toast.success(isEditing ? "Staff updated" : "Staff created");
+      router.push("/admin/staff");
+      router.refresh();
+    } catch (error) {
+      toast.error("Could not save staff", {
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6 text-sm text-muted-foreground">Loading staff...</div>
+    );
+  }
+
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-3">
-          <Link
-            href="/admin/staff"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="size-4" />
-            Back to Staff
-          </Link>
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              Add Staff
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Create a new team member profile and login credentials.
-            </p>
-          </div>
+      <div className="space-y-3">
+        <Link
+          href="/admin/staff"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" />
+          Back to Staff
+        </Link>
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            {isEditing ? "Edit Staff" : "Add Staff"}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Profile fields can be extended later without changing the page layout.
+          </p>
         </div>
       </div>
 
       <form
         className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-8"
-        onSubmit={(event) => event.preventDefault()}
+        onSubmit={(event) => void handleSubmit(event)}
       >
         <StaffFormSection
-          title="Basic Information"
-          description="Profile details shown to customers and on the booking page."
+          title="Photos"
+          description="Upload 1 to 5 photos. The first image is used as the main profile photo."
         >
-          <StaffFormField label="Profile Photo" required>
-            <ImageUploadArea
-              title="Upload profile photo"
-              description="A clear headshot is required for staff profiles."
-              className="min-h-40 rounded-2xl"
-            />
-          </StaffFormField>
+          <MultiImageUpload
+            value={form.photos}
+            existingUrls={existingPhotos}
+            maxFiles={5}
+            onChange={(photos) => updateField("photos", photos)}
+            onRemoveExisting={(photoId) => void removeExistingPhoto(photoId)}
+          />
+        </StaffFormSection>
 
-          <StaffFormField
-            label="Gallery Photos"
-            hint="Optional additional photos for the staff gallery."
-          >
-            <ImageUploadArea
-              title="Upload gallery photos"
-              description="Add multiple images to showcase work and style."
-              className="min-h-32 rounded-2xl"
-            />
-          </StaffFormField>
-
+        <StaffFormSection
+          title="Basic Information"
+          description="Core profile details shown on the booking page."
+        >
           <div className="grid gap-5 sm:grid-cols-2">
             <StaffFormField label="Name" htmlFor="staff-name" required>
               <Input
@@ -124,8 +272,6 @@ export function StaffForm() {
             <StaffFormField label="Age" htmlFor="staff-age">
               <Input
                 id="staff-age"
-                type="number"
-                min={18}
                 value={form.age}
                 onChange={(event) => updateField("age", event.target.value)}
                 placeholder="e.g. 28"
@@ -178,7 +324,7 @@ export function StaffForm() {
           <StaffFormField label="Languages">
             <div className="flex flex-wrap gap-2">
               {languageOptions.map((language) => {
-                const isSelected = selectedLanguages.includes(language);
+                const isSelected = form.languages.includes(language);
 
                 return (
                   <button
@@ -229,42 +375,8 @@ export function StaffForm() {
         </StaffFormSection>
 
         <StaffFormSection
-          title="Login Information"
-          description="Credentials used by the staff member to access the admin portal."
-        >
-          <div className="grid gap-5 sm:grid-cols-2">
-            <StaffFormField label="Username" htmlFor="staff-username" required>
-              <Input
-                id="staff-username"
-                value={form.username}
-                onChange={(event) =>
-                  updateField("username", event.target.value)
-                }
-                placeholder="username"
-                autoComplete="username"
-                className={inputClassName}
-              />
-            </StaffFormField>
-
-            <StaffFormField label="Password" htmlFor="staff-password" required>
-              <Input
-                id="staff-password"
-                type="password"
-                value={form.password}
-                onChange={(event) =>
-                  updateField("password", event.target.value)
-                }
-                placeholder="••••••••"
-                autoComplete="new-password"
-                className={inputClassName}
-              />
-            </StaffFormField>
-          </div>
-        </StaffFormSection>
-
-        <StaffFormSection
           title="Work Information"
-          description="Schedule and availability settings for bookings."
+          description="Schedule and availability used by the live booking board."
         >
           <StaffFormField label="Working Days">
             <div className="flex flex-wrap gap-2">
@@ -292,28 +404,22 @@ export function StaffForm() {
 
           <StaffFormField label="Working Hours">
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-2">
-                <span className="text-xs text-muted-foreground">Start</span>
-                <Input
-                  type="time"
-                  value={form.workingHoursStart}
-                  onChange={(event) =>
-                    updateField("workingHoursStart", event.target.value)
-                  }
-                  className={inputClassName}
-                />
-              </div>
-              <div className="space-y-2">
-                <span className="text-xs text-muted-foreground">End</span>
-                <Input
-                  type="time"
-                  value={form.workingHoursEnd}
-                  onChange={(event) =>
-                    updateField("workingHoursEnd", event.target.value)
-                  }
-                  className={inputClassName}
-                />
-              </div>
+              <Input
+                type="time"
+                value={form.workingHoursStart}
+                onChange={(event) =>
+                  updateField("workingHoursStart", event.target.value)
+                }
+                className={inputClassName}
+              />
+              <Input
+                type="time"
+                value={form.workingHoursEnd}
+                onChange={(event) =>
+                  updateField("workingHoursEnd", event.target.value)
+                }
+                className={inputClassName}
+              />
             </div>
           </StaffFormField>
 
@@ -350,8 +456,8 @@ export function StaffForm() {
           >
             Cancel
           </AppButton>
-          <AppButton type="submit" className="rounded-xl">
-            Save
+          <AppButton type="submit" className="rounded-xl" disabled={saving}>
+            {saving ? "Saving..." : "Save"}
           </AppButton>
         </div>
       </form>

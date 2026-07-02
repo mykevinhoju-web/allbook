@@ -1,6 +1,7 @@
 import {
   BarChart3,
   CalendarDays,
+  DoorOpen,
   Images,
   LayoutDashboard,
   Settings,
@@ -31,6 +32,11 @@ export const adminNavItems: AdminNavItem[] = [
     title: "Bookings",
     href: "/admin/bookings",
     icon: CalendarDays,
+  },
+  {
+    title: "Rooms",
+    href: "/admin/rooms",
+    icon: DoorOpen,
   },
   {
     title: "Customers",

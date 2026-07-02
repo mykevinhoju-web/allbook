@@ -1,10 +1,5 @@
-import { AdminPlaceholderPage } from "@/features/admin";
+import { BookingScheduleContent } from "@/features/booking/components/schedule/booking-schedule-content";
 
 export default function AdminBookingsPage() {
-  return (
-    <AdminPlaceholderPage
-      title="Bookings"
-      description="View and manage all platform bookings."
-    />
-  );
+  return <BookingScheduleContent />;
 }
