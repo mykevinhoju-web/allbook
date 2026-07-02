@@ -13,6 +13,7 @@ import {
   formatBookingSummary,
   formatDurationLabel,
   formatScheduleDate,
+  formatServiceDurationLabel,
   getAvailableStartSlots,
 } from "../../lib/schedule-utils";
 import type { AdminBooking } from "../../types/admin-booking";
@@ -101,7 +102,7 @@ export function StaffScheduleDetail({
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="text-sm font-semibold">Available times</h3>
           <label className="flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Duration</span>
+            <span className="text-muted-foreground">Service</span>
             <select
               className="h-9 rounded-lg border border-border/60 bg-background px-2"
               value={durationMinutes}
@@ -109,7 +110,7 @@ export function StaffScheduleDetail({
             >
               {BOOKING_DURATION_OPTIONS.map((value) => (
                 <option key={value} value={value}>
-                  {formatDurationLabel(value)}
+                  {formatServiceDurationLabel(value)}
                 </option>
               ))}
             </select>
@@ -137,7 +138,8 @@ export function StaffScheduleDetail({
           </div>
         )}
         <p className="text-xs text-muted-foreground">
-          Tap a time to add a booking in that gap. Slots are in 5-minute steps.
+          Tap a time to book. Start times are in 5-minute steps; service length is
+          20 min, 30 min, or 1 hour.
         </p>
       </section>
     </div>

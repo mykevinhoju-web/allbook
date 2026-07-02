@@ -3,10 +3,27 @@ import type { AdminBooking } from "../types/admin-booking";
 const MINUTES_IN_DAY = 24 * 60;
 const SLOT_STEP_MINUTES = 5;
 
-export const BOOKING_DURATION_OPTIONS = Array.from(
-  { length: 24 },
-  (_, index) => (index + 1) * SLOT_STEP_MINUTES,
-);
+/** Fixed treatment lengths — start times use 5-minute steps. */
+export const BOOKING_SERVICE_DURATIONS = [20, 30, 60] as const;
+export type BookingServiceDuration = (typeof BOOKING_SERVICE_DURATIONS)[number];
+
+export const BOOKING_DURATION_OPTIONS = BOOKING_SERVICE_DURATIONS;
+
+export function formatServiceDurationLabel(minutes: number): string {
+  if (minutes === 60) return "1 hour";
+  return `${minutes} min`;
+}
+
+export function isValidServiceDuration(
+  minutes: number,
+): minutes is BookingServiceDuration {
+  return (BOOKING_SERVICE_DURATIONS as readonly number[]).includes(minutes);
+}
+
+export function isStartTimeOnFiveMinuteSlot(iso: string): boolean {
+  const date = new Date(iso);
+  return date.getMinutes() % SLOT_STEP_MINUTES === 0;
+}
 
 export function minutesFromIso(iso: string): number {
   const date = new Date(iso);
@@ -79,10 +96,7 @@ export function isWorkingToday(workingDays: string[], date = new Date()): boolea
 }
 
 export function roundToSlotMinutes(minutes: number): number {
-  return Math.max(
-    SLOT_STEP_MINUTES,
-    Math.round(minutes / SLOT_STEP_MINUTES) * SLOT_STEP_MINUTES,
-  );
+  return Math.round(minutes / SLOT_STEP_MINUTES) * SLOT_STEP_MINUTES;
 }
 
 function parseTimeOnDate(date: string, time: string): number {

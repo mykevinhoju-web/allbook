@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 
 import { assignAvailableRoom } from "@/features/booking/lib/assign-room";
 import { hasStaffBookingConflict } from "@/features/booking/lib/staff-conflict";
-import { roundToSlotMinutes } from "@/features/booking/lib/schedule-utils";
+import {
+  isStartTimeOnFiveMinuteSlot,
+  isValidServiceDuration,
+} from "@/features/booking/lib/schedule-utils";
 import {
   createServiceSupabase,
   requireTenantFromRequest,
@@ -133,8 +136,24 @@ export async function POST(request: Request) {
       );
     }
 
-    const durationMinutes = roundToSlotMinutes(body.durationMinutes);
+    const durationMinutes = body.durationMinutes;
+
+    if (!isValidServiceDuration(durationMinutes)) {
+      return NextResponse.json(
+        { error: "Service duration must be 20, 30, or 60 minutes." },
+        { status: 400 },
+      );
+    }
+
     const startsAt = new Date(body.startsAt);
+
+    if (!isStartTimeOnFiveMinuteSlot(startsAt.toISOString())) {
+      return NextResponse.json(
+        { error: "Start time must be on a 5-minute step (e.g. 10:00, 10:05)." },
+        { status: 400 },
+      );
+    }
+
     const endsAt = new Date(startsAt.getTime() + durationMinutes * 60_000);
 
     const supabase = createServiceSupabase();

@@ -12,6 +12,7 @@ import {
 import {
   BOOKING_DURATION_OPTIONS,
   formatAmPmTime,
+  formatServiceDurationLabel,
   buildStartsAtIso,
 } from "../../lib/schedule-utils";
 
@@ -97,7 +98,7 @@ export function BookingFormSheet({
           </label>
 
           <label className="block space-y-2 text-sm">
-            <span>Start time (5-min slots)</span>
+            <span>Start time (5-minute steps)</span>
             <select
               className="h-10 w-full rounded-xl border border-border/60 bg-background px-3"
               value={values.startsAt}
@@ -118,7 +119,7 @@ export function BookingFormSheet({
           </label>
 
           <label className="block space-y-2 text-sm">
-            <span>Duration</span>
+            <span>Service duration</span>
             <select
               className="h-10 w-full rounded-xl border border-border/60 bg-background px-3"
               value={values.durationMinutes}
@@ -126,7 +127,7 @@ export function BookingFormSheet({
             >
               {BOOKING_DURATION_OPTIONS.map((value) => (
                 <option key={value} value={String(value)}>
-                  {value} minutes
+                  {formatServiceDurationLabel(value)}
                 </option>
               ))}
             </select>

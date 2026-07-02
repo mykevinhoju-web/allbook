@@ -19,8 +19,8 @@ import {
   buildStartsAtIso,
   generateTimeSlotOptions,
   getAvailableStartSlots,
+  isValidServiceDuration,
   isWorkingToday,
-  roundToSlotMinutes,
   todayDateInputValue,
 } from "../../lib/schedule-utils";
 import type { AdminBooking } from "../../types/admin-booking";
@@ -130,7 +130,12 @@ export function BookingScheduleContent() {
     setSubmitting(true);
 
     try {
-      const durationMinutes = roundToSlotMinutes(Number(form.durationMinutes));
+      const durationMinutes = Number(form.durationMinutes);
+
+      if (!isValidServiceDuration(durationMinutes)) {
+        toast.error("Service duration must be 20 min, 30 min, or 1 hour");
+        return;
+      }
 
       const response = await fetch("/api/admin/bookings", {
         method: "POST",
@@ -176,8 +181,9 @@ export function BookingScheduleContent() {
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Bookings</h1>
           <p className="text-sm text-muted-foreground">
-            Today&apos;s staff with booked times at a glance. Tap a staff card to
-            see gaps and add bookings in 5-minute slots.
+            Today&apos;s staff with booked times at a glance. Tap a card for
+            available start times (5-minute steps) — service length is 20, 30, or
+            60 minutes.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
