@@ -71,6 +71,8 @@ export type Database = {
           endpoint: string;
           p256dh: string;
           auth: string;
+          audience: string;
+          staff_id: string | null;
           user_agent: string | null;
           created_at: string;
         };
@@ -80,6 +82,8 @@ export type Database = {
           endpoint: string;
           p256dh: string;
           auth: string;
+          audience?: string;
+          staff_id?: string | null;
           user_agent?: string | null;
           created_at?: string;
         };
@@ -89,8 +93,40 @@ export type Database = {
           endpoint?: string;
           p256dh?: string;
           auth?: string;
+          audience?: string;
+          staff_id?: string | null;
           user_agent?: string | null;
           created_at?: string;
+        };
+        Relationships: [];
+      };
+      staff_accounts: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          staff_id: string;
+          login_id: string;
+          password_hash: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          staff_id: string;
+          login_id: string;
+          password_hash: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          staff_id?: string;
+          login_id?: string;
+          password_hash?: string;
+          created_at?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };

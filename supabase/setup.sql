@@ -102,12 +102,21 @@ create table if not exists public.push_subscriptions (
   endpoint text not null unique,
   p256dh text not null,
   auth text not null,
+  audience text not null default 'admin'
+    check (audience in ('admin', 'staff')),
+  staff_id uuid references public.staff (id) on delete cascade,
   user_agent text,
   created_at timestamptz not null default now()
 );
 
 create index if not exists push_subscriptions_tenant_slug_idx
   on public.push_subscriptions (tenant_slug);
+
+create index if not exists push_subscriptions_tenant_audience_idx
+  on public.push_subscriptions (tenant_slug, audience);
+
+create index if not exists push_subscriptions_staff_idx
+  on public.push_subscriptions (staff_id);
 
 alter table public.push_subscriptions enable row level security;
 

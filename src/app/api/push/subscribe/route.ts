@@ -1,7 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 import type { Database } from "@/types/database";
+import { getStaffSessionCookieName, verifyStaffSession } from "@/lib/staff-session";
+import { requireTenantFromRequest } from "@/lib/admin/tenant-context";
 
 export async function POST(request: Request) {
   let body: {
@@ -24,6 +27,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
+  // Determine audience: staff subscriptions are tied to staff login session.
+  let audience: "admin" | "staff" = "admin";
+  let staffId: string | null = null;
+
+  try {
+    const tenant = await requireTenantFromRequest(request);
+    const cookieStore = await cookies();
+    const token = cookieStore.get(getStaffSessionCookieName())?.value;
+
+    if (token) {
+      const payload = await verifyStaffSession(token);
+      if (payload.role === "staff" && payload.tenantId === tenant.id) {
+        audience = "staff";
+        staffId = payload.staffId;
+      }
+    }
+  } catch {
+    // If tenant context/session can't be resolved, default to admin subscription.
+  }
+
   const supabase = createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -35,6 +58,8 @@ export async function POST(request: Request) {
       endpoint,
       p256dh,
       auth,
+      audience,
+      staff_id: staffId,
       user_agent: userAgent ?? null,
     },
     { onConflict: "endpoint" },

@@ -16,7 +16,13 @@ function configureWebPush() {
 
 export async function sendBookingPushNotifications(
   tenantSlug: string,
-  staffName: string,
+  booking: {
+    staffId: string;
+    staffName: string;
+    roomName: string | null;
+    startsAt: string;
+    endsAt: string;
+  },
 ) {
   if (!isPushConfigured()) {
     return { sent: 0, failed: 0, skipped: true as const };
@@ -29,7 +35,7 @@ export async function sendBookingPushNotifications(
 
   const { data: subscriptions, error } = await supabase
     .from("push_subscriptions")
-    .select("id, endpoint, p256dh, auth")
+    .select("id, endpoint, p256dh, auth, audience, staff_id")
     .eq("tenant_slug", tenantSlug);
 
   if (error || !subscriptions?.length) {
@@ -38,16 +44,30 @@ export async function sendBookingPushNotifications(
 
   configureWebPush();
 
+  const roomPart = booking.roomName ? ` · ${booking.roomName}` : "";
+  const when = `${new Date(booking.startsAt).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  })}–${new Date(booking.endsAt).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
+
   const payload = JSON.stringify({
-    title: "New booking request",
-    body: `${staffName} — customer tapped Book`,
-    url: "/admin",
+    title: "New booking",
+    body: `${booking.staffName} · ${when}${roomPart}`,
+    url: "/admin/bookings",
   });
 
   let sent = 0;
   let failed = 0;
 
   for (const subscription of subscriptions) {
+    const audience = (subscription as { audience?: string }).audience;
+    const staffId = (subscription as { staff_id?: string | null }).staff_id ?? null;
+    const isAdmin = !audience || audience === "admin";
+    const isStaff = audience === "staff" && staffId === booking.staffId;
+    if (!isAdmin && !isStaff) continue;
     try {
       await webpush.sendNotification(
         {

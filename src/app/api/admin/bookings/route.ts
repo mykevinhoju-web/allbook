@@ -274,7 +274,13 @@ export async function POST(request: Request) {
       staff_id: created.staffId,
       staff_name: created.staffName,
     });
-    void sendBookingPushNotifications(tenant.slug, created.staffName);
+    void sendBookingPushNotifications(tenant.slug, {
+      staffId: created.staffId,
+      staffName: created.staffName,
+      roomName: created.roomName,
+      startsAt: created.startsAt,
+      endsAt: created.endsAt,
+    });
 
     return NextResponse.json({ booking: created });
   } catch (error) {

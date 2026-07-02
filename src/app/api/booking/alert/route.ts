@@ -95,7 +95,13 @@ export async function POST(request: Request) {
       staff_name: staffName,
     });
 
-  const pushResult = await sendBookingPushNotifications(tenantSlug, staffName);
+  const pushResult = await sendBookingPushNotifications(tenantSlug, {
+    staffId,
+    staffName,
+    roomName: null,
+    startsAt: payload.requestedAt,
+    endsAt: payload.requestedAt,
+  });
 
   if (!insertError) {
     return NextResponse.json({
