@@ -20,6 +20,7 @@ export interface BookingFormValues {
   staffId: string;
   startsAt: string;
   durationMinutes: string;
+  roomId: string;
   customerName: string;
   customerPhone: string;
   customerPostcode: string;
@@ -30,6 +31,7 @@ export const defaultBookingFormValues: BookingFormValues = {
   staffId: "",
   startsAt: "",
   durationMinutes: "",
+  roomId: "",
   customerName: "",
   customerPhone: "",
   customerPostcode: "",
@@ -42,6 +44,7 @@ interface BookingFormSheetProps {
   title?: string;
   date: string;
   staffOptions: { id: string; name: string }[];
+  roomOptions: { id: string; name: string }[];
   serviceOptions: ServiceOption[];
   currency?: string;
   timeOptions: string[];
@@ -57,6 +60,7 @@ export function BookingFormSheet({
   title = "New booking",
   date,
   staffOptions,
+  roomOptions,
   serviceOptions,
   currency = "AUD",
   timeOptions,
@@ -152,6 +156,25 @@ export function BookingFormSheet({
                 Price: {formatPriceFromCents(selectedOption.priceCents, currency)}
               </p>
             ) : null}
+          </label>
+
+          <label className="block space-y-2 text-sm">
+            <span>Room</span>
+            <select
+              className="h-10 w-full rounded-xl border border-border/60 bg-background px-3"
+              value={values.roomId}
+              onChange={(event) => update("roomId", event.target.value)}
+            >
+              <option value="">Auto-assign</option>
+              {roomOptions.map((room) => (
+                <option key={room.id} value={room.id}>
+                  {room.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Auto-assign picks the first available room for this time slot.
+            </p>
           </label>
 
           <div className="grid gap-4 sm:grid-cols-2">

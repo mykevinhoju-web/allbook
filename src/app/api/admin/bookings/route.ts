@@ -4,6 +4,7 @@ import { assignAvailableRoom } from "@/features/booking/lib/assign-room";
 import { hasStaffBookingConflict } from "@/features/booking/lib/staff-conflict";
 import { isStartTimeOnFiveMinuteSlot } from "@/features/booking/lib/schedule-utils";
 import { getServicePriceCents } from "@/features/services/server/get-service-price";
+import { sendBookingPushNotifications } from "@/lib/push/send-booking-push";
 import {
   createServiceSupabase,
   requireTenantFromRequest,
@@ -223,7 +224,17 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({ booking: mapBooking(data) });
+    const created = mapBooking(data);
+
+    // Notify staff/admin clients (realtime + push best-effort)
+    void supabase.from("booking_alert_events").insert({
+      tenant_slug: tenant.slug,
+      staff_id: created.staffId,
+      staff_name: created.staffName,
+    });
+    void sendBookingPushNotifications(tenant.slug, created.staffName);
+
+    return NextResponse.json({ booking: created });
   } catch (error) {
     if (error instanceof TenantContextError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

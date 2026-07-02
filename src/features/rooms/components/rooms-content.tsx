@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { DoorOpen, Plus, Trash2 } from "lucide-react";
 
 import { AppButton, ConfirmDialog, toast } from "@/components/common";
@@ -88,6 +89,11 @@ export function RoomsContent() {
         <p className="text-sm text-muted-foreground">
           Manage treatment rooms for this tenant. Bookings auto-pick the first
           available room for the selected time slot.
+        </p>
+        <p className="text-sm">
+          <Link href="/admin/rooms/schedule" className="text-primary underline">
+            View room schedule
+          </Link>
         </p>
       </div>
 

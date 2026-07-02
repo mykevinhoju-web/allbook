@@ -21,7 +21,6 @@ import { useBookingRealtime } from "../../lib/booking-schedule-realtime";
 import {
   buildStartsAtIso,
   generateTimeSlotOptions,
-  getAvailableStartSlots,
   isValidServiceDuration,
   isWorkingToday,
   todayDateInputValue,
@@ -40,6 +39,7 @@ export function BookingScheduleContent() {
   const [date, setDate] = useState(todayDateInputValue());
   const [staff, setStaff] = useState<StaffRecord[]>([]);
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
+  const [rooms, setRooms] = useState<{ id: string; name: string }[]>([]);
   const [serviceOptions, setServiceOptions] = useState<ServiceOption[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -48,10 +48,12 @@ export function BookingScheduleContent() {
 
   const loadSchedule = useCallback(async () => {
     try {
-      const [staffResponse, bookingsResponse, optionsResponse] = await Promise.all([
+      const [staffResponse, bookingsResponse, optionsResponse, roomsResponse] =
+        await Promise.all([
         fetch("/api/admin/staff"),
         fetch(`/api/admin/bookings?date=${date}`),
         fetch("/api/admin/service-options"),
+        fetch("/api/admin/rooms"),
       ]);
 
       const staffData = (await staffResponse.json()) as { staff?: StaffRecord[] };
@@ -61,10 +63,18 @@ export function BookingScheduleContent() {
       const optionsData = (await optionsResponse.json()) as {
         options?: ServiceOption[];
       };
+      const roomsData = (await roomsResponse.json()) as {
+        rooms?: { id: string; name: string; isActive?: boolean }[];
+      };
 
       setStaff(staffData.staff ?? []);
       setBookings(bookingsData.bookings ?? []);
       setServiceOptions(optionsData.options ?? []);
+      setRooms(
+        (roomsData.rooms ?? [])
+          .filter((room) => room.isActive !== false)
+          .map((room) => ({ id: room.id, name: room.name })),
+      );
     } catch {
       toast.error("Could not load schedule");
     }
@@ -100,26 +110,10 @@ export function BookingScheduleContent() {
     staff.find((member) => member.id === selectedStaffId) ??
     null;
 
-  const formStaff = staff.find((member) => member.id === form.staffId);
-
   const formTimeOptions = useMemo(() => {
-    if (!formStaff) {
-      return generateTimeSlotOptions("09:00", "18:00");
-    }
-
-    const staffBookings = bookings.filter(
-      (booking) => booking.staffId === formStaff.id,
-    );
-    const duration = Number(form.durationMinutes) || serviceOptions[0]?.durationMinutes || 30;
-
-    return getAvailableStartSlots(
-      date,
-      formStaff.workingHoursStart,
-      formStaff.workingHoursEnd,
-      staffBookings,
-      duration,
-    );
-  }, [bookings, date, form.durationMinutes, formStaff, serviceOptions]);
+    // Admin can create bookings at any time. Conflicts are validated on submit.
+    return generateTimeSlotOptions("00:00", "24:00");
+  }, []);
 
   const openCreateForm = (partial?: Partial<BookingFormValues>) => {
     setForm({
@@ -127,6 +121,7 @@ export function BookingScheduleContent() {
       staffId: partial?.staffId ?? selectedStaffId ?? "",
       startsAt: partial?.startsAt ?? "",
       durationMinutes: partial?.durationMinutes ?? defaultDuration,
+      roomId: partial?.roomId ?? "",
       customerName: "",
       customerPhone: "",
       customerPostcode: "",
@@ -163,6 +158,7 @@ export function BookingScheduleContent() {
           staffId: form.staffId,
           startsAt: buildStartsAtIso(date, form.startsAt),
           durationMinutes,
+          roomId: form.roomId || undefined,
           customerName: form.customerName.trim(),
           customerPhone: form.customerPhone.trim(),
           customerPostcode: form.customerPostcode.trim() || undefined,
@@ -309,6 +305,7 @@ export function BookingScheduleContent() {
         onOpenChange={setShowCreate}
         date={date}
         staffOptions={staff.map((member) => ({ id: member.id, name: member.name }))}
+        roomOptions={rooms}
         serviceOptions={serviceOptions}
         currency={tenant.settings.currency}
         timeOptions={formTimeOptions}
