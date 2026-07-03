@@ -59,7 +59,7 @@ export function AdminHeader({ user }: AdminHeaderProps) {
 
   return (
     <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b bg-background/90 px-3 backdrop-blur-md supports-backdrop-filter:bg-background/75 sm:gap-3 sm:px-4">
-      <SidebarTrigger className="-ml-1 size-9 lg:hidden" />
+      <SidebarTrigger className="-ml-1 size-9" />
 
       <Link
         href="/admin"

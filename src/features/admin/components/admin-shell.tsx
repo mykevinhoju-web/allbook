@@ -22,7 +22,7 @@ export function AdminShell({ children, user }: AdminShellProps) {
 
   return (
     <BookingAlertProvider>
-      <SidebarProvider defaultOpen={false}>
+      <SidebarProvider defaultOpen>
         <AdminSidebar isStaff={isStaff} />
         <SidebarInset className="min-h-svh bg-muted/30">
           <AdminHeader user={user} />
