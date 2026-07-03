@@ -1,12 +1,14 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 import type { BookingStaffItem } from "../../config/booking-staff-mock";
-import { useBookingAlertSender } from "../../hooks/use-booking-alert-sender";
+import { useBookStaff } from "../../hooks/use-book-staff";
+import { useBookingStaffList } from "../../hooks/use-booking-staff-list";
 
 function DarkStaffPhoto({
   staff,
@@ -45,21 +47,21 @@ function DarkStaffPhoto({
 function ReserveButton({
   staff,
   className,
-  label = "Reserve",
+  label = "Book",
 }: {
   staff: BookingStaffItem;
   className?: string;
   label?: string;
 }) {
-  const { sendBookingRequest, sendingId, canSend } = useBookingAlertSender();
-  const isSending = sendingId === staff.id;
-  const available = staff.available && canSend;
+  const { bookStaff } = useBookStaff();
+  const pathname = usePathname();
+  const available = staff.available;
 
   return (
     <button
       type="button"
-      disabled={!available || isSending}
-      onClick={() => void sendBookingRequest(staff)}
+      disabled={!available}
+      onClick={() => bookStaff(staff, { returnTo: pathname })}
       className={cn(
         "inline-flex items-center justify-center gap-1.5 text-sm font-medium tracking-wide transition-all active:scale-[0.98] disabled:opacity-40",
         available
@@ -68,7 +70,7 @@ function ReserveButton({
         className,
       )}
     >
-      {isSending ? "Sending…" : available ? label : "Unavailable"}
+      {available ? label : "Unavailable"}
     </button>
   );
 }
@@ -78,7 +80,8 @@ interface DarkSampleProps {
 }
 
 /** Sample 4 — Noir cinematic cards with full-bleed portraits */
-export function BookingSampleNoir({ staff }: DarkSampleProps) {
+export function BookingSampleNoir({ staff: fallback }: DarkSampleProps) {
+  const { staff } = useBookingStaffList(fallback);
   return (
     <div className="space-y-4">
       <p className="text-center text-xs tracking-[0.2em] text-stone-500 uppercase">
@@ -120,7 +123,8 @@ export function BookingSampleNoir({ staff }: DarkSampleProps) {
 }
 
 /** Sample 5 — Velvet lounge rows with soft glow borders */
-export function BookingSampleVelvet({ staff }: DarkSampleProps) {
+export function BookingSampleVelvet({ staff: fallback }: DarkSampleProps) {
+  const { staff } = useBookingStaffList(fallback);
   return (
     <div className="space-y-3">
       <div className="rounded-2xl border border-rose-900/30 bg-gradient-to-br from-stone-900/80 to-stone-950 px-4 py-3 text-center">

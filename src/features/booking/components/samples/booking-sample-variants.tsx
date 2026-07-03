@@ -1,12 +1,14 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Banknote } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 import type { BookingStaffItem } from "../../config/booking-staff-mock";
-import { useBookingAlertSender } from "../../hooks/use-booking-alert-sender";
+import { useBookStaff } from "../../hooks/use-book-staff";
+import { useBookingStaffList } from "../../hooks/use-booking-staff-list";
 
 type SampleTone = "default" | "pink";
 
@@ -39,7 +41,7 @@ function StaffPhoto({
         sizeClass,
       )}
     >
-      {imageError ? (
+      {imageError || !staff.photoUrl ? (
         <div
           className={cn(
             "flex size-full items-center justify-center text-sm font-semibold",
@@ -66,16 +68,18 @@ function BookButton({
   staff,
   variant = "pill",
   tone = "default",
+  checkoutTheme,
   className,
 }: {
   staff: BookingStaffItem;
   variant?: "pill" | "full" | "outline";
   tone?: SampleTone;
+  checkoutTheme?: "default" | "pastel";
   className?: string;
 }) {
-  const { sendBookingRequest, sendingId, canSend } = useBookingAlertSender();
-  const isSending = sendingId === staff.id;
-  const available = staff.available && canSend;
+  const { bookStaff } = useBookStaff();
+  const pathname = usePathname();
+  const available = staff.available;
   const isPink = tone === "pink";
 
   const base =
@@ -121,10 +125,15 @@ function BookButton({
     <button
       type="button"
       className={cn(variants[variant], className)}
-      disabled={!available || isSending}
-      onClick={() => void sendBookingRequest(staff)}
+      disabled={!available}
+      onClick={() =>
+        bookStaff(staff, {
+          returnTo: pathname,
+          theme: checkoutTheme,
+        })
+      }
     >
-      {isSending ? "Sending…" : available ? "Book" : "Unavailable"}
+      {available ? "Book" : "Unavailable"}
     </button>
   );
 }
@@ -140,7 +149,11 @@ interface BookingSamplePortraitProps extends BookingSampleListProps {
 }
 
 /** Sample 1 — Clean list rows (Apple-style) */
-export function BookingSampleList({ staff, tone = "default" }: BookingSampleListProps) {
+export function BookingSampleList({
+  staff: fallback,
+  tone = "default",
+}: BookingSampleListProps) {
+  const { staff } = useBookingStaffList(fallback);
   const isPink = tone === "pink";
 
   return (
@@ -187,7 +200,9 @@ export function BookingSampleList({ staff, tone = "default" }: BookingSampleList
 }
 
 /** Sample 2 — Stacked cards with full-width CTA */
-export function BookingSampleCards({ staff }: BookingSampleListProps) {
+export function BookingSampleCards({ staff: fallback }: BookingSampleListProps) {
+  const { staff } = useBookingStaffList(fallback);
+
   return (
     <div className="space-y-3">
       {staff.map((member) => (
@@ -213,11 +228,12 @@ export function BookingSampleCards({ staff }: BookingSampleListProps) {
 
 /** Sample 3 — Portrait-first minimal rows */
 export function BookingSamplePortrait({
-  staff,
+  staff: fallback,
   tone = "default",
   buttonTone,
   buttonVariant = "outline",
 }: BookingSamplePortraitProps) {
+  const { staff } = useBookingStaffList(fallback);
   const isPink = tone === "pink";
   const resolvedButtonTone = buttonTone ?? tone;
 
@@ -266,15 +282,17 @@ export function BookingSamplePortrait({
 }
 
 function PastelBookButton({ staff }: { staff: BookingStaffItem }) {
-  const { sendBookingRequest, sendingId, canSend } = useBookingAlertSender();
-  const isSending = sendingId === staff.id;
-  const available = staff.available && canSend;
+  const { bookStaff } = useBookStaff();
+  const pathname = usePathname();
+  const available = staff.available;
 
   return (
     <button
       type="button"
-      disabled={!available || isSending}
-      onClick={() => void sendBookingRequest(staff)}
+      disabled={!available}
+      onClick={() =>
+        bookStaff(staff, { returnTo: pathname, theme: "pastel" })
+      }
       className={cn(
         "inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border-2 px-5 text-sm font-semibold transition-all active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40",
         available
@@ -282,9 +300,7 @@ function PastelBookButton({ staff }: { staff: BookingStaffItem }) {
           : "border-pink-200 bg-white/60 text-pink-300",
       )}
     >
-      {isSending ? (
-        "Sending…"
-      ) : available ? (
+      {available ? (
         <>
           Book
           <Banknote className="size-4 shrink-0" strokeWidth={2} />
@@ -297,7 +313,9 @@ function PastelBookButton({ staff }: { staff: BookingStaffItem }) {
 }
 
 /** Sample 7 — Pastel pink canvas with white magenta-outline pill buttons */
-export function BookingSamplePastel({ staff }: BookingSampleListProps) {
+export function BookingSamplePastel({ staff: fallback }: BookingSampleListProps) {
+  const { staff } = useBookingStaffList(fallback);
+
   return (
     <div className="space-y-3">
       {staff.map((member) => (
