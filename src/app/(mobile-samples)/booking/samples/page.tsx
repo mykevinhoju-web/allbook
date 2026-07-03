@@ -34,6 +34,13 @@ const lightSamples = [
     style: "Pink button",
     pink: true,
   },
+  {
+    number: 7,
+    title: "Sample 7 — Pastel Boutique",
+    description: "Soft pink background with white pill buttons and magenta outline.",
+    style: "Pastel magenta",
+    pink: true,
+  },
 ] as const;
 
 const darkSamples = [

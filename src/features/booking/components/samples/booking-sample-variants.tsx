@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Banknote } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -257,6 +258,60 @@ export function BookingSamplePortrait({
               variant={buttonVariant}
               tone={resolvedButtonTone}
             />
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function PastelBookButton({ staff }: { staff: BookingStaffItem }) {
+  const { sendBookingRequest, sendingId, canSend } = useBookingAlertSender();
+  const isSending = sendingId === staff.id;
+  const available = staff.available && canSend;
+
+  return (
+    <button
+      type="button"
+      disabled={!available || isSending}
+      onClick={() => void sendBookingRequest(staff)}
+      className={cn(
+        "inline-flex h-11 w-full items-center justify-center gap-2 rounded-full border-2 px-5 text-sm font-semibold transition-all active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40",
+        available
+          ? "border-[#e91e63] bg-white text-[#e91e63] active:bg-white/80"
+          : "border-pink-200 bg-white/60 text-pink-300",
+      )}
+    >
+      {isSending ? (
+        "Sending…"
+      ) : available ? (
+        <>
+          Book
+          <Banknote className="size-4 shrink-0" strokeWidth={2} />
+        </>
+      ) : (
+        "Unavailable"
+      )}
+    </button>
+  );
+}
+
+/** Sample 7 — Pastel pink canvas with white magenta-outline pill buttons */
+export function BookingSamplePastel({ staff }: BookingSampleListProps) {
+  return (
+    <div className="space-y-3">
+      {staff.map((member) => (
+        <article
+          key={member.id}
+          className="flex items-center gap-4 rounded-2xl bg-white/50 px-3 py-3 backdrop-blur-sm"
+        >
+          <StaffPhoto staff={member} size="xl" />
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <div>
+              <p className="text-base font-semibold text-stone-800">{member.name}</p>
+              <p className="text-xs text-[#e91e63]/70">{member.role}</p>
+            </div>
+            <PastelBookButton staff={member} />
           </div>
         </article>
       ))}
