@@ -1,8 +1,10 @@
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 import type { BookingAlertPayload } from "@/features/booking/types/booking-alert";
+import { createServiceSupabase } from "@/lib/admin/tenant-context";
 import { sendBookingPushNotifications } from "@/lib/push/send-booking-push";
+import { createClient } from "@supabase/supabase-js";
+
 import type { Database } from "@/types/database";
 
 function getChannelName(tenantSlug: string) {
@@ -82,10 +84,7 @@ export async function POST(request: Request) {
     requestedAt: new Date().toISOString(),
   };
 
-  const supabase = createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
+  const supabase = createServiceSupabase();
 
   const { error: insertError } = await supabase
     .from("booking_alert_events")

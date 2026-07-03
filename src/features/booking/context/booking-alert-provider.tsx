@@ -34,6 +34,7 @@ interface BookingAlertContextValue {
   bellActive: boolean;
   enableAlerts: () => Promise<void>;
   testSound: () => Promise<void>;
+  notifyBooking: (staffName: string) => void;
 }
 
 const BookingAlertContext = createContext<BookingAlertContextValue | null>(
@@ -48,6 +49,7 @@ export function BookingAlertProvider({
   const tenant = useTenant();
   const isMobile = useIsMobile();
   const audioRef = useRef<AudioContext | null>(null);
+  const lastAlertRef = useRef<{ staffName: string; at: number } | null>(null);
   const [alertsEnabled, setAlertsEnabled] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState("IDLE");
@@ -59,12 +61,23 @@ export function BookingAlertProvider({
 
   const handleBooking = useCallback(
     (payload: BookingAlertPayload) => {
+      const now = Date.now();
+      const last = lastAlertRef.current;
+      if (
+        last &&
+        last.staffName === payload.staffName &&
+        now - last.at < 3000
+      ) {
+        return;
+      }
+      lastAlertRef.current = { staffName: payload.staffName, at: now };
+
       void triggerBookingAlert(payload.staffName);
       setBellActive(true);
       window.setTimeout(() => setBellActive(false), 2500);
 
-      toast.success("New booking request", {
-        description: `${payload.staffName} — customer tapped Book`,
+      toast.success("New booking", {
+        description: payload.staffName,
         position: isMobile ? "top-center" : "top-right",
         duration: 6000,
       });
@@ -163,6 +176,17 @@ export function BookingAlertProvider({
     }
   }, [isMobile]);
 
+  const notifyBooking = useCallback(
+    (staffName: string) => {
+      handleBooking({
+        staffId: "",
+        staffName,
+        requestedAt: new Date().toISOString(),
+      });
+    },
+    [handleBooking],
+  );
+
   const value = useMemo(
     () => ({
       alertsEnabled,
@@ -171,6 +195,7 @@ export function BookingAlertProvider({
       bellActive,
       enableAlerts,
       testSound,
+      notifyBooking,
     }),
     [
       alertsEnabled,
@@ -179,6 +204,7 @@ export function BookingAlertProvider({
       bellActive,
       enableAlerts,
       testSound,
+      notifyBooking,
     ],
   );
 

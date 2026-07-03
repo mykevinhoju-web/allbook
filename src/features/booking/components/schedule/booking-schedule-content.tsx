@@ -18,6 +18,7 @@ import { useTenant } from "@/features/tenants";
 import type { StaffRecord } from "@/features/staff/types";
 
 import { useBookingRealtime } from "../../lib/booking-schedule-realtime";
+import { useBookingAlerts } from "../../context/booking-alert-provider";
 import {
   buildStartsAtIso,
   generateTimeSlotOptions,
@@ -36,6 +37,7 @@ import { StaffScheduleDetail } from "./staff-schedule-detail";
 
 export function BookingScheduleContent() {
   const tenant = useTenant();
+  const { alertsEnabled, notifyBooking } = useBookingAlerts();
   const [date, setDate] = useState(todayDateInputValue());
   const [staff, setStaff] = useState<StaffRecord[]>([]);
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
@@ -188,6 +190,10 @@ export function BookingScheduleContent() {
           .filter(Boolean)
           .join(" · "),
       });
+
+      if (alertsEnabled && data.booking?.staffName) {
+        notifyBooking(data.booking.staffName);
+      }
 
       setShowCreate(false);
       setForm(defaultBookingFormValues);

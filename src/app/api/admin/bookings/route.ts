@@ -268,13 +268,13 @@ export async function POST(request: Request) {
 
     const created = mapBooking(data);
 
-    // Notify staff/admin clients (realtime + push best-effort)
-    void supabase.from("booking_alert_events").insert({
+    // Notify staff/admin clients (realtime + push). Must await — serverless exits after response.
+    await supabase.from("booking_alert_events").insert({
       tenant_slug: tenant.slug,
       staff_id: created.staffId,
       staff_name: created.staffName,
     });
-    void sendBookingPushNotifications(tenant.slug, {
+    await sendBookingPushNotifications(tenant.slug, {
       staffId: created.staffId,
       staffName: created.staffName,
       roomName: created.roomName,
