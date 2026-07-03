@@ -8,6 +8,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 import {
   formatPriceFromCents,
   formatServiceOptionLabel,
@@ -54,6 +55,78 @@ interface BookingFormSheetProps {
   submitting?: boolean;
 }
 
+function IosFieldLabel({
+  children,
+  required,
+}: {
+  children: React.ReactNode;
+  required?: boolean;
+}) {
+  return (
+    <span className="text-[13px] text-muted-foreground">
+      {children}
+      {required ? <span className="text-destructive"> *</span> : null}
+    </span>
+  );
+}
+
+function IosSelect({
+  value,
+  onChange,
+  children,
+  className,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <select
+      className={cn(
+        "h-11 w-full appearance-none rounded-xl border-0 bg-transparent px-0 text-[17px] font-medium text-foreground outline-none",
+        className,
+      )}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+    >
+      {children}
+    </select>
+  );
+}
+
+function IosGroupedCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border/40 bg-card shadow-soft">
+      {children}
+    </div>
+  );
+}
+
+function IosRow({
+  label,
+  required,
+  children,
+  border = true,
+}: {
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+  border?: boolean;
+}) {
+  return (
+    <label
+      className={cn(
+        "flex flex-col gap-1 px-4 py-3",
+        border && "border-b border-border/50 last:border-b-0",
+      )}
+    >
+      <IosFieldLabel required={required}>{label}</IosFieldLabel>
+      {children}
+    </label>
+  );
+}
+
 export function BookingFormSheet({
   open,
   onOpenChange,
@@ -87,151 +160,159 @@ export function BookingFormSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="max-h-[92vh] overflow-y-auto rounded-t-2xl">
-        <SheetHeader>
-          <SheetTitle>{title}</SheetTitle>
+      <SheetContent
+        side="bottom"
+        className="max-h-[92vh] overflow-y-auto rounded-t-[1.25rem] bg-muted/30 px-4 pb-8 pt-2"
+      >
+        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border" />
+
+        <SheetHeader className="px-1 pb-4 text-left">
+          <SheetTitle className="text-xl font-semibold tracking-tight">
+            {title}
+          </SheetTitle>
+          {previewTime ? (
+            <p className="text-sm text-muted-foreground">{previewTime}</p>
+          ) : null}
         </SheetHeader>
 
-        <div className="space-y-4 py-4">
-          <label className="block space-y-2 text-sm">
-            <span>Staff</span>
-            <select
-              className="h-10 w-full rounded-xl border border-border/60 bg-background px-3"
-              value={values.staffId}
-              onChange={(event) => update("staffId", event.target.value)}
-            >
-              <option value="">Select staff</option>
-              {staffOptions.map((member) => (
-                <option key={member.id} value={member.id}>
-                  {member.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block space-y-2 text-sm">
-            <span>Start time (5-minute steps)</span>
-            <select
-              className="h-10 w-full rounded-xl border border-border/60 bg-background px-3"
-              value={values.startsAt}
-              onChange={(event) => update("startsAt", event.target.value)}
-            >
-              <option value="">Select time</option>
-              {timeOptions.map((time) => (
-                <option key={time} value={time}>
-                  {formatAmPmTime(buildStartsAtIso(date, time))} ({time})
-                </option>
-              ))}
-            </select>
-            {previewTime ? (
-              <p className="text-xs text-muted-foreground">
-                Selected: {previewTime}
-              </p>
-            ) : null}
-          </label>
-
-          <label className="block space-y-2 text-sm">
-            <span>Service</span>
-            <select
-              className="h-10 w-full rounded-xl border border-border/60 bg-background px-3"
-              value={values.durationMinutes}
-              onChange={(event) => update("durationMinutes", event.target.value)}
-            >
-              <option value="">Select service</option>
-              {serviceOptions.map((option) => (
-                <option
-                  key={option.id}
-                  value={String(option.durationMinutes)}
-                >
-                  {formatServiceOptionLabel(
-                    option.durationMinutes,
-                    option.priceCents,
-                    currency,
-                  )}
-                </option>
-              ))}
-            </select>
-            {selectedOption ? (
-              <p className="text-xs font-medium text-primary">
-                Price: {formatPriceFromCents(selectedOption.priceCents, currency)}
-              </p>
-            ) : null}
-          </label>
-
-          <label className="block space-y-2 text-sm">
-            <span>Room</span>
-            <select
-              className="h-10 w-full rounded-xl border border-border/60 bg-background px-3"
-              value={values.roomId}
-              onChange={(event) => update("roomId", event.target.value)}
-            >
-              <option value="">Auto-assign</option>
-              {roomOptions.map((room) => (
-                <option key={room.id} value={room.id}>
-                  {room.name}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-muted-foreground">
-              Auto-assign picks the first available room for this time slot.
+        <div className="space-y-5">
+          <section>
+            <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Appointment
             </p>
-          </label>
+            <IosGroupedCard>
+              <IosRow label="Staff" required>
+                <IosSelect
+                  value={values.staffId}
+                  onChange={(value) => update("staffId", value)}
+                >
+                  <option value="">Select staff</option>
+                  {staffOptions.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.name}
+                    </option>
+                  ))}
+                </IosSelect>
+              </IosRow>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block space-y-2 text-sm">
-              <span>
-                Customer name <span className="text-destructive">*</span>
-              </span>
-              <Input
-                value={values.customerName}
-                onChange={(event) => update("customerName", event.target.value)}
-                className="rounded-xl"
-                required
-              />
-            </label>
+              <IosRow label="Start time" required>
+                <IosSelect
+                  value={values.startsAt}
+                  onChange={(value) => update("startsAt", value)}
+                >
+                  <option value="">Select time</option>
+                  {timeOptions.map((time) => (
+                    <option key={time} value={time}>
+                      {formatAmPmTime(buildStartsAtIso(date, time))}
+                    </option>
+                  ))}
+                </IosSelect>
+              </IosRow>
 
-            <label className="block space-y-2 text-sm">
-              <span>
-                Phone <span className="text-destructive">*</span>
-              </span>
-              <Input
-                type="tel"
-                value={values.customerPhone}
-                onChange={(event) => update("customerPhone", event.target.value)}
-                className="rounded-xl"
-                required
-              />
-            </label>
+              <IosRow label="Service" required border={false}>
+                <IosSelect
+                  value={values.durationMinutes}
+                  onChange={(value) => update("durationMinutes", value)}
+                >
+                  <option value="">Select service</option>
+                  {serviceOptions.map((option) => (
+                    <option
+                      key={option.id}
+                      value={String(option.durationMinutes)}
+                    >
+                      {formatServiceOptionLabel(
+                        option.durationMinutes,
+                        option.priceCents,
+                        currency,
+                      )}
+                    </option>
+                  ))}
+                </IosSelect>
+                {selectedOption ? (
+                  <p className="text-sm font-medium text-primary">
+                    {formatPriceFromCents(selectedOption.priceCents, currency)}
+                  </p>
+                ) : null}
+              </IosRow>
+            </IosGroupedCard>
+          </section>
 
-            <label className="block space-y-2 text-sm">
-              <span>Postcode</span>
-              <Input
-                value={values.customerPostcode}
-                onChange={(event) =>
-                  update("customerPostcode", event.target.value)
-                }
-                className="rounded-xl"
-              />
-            </label>
+          <section>
+            <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Room
+            </p>
+            <IosGroupedCard>
+              <IosRow label="Treatment room" border={false}>
+                <IosSelect
+                  value={values.roomId}
+                  onChange={(value) => update("roomId", value)}
+                >
+                  <option value="">Auto-assign</option>
+                  {roomOptions.map((room) => (
+                    <option key={room.id} value={room.id}>
+                      {room.name}
+                    </option>
+                  ))}
+                </IosSelect>
+                <p className="text-xs text-muted-foreground">
+                  Auto-assign picks the first available room.
+                </p>
+              </IosRow>
+            </IosGroupedCard>
+          </section>
 
-            <label className="block space-y-2 text-sm">
-              <span>Email</span>
-              <Input
-                type="email"
-                value={values.customerEmail}
-                onChange={(event) => update("customerEmail", event.target.value)}
-                className="rounded-xl"
-              />
-            </label>
-          </div>
+          <section>
+            <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Customer
+            </p>
+            <IosGroupedCard>
+              <IosRow label="Name" required>
+                <Input
+                  value={values.customerName}
+                  onChange={(event) => update("customerName", event.target.value)}
+                  className="h-11 rounded-xl border-0 bg-transparent px-0 text-[17px] shadow-none focus-visible:ring-0"
+                  required
+                />
+              </IosRow>
+
+              <IosRow label="Phone" required>
+                <Input
+                  type="tel"
+                  value={values.customerPhone}
+                  onChange={(event) => update("customerPhone", event.target.value)}
+                  className="h-11 rounded-xl border-0 bg-transparent px-0 text-[17px] shadow-none focus-visible:ring-0"
+                  required
+                />
+              </IosRow>
+
+              <IosRow label="Postcode">
+                <Input
+                  value={values.customerPostcode}
+                  onChange={(event) =>
+                    update("customerPostcode", event.target.value)
+                  }
+                  className="h-11 rounded-xl border-0 bg-transparent px-0 text-[17px] shadow-none focus-visible:ring-0"
+                />
+              </IosRow>
+
+              <IosRow label="Email" border={false}>
+                <Input
+                  type="email"
+                  value={values.customerEmail}
+                  onChange={(event) => update("customerEmail", event.target.value)}
+                  className="h-11 rounded-xl border-0 bg-transparent px-0 text-[17px] shadow-none focus-visible:ring-0"
+                />
+              </IosRow>
+            </IosGroupedCard>
+          </section>
 
           <AppButton
             type="button"
-            className="w-full rounded-xl"
+            className="h-12 w-full rounded-2xl text-base font-semibold shadow-sm active:scale-[0.98]"
             disabled={submitting || serviceOptions.length === 0}
             onClick={onSubmit}
           >
-            {submitting ? "Saving..." : "Create booking"}
+            {submitting ? "Saving…" : "Create booking"}
           </AppButton>
         </div>
       </SheetContent>

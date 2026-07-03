@@ -279,9 +279,10 @@ export function BookingScheduleContent() {
       >
         <SheetContent
           side="bottom"
-          className="max-h-[92vh] overflow-y-auto rounded-t-2xl"
+          className="max-h-[92vh] overflow-y-auto rounded-t-[1.25rem] bg-muted/30 px-4 pb-8 pt-2"
         >
-          <SheetHeader>
+          <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-border" />
+          <SheetHeader className="sr-only">
             <SheetTitle>Staff schedule</SheetTitle>
           </SheetHeader>
           {selectedStaff ? (

@@ -34,13 +34,37 @@ export function formatScheduleTime(iso: string): string {
 }
 
 export function formatAmPmTime(iso: string): string {
-  const date = new Date(iso);
-  const hours = date.getHours();
-  const minutes = date.getMinutes();
-  const period = hours < 12 ? "AM" : "PM";
-  const hour12 = hours % 12 || 12;
+  return new Date(iso).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
 
-  return `${period} - ${hour12}:${String(minutes).padStart(2, "0")}`;
+export function formatBookingSummary(booking: AdminBooking): string {
+  return `${formatAmPmTime(booking.startsAt)} – ${formatAmPmTime(booking.endsAt)} · ${formatDurationLabel(booking.durationMinutes)}`;
+}
+
+export function groupTimeSlotsByHour(
+  date: string,
+  slots: string[],
+): { hourLabel: string; slots: string[] }[] {
+  const map = new Map<number, string[]>();
+
+  for (const slot of slots) {
+    const hour = Number(slot.split(":")[0]);
+    if (!map.has(hour)) map.set(hour, []);
+    map.get(hour)!.push(slot);
+  }
+
+  return [...map.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([hour, hourSlots]) => ({
+      hourLabel: formatAmPmTime(
+        buildStartsAtIso(date, `${String(hour).padStart(2, "0")}:00`),
+      ),
+      slots: hourSlots,
+    }));
 }
 
 export function formatDurationLabel(minutes: number): string {
@@ -56,10 +80,6 @@ export function formatDurationLabel(minutes: number): string {
   }
 
   return `${hours}hr ${remainder}min`;
-}
-
-export function formatBookingSummary(booking: AdminBooking): string {
-  return `${formatAmPmTime(booking.startsAt)} ~ ${formatAmPmTime(booking.endsAt)}, ${formatDurationLabel(booking.durationMinutes)}`;
 }
 
 export function formatScheduleDate(iso: string): string {

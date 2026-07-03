@@ -1,12 +1,12 @@
 "use client";
 
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { AppButton } from "@/components/common";
+import { AppAvatar } from "@/components/common";
 import { cn } from "@/lib/utils";
 import {
   formatPriceFromCents,
-  formatServiceOptionLabel,
   type ServiceOption,
 } from "@/features/services";
 import type { StaffRecord } from "@/features/staff/types";
@@ -18,6 +18,7 @@ import {
   formatDurationLabel,
   formatScheduleDate,
   getAvailableStartSlots,
+  groupTimeSlotsByHour,
 } from "../../lib/schedule-utils";
 import type { AdminBooking } from "../../types/admin-booking";
 
@@ -28,6 +29,14 @@ interface StaffScheduleDetailProps {
   serviceOptions: ServiceOption[];
   currency?: string;
   onAddBooking: (startsAt: string, durationMinutes: number) => void;
+}
+
+function IosSectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      {children}
+    </p>
+  );
 }
 
 export function StaffScheduleDetail({
@@ -41,6 +50,7 @@ export function StaffScheduleDetail({
   const [durationMinutes, setDurationMinutes] = useState(
     serviceOptions[0]?.durationMinutes ?? 30,
   );
+  const [expandedHours, setExpandedHours] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (serviceOptions[0]?.durationMinutes) {
@@ -74,94 +84,186 @@ export function StaffScheduleDetail({
     ],
   );
 
+  const slotGroups = useMemo(
+    () => groupTimeSlotsByHour(date, availableSlots),
+    [availableSlots, date],
+  );
+
+  useEffect(() => {
+    if (slotGroups.length === 0) {
+      setExpandedHours(new Set());
+      return;
+    }
+
+    const first = slotGroups[0]?.hourLabel;
+    if (first) {
+      setExpandedHours(new Set([first]));
+    }
+  }, [durationMinutes, slotGroups]);
+
+  const toggleHour = (hourLabel: string) => {
+    setExpandedHours((current) => {
+      const next = new Set(current);
+      if (next.has(hourLabel)) {
+        next.delete(hourLabel);
+      } else {
+        next.add(hourLabel);
+      }
+      return next;
+    });
+  };
+
   return (
-    <div className="space-y-6 pb-4">
-      <div>
-        <p className="text-lg font-semibold">{staff.name}</p>
-        <p className="text-sm text-muted-foreground">
-          {formatScheduleDate(`${date}T12:00:00`)} · {staff.workingHoursStart} –{" "}
-          {staff.workingHoursEnd}
-        </p>
+    <div className="space-y-6 pb-6">
+      <div className="flex items-center gap-3">
+        <AppAvatar
+          src={staff.photoUrl ?? staff.photos[0]?.url}
+          alt={staff.name}
+          size="lg"
+        />
+        <div className="min-w-0">
+          <h2 className="truncate text-xl font-semibold tracking-tight">
+            {staff.name}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {formatScheduleDate(`${date}T12:00:00`)}
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {staff.workingHoursStart} – {staff.workingHoursEnd}
+          </p>
+        </div>
       </div>
 
-      <section className="space-y-3">
-        <h3 className="text-sm font-semibold">Booked times</h3>
-        {sortedBookings.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No bookings for this day.</p>
-        ) : (
-          <div className="space-y-2">
-            {sortedBookings.map((booking) => (
-              <div
-                key={booking.id}
-                className="rounded-xl border border-border/60 bg-card px-4 py-3"
+      <section>
+        <IosSectionLabel>Service</IosSectionLabel>
+        <div className="flex gap-1.5 overflow-x-auto rounded-2xl bg-muted/60 p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {serviceOptions.map((option) => {
+            const selected = durationMinutes === option.durationMinutes;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => setDurationMinutes(option.durationMinutes)}
+                className={cn(
+                  "shrink-0 rounded-xl px-3.5 py-2.5 text-left transition-all active:scale-[0.98]",
+                  selected
+                    ? "bg-background text-foreground shadow-sm ring-1 ring-black/5"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
               >
-                <p className="text-sm font-medium">
-                  {formatBookingSummary(booking)}
-                  {booking.priceCents > 0
-                    ? ` · ${formatPriceFromCents(booking.priceCents, currency)}`
-                    : ""}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Exact: {formatAmPmTime(booking.startsAt)} →{" "}
-                  {formatAmPmTime(booking.endsAt)} ({booking.durationMinutes} min)
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {booking.customerName ?? "Walk-in"}
-                  {booking.customerPhone ? ` · ${booking.customerPhone}` : ""}
-                  {booking.roomName ? ` · ${booking.roomName}` : ""}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
+                <span className="block text-sm font-semibold">
+                  {formatDurationLabel(option.durationMinutes)}
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  {formatPriceFromCents(option.priceCents, currency)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </section>
 
-      <section className="space-y-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <h3 className="text-sm font-semibold">Available times</h3>
-          <label className="flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Service</span>
-            <select
-              className="h-9 rounded-lg border border-border/60 bg-background px-2"
-              value={durationMinutes}
-              onChange={(event) => setDurationMinutes(Number(event.target.value))}
-            >
-              {serviceOptions.map((option) => (
-                <option key={option.id} value={option.durationMinutes}>
-                  {formatServiceOptionLabel(
-                    option.durationMinutes,
-                    option.priceCents,
-                    currency,
-                  )}
-                </option>
+      <section>
+        <IosSectionLabel>
+          Today&apos;s bookings
+          {sortedBookings.length > 0 ? ` (${sortedBookings.length})` : ""}
+        </IosSectionLabel>
+        <div className="overflow-hidden rounded-2xl border border-border/40 bg-card shadow-soft">
+          {sortedBookings.length === 0 ? (
+            <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+              No bookings yet
+            </p>
+          ) : (
+            <ul className="divide-y divide-border/50">
+              {sortedBookings.map((booking) => (
+                <li
+                  key={booking.id}
+                  className="flex items-start gap-3 px-4 py-3.5"
+                >
+                  <div className="mt-0.5 min-w-[4.5rem] text-sm font-semibold tabular-nums text-primary">
+                    {formatAmPmTime(booking.startsAt)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium leading-snug">
+                      {formatBookingSummary(booking)}
+                      {booking.priceCents > 0
+                        ? ` · ${formatPriceFromCents(booking.priceCents, currency)}`
+                        : ""}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                      {booking.customerName ?? "Walk-in"}
+                      {booking.customerPhone
+                        ? ` · ${booking.customerPhone}`
+                        : ""}
+                      {booking.roomName ? ` · ${booking.roomName}` : ""}
+                    </p>
+                  </div>
+                </li>
               ))}
-            </select>
-          </label>
+            </ul>
+          )}
         </div>
+      </section>
 
-        {availableSlots.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No open {formatDurationLabel(durationMinutes)} slots in working hours.
-          </p>
+      <section>
+        <IosSectionLabel>
+          Pick a time · {formatDurationLabel(durationMinutes)}
+        </IosSectionLabel>
+
+        {slotGroups.length === 0 ? (
+          <div className="rounded-2xl border border-border/40 bg-card px-4 py-6 text-center shadow-soft">
+            <p className="text-sm text-muted-foreground">
+              No open slots in working hours.
+            </p>
+          </div>
         ) : (
-          <div className="flex flex-wrap gap-2">
-            {availableSlots.map((slot) => (
-              <AppButton
-                key={slot}
-                type="button"
-                variant="outline"
-                size="sm"
-                className={cn("rounded-full px-3")}
-                onClick={() => onAddBooking(slot, durationMinutes)}
-              >
-                {formatAmPmTime(buildStartsAtIso(date, slot))}
-              </AppButton>
-            ))}
+          <div className="space-y-2">
+            {slotGroups.map((group) => {
+              const expanded = expandedHours.has(group.hourLabel);
+              return (
+                <div
+                  key={group.hourLabel}
+                  className="overflow-hidden rounded-2xl border border-border/40 bg-card shadow-soft"
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleHour(group.hourLabel)}
+                    className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-muted/40"
+                  >
+                    {expanded ? (
+                      <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+                    ) : (
+                      <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                    )}
+                    <span className="flex-1 text-sm font-semibold">
+                      {group.hourLabel}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {group.slots.length} open
+                    </span>
+                  </button>
+
+                  {expanded ? (
+                    <div className="border-t border-border/40 bg-muted/25 px-3 py-3">
+                      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                        {group.slots.map((slot) => (
+                          <button
+                            key={slot}
+                            type="button"
+                            onClick={() => onAddBooking(slot, durationMinutes)}
+                            className="rounded-xl bg-background py-2.5 text-sm font-medium tabular-nums shadow-sm ring-1 ring-black/5 transition active:scale-[0.97] active:bg-primary active:text-primary-foreground"
+                          >
+                            {formatAmPmTime(buildStartsAtIso(date, slot))}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         )}
-        <p className="text-xs text-muted-foreground">
-          Tap a time to book. Start times are in 5-minute steps.
-        </p>
       </section>
     </div>
   );
