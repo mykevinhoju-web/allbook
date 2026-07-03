@@ -26,6 +26,12 @@ export function getAdminBreadcrumbs(pathname: string): { label: string; href?: s
     return crumbs;
   }
 
+  if (pageSegment === "staff" && subSegment) {
+    crumbs.push({ label: "Staff", href: "/admin/staff" });
+    crumbs.push({ label: "Edit Staff" });
+    return crumbs;
+  }
+
   const label = pageSegment
     .split("-")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -34,4 +40,9 @@ export function getAdminBreadcrumbs(pathname: string): { label: string; href?: s
   crumbs.push({ label });
 
   return crumbs;
+}
+
+export function getAdminPageTitle(pathname: string): string {
+  const crumbs = getAdminBreadcrumbs(pathname);
+  return crumbs[crumbs.length - 1]?.label ?? "Admin";
 }

@@ -1,6 +1,7 @@
 import * as React from "react"
 
 const MOBILE_BREAKPOINT = 768
+const LG_BREAKPOINT = 1024
 
 export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
@@ -16,4 +17,21 @@ export function useIsMobile() {
   }, [])
 
   return !!isMobile
+}
+
+/** True below 1024px — tablet uses mobile admin chrome (sheet nav + bottom tabs). */
+export function useIsLgDown() {
+  const [isLgDown, setIsLgDown] = React.useState<boolean | undefined>(undefined)
+
+  React.useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${LG_BREAKPOINT - 1}px)`)
+    const onChange = () => {
+      setIsLgDown(window.innerWidth < LG_BREAKPOINT)
+    }
+    mql.addEventListener("change", onChange)
+    setIsLgDown(window.innerWidth < LG_BREAKPOINT)
+    return () => mql.removeEventListener("change", onChange)
+  }, [])
+
+  return !!isLgDown
 }

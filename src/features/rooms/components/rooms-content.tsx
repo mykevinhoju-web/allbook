@@ -5,7 +5,10 @@ import Link from "next/link";
 import { DoorOpen, Plus, Trash2 } from "lucide-react";
 
 import { AppButton, ConfirmDialog, toast } from "@/components/common";
+import { appButtonVariants } from "@/components/common/app-button";
 import { Input } from "@/components/ui/input";
+import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
+import { cn } from "@/lib/utils";
 import type { AdminRoom } from "@/features/booking/types/admin-booking";
 
 export function RoomsContent() {
@@ -83,30 +86,33 @@ export function RoomsContent() {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Rooms</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage treatment rooms for this tenant. Bookings auto-pick the first
-          available room for the selected time slot.
-        </p>
-        <p className="text-sm">
-          <Link href="/admin/rooms/schedule" className="text-primary underline">
-            View room schedule
+    <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-3 py-4 sm:px-4 lg:gap-6 lg:p-6">
+      <AdminPageHeader
+        title="Rooms"
+        description="Manage treatment rooms. Bookings auto-pick the first available room."
+        action={
+          <Link
+            href="/admin/rooms/schedule"
+            className={cn(
+              appButtonVariants({ variant: "outline" }),
+              "h-11 w-full rounded-xl sm:w-auto",
+            )}
+          >
+            View schedule
           </Link>
-        </p>
-      </div>
+        }
+      />
 
       <div className="flex flex-col gap-2 sm:flex-row">
         <Input
           value={newRoomName}
           onChange={(event) => setNewRoomName(event.target.value)}
           placeholder="Room name"
-          className="rounded-xl"
+          className="h-11 rounded-xl"
         />
         <AppButton
           type="button"
-          className="rounded-xl"
+          className="h-11 rounded-xl"
           onClick={() => void addRoom()}
         >
           <Plus className="size-4" />
@@ -114,7 +120,7 @@ export function RoomsContent() {
         </AppButton>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {rooms.map((room) => (
           <div
             key={room.id}

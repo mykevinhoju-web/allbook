@@ -5,6 +5,7 @@ import { Plus, Trash2 } from "lucide-react";
 
 import { AppButton, toast } from "@/components/common";
 import { Input } from "@/components/ui/input";
+import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { formatPriceFromCents } from "@/features/services/utils/format-price";
 
 interface PricingRow {
@@ -130,17 +131,14 @@ export function ServicePricingContent() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Services & pricing</h1>
-        <p className="text-sm text-muted-foreground">
-          Set duration and price for each service. Customers see these options when
-          booking — the price is applied automatically.
-        </p>
-      </div>
+    <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-3 py-4 sm:px-4 lg:gap-6 lg:p-6">
+      <AdminPageHeader
+        title="Services & pricing"
+        description="Set duration and price for each service. Customers see these when booking."
+      />
 
-      <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft md:p-6">
-        <div className="mb-4 grid grid-cols-[1fr_1fr_auto] gap-3 text-xs font-medium text-muted-foreground">
+      <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft sm:p-6">
+        <div className="mb-4 hidden gap-3 text-xs font-medium text-muted-foreground sm:grid sm:grid-cols-[1fr_1fr_auto]">
           <span>Duration (minutes)</span>
           <span>Price ({currency})</span>
           <span className="w-10" />
@@ -150,31 +148,42 @@ export function ServicePricingContent() {
           {rows.map((row) => (
             <div
               key={row.key}
-              className="grid grid-cols-[1fr_1fr_auto] items-center gap-3"
+              className="grid grid-cols-1 gap-2 rounded-xl border border-border/40 p-3 sm:grid-cols-[1fr_1fr_auto] sm:items-center sm:gap-3 sm:border-0 sm:p-0"
             >
-              <Input
-                type="number"
-                min={1}
-                placeholder="e.g. 30"
-                value={row.durationMinutes}
-                onChange={(event) =>
-                  updateRow(row.key, "durationMinutes", event.target.value)
-                }
-                className="rounded-xl"
-              />
-              <Input
-                type="number"
-                min={0}
-                step="0.01"
-                placeholder="e.g. 45"
-                value={row.price}
-                onChange={(event) => updateRow(row.key, "price", event.target.value)}
-                className="rounded-xl"
-              />
+              <div className="space-y-1 sm:contents">
+                <span className="text-xs font-medium text-muted-foreground sm:hidden">
+                  Duration (min)
+                </span>
+                <Input
+                  type="number"
+                  min={1}
+                  placeholder="e.g. 30"
+                  value={row.durationMinutes}
+                  onChange={(event) =>
+                    updateRow(row.key, "durationMinutes", event.target.value)
+                  }
+                  className="h-11 rounded-xl"
+                />
+              </div>
+              <div className="space-y-1 sm:contents">
+                <span className="text-xs font-medium text-muted-foreground sm:hidden">
+                  Price ({currency})
+                </span>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  placeholder="e.g. 45"
+                  value={row.price}
+                  onChange={(event) => updateRow(row.key, "price", event.target.value)}
+                  className="h-11 rounded-xl"
+                />
+              </div>
               <AppButton
                 type="button"
                 variant="ghost"
                 size="icon"
+                className="justify-self-end sm:justify-self-auto"
                 aria-label="Remove row"
                 onClick={() =>
                   setRows((current) =>
@@ -194,7 +203,7 @@ export function ServicePricingContent() {
           <AppButton
             type="button"
             variant="outline"
-            className="rounded-xl"
+            className="h-11 rounded-xl"
             onClick={() => setRows((current) => [...current, emptyRow()])}
           >
             <Plus className="size-4" />
@@ -203,7 +212,7 @@ export function ServicePricingContent() {
 
           <AppButton
             type="button"
-            className="rounded-xl"
+            className="h-11 rounded-xl"
             disabled={saving}
             onClick={() => void save()}
           >

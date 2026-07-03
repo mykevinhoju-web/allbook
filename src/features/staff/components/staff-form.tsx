@@ -262,7 +262,7 @@ export function StaffForm({ staffId }: StaffFormProps) {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
+    <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-3 py-4 pb-8 sm:px-4 lg:gap-6 lg:p-6">
       <div className="space-y-3">
         <Link
           href="/admin/staff"
@@ -272,10 +272,10 @@ export function StaffForm({ staffId }: StaffFormProps) {
           Back to Staff
         </Link>
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
             {isEditing ? "Edit Staff" : "Add Staff"}
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="hidden text-sm text-muted-foreground sm:block">
             Profile fields can be extended later without changing the page layout.
           </p>
         </div>

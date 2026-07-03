@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Filter, Plus } from "lucide-react";
 
-import { appButtonVariants, SearchBox } from "@/components/common";
+import { ConfirmDialog, SearchBox, toast } from "@/components/common";
+import { appButtonVariants } from "@/components/common/app-button";
+import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -21,6 +23,7 @@ import {
 import { mockStaffList, staffFilterOptions } from "../config";
 import type { AdminStaffRow, StaffFilterStatus, StaffRecord } from "../types";
 import { StaffTable } from "./staff-table";
+import { StaffMobileList } from "./staff-mobile-list";
 
 interface BookingSummary {
   staffId: string;
@@ -33,6 +36,36 @@ export function StaffListContent() {
   const [staff, setStaff] = useState<StaffRecord[]>([]);
   const [bookings, setBookings] = useState<BookingSummary[]>([]);
   const [useMock, setUseMock] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+
+    setDeleting(true);
+
+    try {
+      const response = await fetch(`/api/admin/staff/${deleteId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const data = (await response.json()) as { error?: string };
+        throw new Error(data.error ?? "Failed to delete staff.");
+      }
+
+      toast.success("Staff deleted");
+      void loadData();
+    } catch (error) {
+      toast.error("Could not delete staff", {
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+      });
+    } finally {
+      setDeleting(false);
+      setDeleteId(null);
+    }
+  };
 
   const loadData = useCallback(async () => {
     try {
@@ -119,28 +152,23 @@ export function StaffListContent() {
   }, [rows, search, statusFilter]);
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Staff
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Register, edit, and remove team members. Photos and profile fields
-            are tenant-scoped for future platform reuse.
-          </p>
-        </div>
-        <Link
-          href="/admin/staff/new"
-          className={cn(appButtonVariants({ variant: "primary" }), "shrink-0")}
-        >
-          <Plus className="size-4" />
-          Add Staff
-        </Link>
-      </div>
+    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-3 py-4 sm:px-4 lg:gap-6 lg:p-6">
+      <AdminPageHeader
+        title="Staff"
+        description="Register, edit, and remove team members."
+        action={
+          <Link
+            href="/admin/staff/new"
+            className={cn(appButtonVariants({ variant: "primary" }), "w-full rounded-xl sm:w-auto")}
+          >
+            <Plus className="size-4" />
+            Add Staff
+          </Link>
+        }
+      />
 
       {useMock ? (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
           Database tables are not ready yet. Run{" "}
           <code className="rounded bg-black/5 px-1">supabase/setup.sql</code>{" "}
           section 6 in Supabase SQL Editor. Showing sample data for now.
@@ -151,15 +179,15 @@ export function StaffListContent() {
         <SearchBox
           value={search}
           onValueChange={setSearch}
-          placeholder="Search staff by name..."
-          containerClassName="sm:max-w-sm"
+          placeholder="Search staff..."
+          containerClassName="flex-1"
           aria-label="Search staff"
         />
         <Select
           value={statusFilter}
           onValueChange={(value) => setStatusFilter(value as StaffFilterStatus)}
         >
-          <SelectTrigger className="h-10 w-full rounded-xl border-border/60 bg-background shadow-soft sm:w-44">
+          <SelectTrigger className="h-11 w-full rounded-xl border-border/60 bg-background shadow-soft sm:w-44">
             <Filter className="size-4 text-muted-foreground" />
             <SelectValue placeholder="Filter" />
           </SelectTrigger>
@@ -173,9 +201,32 @@ export function StaffListContent() {
         </Select>
       </div>
 
-      <StaffTable
+      <StaffMobileList
         staff={filteredStaff}
-        onChanged={() => void loadData()}
+        onDelete={(id) => setDeleteId(id)}
+      />
+
+      <div className="hidden lg:block">
+        <StaffTable
+          staff={filteredStaff}
+          onChanged={() => void loadData()}
+        />
+      </div>
+
+      {filteredStaff.length === 0 ? (
+        <p className="py-8 text-center text-sm text-muted-foreground lg:hidden">
+          No staff found. Try another search or add a team member.
+        </p>
+      ) : null}
+
+      <ConfirmDialog
+        open={deleteId !== null}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        title="Delete staff member?"
+        description="This removes the staff profile and photos. Existing bookings may need to be reassigned."
+        confirmLabel={deleting ? "Deleting..." : "Delete"}
+        variant="danger"
+        onConfirm={() => void handleDelete()}
       />
     </div>
   );

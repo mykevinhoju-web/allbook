@@ -63,7 +63,7 @@ export function PwaInstallHint() {
 
   return (
     <>
-      <div className="mx-4 mb-4 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
+      <div className="mx-4 mb-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground lg:mx-6">
         <div className="flex items-start gap-3">
           <Share className="mt-0.5 size-4 shrink-0 text-primary" />
           <div className="min-w-0 flex-1 space-y-3">

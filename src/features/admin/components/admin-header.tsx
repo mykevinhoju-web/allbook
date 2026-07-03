@@ -22,6 +22,7 @@ import { useTenant } from "@/features/tenants";
 import { useBookingAlerts } from "@/features/booking/context/booking-alert-provider";
 
 import { AdminBreadcrumb } from "./admin-breadcrumb";
+import { getAdminPageTitle } from "../utils/navigation";
 
 interface AdminHeaderProps {
   user?: {
@@ -40,6 +41,7 @@ export function AdminHeader({ user }: AdminHeaderProps) {
 
   const displayName = user?.name ?? "Admin";
   const initials = displayName.slice(0, 2).toUpperCase();
+  const pageTitle = getAdminPageTitle(pathname);
 
   const signOut = async () => {
     const endpoints =
@@ -56,33 +58,37 @@ export function AdminHeader({ user }: AdminHeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur-md supports-backdrop-filter:bg-background/60">
-      <SidebarTrigger className="-ml-1" />
-      <Separator orientation="vertical" className="hidden h-4 sm:block" />
+    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b bg-background/90 px-3 backdrop-blur-md supports-backdrop-filter:bg-background/75 sm:gap-3 sm:px-4">
+      <SidebarTrigger className="-ml-1 size-9 lg:hidden" />
 
       <Link
         href="/admin"
-        className="hidden items-center gap-2 font-semibold tracking-tight sm:flex"
+        className="hidden min-w-0 items-center gap-2 font-semibold tracking-tight lg:flex"
       >
-        <span className="flex size-7 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
           {tenant.branding.logoInitials}
         </span>
-        <span>{tenant.branding.displayName}</span>
+        <span className="truncate">{tenant.branding.displayName}</span>
       </Link>
 
-      <Separator orientation="vertical" className="hidden h-4 md:block" />
+      <Separator orientation="vertical" className="hidden h-4 lg:block" />
 
       <div className="min-w-0 flex-1">
-        <AdminBreadcrumb pathname={pathname} />
+        <p className="truncate text-base font-semibold tracking-tight lg:hidden">
+          {pageTitle}
+        </p>
+        <div className="hidden lg:block">
+          <AdminBreadcrumb pathname={pathname} />
+        </div>
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-0.5 sm:gap-1">
         {alertsEnabled ? (
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="hidden h-8 rounded-lg px-2 text-xs sm:inline-flex"
+            className="hidden h-8 rounded-lg px-2 text-xs xl:inline-flex"
             onClick={() => void testSound()}
           >
             Test sound
@@ -92,7 +98,7 @@ export function AdminHeader({ user }: AdminHeaderProps) {
           type="button"
           variant="ghost"
           size="icon"
-          className="relative"
+          className="relative size-9"
           onClick={() => {
             if (alertsEnabled) void testSound();
           }}
@@ -120,7 +126,7 @@ export function AdminHeader({ user }: AdminHeaderProps) {
             render={
               <Button
                 variant="ghost"
-                className="relative h-9 gap-2 px-2"
+                className="relative h-9 gap-2 px-1.5 sm:px-2"
               />
             }
           >
@@ -129,7 +135,7 @@ export function AdminHeader({ user }: AdminHeaderProps) {
                 {initials}
               </AvatarFallback>
             </Avatar>
-            <span className="hidden text-sm font-medium sm:inline">
+            <span className="hidden text-sm font-medium md:inline">
               {displayName}
             </span>
           </DropdownMenuTrigger>
