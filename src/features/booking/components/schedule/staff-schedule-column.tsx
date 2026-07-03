@@ -1,10 +1,13 @@
 "use client";
 
+import { ChevronRight } from "lucide-react";
+
 import { AppAvatar } from "@/components/common";
+import { formatPriceFromCents } from "@/features/services";
 import { cn } from "@/lib/utils";
 
+import { formatAmPmTime, formatBookingSummary } from "../../lib/schedule-utils";
 import type { AdminBooking } from "../../types/admin-booking";
-import { BookingSummaryList } from "./booking-summary-list";
 
 interface StaffScheduleColumnProps {
   name: string;
@@ -26,35 +29,58 @@ export function StaffScheduleColumn({
   const sorted = [...bookings].sort(
     (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
   );
+  const nextBooking = sorted[0];
+  const upcomingCount = sorted.length;
 
   return (
     <button
       type="button"
       onClick={onSelect}
       className={cn(
-        "flex w-[min(100%,220px)] min-w-[180px] shrink-0 flex-col overflow-hidden rounded-2xl border bg-card text-left shadow-soft transition",
+        "flex w-full items-center gap-3 rounded-2xl border bg-card p-3.5 text-left shadow-soft transition active:scale-[0.99]",
         selected
           ? "border-primary ring-2 ring-primary/20"
           : "border-border/60 hover:border-primary/30",
       )}
     >
-      <div className="flex items-center gap-2 border-b border-border/50 px-3 py-2.5">
-        <AppAvatar src={photoUrl} alt={name} size="sm" />
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">{name}</p>
-          <p className="text-[10px] text-muted-foreground">
-            {bookings.length} booking{bookings.length === 1 ? "" : "s"} today
+      <AppAvatar src={photoUrl} alt={name} size="lg" className="shrink-0" />
+
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="truncate text-base font-semibold tracking-tight">
+            {name}
           </p>
+          <span className="shrink-0 text-xs font-medium text-muted-foreground">
+            {upcomingCount} today
+          </span>
         </div>
+
+        {nextBooking ? (
+          <p className="mt-1 truncate text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">
+              {formatAmPmTime(nextBooking.startsAt)}
+            </span>
+            {" · "}
+            {formatBookingSummary(nextBooking)}
+            {nextBooking.priceCents > 0
+              ? ` · ${formatPriceFromCents(nextBooking.priceCents, currency)}`
+              : ""}
+          </p>
+        ) : (
+          <p className="mt-1 text-sm text-muted-foreground">
+            No bookings · tap to add
+          </p>
+        )}
+
+        {upcomingCount > 1 ? (
+          <p className="mt-0.5 text-xs text-primary">
+            +{upcomingCount - 1} more booking
+            {upcomingCount - 1 === 1 ? "" : "s"}
+          </p>
+        ) : null}
       </div>
 
-      <div className="min-h-28 flex-1 px-2 py-2">
-        <BookingSummaryList bookings={sorted} currency={currency} compact />
-      </div>
-
-      <div className="border-t border-border/40 px-3 py-2 text-center text-[10px] font-medium text-primary">
-        Tap for times & availability
-      </div>
+      <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
     </button>
   );
 }

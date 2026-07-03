@@ -21,6 +21,7 @@ import { useBookingRealtime } from "../../lib/booking-schedule-realtime";
 import { useBookingAlerts } from "../../context/booking-alert-provider";
 import {
   buildStartsAtIso,
+  formatScheduleDate,
   generateTimeSlotOptions,
   isValidServiceDuration,
   isWorkingToday,
@@ -52,11 +53,11 @@ export function BookingScheduleContent() {
     try {
       const [staffResponse, bookingsResponse, optionsResponse, roomsResponse] =
         await Promise.all([
-        fetch("/api/admin/staff"),
-        fetch(`/api/admin/bookings?date=${date}`),
-        fetch("/api/admin/service-options"),
-        fetch("/api/admin/rooms"),
-      ]);
+          fetch("/api/admin/staff"),
+          fetch(`/api/admin/bookings?date=${date}`),
+          fetch("/api/admin/service-options"),
+          fetch("/api/admin/rooms"),
+        ]);
 
       const staffData = (await staffResponse.json()) as { staff?: StaffRecord[] };
       const bookingsData = (await bookingsResponse.json()) as {
@@ -113,9 +114,13 @@ export function BookingScheduleContent() {
     null;
 
   const formTimeOptions = useMemo(() => {
-    // Admin can create bookings at any time. Conflicts are validated on submit.
     return generateTimeSlotOptions("00:00", "24:00");
   }, []);
+
+  const dateLabel = useMemo(
+    () => formatScheduleDate(`${date}T12:00:00`),
+    [date],
+  );
 
   const openCreateForm = (partial?: Partial<BookingFormValues>) => {
     setForm({
@@ -204,63 +209,61 @@ export function BookingScheduleContent() {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Bookings</h1>
-          <p className="text-sm text-muted-foreground">
-            Service prices are set under{" "}
-            <Link href="/admin/services" className="text-primary underline">
-              Services
-            </Link>
-            . Start times use 5-minute steps.
-          </p>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="sticky top-14 z-10 border-b border-border/40 bg-background/90 px-3 py-3 backdrop-blur-md supports-backdrop-filter:bg-background/75 sm:px-4">
+        <div className="mx-auto flex w-full max-w-3xl items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-base font-semibold tracking-tight">
+              {dateLabel}
+            </p>
+            <p className="truncate text-xs text-muted-foreground">
+              {workingStaff.length} staff working
+            </p>
+          </div>
           <Input
             type="date"
             value={date}
             onChange={(event) => setDate(event.target.value)}
-            className="h-10 rounded-xl"
+            className="h-11 w-[9.5rem] shrink-0 rounded-xl text-sm"
           />
           <AppButton
             type="button"
-            className="rounded-xl"
+            className="h-11 shrink-0 rounded-xl px-4"
             onClick={() => openCreateForm()}
             disabled={serviceOptions.length === 0}
           >
             <Plus className="size-4" />
-            Add booking
+            Book
           </AppButton>
         </div>
       </div>
 
-      {serviceOptions.length === 0 ? (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
-          No service pricing yet.{" "}
-          <Link href="/admin/services" className="font-medium text-primary underline">
-            Add durations and prices
-          </Link>{" "}
-          before creating bookings.
-        </div>
-      ) : null}
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-3 py-4 sm:px-4 sm:py-5">
+        {serviceOptions.length === 0 ? (
+          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
+            No service pricing yet.{" "}
+            <Link href="/admin/services" className="font-medium text-primary underline">
+              Add durations and prices
+            </Link>{" "}
+            before creating bookings.
+          </div>
+        ) : null}
 
-      {workingStaff.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 px-6 py-10 text-center">
-          <CalendarDays className="mx-auto mb-3 size-8 text-muted-foreground" />
-          <p className="font-medium">No staff scheduled for this day</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Add staff or update working days to see the live booking board.
-          </p>
-        </div>
-      ) : (
-        <div className="-mx-4 overflow-x-auto px-4 pb-2">
-          <div className="flex min-w-max gap-3">
+        {workingStaff.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 px-6 py-12 text-center">
+            <CalendarDays className="mx-auto mb-3 size-8 text-muted-foreground" />
+            <p className="font-medium">No staff scheduled for this day</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Add staff or update working days to see the schedule.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {workingStaff.map((member) => (
               <StaffScheduleColumn
                 key={member.id}
                 name={member.name}
-                photoUrl={member.photoUrl}
+                photoUrl={member.photoUrl ?? member.photos[0]?.url}
                 bookings={bookings.filter(
                   (booking) => booking.staffId === member.id,
                 )}
@@ -270,8 +273,12 @@ export function BookingScheduleContent() {
               />
             ))}
           </div>
-        </div>
-      )}
+        )}
+
+        <p className="pb-2 text-center text-xs text-muted-foreground">
+          Tap a staff member to view times and create a booking.
+        </p>
+      </div>
 
       <Sheet
         open={selectedStaffId !== null}

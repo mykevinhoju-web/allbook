@@ -1,7 +1,6 @@
 "use client";
 
 import { ImagePlus, X } from "lucide-react";
-import Image from "next/image";
 import { useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
@@ -14,6 +13,45 @@ interface MultiImageUploadProps {
   onRemoveExisting?: (photoId: string) => void;
   disabled?: boolean;
   className?: string;
+}
+
+function ExistingPhoto({
+  photo,
+  onRemove,
+}: {
+  photo: { id: string; url: string };
+  onRemove?: (photoId: string) => void;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  return (
+    <div className="relative aspect-square overflow-hidden rounded-xl border border-border/60 bg-muted/20">
+      {failed ? (
+        <div className="flex size-full items-center justify-center bg-muted/40 px-2 text-center text-xs text-muted-foreground">
+          Image unavailable
+        </div>
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={photo.url}
+          alt="Staff photo"
+          className="size-full object-cover"
+          loading="lazy"
+          onError={() => setFailed(true)}
+        />
+      )}
+      {onRemove ? (
+        <button
+          type="button"
+          className="absolute top-2 right-2 flex size-7 items-center justify-center rounded-full bg-black/60 text-white"
+          onClick={() => onRemove(photo.id)}
+          aria-label="Remove photo"
+        >
+          <X className="size-4" />
+        </button>
+      ) : null}
+    </div>
+  );
 }
 
 export function MultiImageUpload({
@@ -43,28 +81,11 @@ export function MultiImageUpload({
     <div className={cn("space-y-3", className)}>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {existingUrls.map((photo) => (
-          <div
+          <ExistingPhoto
             key={photo.id}
-            className="relative aspect-square overflow-hidden rounded-xl border border-border/60 bg-muted/20"
-          >
-            <Image
-              src={photo.url}
-              alt="Staff photo"
-              fill
-              className="object-cover"
-              sizes="160px"
-            />
-            {onRemoveExisting ? (
-              <button
-                type="button"
-                className="absolute top-2 right-2 flex size-7 items-center justify-center rounded-full bg-black/60 text-white"
-                onClick={() => onRemoveExisting(photo.id)}
-                aria-label="Remove photo"
-              >
-                <X className="size-4" />
-              </button>
-            ) : null}
-          </div>
+            photo={photo}
+            onRemove={onRemoveExisting}
+          />
         ))}
 
         {value.map((file, index) => (
