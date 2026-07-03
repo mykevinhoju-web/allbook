@@ -1,10 +1,11 @@
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-import type { Database } from "@/types/database";
 import { getStaffSessionCookieName, verifyStaffSession } from "@/lib/staff-session";
-import { requireTenantFromRequest } from "@/lib/admin/tenant-context";
+import {
+  createServiceSupabase,
+  requireTenantFromRequest,
+} from "@/lib/admin/tenant-context";
 
 export async function POST(request: Request) {
   let body: {
@@ -47,10 +48,7 @@ export async function POST(request: Request) {
     // If tenant context/session can't be resolved, default to admin subscription.
   }
 
-  const supabase = createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
+  const supabase = createServiceSupabase();
 
   const { error } = await supabase.from("push_subscriptions").upsert(
     {

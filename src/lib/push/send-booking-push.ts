@@ -1,8 +1,6 @@
 import webpush from "web-push";
 
-import { createClient } from "@supabase/supabase-js";
-
-import type { Database } from "@/types/database";
+import { createServiceSupabase } from "@/lib/admin/tenant-context";
 
 import { getVapidSubject, isPushConfigured } from "./vapid";
 
@@ -28,10 +26,7 @@ export async function sendBookingPushNotifications(
     return { sent: 0, failed: 0, skipped: true as const };
   }
 
-  const supabase = createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
+  const supabase = createServiceSupabase();
 
   const { data: subscriptions, error } = await supabase
     .from("push_subscriptions")

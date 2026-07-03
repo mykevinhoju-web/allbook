@@ -28,6 +28,14 @@ create policy "push_subscriptions_select"
   to anon, authenticated
   using (true);
 
+drop policy if exists "push_subscriptions_update" on public.push_subscriptions;
+create policy "push_subscriptions_update"
+  on public.push_subscriptions
+  for update
+  to anon, authenticated
+  using (true)
+  with check (true);
+
 drop policy if exists "push_subscriptions_delete" on public.push_subscriptions;
 create policy "push_subscriptions_delete"
   on public.push_subscriptions
