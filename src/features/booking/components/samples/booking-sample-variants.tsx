@@ -7,14 +7,19 @@ import { cn } from "@/lib/utils";
 import type { BookingStaffItem } from "../../config/booking-staff-mock";
 import { useBookingAlertSender } from "../../hooks/use-booking-alert-sender";
 
+type SampleTone = "default" | "pink";
+
 function StaffPhoto({
   staff,
   size = "md",
+  tone = "default",
 }: {
   staff: BookingStaffItem;
   size?: "sm" | "md" | "lg" | "xl";
+  tone?: SampleTone;
 }) {
   const [imageError, setImageError] = useState(false);
+  const isPink = tone === "pink";
 
   const sizeClass = {
     sm: "size-14",
@@ -26,12 +31,20 @@ function StaffPhoto({
   return (
     <div
       className={cn(
-        "relative shrink-0 overflow-hidden rounded-full bg-muted shadow-sm ring-2 ring-background",
+        "relative shrink-0 overflow-hidden rounded-full shadow-sm",
+        isPink
+          ? "bg-rose-50 ring-2 ring-rose-100 shadow-rose-100/40"
+          : "bg-muted ring-2 ring-background",
         sizeClass,
       )}
     >
       {imageError ? (
-        <div className="flex size-full items-center justify-center bg-primary/10 text-sm font-semibold text-primary">
+        <div
+          className={cn(
+            "flex size-full items-center justify-center text-sm font-semibold",
+            isPink ? "bg-rose-50 text-rose-500" : "bg-primary/10 text-primary",
+          )}
+        >
           {staff.initials}
         </div>
       ) : (
@@ -51,15 +64,18 @@ function StaffPhoto({
 function BookButton({
   staff,
   variant = "pill",
+  tone = "default",
   className,
 }: {
   staff: BookingStaffItem;
   variant?: "pill" | "full" | "outline";
+  tone?: SampleTone;
   className?: string;
 }) {
   const { sendBookingRequest, sendingId, canSend } = useBookingAlertSender();
   const isSending = sendingId === staff.id;
   const available = staff.available && canSend;
+  const isPink = tone === "pink";
 
   const base =
     "inline-flex items-center justify-center font-medium transition-all active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40";
@@ -69,22 +85,34 @@ function BookButton({
       base,
       "h-9 min-w-[72px] rounded-full px-4 text-sm",
       available
-        ? "bg-primary text-primary-foreground shadow-sm"
-        : "bg-muted text-muted-foreground",
+        ? isPink
+          ? "bg-gradient-to-r from-rose-400 to-pink-500 text-white shadow-sm shadow-rose-200/60"
+          : "bg-primary text-primary-foreground shadow-sm"
+        : isPink
+          ? "bg-rose-50 text-rose-300"
+          : "bg-muted text-muted-foreground",
     ),
     full: cn(
       base,
       "h-11 w-full rounded-xl text-sm",
       available
-        ? "bg-primary text-primary-foreground"
-        : "bg-muted text-muted-foreground",
+        ? isPink
+          ? "bg-gradient-to-r from-rose-400 to-pink-500 text-white shadow-sm shadow-rose-200/60"
+          : "bg-primary text-primary-foreground"
+        : isPink
+          ? "bg-rose-50 text-rose-300"
+          : "bg-muted text-muted-foreground",
     ),
     outline: cn(
       base,
       "h-10 w-full rounded-xl border text-sm",
       available
-        ? "border-primary text-primary"
-        : "border-border text-muted-foreground",
+        ? isPink
+          ? "border-rose-300 bg-white text-rose-600 active:bg-rose-50"
+          : "border-primary text-primary"
+        : isPink
+          ? "border-rose-100 text-rose-300"
+          : "border-border text-muted-foreground",
     ),
   };
 
@@ -102,23 +130,55 @@ function BookButton({
 
 interface BookingSampleListProps {
   staff: BookingStaffItem[];
+  tone?: SampleTone;
+}
+
+interface BookingSamplePortraitProps extends BookingSampleListProps {
+  buttonTone?: SampleTone;
+  buttonVariant?: "pill" | "full" | "outline";
 }
 
 /** Sample 1 — Clean list rows (Apple-style) */
-export function BookingSampleList({ staff }: BookingSampleListProps) {
+export function BookingSampleList({ staff, tone = "default" }: BookingSampleListProps) {
+  const isPink = tone === "pink";
+
   return (
-    <ul className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-soft">
+    <ul
+      className={cn(
+        "divide-y overflow-hidden rounded-2xl border shadow-soft",
+        isPink
+          ? "divide-rose-100 border-rose-100 bg-white shadow-[0_4px_24px_-8px_rgba(251,113,133,0.2)]"
+          : "divide-border/60 border-border/60 bg-card",
+      )}
+    >
       {staff.map((member) => (
         <li
           key={member.id}
-          className="flex items-center gap-3 px-4 py-3.5 transition-colors active:bg-muted/40"
+          className={cn(
+            "flex items-center gap-3 px-4 py-3.5 transition-colors",
+            isPink ? "active:bg-rose-50/70" : "active:bg-muted/40",
+          )}
         >
-          <StaffPhoto staff={member} size="md" />
+          <StaffPhoto staff={member} size="md" tone={tone} />
           <div className="min-w-0 flex-1">
-            <p className="truncate font-medium text-foreground">{member.name}</p>
-            <p className="truncate text-xs text-muted-foreground">{member.role}</p>
+            <p
+              className={cn(
+                "truncate font-medium",
+                isPink ? "text-stone-800" : "text-foreground",
+              )}
+            >
+              {member.name}
+            </p>
+            <p
+              className={cn(
+                "truncate text-xs",
+                isPink ? "text-rose-400/80" : "text-muted-foreground",
+              )}
+            >
+              {member.role}
+            </p>
           </div>
-          <BookButton staff={member} variant="pill" />
+          <BookButton staff={member} variant="pill" tone={tone} />
         </li>
       ))}
     </ul>
@@ -151,21 +211,52 @@ export function BookingSampleCards({ staff }: BookingSampleListProps) {
 }
 
 /** Sample 3 — Portrait-first minimal rows */
-export function BookingSamplePortrait({ staff }: BookingSampleListProps) {
+export function BookingSamplePortrait({
+  staff,
+  tone = "default",
+  buttonTone,
+  buttonVariant = "outline",
+}: BookingSamplePortraitProps) {
+  const isPink = tone === "pink";
+  const resolvedButtonTone = buttonTone ?? tone;
+
   return (
     <div className="space-y-2">
       {staff.map((member) => (
         <article
           key={member.id}
-          className="flex items-center gap-4 rounded-2xl bg-card px-3 py-3 shadow-soft ring-1 ring-border/40"
+          className={cn(
+            "flex items-center gap-4 rounded-2xl px-3 py-3 shadow-soft",
+            isPink
+              ? "bg-white ring-1 ring-rose-100 shadow-[0_2px_16px_-6px_rgba(251,113,133,0.18)]"
+              : "bg-card ring-1 ring-border/40",
+          )}
         >
-          <StaffPhoto staff={member} size="xl" />
+          <StaffPhoto staff={member} size="xl" tone={tone} />
           <div className="flex min-w-0 flex-1 flex-col gap-2">
             <div>
-              <p className="text-base font-semibold">{member.name}</p>
-              <p className="text-xs text-muted-foreground">{member.role}</p>
+              <p
+                className={cn(
+                  "text-base font-semibold",
+                  isPink ? "text-stone-800" : undefined,
+                )}
+              >
+                {member.name}
+              </p>
+              <p
+                className={cn(
+                  "text-xs",
+                  isPink ? "text-rose-400/80" : "text-muted-foreground",
+                )}
+              >
+                {member.role}
+              </p>
             </div>
-            <BookButton staff={member} variant="outline" />
+            <BookButton
+              staff={member}
+              variant={buttonVariant}
+              tone={resolvedButtonTone}
+            />
           </div>
         </article>
       ))}

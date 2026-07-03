@@ -11,8 +11,9 @@ const lightSamples = [
   {
     number: 1,
     title: "Sample 1 — Clean List",
-    description: "Compact rows with photo, name, and pill Book button.",
-    style: "Apple-style list",
+    description: "White & pink rows with photo, name, and pill Book button.",
+    style: "Soft rose list",
+    pink: true,
   },
   {
     number: 2,
@@ -25,6 +26,13 @@ const lightSamples = [
     title: "Sample 3 — Portrait Focus",
     description: "Bigger portraits with outlined Book button.",
     style: "Bold photo-first",
+  },
+  {
+    number: 6,
+    title: "Sample 6 — Pink CTA",
+    description: "Same portrait layout with a pink full-width Book button.",
+    style: "Pink button",
+    pink: true,
   },
 ] as const;
 
@@ -47,16 +55,22 @@ function SampleLink({
   sample,
   dark = false,
 }: {
-  sample: (typeof lightSamples)[number] | (typeof darkSamples)[number];
+  sample:
+    | (typeof lightSamples)[number]
+    | (typeof darkSamples)[number];
   dark?: boolean;
 }) {
+  const isPink = "pink" in sample && sample.pink;
+
   return (
     <Link
       href={`/booking/samples/${sample.number}`}
       className={
         dark
           ? "block rounded-2xl border border-rose-900/30 bg-gradient-to-br from-stone-900 to-stone-950 p-4 shadow-[0_0_32px_-12px_rgba(190,24,93,0.35)] transition-colors active:bg-stone-900"
-          : "block rounded-2xl border border-border/60 bg-card p-4 shadow-soft transition-colors active:bg-muted/30"
+          : isPink
+            ? "block rounded-2xl border border-rose-100 bg-white p-4 shadow-[0_4px_20px_-8px_rgba(251,113,133,0.25)] transition-colors active:bg-rose-50/50"
+            : "block rounded-2xl border border-border/60 bg-card p-4 shadow-soft transition-colors active:bg-muted/30"
       }
     >
       <div className="flex items-start justify-between gap-3">
@@ -65,17 +79,31 @@ function SampleLink({
             className={
               dark
                 ? "text-xs font-medium text-rose-300/60"
-                : "text-xs font-medium text-muted-foreground"
+                : isPink
+                  ? "text-xs font-medium text-rose-400"
+                  : "text-xs font-medium text-muted-foreground"
             }
           >
             {sample.style}
           </p>
-          <h2 className={dark ? "font-semibold text-stone-100" : "font-semibold"}>
+          <h2
+            className={
+              dark
+                ? "font-semibold text-stone-100"
+                : isPink
+                  ? "font-semibold text-stone-800"
+                  : "font-semibold"
+            }
+          >
             {sample.title}
           </h2>
           <p
             className={
-              dark ? "text-sm text-stone-400" : "text-sm text-muted-foreground"
+              dark
+                ? "text-sm text-stone-400"
+                : isPink
+                  ? "text-sm text-rose-400/70"
+                  : "text-sm text-muted-foreground"
             }
           >
             {sample.description}
@@ -85,7 +113,9 @@ function SampleLink({
           className={
             dark
               ? "mt-1 size-4 shrink-0 text-rose-400/50"
-              : "mt-1 size-4 shrink-0 text-muted-foreground"
+              : isPink
+                ? "mt-1 size-4 shrink-0 text-rose-300"
+                : "mt-1 size-4 shrink-0 text-muted-foreground"
           }
         />
       </div>

@@ -10,9 +10,10 @@ export default function BookingSample1Page() {
       sampleLabel="Sample 1"
       sampleNumber={1}
       title="Choose your therapist"
-      subtitle="Simple list — photo, name, Book."
+      subtitle="White & pink list — photo, name, Book."
+      theme="pink"
     >
-      <BookingSampleList staff={bookingStaffMock} />
+      <BookingSampleList staff={bookingStaffMock} tone="pink" />
     </BookingSampleShell>
   );
 }
