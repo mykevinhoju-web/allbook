@@ -1,4 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
+import { unstable_cache } from "next/cache";
+
+import { createServiceSupabase } from "@/lib/supabase/service";
 
 import { TENANT_ENV } from "../constants";
 import type { Tenant } from "../types";
@@ -66,13 +68,10 @@ function mapRowToTenant(row: {
   };
 }
 
-/**
- * Loads tenant by slug from the database.
- * Falls back to environment-driven config when DB is unavailable (dev/bootstrap).
- */
-export async function resolveTenantBySlug(slug: string): Promise<Tenant> {
+async function loadTenantBySlug(slug: string): Promise<Tenant> {
   try {
-    const supabase = await createClient();
+    // Service client avoids cookie-bound SSR clients and is cache-safe.
+    const supabase = createServiceSupabase();
     const { data, error } = await supabase
       .from("tenants")
       .select(
@@ -90,4 +89,16 @@ export async function resolveTenantBySlug(slug: string): Promise<Tenant> {
   }
 
   return buildTenantFromEnv(slug);
+}
+
+/**
+ * Loads tenant by slug from the database (cached ~5 minutes on the server).
+ * Falls back to environment-driven config when DB is unavailable (dev/bootstrap).
+ */
+export async function resolveTenantBySlug(slug: string): Promise<Tenant> {
+  return unstable_cache(
+    async () => loadTenantBySlug(slug),
+    ["tenant-by-slug", slug],
+    { revalidate: 300, tags: [`tenant:${slug}`, "tenants"] },
+  )();
 }

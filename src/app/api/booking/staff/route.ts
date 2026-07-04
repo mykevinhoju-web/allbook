@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { NextResponse } from "next/server";
 
 import {
@@ -7,9 +8,8 @@ import {
 } from "@/lib/admin/tenant-context";
 import { parseStaffAttributes } from "@/features/staff/utils/attributes";
 
-export async function GET(request: Request) {
-  try {
-    const tenant = await requireTenantFromRequest(request);
+const getBookingStaffForTenant = unstable_cache(
+  async (tenantId: string, currency: string) => {
     const supabase = createServiceSupabase();
 
     const { data: staffRows, error } = await supabase
@@ -17,33 +17,34 @@ export async function GET(request: Request) {
       .select(
         "id, name, status, attributes, working_days, working_hours_start, working_hours_end, sort_order",
       )
-      .eq("tenant_id", tenant.id)
+      .eq("tenant_id", tenantId)
       .eq("status", "active")
       .order("sort_order", { ascending: true })
       .order("name", { ascending: true });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 503 });
+      throw new Error(error.message);
     }
 
     const staffIds = staffRows?.map((row) => row.id) ?? [];
-    let photos: { staff_id: string; url: string; sort_order: number }[] = [];
+    const photoByStaffId = new Map<string, string>();
 
     if (staffIds.length > 0) {
       const { data: photoRows } = await supabase
         .from("staff_photos")
         .select("staff_id, url, sort_order")
-        .in("staff_id", staffIds);
+        .in("staff_id", staffIds)
+        .order("sort_order", { ascending: true });
 
-      photos = photoRows ?? [];
+      for (const photo of photoRows ?? []) {
+        if (!photoByStaffId.has(photo.staff_id)) {
+          photoByStaffId.set(photo.staff_id, photo.url);
+        }
+      }
     }
 
     const staff = (staffRows ?? []).map((row) => {
-      const memberPhotos = photos
-        .filter((photo) => photo.staff_id === row.id)
-        .sort((a, b) => a.sort_order - b.sort_order);
       const attributes = parseStaffAttributes(row.attributes as never);
-      const photoUrl = memberPhotos[0]?.url ?? null;
       const initials = row.name
         .split(/\s+/)
         .map((part) => part[0])
@@ -60,7 +61,7 @@ export async function GET(request: Request) {
             ? attributes.introduction.trim().slice(0, 48)
             : null) ?? "Therapist",
         initials,
-        photoUrl: photoUrl ?? "",
+        photoUrl: photoByStaffId.get(row.id) ?? "",
         available: row.status === "active",
         workingDays: row.working_days,
         workingHoursStart: row.working_hours_start.slice(0, 5),
@@ -68,10 +69,32 @@ export async function GET(request: Request) {
       };
     });
 
-    return NextResponse.json({ staff, currency: tenant.settings.currency });
+    return { staff, currency };
+  },
+  ["booking-staff-list"],
+  { revalidate: 30, tags: ["booking-staff"] },
+);
+
+export async function GET(request: Request) {
+  try {
+    const tenant = await requireTenantFromRequest(request);
+    const payload = await getBookingStaffForTenant(
+      tenant.id,
+      tenant.settings.currency,
+    );
+
+    return NextResponse.json(payload, {
+      headers: {
+        "Cache-Control": "private, max-age=15, stale-while-revalidate=30",
+      },
+    });
   } catch (error) {
     if (error instanceof TenantContextError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+
+    if (error instanceof Error) {
+      return NextResponse.json({ error: error.message }, { status: 503 });
     }
 
     throw error;

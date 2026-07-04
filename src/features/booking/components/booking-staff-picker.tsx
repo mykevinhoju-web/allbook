@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 
 import { cn } from "@/lib/utils";
@@ -18,12 +19,12 @@ function StaffPhoto({ staff }: { staff: BookingStaffItem }) {
           {staff.initials}
         </div>
       ) : (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
+        <Image
           src={staff.photoUrl}
           alt={staff.name}
-          className="size-full object-cover object-top"
-          loading="lazy"
+          fill
+          sizes="96px"
+          className="object-cover object-top"
           onError={() => setImageError(true)}
         />
       )}

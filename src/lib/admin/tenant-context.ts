@@ -1,5 +1,3 @@
-import { createClient } from "@supabase/supabase-js";
-
 import {
   TENANT_ENV,
   TENANT_SLUG_COOKIE,
@@ -11,7 +9,9 @@ import {
   isPlatformHost,
 } from "@/features/tenants/utils/resolve-host";
 import { resolveTenantSlugFromHost } from "@/features/tenants/utils/resolve-slug";
-import type { Database } from "@/types/database";
+import { createServiceSupabase } from "@/lib/supabase/service";
+
+export { createServiceSupabase };
 
 function resolveTenantSlugFromEnvOrNull(): string | null {
   return (
@@ -70,10 +70,3 @@ export class TenantContextError extends Error {
   }
 }
 
-export function createServiceSupabase() {
-  return createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY ??
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
-}

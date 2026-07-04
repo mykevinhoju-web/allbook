@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, ChevronLeft } from "lucide-react";
@@ -69,17 +70,19 @@ function StaffAvatar({ staff }: { staff: StaffInfo }) {
       .toUpperCase();
 
   return (
-    <div className="mx-auto size-28 overflow-hidden rounded-full bg-rose-50 ring-4 ring-white shadow-md shadow-rose-100/50">
+    <div className="relative mx-auto size-28 overflow-hidden rounded-full bg-rose-50 ring-4 ring-white shadow-md shadow-rose-100/50">
       {imageError || !staff.photoUrl ? (
         <div className="flex size-full items-center justify-center text-xl font-semibold text-rose-500">
           {initials}
         </div>
       ) : (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
+        <Image
           src={staff.photoUrl}
           alt={staff.name}
-          className="size-full object-cover object-top"
+          fill
+          sizes="112px"
+          className="object-cover object-top"
+          priority
           onError={() => setImageError(true)}
         />
       )}

@@ -1,7 +1,10 @@
+import { cache } from "react";
+
 import { getTenantSlug } from "./get-tenant-slug";
 import { resolveTenantBySlug } from "./resolve-tenant";
 
-export async function getTenant() {
+/** Request-scoped: layout + metadata share one resolution. */
+export const getTenant = cache(async () => {
   const slug = await getTenantSlug();
 
   if (!slug) {
@@ -11,9 +14,10 @@ export async function getTenant() {
   }
 
   return resolveTenantBySlug(slug);
-}
+});
 
-export async function getTenantOptional() {
+/** Request-scoped: layout + metadata share one resolution. */
+export const getTenantOptional = cache(async () => {
   const slug = await getTenantSlug();
 
   if (!slug) {
@@ -21,4 +25,4 @@ export async function getTenantOptional() {
   }
 
   return resolveTenantBySlug(slug);
-}
+});
