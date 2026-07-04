@@ -33,6 +33,13 @@ import type { StaffFormValues, StaffRecord } from "../types";
 import { StaffFormField } from "./staff-form-field";
 import { StaffFormSection } from "./staff-form-section";
 
+interface ShiftBookingRow {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  customerName: string | null;
+}
+
 function TenantDatetimeField({
   id,
   value,
@@ -124,6 +131,7 @@ export function StaffForm({ staffId }: StaffFormProps) {
   const [hasLoginAccount, setHasLoginAccount] = useState(false);
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
+  const [shiftBookings, setShiftBookings] = useState<ShiftBookingRow[]>([]);
   const [localNow, setLocalNow] = useState(() =>
     toDatetimeLocalValue(new Date(), timeZone),
   );
@@ -183,6 +191,38 @@ export function StaffForm({ staffId }: StaffFormProps) {
       }
     })();
   }, [staffId]);
+
+  useEffect(() => {
+    if (!staffId || !form.shiftStartsAt || !form.shiftEndsAt) {
+      setShiftBookings([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const params = new URLSearchParams({
+          staffId,
+          from: datetimeLocalToIso(form.shiftStartsAt, timeZone),
+          to: datetimeLocalToIso(form.shiftEndsAt, timeZone),
+        });
+        const response = await fetch(`/api/admin/bookings?${params}`);
+        const data = (await response.json()) as {
+          bookings?: ShiftBookingRow[];
+        };
+        if (!cancelled && response.ok) {
+          setShiftBookings(data.bookings ?? []);
+        }
+      } catch {
+        if (!cancelled) setShiftBookings([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [staffId, form.shiftStartsAt, form.shiftEndsAt, timeZone]);
 
   const updateField = <K extends keyof StaffFormValues>(
     key: K,
@@ -406,6 +446,35 @@ export function StaffForm({ staffId }: StaffFormProps) {
               </p>
             </div>
           ) : null}
+
+          <StaffFormField label="Bookings in this window">
+            {!staffId ? (
+              <p className="text-sm text-muted-foreground">
+                Save staff first to see bookings.
+              </p>
+            ) : shiftBookings.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No bookings in this window yet.
+              </p>
+            ) : (
+              <ul className="space-y-2 rounded-xl border border-border/60 bg-background p-3">
+                {shiftBookings.map((booking) => (
+                  <li
+                    key={booking.id}
+                    className="flex flex-col gap-0.5 text-sm sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <span className="font-medium text-foreground">
+                      {booking.customerName ?? "Customer"}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {formatShiftDateTime(booking.startsAt, timeZone)} –{" "}
+                      {formatShiftDateTime(booking.endsAt, timeZone)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </StaffFormField>
         </StaffFormSection>
 
         <StaffFormSection title="Login">
