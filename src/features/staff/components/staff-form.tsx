@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 
-import { AppButton, MultiImageUpload, toast } from "@/components/common";
+import { AppButton, toast } from "@/components/common";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -27,20 +27,11 @@ import { useOptionalTenant } from "@/features/tenants";
 
 import {
   getDefaultStaffFormValues,
-  languageOptions,
   nationalityOptions,
-  staffStatusOptions,
 } from "../config";
-import type { StaffFormValues, StaffPhoto, StaffRecord, StaffStatus } from "../types";
+import type { StaffFormValues, StaffRecord } from "../types";
 import { StaffFormField } from "./staff-form-field";
 import { StaffFormSection } from "./staff-form-section";
-
-interface ShiftBookingRow {
-  id: string;
-  startsAt: string;
-  endsAt: string;
-  customerName: string | null;
-}
 
 function TenantDatetimeField({
   id,
@@ -120,23 +111,6 @@ interface StaffFormProps {
   staffId?: string;
 }
 
-async function uploadPhotos(staffId: string, photos: File[]) {
-  if (photos.length === 0) return;
-
-  const formData = new FormData();
-  photos.forEach((photo) => formData.append("photos", photo));
-
-  const response = await fetch(`/api/admin/staff/${staffId}/photos`, {
-    method: "POST",
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const data = (await response.json()) as { error?: string };
-    throw new Error(data.error ?? "Failed to upload photos.");
-  }
-}
-
 function mapRecordToForm(record: StaffRecord): StaffFormValues {
   return {
     photos: [],
@@ -165,11 +139,9 @@ export function StaffForm({ staffId }: StaffFormProps) {
   const [form, setForm] = useState<StaffFormValues>(() =>
     getDefaultStaffFormValues(timeZone),
   );
-  const [existingPhotos, setExistingPhotos] = useState<StaffPhoto[]>([]);
   const [hasLoginAccount, setHasLoginAccount] = useState(false);
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
-  const [shiftBookings, setShiftBookings] = useState<ShiftBookingRow[]>([]);
   const [localNow, setLocalNow] = useState(() =>
     toDatetimeLocalValue(new Date(), timeZone),
   );
@@ -203,7 +175,6 @@ export function StaffForm({ staffId }: StaffFormProps) {
         }
 
         setForm(mapRecordToForm(data.staff));
-        setExistingPhotos(data.staff.photos);
 
         const accountResponse = await fetch(`/api/admin/staff/${staffId}/account`);
         const accountData = (await accountResponse.json()) as {
@@ -231,71 +202,11 @@ export function StaffForm({ staffId }: StaffFormProps) {
     })();
   }, [staffId]);
 
-  useEffect(() => {
-    if (!staffId || !form.shiftStartsAt || !form.shiftEndsAt) {
-      setShiftBookings([]);
-      return;
-    }
-
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        const params = new URLSearchParams({
-          staffId,
-          from: datetimeLocalToIso(form.shiftStartsAt, timeZone),
-          to: datetimeLocalToIso(form.shiftEndsAt, timeZone),
-        });
-        const response = await fetch(`/api/admin/bookings?${params}`);
-        const data = (await response.json()) as {
-          bookings?: ShiftBookingRow[];
-        };
-        if (!cancelled && response.ok) {
-          setShiftBookings(data.bookings ?? []);
-        }
-      } catch {
-        if (!cancelled) setShiftBookings([]);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [staffId, form.shiftStartsAt, form.shiftEndsAt, timeZone]);
-
   const updateField = <K extends keyof StaffFormValues>(
     key: K,
     value: StaffFormValues[K],
   ) => {
     setForm((current) => ({ ...current, [key]: value }));
-  };
-
-  const toggleLanguage = (language: string) => {
-    updateField(
-      "languages",
-      form.languages.includes(language)
-        ? form.languages.filter((item) => item !== language)
-        : [...form.languages, language],
-    );
-  };
-
-  const removeExistingPhoto = async (photoId: string) => {
-    if (!staffId) return;
-
-    const response = await fetch(
-      `/api/admin/staff/${staffId}/photos?photoId=${photoId}`,
-      { method: "DELETE" },
-    );
-
-    if (!response.ok) {
-      const data = (await response.json()) as { error?: string };
-      toast.error("Could not remove photo", { description: data.error });
-      return;
-    }
-
-    setExistingPhotos((current) =>
-      current.filter((photo) => photo.id !== photoId),
-    );
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -353,8 +264,6 @@ export function StaffForm({ staffId }: StaffFormProps) {
       if (!response.ok || !data.staff) {
         throw new Error(data.hint ?? data.error ?? "Failed to save staff.");
       }
-
-      await uploadPhotos(data.staff.id, form.photos);
 
       if (form.loginId.trim()) {
         const accountResponse = await fetch(
@@ -414,9 +323,6 @@ export function StaffForm({ staffId }: StaffFormProps) {
           <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
             {isEditing ? "Edit Staff" : "Add Staff"}
           </h1>
-          <p className="hidden text-sm text-muted-foreground sm:block">
-            Profile fields can be extended later without changing the page layout.
-          </p>
         </div>
       </div>
 
@@ -424,64 +330,16 @@ export function StaffForm({ staffId }: StaffFormProps) {
         className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-8"
         onSubmit={(event) => void handleSubmit(event)}
       >
-        <StaffFormSection
-          title="Photos"
-          description="Upload 1 to 5 photos. The first image is used as the main profile photo."
-        >
-          <MultiImageUpload
-            value={form.photos}
-            existingUrls={existingPhotos}
-            maxFiles={5}
-            onChange={(photos) => updateField("photos", photos)}
-            onRemoveExisting={(photoId) => void removeExistingPhoto(photoId)}
-          />
-        </StaffFormSection>
-
-        <StaffFormSection
-          title="Basic Information"
-          description="Core profile details shown on the booking page."
-        >
-          <div className="grid gap-5 sm:grid-cols-2">
-            <StaffFormField label="Name" htmlFor="staff-name" required>
-              <Input
-                id="staff-name"
-                value={form.name}
-                onChange={(event) => updateField("name", event.target.value)}
-                placeholder="Full name"
-                className={inputClassName}
-              />
-            </StaffFormField>
-
-            <StaffFormField label="Age" htmlFor="staff-age">
-              <Input
-                id="staff-age"
-                value={form.age}
-                onChange={(event) => updateField("age", event.target.value)}
-                placeholder="e.g. 28"
-                className={inputClassName}
-              />
-            </StaffFormField>
-
-            <StaffFormField label="Height" htmlFor="staff-height">
-              <Input
-                id="staff-height"
-                value={form.height}
-                onChange={(event) => updateField("height", event.target.value)}
-                placeholder="e.g. 165 cm"
-                className={inputClassName}
-              />
-            </StaffFormField>
-
-            <StaffFormField label="Weight" htmlFor="staff-weight">
-              <Input
-                id="staff-weight"
-                value={form.weight}
-                onChange={(event) => updateField("weight", event.target.value)}
-                placeholder="e.g. 55 kg"
-                className={inputClassName}
-              />
-            </StaffFormField>
-          </div>
+        <StaffFormSection title="Profile">
+          <StaffFormField label="Name" htmlFor="staff-name" required>
+            <Input
+              id="staff-name"
+              value={form.name}
+              onChange={(event) => updateField("name", event.target.value)}
+              placeholder="Full name"
+              className={inputClassName}
+            />
+          </StaffFormField>
 
           <StaffFormField label="Nationality" htmlFor="staff-nationality">
             <Select
@@ -503,63 +361,11 @@ export function StaffForm({ staffId }: StaffFormProps) {
               </SelectContent>
             </Select>
           </StaffFormField>
-
-          <StaffFormField label="Languages">
-            <div className="flex flex-wrap gap-2">
-              {languageOptions.map((language) => {
-                const isSelected = form.languages.includes(language);
-
-                return (
-                  <button
-                    key={language}
-                    type="button"
-                    onClick={() => toggleLanguage(language)}
-                    className={cn(
-                      "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
-                      isSelected
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border/60 bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground",
-                    )}
-                  >
-                    {language}
-                  </button>
-                );
-              })}
-            </div>
-          </StaffFormField>
-
-          <StaffFormField label="Experience" htmlFor="staff-experience">
-            <Input
-              id="staff-experience"
-              value={form.experience}
-              onChange={(event) =>
-                updateField("experience", event.target.value)
-              }
-              placeholder="e.g. 5 years in massage therapy"
-              className={inputClassName}
-            />
-          </StaffFormField>
-
-          <StaffFormField label="Introduction" htmlFor="staff-introduction">
-            <textarea
-              id="staff-introduction"
-              value={form.introduction}
-              onChange={(event) =>
-                updateField("introduction", event.target.value)
-              }
-              placeholder="Brief bio and specialties..."
-              rows={4}
-              className={cn(
-                inputClassName,
-                "min-h-28 w-full resize-y px-3 py-2.5",
-              )}
-            />
-          </StaffFormField>
         </StaffFormSection>
 
         <StaffFormSection
-          title="Availability window"
-          description="Tap the field to open the calendar. Times use this shop's timezone. Overnight is fine — e.g. 4 Jul 14:00 to 5 Jul 02:00."
+          title="Available times"
+          description="Tap a field to pick date and time. Uses this shop's timezone."
         >
           <p className="text-xs text-muted-foreground">
             Shop time now:{" "}
@@ -618,65 +424,11 @@ export function StaffForm({ staffId }: StaffFormProps) {
                   timeZone,
                 )}
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Customers can only book open times inside this window.
-              </p>
             </div>
           ) : null}
-
-          <StaffFormField label="Bookings in this window">
-            {shiftBookings.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No bookings in this window yet.
-              </p>
-            ) : (
-              <ul className="space-y-2 rounded-xl border border-border/60 bg-background p-3">
-                {shiftBookings.map((booking) => (
-                  <li
-                    key={booking.id}
-                    className="flex flex-col gap-0.5 text-sm sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <span className="font-medium text-foreground">
-                      {booking.customerName ?? "Customer"}
-                    </span>
-                    <span className="text-muted-foreground">
-                      {formatShiftDateTime(booking.startsAt, timeZone)} –{" "}
-                      {formatShiftDateTime(booking.endsAt, timeZone)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </StaffFormField>
-
-          <StaffFormField label="Status" htmlFor="staff-status">
-            <Select
-              value={form.status}
-              onValueChange={(value) =>
-                updateField("status", (value ?? "active") as StaffStatus)
-              }
-            >
-              <SelectTrigger
-                id="staff-status"
-                className={cn(inputClassName, "w-full sm:w-48")}
-              >
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent>
-                {staffStatusOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </StaffFormField>
         </StaffFormSection>
 
-        <StaffFormSection
-          title="Login credentials"
-          description="Staff use these to sign in and receive booking alerts for their own schedule only."
-        >
+        <StaffFormSection title="Login">
           <div className="grid gap-5 sm:grid-cols-2">
             <StaffFormField label="Login ID" htmlFor="staff-login-id">
               <Input
@@ -709,15 +461,6 @@ export function StaffForm({ staffId }: StaffFormProps) {
               />
             </StaffFormField>
           </div>
-
-          <p className="text-xs text-muted-foreground">
-            Staff sign in at{" "}
-            <Link href="/staff/login" className="text-primary underline">
-              /staff/login
-            </Link>
-            , then tap <strong>Turn on alerts</strong> to receive push
-            notifications for their bookings.
-          </p>
         </StaffFormSection>
 
         <div className="flex flex-col-reverse gap-3 border-t border-border/40 pt-6 sm:flex-row sm:justify-end">
