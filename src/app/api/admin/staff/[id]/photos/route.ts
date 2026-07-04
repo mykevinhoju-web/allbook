@@ -1,3 +1,4 @@
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 
 import {
@@ -103,6 +104,8 @@ export async function POST(
       });
     }
 
+    revalidateTag("booking-staff");
+
     return NextResponse.json({ photos: uploaded });
   } catch (error) {
     if (error instanceof TenantContextError) {
@@ -153,6 +156,8 @@ export async function DELETE(
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 503 });
     }
+
+    revalidateTag("booking-staff");
 
     return NextResponse.json({ ok: true });
   } catch (error) {

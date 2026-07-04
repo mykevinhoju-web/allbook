@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 
-import { AppButton, toast } from "@/components/common";
+import { AppButton, MultiImageUpload, toast } from "@/components/common";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -29,7 +29,7 @@ import {
   getDefaultStaffFormValues,
   nationalityOptions,
 } from "../config";
-import type { StaffFormValues, StaffRecord } from "../types";
+import type { StaffFormValues, StaffPhoto, StaffRecord } from "../types";
 import { StaffFormField } from "./staff-form-field";
 import { StaffFormSection } from "./staff-form-section";
 
@@ -38,6 +38,23 @@ interface ShiftBookingRow {
   startsAt: string;
   endsAt: string;
   customerName: string | null;
+}
+
+async function uploadPhotos(staffId: string, photos: File[]) {
+  if (photos.length === 0) return;
+
+  const formData = new FormData();
+  photos.forEach((photo) => formData.append("photos", photo));
+
+  const response = await fetch(`/api/admin/staff/${staffId}/photos`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const data = (await response.json()) as { error?: string };
+    throw new Error(data.error ?? "Failed to upload photos.");
+  }
 }
 
 function TenantDatetimeField({
@@ -128,6 +145,7 @@ export function StaffForm({ staffId }: StaffFormProps) {
   const [form, setForm] = useState<StaffFormValues>(() =>
     getDefaultStaffFormValues(timeZone),
   );
+  const [existingPhotos, setExistingPhotos] = useState<StaffPhoto[]>([]);
   const [hasLoginAccount, setHasLoginAccount] = useState(false);
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
@@ -165,6 +183,7 @@ export function StaffForm({ staffId }: StaffFormProps) {
         }
 
         setForm(mapRecordToForm(data.staff));
+        setExistingPhotos(data.staff.photos);
 
         const accountResponse = await fetch(`/api/admin/staff/${staffId}/account`);
         const accountData = (await accountResponse.json()) as {
@@ -231,6 +250,25 @@ export function StaffForm({ staffId }: StaffFormProps) {
     setForm((current) => ({ ...current, [key]: value }));
   };
 
+  const removeExistingPhoto = async (photoId: string) => {
+    if (!staffId) return;
+
+    const response = await fetch(
+      `/api/admin/staff/${staffId}/photos?photoId=${photoId}`,
+      { method: "DELETE" },
+    );
+
+    if (!response.ok) {
+      const data = (await response.json()) as { error?: string };
+      toast.error("Could not remove photo", { description: data.error });
+      return;
+    }
+
+    setExistingPhotos((current) =>
+      current.filter((photo) => photo.id !== photoId),
+    );
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
@@ -287,6 +325,8 @@ export function StaffForm({ staffId }: StaffFormProps) {
       if (!response.ok || !data.staff) {
         throw new Error(data.hint ?? data.error ?? "Failed to save staff.");
       }
+
+      await uploadPhotos(data.staff.id, form.photos);
 
       if (form.loginId.trim()) {
         const accountResponse = await fetch(
@@ -353,6 +393,19 @@ export function StaffForm({ staffId }: StaffFormProps) {
         className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-8"
         onSubmit={(event) => void handleSubmit(event)}
       >
+        <StaffFormSection
+          title="Photos"
+          description="Add up to 5 photos. The first image is the main profile photo."
+        >
+          <MultiImageUpload
+            value={form.photos}
+            existingUrls={existingPhotos}
+            maxFiles={5}
+            onChange={(photos) => updateField("photos", photos)}
+            onRemoveExisting={(photoId) => void removeExistingPhoto(photoId)}
+          />
+        </StaffFormSection>
+
         <StaffFormSection title="Profile">
           <StaffFormField label="Name" htmlFor="staff-name" required>
             <Input
