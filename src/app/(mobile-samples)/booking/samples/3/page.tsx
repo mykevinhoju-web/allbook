@@ -2,7 +2,6 @@ import {
   BookingSamplePortrait,
   BookingSampleShell,
 } from "@/features/booking/components/samples";
-import { bookingStaffMock } from "@/features/booking/config/booking-staff-mock";
 
 export default function BookingSample3Page() {
   return (
@@ -12,7 +11,7 @@ export default function BookingSample3Page() {
       title="Select staff"
       subtitle="Portrait-first rows with outlined Book."
     >
-      <BookingSamplePortrait staff={bookingStaffMock} />
+      <BookingSamplePortrait />
     </BookingSampleShell>
   );
 }

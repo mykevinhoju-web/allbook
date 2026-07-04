@@ -73,10 +73,6 @@ function ReserveButton({
   );
 }
 
-interface DarkSampleProps {
-  staff?: BookingStaffItem[];
-}
-
 /** Sample 4 — Noir cinematic cards with full-bleed portraits */
 export function BookingSampleNoir() {
   const { staff, loading } = useBookingStaffList();
