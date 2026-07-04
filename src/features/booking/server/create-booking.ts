@@ -1,8 +1,16 @@
 import { after } from "next/server";
 
 import { assignAvailableRoom } from "@/features/booking/lib/assign-room";
-import { hasStaffBookingConflict } from "@/features/booking/lib/staff-conflict";
-import { isStartTimeOnFiveMinuteSlot } from "@/features/booking/lib/schedule-utils";
+import {
+  hasRoomBookingConflict,
+  hasStaffBookingConflict,
+} from "@/features/booking/lib/staff-conflict";
+import {
+  DEFAULT_BOOKING_TIMEZONE,
+  datetimeLocalToIso,
+  defaultShiftWindow,
+  isStartTimeOnFiveMinuteSlot,
+} from "@/features/booking/lib/schedule-utils";
 import {
   getShiftWindowFromAttributes,
   parseStaffAttributes,
@@ -152,14 +160,15 @@ export async function createTenantBooking(
   }
 
   const attributes = parseStaffAttributes(staffRow.attributes as never);
-  const { shiftStartsAt, shiftEndsAt } =
-    getShiftWindowFromAttributes(attributes);
+  const configured = getShiftWindowFromAttributes(attributes);
+  const timeZone = tenant.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
 
+  let shiftStartsAt = configured.shiftStartsAt;
+  let shiftEndsAt = configured.shiftEndsAt;
   if (!shiftStartsAt || !shiftEndsAt) {
-    throw new CreateBookingError(
-      "No availability window is set for this staff member.",
-      400,
-    );
+    const fallback = defaultShiftWindow(new Date(), timeZone);
+    shiftStartsAt = datetimeLocalToIso(fallback.shiftStartsAt, timeZone);
+    shiftEndsAt = datetimeLocalToIso(fallback.shiftEndsAt, timeZone);
   }
 
   const endsAt = new Date(startsAt.getTime() + durationMinutes * 60_000);
@@ -203,6 +212,21 @@ export async function createTenantBooking(
   if (!roomId) {
     throw new CreateBookingError(
       "No treatment room available for this time slot.",
+      409,
+    );
+  }
+
+  if (
+    await hasRoomBookingConflict(
+      supabase,
+      tenant.id,
+      roomId,
+      startsAt.toISOString(),
+      endsAt.toISOString(),
+    )
+  ) {
+    throw new CreateBookingError(
+      "This room is already booked for that time slot.",
       409,
     );
   }

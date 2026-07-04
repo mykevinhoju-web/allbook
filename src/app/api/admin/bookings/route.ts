@@ -2,7 +2,10 @@ import { after } from "next/server";
 import { NextResponse } from "next/server";
 
 import { assignAvailableRoom } from "@/features/booking/lib/assign-room";
-import { hasStaffBookingConflict } from "@/features/booking/lib/staff-conflict";
+import {
+  hasRoomBookingConflict,
+  hasStaffBookingConflict,
+} from "@/features/booking/lib/staff-conflict";
 import { isStartTimeOnFiveMinuteSlot } from "@/features/booking/lib/schedule-utils";
 import { getServicePriceCents } from "@/features/services/server/get-service-price";
 import { sendBookingPushNotifications } from "@/lib/push/send-booking-push";
@@ -261,6 +264,21 @@ export async function POST(request: Request) {
     if (!roomId) {
       return NextResponse.json(
         { error: "No treatment room available for this time slot." },
+        { status: 409 },
+      );
+    }
+
+    if (
+      await hasRoomBookingConflict(
+        supabase,
+        tenant.id,
+        roomId,
+        startsAt.toISOString(),
+        endsAt.toISOString(),
+      )
+    ) {
+      return NextResponse.json(
+        { error: "This room is already booked for that time slot." },
         { status: 409 },
       );
     }

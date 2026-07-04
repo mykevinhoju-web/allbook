@@ -239,13 +239,14 @@ export function StaffForm({ staffId }: StaffFormProps) {
       return;
     }
 
-    if (form.shiftStartsAt < localNow) {
-      toast.error("Available from must be after the shop's current time");
+    if (form.shiftEndsAt <= form.shiftStartsAt) {
+      toast.error("Available until must be after available from");
       return;
     }
 
-    if (form.shiftEndsAt <= form.shiftStartsAt) {
-      toast.error("Available until must be after available from");
+    // Allow an ongoing window that started earlier; only the end must be in the future.
+    if (form.shiftEndsAt <= localNow) {
+      toast.error("Available until must be after the shop's current time");
       return;
     }
 
@@ -405,7 +406,6 @@ export function StaffForm({ staffId }: StaffFormProps) {
               <TenantDatetimeField
                 id="shift-start"
                 value={form.shiftStartsAt}
-                min={localNow}
                 timeZone={timeZone}
                 onChange={(value) => {
                   updateField("shiftStartsAt", value);

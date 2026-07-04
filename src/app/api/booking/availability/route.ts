@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import {
   DEFAULT_BOOKING_TIMEZONE,
+  datetimeLocalToIso,
+  defaultShiftWindow,
   formatShiftDateTime,
   getSlotsInShiftWindow,
 } from "@/features/booking/lib/schedule-utils";
@@ -21,6 +23,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const staffId = searchParams.get("staffId");
     const durationMinutes = Number(searchParams.get("durationMinutes"));
+    const timeZone = tenant.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
 
     if (!staffId) {
       return NextResponse.json({ error: "staffId is required." }, { status: 400 });
@@ -47,17 +50,15 @@ export async function GET(request: Request) {
     }
 
     const attributes = parseStaffAttributes(staffRow.attributes as never);
-    const { shiftStartsAt, shiftEndsAt } =
-      getShiftWindowFromAttributes(attributes);
+    const configured = getShiftWindowFromAttributes(attributes);
 
+    // Unconfigured staff: use live default window (now → +12h) so slots appear.
+    let shiftStartsAt = configured.shiftStartsAt;
+    let shiftEndsAt = configured.shiftEndsAt;
     if (!shiftStartsAt || !shiftEndsAt) {
-      return NextResponse.json({
-        slots: [],
-        booked: [],
-        shiftStartsAt: null,
-        shiftEndsAt: null,
-        reason: "No availability window is set for this staff member.",
-      });
+      const fallback = defaultShiftWindow(new Date(), timeZone);
+      shiftStartsAt = datetimeLocalToIso(fallback.shiftStartsAt, timeZone);
+      shiftEndsAt = datetimeLocalToIso(fallback.shiftEndsAt, timeZone);
     }
 
     if (staffRow.status !== "active") {
@@ -84,7 +85,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: bookingsError.message }, { status: 503 });
     }
 
-    const timeZone = tenant.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
     const bookingRows = bookings ?? [];
     const slots = getSlotsInShiftWindow(
       shiftStartsAt,

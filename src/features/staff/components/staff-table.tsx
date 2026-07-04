@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { CalendarPlus, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 
 import { AppAvatar, AppButton, ConfirmDialog, toast } from "@/components/common";
 import { DataTable, type DataTableColumn } from "@/components/common/data-table";
@@ -126,6 +126,17 @@ export function StaffTable({ staff, onChanged }: StaffTableProps) {
             <MoreHorizontal className="size-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              render={
+                <Link
+                  href={`/admin/bookings?staffId=${row.id}`}
+                  className="flex items-center gap-2"
+                />
+              }
+            >
+              <CalendarPlus className="size-4" />
+              Book
+            </DropdownMenuItem>
             <DropdownMenuItem
               render={
                 <Link href={`/admin/staff/${row.id}`} className="flex items-center gap-2" />

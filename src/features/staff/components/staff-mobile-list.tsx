@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import {
+  CalendarPlus,
+  ChevronRight,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 
 import { AppAvatar, AppButton } from "@/components/common";
 import {
@@ -78,6 +84,17 @@ export function StaffMobileList({ staff, onDelete }: StaffMobileListProps) {
                 <MoreHorizontal className="size-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  render={
+                    <Link
+                      href={`/admin/bookings?staffId=${member.id}`}
+                      className="flex items-center gap-2"
+                    />
+                  }
+                >
+                  <CalendarPlus className="size-4" />
+                  Book
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   render={
                     <Link

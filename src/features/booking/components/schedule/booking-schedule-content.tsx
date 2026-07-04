@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, Plus } from "lucide-react";
 
 import { AppButton, toast } from "@/components/common";
@@ -24,7 +25,6 @@ import {
   formatScheduleDate,
   generateTimeSlotOptions,
   isValidServiceDuration,
-  isWorkingToday,
   todayDateInputValue,
 } from "../../lib/schedule-utils";
 import type { AdminBooking } from "../../types/admin-booking";
@@ -38,6 +38,7 @@ import { StaffScheduleDetail } from "./staff-schedule-detail";
 
 export function BookingScheduleContent() {
   const tenant = useTenant();
+  const searchParams = useSearchParams();
   const { alertsEnabled, notifyBooking } = useBookingAlerts();
   const [date, setDate] = useState(todayDateInputValue());
   const [staff, setStaff] = useState<StaffRecord[]>([]);
@@ -48,6 +49,7 @@ export function BookingScheduleContent() {
   const [showCreate, setShowCreate] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<BookingFormValues>(defaultBookingFormValues);
+  const prefillsApplied = useRef(false);
 
   const loadSchedule = useCallback(async () => {
     try {
@@ -100,13 +102,30 @@ export function BookingScheduleContent() {
       : "";
 
   const workingStaff = useMemo(
-    () =>
-      staff.filter(
-        (member) =>
-          member.status === "active" && isWorkingToday(member.workingDays),
-      ),
+    () => staff.filter((member) => member.status === "active"),
     [staff],
   );
+
+  useEffect(() => {
+    if (prefillsApplied.current || serviceOptions.length === 0) return;
+
+    const staffId = searchParams.get("staffId");
+    const roomId = searchParams.get("roomId");
+    if (!staffId && !roomId) return;
+
+    prefillsApplied.current = true;
+    if (staffId) setSelectedStaffId(staffId);
+    setForm({
+      ...defaultBookingFormValues,
+      staffId: staffId ?? "",
+      roomId: roomId ?? "",
+      durationMinutes:
+        serviceOptions[0]?.durationMinutes != null
+          ? String(serviceOptions[0].durationMinutes)
+          : "",
+    });
+    setShowCreate(true);
+  }, [searchParams, serviceOptions]);
 
   const selectedStaff =
     workingStaff.find((member) => member.id === selectedStaffId) ??
