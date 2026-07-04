@@ -12,10 +12,10 @@ import {
   type BookingFormValues,
 } from "@/features/booking/components/schedule/booking-form-sheet";
 import type { AdminBooking, AdminRoom } from "@/features/booking/types/admin-booking";
+import { useAdminAvailabilitySlots } from "@/features/booking/hooks/use-admin-availability-slots";
 import {
   buildStartsAtIso,
   formatAmPmTime,
-  generateTimeSlotOptions,
   isValidServiceDuration,
   todayDateInputValue,
 } from "@/features/booking/lib/schedule-utils";
@@ -115,6 +115,27 @@ export function RoomsScheduleContent() {
     serviceOptions[0]?.durationMinutes != null
       ? String(serviceOptions[0].durationMinutes)
       : "";
+
+  const selectedRoomBookings = useMemo(
+    () =>
+      bookings
+        .filter((booking) => booking.roomId === form.roomId)
+        .map((booking) => ({
+          startsAt: booking.startsAt,
+          endsAt: booking.endsAt,
+        })),
+    [bookings, form.roomId],
+  );
+
+  const { timeSlotOptions, timeSlotsLoading, timeSlotsHint } =
+    useAdminAvailabilitySlots({
+      staffId: form.staffId,
+      durationMinutes: form.durationMinutes,
+      date,
+      timeZone: tenant.settings.timezone,
+      roomId: form.roomId,
+      roomBookings: selectedRoomBookings,
+    });
 
   const openCreateForm = (roomId: string) => {
     setForm({
@@ -300,7 +321,9 @@ export function RoomsScheduleContent() {
         }))}
         serviceOptions={serviceOptions}
         currency={tenant.settings.currency}
-        timeOptions={generateTimeSlotOptions("00:00", "24:00")}
+        timeSlotOptions={timeSlotOptions}
+        timeSlotsLoading={timeSlotsLoading}
+        timeSlotsHint={timeSlotsHint}
         values={form}
         onChange={setForm}
         onSubmit={() => void createBooking()}

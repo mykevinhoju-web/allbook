@@ -39,6 +39,11 @@ export const defaultBookingFormValues: BookingFormValues = {
   customerEmail: "",
 };
 
+export interface BookingTimeSlotOption {
+  value: string;
+  label: string;
+}
+
 interface BookingFormSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -48,7 +53,12 @@ interface BookingFormSheetProps {
   roomOptions: { id: string; name: string }[];
   serviceOptions: ServiceOption[];
   currency?: string;
-  timeOptions: string[];
+  /** @deprecated Prefer timeSlotOptions (staff availability slots). */
+  timeOptions?: string[];
+  /** Available start times for the selected staff (and room, if set). */
+  timeSlotOptions?: BookingTimeSlotOption[];
+  timeSlotsLoading?: boolean;
+  timeSlotsHint?: string | null;
   values: BookingFormValues;
   onChange: (values: BookingFormValues) => void;
   onSubmit: () => void;
@@ -136,7 +146,10 @@ export function BookingFormSheet({
   roomOptions,
   serviceOptions,
   currency = "AUD",
-  timeOptions,
+  timeOptions = [],
+  timeSlotOptions,
+  timeSlotsLoading = false,
+  timeSlotsHint = null,
   values,
   onChange,
   onSubmit,
@@ -149,14 +162,25 @@ export function BookingFormSheet({
     onChange({ ...values, [key]: value });
   };
 
+  const slotOptions =
+    timeSlotOptions ??
+    timeOptions.map((time) => ({
+      value: time,
+      label: formatAmPmTime(buildStartsAtIso(date, time)),
+    }));
+
   const previewTime =
     values.startsAt.length > 0
-      ? formatAmPmTime(buildStartsAtIso(date, values.startsAt))
+      ? (slotOptions.find((slot) => slot.value === values.startsAt)?.label ??
+        formatAmPmTime(buildStartsAtIso(date, values.startsAt)))
       : null;
 
   const selectedOption = serviceOptions.find(
     (option) => String(option.durationMinutes) === values.durationMinutes,
   );
+
+  const timeDisabled =
+    !values.staffId || !values.durationMinutes || timeSlotsLoading;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -184,7 +208,9 @@ export function BookingFormSheet({
               <IosRow label="Staff" required>
                 <IosSelect
                   value={values.staffId}
-                  onChange={(value) => update("staffId", value)}
+                  onChange={(value) =>
+                    onChange({ ...values, staffId: value, startsAt: "" })
+                  }
                 >
                   <option value="">Select staff</option>
                   {staffOptions.map((member) => (
@@ -195,24 +221,16 @@ export function BookingFormSheet({
                 </IosSelect>
               </IosRow>
 
-              <IosRow label="Start time" required>
-                <IosSelect
-                  value={values.startsAt}
-                  onChange={(value) => update("startsAt", value)}
-                >
-                  <option value="">Select time</option>
-                  {timeOptions.map((time) => (
-                    <option key={time} value={time}>
-                      {formatAmPmTime(buildStartsAtIso(date, time))}
-                    </option>
-                  ))}
-                </IosSelect>
-              </IosRow>
-
-              <IosRow label="Service" required border={false}>
+              <IosRow label="Service" required>
                 <IosSelect
                   value={values.durationMinutes}
-                  onChange={(value) => update("durationMinutes", value)}
+                  onChange={(value) =>
+                    onChange({
+                      ...values,
+                      durationMinutes: value,
+                      startsAt: "",
+                    })
+                  }
                 >
                   <option value="">Select service</option>
                   {serviceOptions.map((option) => (
@@ -232,6 +250,32 @@ export function BookingFormSheet({
                   <p className="text-sm font-medium text-primary">
                     {formatPriceFromCents(selectedOption.priceCents, currency)}
                   </p>
+                ) : null}
+              </IosRow>
+
+              <IosRow label="Available times" required border={false}>
+                <IosSelect
+                  value={values.startsAt}
+                  onChange={(value) => update("startsAt", value)}
+                  className={timeDisabled ? "opacity-50" : undefined}
+                >
+                  <option value="">
+                    {!values.staffId
+                      ? "Select staff first"
+                      : !values.durationMinutes
+                        ? "Select service first"
+                        : timeSlotsLoading
+                          ? "Loading times…"
+                          : "Select time"}
+                  </option>
+                  {slotOptions.map((slot) => (
+                    <option key={slot.value} value={slot.value}>
+                      {slot.label}
+                    </option>
+                  ))}
+                </IosSelect>
+                {timeSlotsHint ? (
+                  <p className="text-xs text-muted-foreground">{timeSlotsHint}</p>
                 ) : null}
               </IosRow>
             </IosGroupedCard>

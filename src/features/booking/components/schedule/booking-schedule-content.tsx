@@ -20,10 +20,10 @@ import type { StaffRecord } from "@/features/staff/types";
 
 import { useBookingRealtime } from "../../lib/booking-schedule-realtime";
 import { useBookingAlerts } from "../../context/booking-alert-provider";
+import { useAdminAvailabilitySlots } from "../../hooks/use-admin-availability-slots";
 import {
   buildStartsAtIso,
   formatScheduleDate,
-  generateTimeSlotOptions,
   isValidServiceDuration,
   todayDateInputValue,
 } from "../../lib/schedule-utils";
@@ -132,9 +132,26 @@ export function BookingScheduleContent() {
     staff.find((member) => member.id === selectedStaffId) ??
     null;
 
-  const formTimeOptions = useMemo(() => {
-    return generateTimeSlotOptions("00:00", "24:00");
-  }, []);
+  const selectedRoomBookings = useMemo(
+    () =>
+      bookings
+        .filter((booking) => booking.roomId && booking.roomId === form.roomId)
+        .map((booking) => ({
+          startsAt: booking.startsAt,
+          endsAt: booking.endsAt,
+        })),
+    [bookings, form.roomId],
+  );
+
+  const { timeSlotOptions, timeSlotsLoading, timeSlotsHint } =
+    useAdminAvailabilitySlots({
+      staffId: form.staffId,
+      durationMinutes: form.durationMinutes,
+      date,
+      timeZone: tenant.settings.timezone,
+      roomId: form.roomId || undefined,
+      roomBookings: selectedRoomBookings,
+    });
 
   const dateLabel = useMemo(
     () => formatScheduleDate(`${date}T12:00:00`),
@@ -341,7 +358,9 @@ export function BookingScheduleContent() {
         roomOptions={rooms}
         serviceOptions={serviceOptions}
         currency={tenant.settings.currency}
-        timeOptions={formTimeOptions}
+        timeSlotOptions={timeSlotOptions}
+        timeSlotsLoading={timeSlotsLoading}
+        timeSlotsHint={timeSlotsHint}
         values={form}
         onChange={setForm}
         onSubmit={() => void createBooking()}
