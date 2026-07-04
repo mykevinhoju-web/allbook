@@ -39,49 +39,17 @@ function TenantDatetimeField({
   min,
   timeZone,
   onChange,
-  placeholder,
 }: {
   id: string;
   value: string;
   min?: string;
   timeZone: string;
   onChange: (value: string) => void;
-  placeholder: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const openPicker = () => {
-    const input = inputRef.current;
-    if (!input) return;
-    try {
-      input.showPicker();
-    } catch {
-      input.focus();
-      input.click();
-    }
-  };
-
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={openPicker}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          openPicker();
-        }
-      }}
-      className={cn(
-        "relative flex h-10 w-full cursor-pointer items-center rounded-xl border border-border/60 bg-background px-3 text-left text-sm shadow-sm transition-colors",
-        "hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30",
-      )}
-    >
-      <span className={value ? "text-foreground" : "text-muted-foreground"}>
-        {value
-          ? formatShiftDateTime(datetimeLocalToIso(value, timeZone), timeZone)
-          : placeholder}
-      </span>
+    <div className="space-y-1.5">
       <input
         ref={inputRef}
         id={id}
@@ -96,10 +64,24 @@ function TenantDatetimeField({
           }
           onChange(next);
         }}
-        onClick={(event) => event.stopPropagation()}
-        className="absolute inset-0 cursor-pointer opacity-0"
-        aria-label={placeholder}
+        onClick={(event) => {
+          const input = event.currentTarget;
+          try {
+            input.showPicker();
+          } catch {
+            // Native picker opens on tap for browsers without showPicker.
+          }
+        }}
+        className={cn(
+          inputClassName,
+          "w-full cursor-pointer bg-background px-3 text-foreground",
+        )}
       />
+      {value ? (
+        <p className="text-xs text-muted-foreground">
+          {formatShiftDateTime(datetimeLocalToIso(value, timeZone), timeZone)}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -385,7 +367,6 @@ export function StaffForm({ staffId }: StaffFormProps) {
                 value={form.shiftStartsAt}
                 min={localNow}
                 timeZone={timeZone}
-                placeholder="Select start date & time"
                 onChange={(value) => {
                   updateField("shiftStartsAt", value);
                   if (form.shiftEndsAt && form.shiftEndsAt <= value) {
@@ -405,7 +386,6 @@ export function StaffForm({ staffId }: StaffFormProps) {
                     : localNow
                 }
                 timeZone={timeZone}
-                placeholder="Select end date & time"
                 onChange={(value) => updateField("shiftEndsAt", value)}
               />
             </StaffFormField>
