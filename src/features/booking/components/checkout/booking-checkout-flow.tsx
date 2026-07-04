@@ -480,26 +480,21 @@ export function BookingCheckoutFlow({
                       {slotsReason ?? "No times available for this day."}
                     </p>
                   ) : (
-                    <div className="mt-2 grid grid-cols-3 gap-2">
+                    <select
+                      value={startsAt}
+                      onChange={(event) => {
+                        setStartsAt(event.target.value);
+                        setFormHint(null);
+                      }}
+                      className={fieldClass}
+                    >
+                      <option value="">Select a time</option>
                       {slots.map((slot) => (
-                        <button
-                          key={slot}
-                          type="button"
-                          onClick={() => {
-                            setStartsAt(slot);
-                            setFormHint(null);
-                          }}
-                          className={cn(
-                            "rounded-xl border py-2.5 text-sm font-medium transition-colors",
-                            startsAt === slot
-                              ? "border-[#e91e63] bg-white text-[#e91e63]"
-                              : "border-pink-100 bg-white/80 text-stone-700",
-                          )}
-                        >
+                        <option key={slot} value={slot}>
                           {formatAmPmTime(buildStartsAtIso(date, slot))}
-                        </button>
+                        </option>
                       ))}
-                    </div>
+                    </select>
                   )}
                 </div>
 

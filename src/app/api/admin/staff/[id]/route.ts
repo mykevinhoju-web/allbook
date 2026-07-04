@@ -7,6 +7,7 @@ import {
   TenantContextError,
 } from "@/lib/admin/tenant-context";
 import {
+  getBookableSlotsFromAttributes,
   parseStaffAttributes,
   toStaffAttributesJson,
   type StaffAttributes,
@@ -31,14 +32,17 @@ function mapStaffRow(
   },
   photos: { id: string; url: string; sort_order: number }[],
 ) {
+  const attributes = parseStaffAttributes(row.attributes as never);
+
   return {
     id: row.id,
     name: row.name,
     status: row.status as StaffStatus,
-    attributes: parseStaffAttributes(row.attributes as never),
+    attributes,
     workingDays: row.working_days,
     workingHoursStart: row.working_hours_start.slice(0, 5),
     workingHoursEnd: row.working_hours_end.slice(0, 5),
+    bookableSlots: getBookableSlotsFromAttributes(attributes),
     sortOrder: row.sort_order,
     photos: photos
       .sort((a, b) => a.sort_order - b.sort_order)
@@ -109,24 +113,50 @@ export async function PATCH(
       workingDays?: string[];
       workingHoursStart?: string;
       workingHoursEnd?: string;
+      bookableSlots?: string[];
     };
 
     const supabase = createServiceSupabase();
+
+    const { data: existing, error: existingError } = await supabase
+      .from("staff")
+      .select("attributes")
+      .eq("tenant_id", tenant.id)
+      .eq("id", id)
+      .maybeSingle();
+
+    if (existingError) {
+      return NextResponse.json({ error: existingError.message }, { status: 503 });
+    }
+
+    if (!existing) {
+      return NextResponse.json({ error: "Staff not found." }, { status: 404 });
+    }
+
     const updates: Database["public"]["Tables"]["staff"]["Update"] = {
       updated_at: new Date().toISOString(),
     };
 
     if (body.name !== undefined) updates.name = body.name.trim();
     if (body.status !== undefined) updates.status = body.status;
-    if (body.attributes !== undefined) {
-      updates.attributes = toStaffAttributesJson(body.attributes);
-    }
     if (body.workingDays !== undefined) updates.working_days = body.workingDays;
     if (body.workingHoursStart !== undefined) {
       updates.working_hours_start = body.workingHoursStart;
     }
     if (body.workingHoursEnd !== undefined) {
       updates.working_hours_end = body.workingHoursEnd;
+    }
+
+    if (body.attributes !== undefined || body.bookableSlots !== undefined) {
+      const current = parseStaffAttributes(existing.attributes as never);
+      const next: StaffAttributes = {
+        ...current,
+        ...(body.attributes ?? {}),
+      };
+      if (body.bookableSlots !== undefined) {
+        next.bookableSlots = body.bookableSlots;
+      }
+      updates.attributes = toStaffAttributesJson(next);
     }
 
     const { data, error } = await supabase

@@ -26,3 +26,13 @@ export function toStaffAttributesJson(
 ): Record<string, Json> {
   return attributes as Record<string, Json>;
 }
+
+export function getBookableSlotsFromAttributes(
+  attributes: StaffAttributes,
+): string[] {
+  const slots = attributes.bookableSlots;
+  if (!Array.isArray(slots)) return [];
+  return slots
+    .filter((slot): slot is string => typeof slot === "string")
+    .map((slot) => slot.slice(0, 5));
+}

@@ -2,10 +2,15 @@ import { NextResponse } from "next/server";
 
 import {
   buildStartsAtIso,
-  getAvailableStartSlots,
+  getAvailableBookableSlots,
+  hourlySlotsBetween,
   isWorkingToday,
   todayDateInputValue,
 } from "@/features/booking/lib/schedule-utils";
+import {
+  getBookableSlotsFromAttributes,
+  parseStaffAttributes,
+} from "@/features/staff/utils/attributes";
 import {
   createServiceSupabase,
   requireTenantFromRequest,
@@ -72,7 +77,7 @@ export async function GET(request: Request) {
     const { data: staffRow, error: staffError } = await supabase
       .from("staff")
       .select(
-        "id, name, status, working_days, working_hours_start, working_hours_end",
+        "id, name, status, attributes, working_days, working_hours_start, working_hours_end",
       )
       .eq("tenant_id", tenant.id)
       .eq("id", staffId)
@@ -85,6 +90,12 @@ export async function GET(request: Request) {
     const workingDays = staffRow.working_days ?? [];
     const workingHoursStart = (staffRow.working_hours_start ?? "09:00").slice(0, 5);
     const workingHoursEnd = (staffRow.working_hours_end ?? "18:00").slice(0, 5);
+    const attributes = parseStaffAttributes(staffRow.attributes as never);
+    const configuredSlots = getBookableSlotsFromAttributes(attributes);
+    const bookableSlots =
+      configuredSlots.length > 0
+        ? configuredSlots
+        : hourlySlotsBetween(workingHoursStart, workingHoursEnd);
 
     if (staffRow.status !== "active") {
       return NextResponse.json({
@@ -93,6 +104,7 @@ export async function GET(request: Request) {
         staffId,
         reason: "Staff is not available.",
         workingDays,
+        bookableSlots,
       });
     }
 
@@ -104,6 +116,7 @@ export async function GET(request: Request) {
         staffId,
         reason: "Staff does not work on this day.",
         workingDays,
+        bookableSlots,
       });
     }
 
@@ -148,10 +161,9 @@ export async function GET(request: Request) {
       updatedAt: row.starts_at,
     }));
 
-    const slots = getAvailableStartSlots(
+    const slots = getAvailableBookableSlots(
       date,
-      workingHoursStart,
-      workingHoursEnd,
+      bookableSlots,
       adminBookings,
       durationMinutes,
     );
@@ -162,8 +174,7 @@ export async function GET(request: Request) {
       slots,
       slotIsos: slots.map((slot) => buildStartsAtIso(date, slot)),
       workingDays,
-      workingHoursStart,
-      workingHoursEnd,
+      bookableSlots,
       reason:
         slots.length === 0
           ? "No open slots left for this day. Try another date."

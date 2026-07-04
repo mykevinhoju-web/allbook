@@ -37,6 +37,7 @@ export interface StaffRecord {
   workingDays: string[];
   workingHoursStart: string;
   workingHoursEnd: string;
+  bookableSlots: string[];
   sortOrder: number;
   photos: StaffPhoto[];
   photoUrl?: string;
@@ -68,5 +69,6 @@ export interface StaffFormValues {
   workingDays: string[];
   workingHoursStart: string;
   workingHoursEnd: string;
+  bookableSlots: string[];
   status: StaffStatus;
 }

@@ -61,5 +61,16 @@ export const defaultStaffFormValues = {
   workingDays: ["mon", "tue", "wed", "thu", "fri"] as string[],
   workingHoursStart: "09:00",
   workingHoursEnd: "18:00",
+  bookableSlots: [
+    "09:00",
+    "10:00",
+    "11:00",
+    "12:00",
+    "13:00",
+    "14:00",
+    "15:00",
+    "16:00",
+    "17:00",
+  ] as string[],
   status: "active" as StaffStatus,
 };

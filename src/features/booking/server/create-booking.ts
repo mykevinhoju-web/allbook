@@ -1,11 +1,32 @@
 import { assignAvailableRoom } from "@/features/booking/lib/assign-room";
 import { hasStaffBookingConflict } from "@/features/booking/lib/staff-conflict";
-import { isStartTimeOnFiveMinuteSlot } from "@/features/booking/lib/schedule-utils";
+import {
+  hourlySlotsBetween,
+  isStartTimeOnFiveMinuteSlot,
+  normalizeTimeSlot,
+} from "@/features/booking/lib/schedule-utils";
+import {
+  getBookableSlotsFromAttributes,
+  parseStaffAttributes,
+} from "@/features/staff/utils/attributes";
 import { getServicePriceCents } from "@/features/services/server/get-service-price";
 import { sendBookingPushNotifications } from "@/lib/push/send-booking-push";
 import { createServiceSupabase } from "@/lib/admin/tenant-context";
 import type { Tenant } from "@/features/tenants/types";
 import type { BookingStatus } from "@/types";
+
+function formatTimeInZone(iso: string, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(iso));
+
+  const hour = parts.find((part) => part.type === "hour")?.value ?? "00";
+  const minute = parts.find((part) => part.type === "minute")?.value ?? "00";
+  return `${hour === "24" ? "00" : hour}:${minute}`;
+}
 
 export interface CreatedBooking {
   id: string;
@@ -120,6 +141,41 @@ export async function createTenantBooking(
   if (!isStartTimeOnFiveMinuteSlot(startsAt.toISOString())) {
     throw new CreateBookingError(
       "Start time must be on a 5-minute step (e.g. 10:00, 10:05).",
+      400,
+    );
+  }
+
+  const { data: staffRow } = await supabase
+    .from("staff")
+    .select("id, status, attributes, working_hours_start, working_hours_end")
+    .eq("tenant_id", tenant.id)
+    .eq("id", body.staffId)
+    .maybeSingle();
+
+  if (!staffRow || staffRow.status !== "active") {
+    throw new CreateBookingError("Staff is not available.", 400);
+  }
+
+  const attributes = parseStaffAttributes(staffRow.attributes as never);
+  const configuredSlots = getBookableSlotsFromAttributes(attributes);
+  const bookableSlots =
+    configuredSlots.length > 0
+      ? configuredSlots
+      : hourlySlotsBetween(
+          staffRow.working_hours_start.slice(0, 5),
+          staffRow.working_hours_end.slice(0, 5),
+        );
+
+  const startTime = normalizeTimeSlot(
+    formatTimeInZone(
+      startsAt.toISOString(),
+      tenant.settings.timezone || "Australia/Sydney",
+    ),
+  );
+
+  if (!startTime || !bookableSlots.includes(startTime)) {
+    throw new CreateBookingError(
+      "Selected time is not available for this staff member.",
       400,
     );
   }

@@ -6,6 +6,7 @@ import {
   TenantContextError,
 } from "@/lib/admin/tenant-context";
 import {
+  getBookableSlotsFromAttributes,
   parseStaffAttributes,
   toStaffAttributesJson,
   type StaffAttributes,
@@ -27,14 +28,17 @@ function mapStaffRow(
   },
   photos: { id: string; url: string; sort_order: number }[],
 ) {
+  const attributes = parseStaffAttributes(row.attributes as never);
+
   return {
     id: row.id,
     name: row.name,
     status: row.status as StaffStatus,
-    attributes: parseStaffAttributes(row.attributes as never),
+    attributes,
     workingDays: row.working_days,
     workingHoursStart: row.working_hours_start.slice(0, 5),
     workingHoursEnd: row.working_hours_end.slice(0, 5),
+    bookableSlots: getBookableSlotsFromAttributes(attributes),
     sortOrder: row.sort_order,
     photos: photos
       .sort((a, b) => a.sort_order - b.sort_order)
@@ -107,11 +111,27 @@ export async function POST(request: Request) {
       workingDays?: string[];
       workingHoursStart?: string;
       workingHoursEnd?: string;
+      bookableSlots?: string[];
     };
 
     if (!body.name?.trim()) {
       return NextResponse.json({ error: "Name is required." }, { status: 400 });
     }
+
+    const attributes: StaffAttributes = {
+      ...(body.attributes ?? {}),
+      bookableSlots: body.bookableSlots ?? [
+        "09:00",
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+      ],
+    };
 
     const supabase = createServiceSupabase();
     const { data, error } = await supabase
@@ -120,7 +140,7 @@ export async function POST(request: Request) {
         tenant_id: tenant.id,
         name: body.name.trim(),
         status: body.status ?? "active",
-        attributes: toStaffAttributesJson(body.attributes ?? {}),
+        attributes: toStaffAttributesJson(attributes),
         working_days: body.workingDays ?? ["mon", "tue", "wed", "thu", "fri"],
         working_hours_start: body.workingHoursStart ?? "09:00",
         working_hours_end: body.workingHoursEnd ?? "18:00",

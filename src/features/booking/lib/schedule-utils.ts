@@ -175,6 +175,58 @@ export function generateTimeSlotOptions(
   return slots;
 }
 
+/** All HH:MM options in a day (default every 30 minutes). */
+export function allDayTimeSlots(stepMinutes = 30): string[] {
+  const slots: string[] = [];
+  for (let minute = 0; minute < MINUTES_IN_DAY; minute += stepMinutes) {
+    const hours = String(Math.floor(minute / 60)).padStart(2, "0");
+    const mins = String(minute % 60).padStart(2, "0");
+    slots.push(`${hours}:${mins}`);
+  }
+  return slots;
+}
+
+export function normalizeTimeSlot(value: string): string | null {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (
+    Number.isNaN(hours) ||
+    Number.isNaN(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    return null;
+  }
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+export function sortTimeSlots(slots: string[]): string[] {
+  return [...slots].sort((a, b) => a.localeCompare(b));
+}
+
+/** Hourly slots between working hours (inclusive start, exclusive end). */
+export function hourlySlotsBetween(
+  workingHoursStart: string,
+  workingHoursEnd: string,
+): string[] {
+  const start = normalizeTimeSlot(workingHoursStart) ?? "09:00";
+  const end = normalizeTimeSlot(workingHoursEnd) ?? "18:00";
+  const [startH] = start.split(":").map(Number);
+  const [endH, endM] = end.split(":").map(Number);
+  const endMinutes = (endH ?? 0) * 60 + (endM ?? 0);
+  const slots: string[] = [];
+
+  for (let hour = startH ?? 9; hour * 60 < endMinutes; hour += 1) {
+    slots.push(`${String(hour).padStart(2, "0")}:00`);
+  }
+
+  return slots;
+}
+
 export function getAvailableStartSlots(
   date: string,
   workingHoursStart: string,
@@ -209,6 +261,39 @@ export function getAvailableStartSlots(
   }
 
   return slots;
+}
+
+/** Filter admin-configured bookable slots against bookings and past times. */
+export function getAvailableBookableSlots(
+  date: string,
+  bookableSlots: string[],
+  bookings: AdminBooking[],
+  durationMinutes: number,
+  options?: { now?: Date },
+): string[] {
+  const durationMs = durationMinutes * 60_000;
+  const now = options?.now ?? new Date();
+  const today = todayDateInputValue(now);
+  const earliestStart =
+    date === today ? now.getTime() + 5 * 60_000 : Number.NEGATIVE_INFINITY;
+
+  const normalized = sortTimeSlots(
+    bookableSlots
+      .map((slot) => normalizeTimeSlot(slot))
+      .filter((slot): slot is string => Boolean(slot)),
+  );
+
+  return normalized.filter((slot) => {
+    const start = parseTimeOnDate(date, slot);
+    if (start < earliestStart) return false;
+
+    const end = start + durationMs;
+    return !bookings.some((booking) => {
+      const bookingStart = new Date(booking.startsAt).getTime();
+      const bookingEnd = new Date(booking.endsAt).getTime();
+      return start < bookingEnd && end > bookingStart;
+    });
+  });
 }
 
 export function buildStartsAtIso(date: string, time: string): string {

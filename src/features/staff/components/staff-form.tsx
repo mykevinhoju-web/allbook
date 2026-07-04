@@ -17,6 +17,15 @@ import {
 import { cn } from "@/lib/utils";
 
 import {
+  allDayTimeSlots,
+  formatAmPmTime,
+  buildStartsAtIso,
+  hourlySlotsBetween,
+  sortTimeSlots,
+  todayDateInputValue,
+} from "@/features/booking/lib/schedule-utils";
+
+import {
   defaultStaffFormValues,
   languageOptions,
   nationalityOptions,
@@ -26,6 +35,8 @@ import {
 import type { StaffFormValues, StaffPhoto, StaffRecord, StaffStatus } from "../types";
 import { StaffFormField } from "./staff-form-field";
 import { StaffFormSection } from "./staff-form-section";
+
+const DAY_SLOT_OPTIONS = allDayTimeSlots(30);
 
 const inputClassName =
   "h-10 rounded-xl border-border/60 bg-background shadow-sm focus-visible:ring-2 focus-visible:ring-ring/30";
@@ -67,6 +78,13 @@ function mapRecordToForm(record: StaffRecord): StaffFormValues {
     workingDays: record.workingDays,
     workingHoursStart: record.workingHoursStart,
     workingHoursEnd: record.workingHoursEnd,
+    bookableSlots:
+      record.bookableSlots?.length > 0
+        ? record.bookableSlots
+        : hourlySlotsBetween(
+            record.workingHoursStart,
+            record.workingHoursEnd,
+          ),
     status: record.status,
   };
 }
@@ -149,6 +167,22 @@ export function StaffForm({ staffId }: StaffFormProps) {
     );
   };
 
+  const toggleBookableSlot = (slot: string) => {
+    updateField(
+      "bookableSlots",
+      form.bookableSlots.includes(slot)
+        ? form.bookableSlots.filter((item) => item !== slot)
+        : sortTimeSlots([...form.bookableSlots, slot]),
+    );
+  };
+
+  const fillBookableFromWorkingHours = () => {
+    updateField(
+      "bookableSlots",
+      hourlySlotsBetween(form.workingHoursStart, form.workingHoursEnd),
+    );
+  };
+
   const removeExistingPhoto = async (photoId: string) => {
     if (!staffId) return;
 
@@ -185,6 +219,7 @@ export function StaffForm({ staffId }: StaffFormProps) {
         workingDays: form.workingDays,
         workingHoursStart: form.workingHoursStart,
         workingHoursEnd: form.workingHoursEnd,
+        bookableSlots: form.bookableSlots,
         attributes: {
           age: form.age,
           height: form.height,
@@ -464,6 +499,60 @@ export function StaffForm({ staffId }: StaffFormProps) {
                 }
                 className={inputClassName}
               />
+            </div>
+          </StaffFormField>
+
+          <StaffFormField label="Bookable times">
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Choose start times customers can book (24-hour day, 30-minute
+                steps). Already-booked times are blocked automatically.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <AppButton
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={fillBookableFromWorkingHours}
+                >
+                  Fill from working hours
+                </AppButton>
+                <AppButton
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => updateField("bookableSlots", [])}
+                >
+                  Clear all
+                </AppButton>
+                <span className="self-center text-xs text-muted-foreground">
+                  {form.bookableSlots.length} selected
+                </span>
+              </div>
+              <div className="max-h-56 overflow-y-auto rounded-xl border border-border/60 bg-background p-2">
+                <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6">
+                  {DAY_SLOT_OPTIONS.map((slot) => {
+                    const selected = form.bookableSlots.includes(slot);
+                    return (
+                      <button
+                        key={slot}
+                        type="button"
+                        onClick={() => toggleBookableSlot(slot)}
+                        className={cn(
+                          "rounded-lg border px-1.5 py-1.5 text-xs font-medium tabular-nums transition-colors",
+                          selected
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-transparent bg-muted/40 text-muted-foreground hover:border-border hover:text-foreground",
+                        )}
+                      >
+                        {formatAmPmTime(
+                          buildStartsAtIso(todayDateInputValue(), slot),
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </StaffFormField>
 
