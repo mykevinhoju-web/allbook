@@ -17,6 +17,7 @@ import {
   buildStartsAtIso,
   formatAmPmTime,
   formatScheduleDate,
+  nextWorkingDateInputValue,
   todayDateInputValue,
 } from "../../lib/schedule-utils";
 
@@ -33,6 +34,7 @@ interface StaffInfo {
   photoUrl: string | null;
   role: string;
   initials?: string;
+  workingDays?: string[];
 }
 
 interface CreatedBooking {
@@ -143,12 +145,14 @@ export function BookingCheckoutFlow({
   const [durationMinutes, setDurationMinutes] = useState("");
   const [startsAt, setStartsAt] = useState("");
   const [slots, setSlots] = useState<string[]>([]);
+  const [slotsReason, setSlotsReason] = useState<string | null>(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerPostcode, setCustomerPostcode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [formHint, setFormHint] = useState<string | null>(null);
   const [booking, setBooking] = useState<CreatedBooking | null>(null);
 
   useEffect(() => {
@@ -172,6 +176,9 @@ export function BookingCheckoutFlow({
           if (!cancelled) {
             setStaff(member);
             if (staffData.currency) setCurrency(staffData.currency);
+            if (member?.workingDays) {
+              setDate(nextWorkingDateInputValue(member.workingDays));
+            }
           }
         }
 
@@ -181,10 +188,11 @@ export function BookingCheckoutFlow({
             currency?: string;
           };
           if (!cancelled) {
-            setServiceOptions(servicesData.options ?? []);
+            const options = servicesData.options ?? [];
+            setServiceOptions(options);
             if (servicesData.currency) setCurrency(servicesData.currency);
-            if (servicesData.options?.[0]) {
-              setDurationMinutes(String(servicesData.options[0].durationMinutes));
+            if (options[0]) {
+              setDurationMinutes(String(options[0].durationMinutes));
             }
           }
         }
@@ -199,13 +207,14 @@ export function BookingCheckoutFlow({
   }, [staffId]);
 
   useEffect(() => {
-    if (!durationMinutes || !staffId) {
+    if (!durationMinutes || !staffId || !date) {
       setSlots([]);
       return;
     }
 
     let cancelled = false;
     setLoadingSlots(true);
+    setSlotsReason(null);
 
     void (async () => {
       try {
@@ -215,13 +224,30 @@ export function BookingCheckoutFlow({
           durationMinutes,
         });
         const response = await fetch(`/api/booking/availability?${params}`);
-        const data = (await response.json()) as { slots?: string[] };
+        const data = (await response.json()) as {
+          slots?: string[];
+          reason?: string | null;
+          error?: string;
+        };
 
         if (!cancelled) {
+          if (!response.ok) {
+            setSlots([]);
+            setSlotsReason(data.error ?? "Could not load times.");
+            setStartsAt("");
+            return;
+          }
+
           setSlots(data.slots ?? []);
+          setSlotsReason(data.reason ?? null);
           setStartsAt((current) =>
             current && data.slots?.includes(current) ? current : "",
           );
+        }
+      } catch {
+        if (!cancelled) {
+          setSlots([]);
+          setSlotsReason("Could not load times.");
         }
       } finally {
         if (!cancelled) setLoadingSlots(false);
@@ -252,11 +278,32 @@ export function BookingCheckoutFlow({
     Boolean(startsAt) &&
     Boolean(durationMinutes) &&
     customerName.trim().length > 0 &&
-    customerPhone.trim().length > 0 &&
-    customerPostcode.trim().length > 0;
+    customerPhone.trim().length > 0;
+
+  const goToPayment = () => {
+    setFormHint(null);
+
+    if (!startsAt) {
+      setFormHint("Please select an available time.");
+      return;
+    }
+    if (!customerName.trim()) {
+      setFormHint("Please enter your name.");
+      return;
+    }
+    if (!customerPhone.trim()) {
+      setFormHint("Please enter your phone number.");
+      return;
+    }
+
+    setStep("payment");
+  };
 
   const submitBooking = async () => {
-    if (!startsAtIso || !durationMinutes) return;
+    if (!startsAtIso || !durationMinutes) {
+      setError("Missing appointment details.");
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -269,9 +316,9 @@ export function BookingCheckoutFlow({
           staffId,
           startsAt: startsAtIso,
           durationMinutes: Number(durationMinutes),
-          customerName,
-          customerPhone,
-          customerPostcode,
+          customerName: customerName.trim(),
+          customerPhone: customerPhone.trim(),
+          customerPostcode: customerPostcode.trim() || undefined,
         }),
       });
 
@@ -302,7 +349,7 @@ export function BookingCheckoutFlow({
   const labelClass =
     "block text-xs font-semibold uppercase tracking-wider text-[#e91e63]/80";
   const pillButtonClass =
-    "inline-flex h-11 w-full items-center justify-center rounded-full border-2 border-[#e91e63] bg-white text-sm font-semibold text-[#e91e63] transition-all active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40";
+    "inline-flex h-11 w-full items-center justify-center rounded-full border-2 border-[#e91e63] bg-white text-sm font-semibold text-[#e91e63] transition-all active:scale-[0.98] disabled:opacity-40";
 
   if (loadingStaff) {
     return (
@@ -390,7 +437,11 @@ export function BookingCheckoutFlow({
                   <DateField
                     value={date}
                     min={todayDateInputValue()}
-                    onChange={setDate}
+                    onChange={(nextDate) => {
+                      setDate(nextDate);
+                      setStartsAt("");
+                      setFormHint(null);
+                    }}
                   />
                 </div>
 
@@ -398,7 +449,11 @@ export function BookingCheckoutFlow({
                   <label className={labelClass}>Service time</label>
                   <select
                     value={durationMinutes}
-                    onChange={(event) => setDurationMinutes(event.target.value)}
+                    onChange={(event) => {
+                      setDurationMinutes(event.target.value);
+                      setStartsAt("");
+                      setFormHint(null);
+                    }}
                     className={fieldClass}
                   >
                     {serviceOptions.map((option) => (
@@ -422,7 +477,7 @@ export function BookingCheckoutFlow({
                     <p className="mt-2 text-sm text-stone-400">Loading times…</p>
                   ) : slots.length === 0 ? (
                     <p className="mt-2 text-sm text-stone-400">
-                      No times available for this day.
+                      {slotsReason ?? "No times available for this day."}
                     </p>
                   ) : (
                     <div className="mt-2 grid grid-cols-3 gap-2">
@@ -430,7 +485,10 @@ export function BookingCheckoutFlow({
                         <button
                           key={slot}
                           type="button"
-                          onClick={() => setStartsAt(slot)}
+                          onClick={() => {
+                            setStartsAt(slot);
+                            setFormHint(null);
+                          }}
                           className={cn(
                             "rounded-xl border py-2.5 text-sm font-medium transition-colors",
                             startsAt === slot
@@ -449,7 +507,10 @@ export function BookingCheckoutFlow({
                   <label className={labelClass}>Name</label>
                   <Input
                     value={customerName}
-                    onChange={(event) => setCustomerName(event.target.value)}
+                    onChange={(event) => {
+                      setCustomerName(event.target.value);
+                      setFormHint(null);
+                    }}
                     className={fieldClass}
                     placeholder="Full name"
                   />
@@ -459,7 +520,10 @@ export function BookingCheckoutFlow({
                   <label className={labelClass}>Phone</label>
                   <Input
                     value={customerPhone}
-                    onChange={(event) => setCustomerPhone(event.target.value)}
+                    onChange={(event) => {
+                      setCustomerPhone(event.target.value);
+                      setFormHint(null);
+                    }}
                     className={fieldClass}
                     placeholder="04xx xxx xxx"
                     inputMode="tel"
@@ -486,11 +550,17 @@ export function BookingCheckoutFlow({
                 </div>
               </div>
 
+              {formHint ? (
+                <p className="text-center text-sm text-rose-600">{formHint}</p>
+              ) : null}
+
               <button
                 type="button"
-                disabled={!canBook}
-                onClick={() => setStep("payment")}
-                className={pillButtonClass}
+                onClick={goToPayment}
+                className={cn(
+                  pillButtonClass,
+                  !canBook && "opacity-60",
+                )}
               >
                 Book
               </button>

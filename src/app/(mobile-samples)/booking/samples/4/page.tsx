@@ -2,6 +2,7 @@ import {
   BookingSampleNoir,
   BookingSampleShell,
 } from "@/features/booking/components/samples";
+import { bookingStaffDarkMock } from "@/features/booking/config/booking-staff-dark-mock";
 
 export default function BookingSample4Page() {
   return (
@@ -10,9 +11,9 @@ export default function BookingSample4Page() {
       sampleLabel="Sample 4 — Noir"
       sampleNumber={4}
       title="Private evening"
-      subtitle="Cinematic portraits · discreet reserve."
+      subtitle="Design preview only — not a live booking."
     >
-      <BookingSampleNoir />
+      <BookingSampleNoir staff={bookingStaffDarkMock} />
     </BookingSampleShell>
   );
 }

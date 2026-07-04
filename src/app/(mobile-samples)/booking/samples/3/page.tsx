@@ -2,6 +2,7 @@ import {
   BookingSamplePortrait,
   BookingSampleShell,
 } from "@/features/booking/components/samples";
+import { bookingStaffMock } from "@/features/booking/config/booking-staff-mock";
 
 export default function BookingSample3Page() {
   return (
@@ -9,9 +10,9 @@ export default function BookingSample3Page() {
       sampleLabel="Sample 3"
       sampleNumber={3}
       title="Select staff"
-      subtitle="Portrait-first rows with outlined Book."
+      subtitle="Design preview only — not a live booking."
     >
-      <BookingSamplePortrait />
+      <BookingSamplePortrait staff={bookingStaffMock} />
     </BookingSampleShell>
   );
 }

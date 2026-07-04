@@ -5,8 +5,6 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 import type { BookingStaffItem } from "../../config/booking-staff-mock";
-import { useBookStaff } from "../../hooks/use-book-staff";
-import { useBookingStaffList } from "../../hooks/use-booking-staff-list";
 
 type SampleTone = "default" | "pink";
 
@@ -62,7 +60,8 @@ function StaffPhoto({
   );
 }
 
-function BookButton({
+/** Design-only button — samples do not start a real booking. */
+function PreviewButton({
   staff,
   variant = "pill",
   tone = "default",
@@ -73,12 +72,11 @@ function BookButton({
   tone?: SampleTone;
   className?: string;
 }) {
-  const { bookStaff } = useBookStaff();
   const available = staff.available;
   const isPink = tone === "pink";
 
   const base =
-    "inline-flex items-center justify-center font-medium transition-all active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40";
+    "inline-flex items-center justify-center font-medium opacity-90";
 
   const variants = {
     pill: cn(
@@ -108,7 +106,7 @@ function BookButton({
       "h-10 w-full rounded-xl border text-sm",
       available
         ? isPink
-          ? "border-rose-300 bg-white text-rose-600 active:bg-rose-50"
+          ? "border-rose-300 bg-white text-rose-600"
           : "border-primary text-primary"
         : isPink
           ? "border-rose-100 text-rose-300"
@@ -117,19 +115,14 @@ function BookButton({
   };
 
   return (
-    <button
-      type="button"
-      className={cn(variants[variant], className)}
-      disabled={!available}
-      onClick={() => bookStaff(staff)}
-    >
+    <span className={cn(variants[variant], className)} aria-hidden>
       {available ? "Book" : "Unavailable"}
-    </button>
+    </span>
   );
 }
 
 interface BookingSampleListProps {
-  staff?: BookingStaffItem[];
+  staff: BookingStaffItem[];
   tone?: SampleTone;
 }
 
@@ -138,20 +131,12 @@ interface BookingSamplePortraitProps extends BookingSampleListProps {
   buttonVariant?: "pill" | "full" | "outline";
 }
 
-function SampleLoading() {
-  return (
-    <div className="space-y-3 py-6 text-center text-sm text-muted-foreground">
-      Loading staff…
-    </div>
-  );
-}
-
 /** Sample 1 — Clean list rows (Apple-style) */
-export function BookingSampleList({ tone = "default" }: BookingSampleListProps) {
-  const { staff, loading } = useBookingStaffList();
+export function BookingSampleList({
+  staff,
+  tone = "default",
+}: BookingSampleListProps) {
   const isPink = tone === "pink";
-
-  if (loading) return <SampleLoading />;
 
   return (
     <ul
@@ -166,7 +151,7 @@ export function BookingSampleList({ tone = "default" }: BookingSampleListProps) 
         <li
           key={member.id}
           className={cn(
-            "flex items-center gap-3 px-4 py-3.5 transition-colors",
+            "flex items-center gap-3 px-4 py-3.5",
             isPink ? "active:bg-rose-50/70" : "active:bg-muted/40",
           )}
         >
@@ -189,7 +174,7 @@ export function BookingSampleList({ tone = "default" }: BookingSampleListProps) 
               {member.role}
             </p>
           </div>
-          <BookButton staff={member} variant="pill" tone={tone} />
+          <PreviewButton staff={member} variant="pill" tone={tone} />
         </li>
       ))}
     </ul>
@@ -197,11 +182,7 @@ export function BookingSampleList({ tone = "default" }: BookingSampleListProps) 
 }
 
 /** Sample 2 — Stacked cards with full-width CTA */
-export function BookingSampleCards() {
-  const { staff, loading } = useBookingStaffList();
-
-  if (loading) return <SampleLoading />;
-
+export function BookingSampleCards({ staff }: BookingSampleListProps) {
   return (
     <div className="space-y-3">
       {staff.map((member) => (
@@ -217,7 +198,7 @@ export function BookingSampleCards() {
             </div>
           </div>
           <div className="mt-4">
-            <BookButton staff={member} variant="full" />
+            <PreviewButton staff={member} variant="full" />
           </div>
         </article>
       ))}
@@ -227,15 +208,13 @@ export function BookingSampleCards() {
 
 /** Sample 3 — Portrait-first minimal rows */
 export function BookingSamplePortrait({
+  staff,
   tone = "default",
   buttonTone,
   buttonVariant = "outline",
 }: BookingSamplePortraitProps) {
-  const { staff, loading } = useBookingStaffList();
   const isPink = tone === "pink";
   const resolvedButtonTone = buttonTone ?? tone;
-
-  if (loading) return <SampleLoading />;
 
   return (
     <div className="space-y-2">
@@ -269,7 +248,7 @@ export function BookingSamplePortrait({
                 {member.role}
               </p>
             </div>
-            <BookButton
+            <PreviewButton
               staff={member}
               variant={buttonVariant}
               tone={resolvedButtonTone}

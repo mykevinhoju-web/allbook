@@ -105,9 +105,36 @@ export function todayDateInputValue(date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
+const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+
+export function dayCodeForDate(date: Date): string {
+  return DAY_CODES[date.getDay()] ?? "sun";
+}
+
 export function isWorkingToday(workingDays: string[], date = new Date()): boolean {
-  const dayCodes = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-  return workingDays.includes(dayCodes[date.getDay()] ?? "");
+  if (!workingDays?.length) return true;
+  return workingDays.includes(dayCodeForDate(date));
+}
+
+/** Next calendar day (YYYY-MM-DD) that falls on a working day, within `withinDays`. */
+export function nextWorkingDateInputValue(
+  workingDays: string[],
+  fromDate = new Date(),
+  withinDays = 21,
+): string {
+  const days =
+    workingDays?.length > 0 ? workingDays : [...DAY_CODES];
+
+  for (let offset = 0; offset < withinDays; offset += 1) {
+    const candidate = new Date(fromDate);
+    candidate.setHours(12, 0, 0, 0);
+    candidate.setDate(candidate.getDate() + offset);
+    if (days.includes(dayCodeForDate(candidate))) {
+      return todayDateInputValue(candidate);
+    }
+  }
+
+  return todayDateInputValue(fromDate);
 }
 
 export function roundToSlotMinutes(minutes: number): number {
@@ -154,14 +181,21 @@ export function getAvailableStartSlots(
   workingHoursEnd: string,
   bookings: AdminBooking[],
   durationMinutes: number,
+  options?: { now?: Date },
 ): string[] {
   const workStart = parseTimeOnDate(date, workingHoursStart);
   const workEnd = parseTimeOnDate(date, workingHoursEnd);
   const durationMs = durationMinutes * 60_000;
   const stepMs = SLOT_STEP_MINUTES * 60_000;
   const slots: string[] = [];
+  const now = options?.now ?? new Date();
+  const today = todayDateInputValue(now);
+  const earliestStart =
+    date === today ? now.getTime() + 5 * 60_000 : Number.NEGATIVE_INFINITY;
 
   for (let start = workStart; start + durationMs <= workEnd; start += stepMs) {
+    if (start < earliestStart) continue;
+
     const end = start + durationMs;
     const overlaps = bookings.some((booking) => {
       const bookingStart = new Date(booking.startsAt).getTime();

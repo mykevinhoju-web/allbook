@@ -185,9 +185,10 @@ export default function BookingSamplesIndexPage() {
         </div>
 
         <p className="mt-8 text-center text-xs text-muted-foreground">
-          Best viewed on mobile. Open{" "}
-          <span className="font-medium text-foreground">Admin → Turn on alerts</span>{" "}
-          on a phone/tablet, then tap Reserve here to test sound.
+          Samples are design previews only. Real bookings:{" "}
+          <Link href="/booking" className="font-medium text-foreground underline">
+            /booking
+          </Link>
         </p>
       </div>
     </div>

@@ -6,8 +6,6 @@ import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import type { BookingStaffItem } from "../../config/booking-staff-mock";
-import { useBookStaff } from "../../hooks/use-book-staff";
-import { useBookingStaffList } from "../../hooks/use-booking-staff-list";
 
 function DarkStaffPhoto({
   staff,
@@ -19,12 +17,7 @@ function DarkStaffPhoto({
   const [imageError, setImageError] = useState(false);
 
   return (
-    <div
-      className={cn(
-        "relative overflow-hidden bg-stone-900",
-        className,
-      )}
-    >
+    <div className={cn("relative overflow-hidden bg-stone-900", className)}>
       {imageError ? (
         <div className="flex size-full items-center justify-center bg-gradient-to-br from-stone-800 to-stone-950 text-lg font-light text-rose-200/80">
           {staff.initials}
@@ -43,7 +36,7 @@ function DarkStaffPhoto({
   );
 }
 
-function ReserveButton({
+function PreviewReserve({
   staff,
   className,
   label = "Book",
@@ -52,37 +45,30 @@ function ReserveButton({
   className?: string;
   label?: string;
 }) {
-  const { bookStaff } = useBookStaff();
   const available = staff.available;
 
   return (
-    <button
-      type="button"
-      disabled={!available}
-      onClick={() => bookStaff(staff)}
+    <span
       className={cn(
-        "inline-flex items-center justify-center gap-1.5 text-sm font-medium tracking-wide transition-all active:scale-[0.98] disabled:opacity-40",
+        "inline-flex items-center justify-center gap-1.5 text-sm font-medium tracking-wide opacity-90",
         available
           ? "bg-gradient-to-r from-rose-900/90 to-amber-900/80 text-rose-50 shadow-[0_0_24px_-4px_rgba(190,24,93,0.45)]"
           : "border border-stone-700 bg-stone-900/80 text-stone-500",
         className,
       )}
+      aria-hidden
     >
       {available ? label : "Unavailable"}
-    </button>
+    </span>
   );
 }
 
+interface DarkSampleProps {
+  staff: BookingStaffItem[];
+}
+
 /** Sample 4 — Noir cinematic cards with full-bleed portraits */
-export function BookingSampleNoir() {
-  const { staff, loading } = useBookingStaffList();
-
-  if (loading) {
-    return (
-      <p className="py-8 text-center text-sm text-stone-500">Loading staff…</p>
-    );
-  }
-
+export function BookingSampleNoir({ staff }: DarkSampleProps) {
   return (
     <div className="space-y-4">
       <p className="text-center text-xs tracking-[0.2em] text-stone-500 uppercase">
@@ -110,7 +96,7 @@ export function BookingSampleNoir() {
                   <Sparkles className="size-4 shrink-0 text-amber-400/60" />
                 ) : null}
               </div>
-              <ReserveButton
+              <PreviewReserve
                 staff={member}
                 className="mt-3 h-11 w-full rounded-xl"
                 label="Reserve privately"
@@ -124,15 +110,7 @@ export function BookingSampleNoir() {
 }
 
 /** Sample 5 — Velvet lounge rows with soft glow borders */
-export function BookingSampleVelvet() {
-  const { staff, loading } = useBookingStaffList();
-
-  if (loading) {
-    return (
-      <p className="py-8 text-center text-sm text-stone-500">Loading staff…</p>
-    );
-  }
-
+export function BookingSampleVelvet({ staff }: DarkSampleProps) {
   return (
     <div className="space-y-3">
       <div className="rounded-2xl border border-rose-900/30 bg-gradient-to-br from-stone-900/80 to-stone-950 px-4 py-3 text-center">
@@ -163,7 +141,7 @@ export function BookingSampleVelvet() {
               {member.name}
             </p>
             <p className="truncate text-xs text-rose-200/55">{member.role}</p>
-            <ReserveButton
+            <PreviewReserve
               staff={member}
               className="mt-2 h-9 w-full rounded-lg px-3 text-xs"
               label="Request"

@@ -2,6 +2,7 @@ import {
   BookingSampleShell,
   BookingSampleVelvet,
 } from "@/features/booking/components/samples";
+import { bookingStaffDarkMock } from "@/features/booking/config/booking-staff-dark-mock";
 
 export default function BookingSample5Page() {
   return (
@@ -10,9 +11,9 @@ export default function BookingSample5Page() {
       sampleLabel="Sample 5 — Velvet"
       sampleNumber={5}
       title="Velvet lounge"
-      subtitle="Soft glow rows · after-hours mood."
+      subtitle="Design preview only — not a live booking."
     >
-      <BookingSampleVelvet />
+      <BookingSampleVelvet staff={bookingStaffDarkMock} />
     </BookingSampleShell>
   );
 }

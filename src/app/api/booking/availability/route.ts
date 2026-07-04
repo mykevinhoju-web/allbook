@@ -82,13 +82,29 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Staff not found." }, { status: 404 });
     }
 
+    const workingDays = staffRow.working_days ?? [];
+    const workingHoursStart = (staffRow.working_hours_start ?? "09:00").slice(0, 5);
+    const workingHoursEnd = (staffRow.working_hours_end ?? "18:00").slice(0, 5);
+
     if (staffRow.status !== "active") {
-      return NextResponse.json({ slots: [], date, staffId });
+      return NextResponse.json({
+        slots: [],
+        date,
+        staffId,
+        reason: "Staff is not available.",
+        workingDays,
+      });
     }
 
     const localDate = new Date(`${date}T12:00:00`);
-    if (!isWorkingToday(staffRow.working_days, localDate)) {
-      return NextResponse.json({ slots: [], date, staffId });
+    if (!isWorkingToday(workingDays, localDate)) {
+      return NextResponse.json({
+        slots: [],
+        date,
+        staffId,
+        reason: "Staff does not work on this day.",
+        workingDays,
+      });
     }
 
     const timeZone = tenant.settings.timezone || "Australia/Sydney";
@@ -134,8 +150,8 @@ export async function GET(request: Request) {
 
     const slots = getAvailableStartSlots(
       date,
-      staffRow.working_hours_start.slice(0, 5),
-      staffRow.working_hours_end.slice(0, 5),
+      workingHoursStart,
+      workingHoursEnd,
       adminBookings,
       durationMinutes,
     );
@@ -145,6 +161,13 @@ export async function GET(request: Request) {
       staffId,
       slots,
       slotIsos: slots.map((slot) => buildStartsAtIso(date, slot)),
+      workingDays,
+      workingHoursStart,
+      workingHoursEnd,
+      reason:
+        slots.length === 0
+          ? "No open slots left for this day. Try another date."
+          : null,
     });
   } catch (error) {
     if (error instanceof TenantContextError) {

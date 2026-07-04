@@ -2,6 +2,7 @@ import {
   BookingSampleCards,
   BookingSampleShell,
 } from "@/features/booking/components/samples";
+import { bookingStaffMock } from "@/features/booking/config/booking-staff-mock";
 
 export default function BookingSample2Page() {
   return (
@@ -9,9 +10,9 @@ export default function BookingSample2Page() {
       sampleLabel="Sample 2"
       sampleNumber={2}
       title="Choose your therapist"
-      subtitle="Card layout with full-width Book button."
+      subtitle="Design preview only — not a live booking."
     >
-      <BookingSampleCards />
+      <BookingSampleCards staff={bookingStaffMock} />
     </BookingSampleShell>
   );
 }
