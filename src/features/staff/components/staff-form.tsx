@@ -17,14 +17,16 @@ import {
 import { cn } from "@/lib/utils";
 
 import {
-  BOOKING_TIMEZONE,
+  DEFAULT_BOOKING_TIMEZONE,
   datetimeLocalToIso,
   formatShiftDateTime,
+  formatTimezoneLabel,
   toDatetimeLocalValue,
 } from "@/features/booking/lib/schedule-utils";
+import { useOptionalTenant } from "@/features/tenants";
 
 import {
-  defaultStaffFormValues,
+  getDefaultStaffFormValues,
   languageOptions,
   nationalityOptions,
   staffStatusOptions,
@@ -40,16 +42,18 @@ interface ShiftBookingRow {
   customerName: string | null;
 }
 
-function BrisbaneDatetimeField({
+function TenantDatetimeField({
   id,
   value,
   min,
+  timeZone,
   onChange,
   placeholder,
 }: {
   id: string;
   value: string;
   min?: string;
+  timeZone: string;
   onChange: (value: string) => void;
   placeholder: string;
 }) {
@@ -83,7 +87,9 @@ function BrisbaneDatetimeField({
       )}
     >
       <span className={value ? "text-foreground" : "text-muted-foreground"}>
-        {value ? formatShiftDateTime(datetimeLocalToIso(value)) : placeholder}
+        {value
+          ? formatShiftDateTime(datetimeLocalToIso(value, timeZone), timeZone)
+          : placeholder}
       </span>
       <input
         ref={inputRef}
@@ -152,21 +158,34 @@ function mapRecordToForm(record: StaffRecord): StaffFormValues {
 
 export function StaffForm({ staffId }: StaffFormProps) {
   const router = useRouter();
+  const tenant = useOptionalTenant();
+  const timeZone =
+    tenant?.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
   const isEditing = Boolean(staffId);
-  const [form, setForm] = useState<StaffFormValues>(defaultStaffFormValues);
+  const [form, setForm] = useState<StaffFormValues>(() =>
+    getDefaultStaffFormValues(timeZone),
+  );
   const [existingPhotos, setExistingPhotos] = useState<StaffPhoto[]>([]);
   const [hasLoginAccount, setHasLoginAccount] = useState(false);
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
   const [shiftBookings, setShiftBookings] = useState<ShiftBookingRow[]>([]);
-  const [brisbaneNow, setBrisbaneNow] = useState(() => toDatetimeLocalValue());
+  const [localNow, setLocalNow] = useState(() =>
+    toDatetimeLocalValue(new Date(), timeZone),
+  );
 
   useEffect(() => {
-    const tick = () => setBrisbaneNow(toDatetimeLocalValue());
+    const tick = () =>
+      setLocalNow(toDatetimeLocalValue(new Date(), timeZone));
     tick();
     const timer = window.setInterval(tick, 30_000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [timeZone]);
+
+  useEffect(() => {
+    if (isEditing) return;
+    setForm(getDefaultStaffFormValues(timeZone));
+  }, [timeZone, isEditing]);
 
   useEffect(() => {
     if (!staffId) return;
@@ -224,8 +243,8 @@ export function StaffForm({ staffId }: StaffFormProps) {
       try {
         const params = new URLSearchParams({
           staffId,
-          from: datetimeLocalToIso(form.shiftStartsAt),
-          to: datetimeLocalToIso(form.shiftEndsAt),
+          from: datetimeLocalToIso(form.shiftStartsAt, timeZone),
+          to: datetimeLocalToIso(form.shiftEndsAt, timeZone),
         });
         const response = await fetch(`/api/admin/bookings?${params}`);
         const data = (await response.json()) as {
@@ -242,7 +261,7 @@ export function StaffForm({ staffId }: StaffFormProps) {
     return () => {
       cancelled = true;
     };
-  }, [staffId, form.shiftStartsAt, form.shiftEndsAt]);
+  }, [staffId, form.shiftStartsAt, form.shiftEndsAt, timeZone]);
 
   const updateField = <K extends keyof StaffFormValues>(
     key: K,
@@ -287,8 +306,8 @@ export function StaffForm({ staffId }: StaffFormProps) {
       return;
     }
 
-    if (form.shiftStartsAt < brisbaneNow) {
-      toast.error("Available from must be after Brisbane current time");
+    if (form.shiftStartsAt < localNow) {
+      toast.error("Available from must be after the shop's current time");
       return;
     }
 
@@ -540,22 +559,26 @@ export function StaffForm({ staffId }: StaffFormProps) {
 
         <StaffFormSection
           title="Availability window"
-          description="Tap the field to open the calendar. Times use Brisbane (AEST). Overnight is fine — e.g. 4 Jul 14:00 to 5 Jul 02:00."
+          description="Tap the field to open the calendar. Times use this shop's timezone. Overnight is fine — e.g. 4 Jul 14:00 to 5 Jul 02:00."
         >
           <p className="text-xs text-muted-foreground">
-            Brisbane now:{" "}
+            Shop time now:{" "}
             <span className="font-medium text-foreground">
-              {formatShiftDateTime(datetimeLocalToIso(brisbaneNow))}
+              {formatShiftDateTime(
+                datetimeLocalToIso(localNow, timeZone),
+                timeZone,
+              )}
             </span>{" "}
-            ({BOOKING_TIMEZONE})
+            · {formatTimezoneLabel(timeZone)}
           </p>
 
           <div className="grid gap-5 sm:grid-cols-2">
             <StaffFormField label="Available from" htmlFor="shift-start" required>
-              <BrisbaneDatetimeField
+              <TenantDatetimeField
                 id="shift-start"
                 value={form.shiftStartsAt}
-                min={brisbaneNow}
+                min={localNow}
+                timeZone={timeZone}
                 placeholder="Select start date & time"
                 onChange={(value) => {
                   updateField("shiftStartsAt", value);
@@ -567,14 +590,15 @@ export function StaffForm({ staffId }: StaffFormProps) {
             </StaffFormField>
 
             <StaffFormField label="Available until" htmlFor="shift-end" required>
-              <BrisbaneDatetimeField
+              <TenantDatetimeField
                 id="shift-end"
                 value={form.shiftEndsAt}
                 min={
-                  form.shiftStartsAt > brisbaneNow
+                  form.shiftStartsAt > localNow
                     ? form.shiftStartsAt
-                    : brisbaneNow
+                    : localNow
                 }
+                timeZone={timeZone}
                 placeholder="Select end date & time"
                 onChange={(value) => updateField("shiftEndsAt", value)}
               />
@@ -584,9 +608,15 @@ export function StaffForm({ staffId }: StaffFormProps) {
           {form.shiftStartsAt && form.shiftEndsAt ? (
             <div className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-sm">
               <p className="font-medium text-foreground">
-                {formatShiftDateTime(datetimeLocalToIso(form.shiftStartsAt))}
+                {formatShiftDateTime(
+                  datetimeLocalToIso(form.shiftStartsAt, timeZone),
+                  timeZone,
+                )}
                 {" → "}
-                {formatShiftDateTime(datetimeLocalToIso(form.shiftEndsAt))}
+                {formatShiftDateTime(
+                  datetimeLocalToIso(form.shiftEndsAt, timeZone),
+                  timeZone,
+                )}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Customers can only book open times inside this window.
@@ -610,8 +640,8 @@ export function StaffForm({ staffId }: StaffFormProps) {
                       {booking.customerName ?? "Customer"}
                     </span>
                     <span className="text-muted-foreground">
-                      {formatShiftDateTime(booking.startsAt)} –{" "}
-                      {formatShiftDateTime(booking.endsAt)}
+                      {formatShiftDateTime(booking.startsAt, timeZone)} –{" "}
+                      {formatShiftDateTime(booking.endsAt, timeZone)}
                     </span>
                   </li>
                 ))}

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import {
+  DEFAULT_BOOKING_TIMEZONE,
   formatShiftDateTime,
   getSlotsInShiftWindow,
 } from "@/features/booking/lib/schedule-utils";
@@ -83,6 +84,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: bookingsError.message }, { status: 503 });
     }
 
+    const timeZone = tenant.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
     const bookingRows = bookings ?? [];
     const slots = getSlotsInShiftWindow(
       shiftStartsAt,
@@ -92,13 +94,14 @@ export async function GET(request: Request) {
         startsAt: row.starts_at,
         endsAt: row.ends_at,
       })),
+      { timeZone },
     );
 
     const booked = bookingRows.map((row) => ({
       startsAt: row.starts_at,
       endsAt: row.ends_at,
       customerName: row.customer_name,
-      label: `${formatShiftDateTime(row.starts_at)} – ${formatShiftDateTime(row.ends_at)}`,
+      label: `${formatShiftDateTime(row.starts_at, timeZone)} – ${formatShiftDateTime(row.ends_at, timeZone)}`,
     }));
 
     return NextResponse.json({
@@ -106,7 +109,8 @@ export async function GET(request: Request) {
       booked,
       shiftStartsAt,
       shiftEndsAt,
-      shiftLabel: `${formatShiftDateTime(shiftStartsAt)} → ${formatShiftDateTime(shiftEndsAt)}`,
+      timeZone,
+      shiftLabel: `${formatShiftDateTime(shiftStartsAt, timeZone)} → ${formatShiftDateTime(shiftEndsAt, timeZone)}`,
       reason:
         slots.length === 0
           ? "No open times left in this availability window."

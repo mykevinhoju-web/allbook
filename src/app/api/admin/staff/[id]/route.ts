@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import type { Database } from "@/types/database";
 import {
-  BOOKING_TIMEZONE,
+  DEFAULT_BOOKING_TIMEZONE,
   datetimeLocalToIso,
   defaultShiftWindow,
   isoToDatetimeLocal,
@@ -37,10 +37,11 @@ function mapStaffRow(
     updated_at: string;
   },
   photos: { id: string; url: string; sort_order: number }[],
+  timeZone: string,
 ) {
   const attributes = parseStaffAttributes(row.attributes as never);
   const shift = getShiftWindowFromAttributes(attributes);
-  const fallback = defaultShiftWindow();
+  const fallback = defaultShiftWindow(new Date(), timeZone);
 
   return {
     id: row.id,
@@ -51,10 +52,10 @@ function mapStaffRow(
     workingHoursStart: row.working_hours_start.slice(0, 5),
     workingHoursEnd: row.working_hours_end.slice(0, 5),
     shiftStartsAt: shift.shiftStartsAt
-      ? isoToDatetimeLocal(shift.shiftStartsAt)
+      ? isoToDatetimeLocal(shift.shiftStartsAt, timeZone)
       : fallback.shiftStartsAt,
     shiftEndsAt: shift.shiftEndsAt
-      ? isoToDatetimeLocal(shift.shiftEndsAt)
+      ? isoToDatetimeLocal(shift.shiftEndsAt, timeZone)
       : fallback.shiftEndsAt,
     sortOrder: row.sort_order,
     photos: photos
@@ -70,18 +71,22 @@ function mapStaffRow(
   };
 }
 
-function brisbaneDayCode(dateStr: string): string {
-  const iso = datetimeLocalToIso(`${dateStr}T12:00`);
+function dayCodeInZone(dateStr: string, timeZone: string): string {
+  const iso = datetimeLocalToIso(`${dateStr}T12:00`, timeZone);
   return new Date(iso)
     .toLocaleDateString("en-US", {
-      timeZone: BOOKING_TIMEZONE,
+      timeZone,
       weekday: "short",
     })
     .toLowerCase()
     .slice(0, 3);
 }
 
-function deriveWorkingFields(shiftStartsAtLocal: string, shiftEndsAtLocal: string) {
+function deriveWorkingFields(
+  shiftStartsAtLocal: string,
+  shiftEndsAtLocal: string,
+  timeZone: string,
+) {
   const startDate = shiftStartsAtLocal.slice(0, 10);
   const endDate = shiftEndsAtLocal.slice(0, 10);
   const days = new Set<string>();
@@ -90,7 +95,7 @@ function deriveWorkingFields(shiftStartsAtLocal: string, shiftEndsAtLocal: strin
   const end = new Date(`${endDate}T00:00:00Z`);
   while (cursor.getTime() <= end.getTime()) {
     const dateStr = cursor.toISOString().slice(0, 10);
-    days.add(brisbaneDayCode(dateStr));
+    days.add(dayCodeInZone(dateStr, timeZone));
     cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
 
@@ -134,8 +139,11 @@ export async function GET(
       .eq("staff_id", id)
       .order("sort_order", { ascending: true });
 
+    const timeZone = tenant.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
+
     return NextResponse.json({
-      staff: mapStaffRow(data, photos ?? []),
+      staff: mapStaffRow(data, photos ?? [], timeZone),
+      timeZone,
     });
   } catch (error) {
     if (error instanceof TenantContextError) {
@@ -191,21 +199,23 @@ export async function PATCH(
       ...(body.attributes ?? {}),
     };
 
+    const timeZone = tenant.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
+
     if (body.shiftStartsAt !== undefined || body.shiftEndsAt !== undefined) {
-      const fallback = defaultShiftWindow();
+      const fallback = defaultShiftWindow(new Date(), timeZone);
       const shiftStartsAtLocal =
         body.shiftStartsAt ??
         (current.shiftStartsAt
-          ? isoToDatetimeLocal(current.shiftStartsAt)
+          ? isoToDatetimeLocal(current.shiftStartsAt, timeZone)
           : fallback.shiftStartsAt);
       const shiftEndsAtLocal =
         body.shiftEndsAt ??
         (current.shiftEndsAt
-          ? isoToDatetimeLocal(current.shiftEndsAt)
+          ? isoToDatetimeLocal(current.shiftEndsAt, timeZone)
           : fallback.shiftEndsAt);
 
-      const startIso = datetimeLocalToIso(shiftStartsAtLocal);
-      const endIso = datetimeLocalToIso(shiftEndsAtLocal);
+      const startIso = datetimeLocalToIso(shiftStartsAtLocal, timeZone);
+      const endIso = datetimeLocalToIso(shiftEndsAtLocal, timeZone);
 
       if (new Date(endIso).getTime() <= new Date(startIso).getTime()) {
         return NextResponse.json(
@@ -217,7 +227,11 @@ export async function PATCH(
       next.shiftStartsAt = startIso;
       next.shiftEndsAt = endIso;
 
-      const derived = deriveWorkingFields(shiftStartsAtLocal, shiftEndsAtLocal);
+      const derived = deriveWorkingFields(
+        shiftStartsAtLocal,
+        shiftEndsAtLocal,
+        timeZone,
+      );
       updates.working_days = derived.workingDays;
       updates.working_hours_start = derived.workingHoursStart;
       updates.working_hours_end = derived.workingHoursEnd;
@@ -248,7 +262,8 @@ export async function PATCH(
       .order("sort_order", { ascending: true });
 
     return NextResponse.json({
-      staff: mapStaffRow(data, photos ?? []),
+      staff: mapStaffRow(data, photos ?? [], timeZone),
+      timeZone,
     });
   } catch (error) {
     if (error instanceof TenantContextError) {

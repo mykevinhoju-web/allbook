@@ -105,9 +105,35 @@ export function todayDateInputValue(date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
-/** Booking availability is always managed in Brisbane time. */
-export const BOOKING_TIMEZONE = "Australia/Brisbane";
-const BRISBANE_OFFSET = "+10:00";
+/** Default when tenant timezone is missing. */
+export const DEFAULT_BOOKING_TIMEZONE = "Australia/Sydney";
+
+function getTimeZoneOffsetMs(timeZone: string, utcDate: Date): number {
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+
+  const parts = dtf.formatToParts(utcDate);
+  const get = (type: string) =>
+    Number(parts.find((part) => part.type === type)?.value ?? "0");
+  const hour = get("hour") === 24 ? 0 : get("hour");
+  const asUtcMs = Date.UTC(
+    get("year"),
+    get("month") - 1,
+    get("day"),
+    hour,
+    get("minute"),
+    get("second"),
+  );
+  return asUtcMs - utcDate.getTime();
+}
 
 function toDatetimeLocalInZone(date: Date, timeZone: string): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -127,25 +153,48 @@ function toDatetimeLocalInZone(date: Date, timeZone: string): string {
   return `${get("year")}-${get("month")}-${get("day")}T${hour}:${get("minute")}`;
 }
 
-/** Brisbane wall-clock value for `<input type="datetime-local">`. */
-export function toDatetimeLocalValue(date = new Date()): string {
-  return toDatetimeLocalInZone(date, BOOKING_TIMEZONE);
+/** Tenant wall-clock value for `<input type="datetime-local">`. */
+export function toDatetimeLocalValue(
+  date = new Date(),
+  timeZone = DEFAULT_BOOKING_TIMEZONE,
+): string {
+  return toDatetimeLocalInZone(date, timeZone);
 }
 
-/** Interpret a datetime-local string as Brisbane time and return UTC ISO. */
-export function datetimeLocalToIso(value: string): string {
-  const normalized = value.length === 16 ? `${value}:00` : value;
-  return new Date(`${normalized}${BRISBANE_OFFSET}`).toISOString();
+/**
+ * Interpret a datetime-local string as wall-clock time in `timeZone`
+ * and return UTC ISO (handles Sydney DST).
+ */
+export function datetimeLocalToIso(
+  value: string,
+  timeZone = DEFAULT_BOOKING_TIMEZONE,
+): string {
+  const [datePart, timePart = "00:00"] = value.split("T");
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hours, minutes] = timePart.split(":").map(Number);
+  const utcGuess = new Date(
+    Date.UTC(year, (month ?? 1) - 1, day ?? 1, hours ?? 0, minutes ?? 0, 0),
+  );
+  const offsetMs = getTimeZoneOffsetMs(timeZone, utcGuess);
+  const adjusted = new Date(utcGuess.getTime() - offsetMs);
+  const offsetMs2 = getTimeZoneOffsetMs(timeZone, adjusted);
+  return new Date(utcGuess.getTime() - offsetMs2).toISOString();
 }
 
-export function isoToDatetimeLocal(iso: string): string {
-  return toDatetimeLocalInZone(new Date(iso), BOOKING_TIMEZONE);
+export function isoToDatetimeLocal(
+  iso: string,
+  timeZone = DEFAULT_BOOKING_TIMEZONE,
+): string {
+  return toDatetimeLocalInZone(new Date(iso), timeZone);
 }
 
-/** Clear date + 24h Brisbane time label, e.g. "4 Jul 2026, 14:00". */
-export function formatShiftDateTime(iso: string): string {
+/** Clear date + 24h time label in tenant timezone, e.g. "4 Jul 2026, 14:00". */
+export function formatShiftDateTime(
+  iso: string,
+  timeZone = DEFAULT_BOOKING_TIMEZONE,
+): string {
   return new Date(iso).toLocaleString("en-AU", {
-    timeZone: BOOKING_TIMEZONE,
+    timeZone,
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -155,21 +204,54 @@ export function formatShiftDateTime(iso: string): string {
   });
 }
 
-export function defaultShiftWindow(now = new Date()): {
+export function formatTimezoneLabel(timeZone: string): string {
+  const city = timeZone.split("/").pop()?.replaceAll("_", " ") ?? timeZone;
+  try {
+    const parts = new Intl.DateTimeFormat("en-AU", {
+      timeZone,
+      timeZoneName: "short",
+    }).formatToParts(new Date());
+    const zoneName =
+      parts.find((part) => part.type === "timeZoneName")?.value ?? timeZone;
+    return `${city} (${zoneName})`;
+  } catch {
+    return city;
+  }
+}
+
+export function defaultShiftWindow(
+  now = new Date(),
+  timeZone = DEFAULT_BOOKING_TIMEZONE,
+): {
   shiftStartsAt: string;
   shiftEndsAt: string;
 } {
-  const start = new Date(datetimeLocalToIso(toDatetimeLocalValue(now)));
-  start.setUTCMinutes(0, 0, 0);
-  if (start.getTime() <= now.getTime()) {
-    start.setUTCHours(start.getUTCHours() + 1);
+  const localNow = toDatetimeLocalValue(now, timeZone);
+  const [datePart, timePart] = localNow.split("T");
+  const [hours, minutes] = timePart.split(":").map(Number);
+  let hourOffset = hours ?? 0;
+  if ((minutes ?? 0) > 0) {
+    hourOffset += 1;
   }
 
-  const end = new Date(start.getTime() + 12 * 60 * 60 * 1000);
+  const dayStartIso = datetimeLocalToIso(`${datePart}T00:00`, timeZone);
+  let startIso = new Date(
+    new Date(dayStartIso).getTime() + hourOffset * 60 * 60 * 1000,
+  ).toISOString();
+
+  while (new Date(startIso).getTime() <= now.getTime()) {
+    startIso = new Date(
+      new Date(startIso).getTime() + 60 * 60 * 1000,
+    ).toISOString();
+  }
+
+  const endIso = new Date(
+    new Date(startIso).getTime() + 12 * 60 * 60 * 1000,
+  ).toISOString();
 
   return {
-    shiftStartsAt: isoToDatetimeLocal(start.toISOString()),
-    shiftEndsAt: isoToDatetimeLocal(end.toISOString()),
+    shiftStartsAt: isoToDatetimeLocal(startIso, timeZone),
+    shiftEndsAt: isoToDatetimeLocal(endIso, timeZone),
   };
 }
 
@@ -184,7 +266,7 @@ export function getSlotsInShiftWindow(
   shiftEndsAtIso: string,
   durationMinutes: number,
   bookings: { startsAt: string; endsAt: string }[],
-  options?: { now?: Date; stepMinutes?: number },
+  options?: { now?: Date; stepMinutes?: number; timeZone?: string },
 ): ShiftSlotOption[] {
   const shiftStart = new Date(shiftStartsAtIso).getTime();
   const shiftEnd = new Date(shiftEndsAtIso).getTime();
@@ -199,6 +281,7 @@ export function getSlotsInShiftWindow(
   const durationMs = durationMinutes * 60_000;
   const stepMs = (options?.stepMinutes ?? 30) * 60_000;
   const now = options?.now ?? new Date();
+  const timeZone = options?.timeZone ?? DEFAULT_BOOKING_TIMEZONE;
   const earliest = now.getTime() + 5 * 60_000;
   const slots: ShiftSlotOption[] = [];
 
@@ -216,7 +299,7 @@ export function getSlotsInShiftWindow(
       const startsAt = new Date(start).toISOString();
       slots.push({
         startsAt,
-        label: formatShiftDateTime(startsAt),
+        label: formatShiftDateTime(startsAt, timeZone),
       });
     }
   }

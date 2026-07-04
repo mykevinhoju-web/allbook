@@ -14,6 +14,7 @@ import {
 import type { ServiceOption } from "@/features/services";
 
 import {
+  DEFAULT_BOOKING_TIMEZONE,
   formatAmPmTime,
   formatScheduleDate,
   formatShiftDateTime,
@@ -91,6 +92,8 @@ export function BookingCheckoutFlow({
   returnTo = "/booking",
 }: BookingCheckoutFlowProps) {
   const tenant = useOptionalTenant();
+  const timeZone =
+    tenant?.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
 
   const [step, setStep] = useState<Step>("form");
   const [staff, setStaff] = useState<StaffInfo | null>(null);
@@ -530,7 +533,7 @@ export function BookingCheckoutFlow({
                 <p className="mt-3 text-sm text-stone-500">Demo payment — no real charge</p>
                 <p className="mt-2 text-3xl font-semibold">{priceLabel}</p>
                 <p className="mt-1 text-sm text-stone-500">
-                  {staff.name} · {formatShiftDateTime(startsAt)}
+                  {staff.name} · {formatShiftDateTime(startsAt, timeZone)}
                 </p>
 
                 <label className={cn(labelClass, "mt-5 text-left")}>

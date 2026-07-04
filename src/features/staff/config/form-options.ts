@@ -1,4 +1,7 @@
-import { defaultShiftWindow } from "@/features/booking/lib/schedule-utils";
+import {
+  DEFAULT_BOOKING_TIMEZONE,
+  defaultShiftWindow,
+} from "@/features/booking/lib/schedule-utils";
 
 import type { StaffFilterStatus, StaffStatus } from "../types";
 
@@ -38,21 +41,28 @@ export const languageOptions = [
   "Tagalog",
 ];
 
-const defaultShift = defaultShiftWindow();
+export function getDefaultStaffFormValues(
+  timeZone = DEFAULT_BOOKING_TIMEZONE,
+) {
+  const shift = defaultShiftWindow(new Date(), timeZone);
 
-export const defaultStaffFormValues = {
-  photos: [] as File[],
-  name: "",
-  age: "",
-  height: "",
-  weight: "",
-  nationality: "",
-  languages: [] as string[],
-  experience: "",
-  introduction: "",
-  loginId: "",
-  password: "",
-  shiftStartsAt: defaultShift.shiftStartsAt,
-  shiftEndsAt: defaultShift.shiftEndsAt,
-  status: "active" as StaffStatus,
-};
+  return {
+    photos: [] as File[],
+    name: "",
+    age: "",
+    height: "",
+    weight: "",
+    nationality: "",
+    languages: [] as string[],
+    experience: "",
+    introduction: "",
+    loginId: "",
+    password: "",
+    shiftStartsAt: shift.shiftStartsAt,
+    shiftEndsAt: shift.shiftEndsAt,
+    status: "active" as StaffStatus,
+  };
+}
+
+/** @deprecated Prefer getDefaultStaffFormValues(tenantTimezone) */
+export const defaultStaffFormValues = getDefaultStaffFormValues();

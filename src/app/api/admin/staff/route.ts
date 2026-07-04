@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import {
-  BOOKING_TIMEZONE,
+  DEFAULT_BOOKING_TIMEZONE,
   datetimeLocalToIso,
   isoToDatetimeLocal,
   defaultShiftWindow,
@@ -33,10 +33,11 @@ function mapStaffRow(
     updated_at: string;
   },
   photos: { id: string; url: string; sort_order: number }[],
+  timeZone: string,
 ) {
   const attributes = parseStaffAttributes(row.attributes as never);
   const shift = getShiftWindowFromAttributes(attributes);
-  const fallback = defaultShiftWindow();
+  const fallback = defaultShiftWindow(new Date(), timeZone);
 
   return {
     id: row.id,
@@ -47,10 +48,10 @@ function mapStaffRow(
     workingHoursStart: row.working_hours_start.slice(0, 5),
     workingHoursEnd: row.working_hours_end.slice(0, 5),
     shiftStartsAt: shift.shiftStartsAt
-      ? isoToDatetimeLocal(shift.shiftStartsAt)
+      ? isoToDatetimeLocal(shift.shiftStartsAt, timeZone)
       : fallback.shiftStartsAt,
     shiftEndsAt: shift.shiftEndsAt
-      ? isoToDatetimeLocal(shift.shiftEndsAt)
+      ? isoToDatetimeLocal(shift.shiftEndsAt, timeZone)
       : fallback.shiftEndsAt,
     sortOrder: row.sort_order,
     photos: photos
@@ -66,18 +67,22 @@ function mapStaffRow(
   };
 }
 
-function brisbaneDayCode(dateStr: string): string {
-  const iso = datetimeLocalToIso(`${dateStr}T12:00`);
+function dayCodeInZone(dateStr: string, timeZone: string): string {
+  const iso = datetimeLocalToIso(`${dateStr}T12:00`, timeZone);
   return new Date(iso)
     .toLocaleDateString("en-US", {
-      timeZone: BOOKING_TIMEZONE,
+      timeZone,
       weekday: "short",
     })
     .toLowerCase()
     .slice(0, 3);
 }
 
-function deriveWorkingFields(shiftStartsAtLocal: string, shiftEndsAtLocal: string) {
+function deriveWorkingFields(
+  shiftStartsAtLocal: string,
+  shiftEndsAtLocal: string,
+  timeZone: string,
+) {
   const startDate = shiftStartsAtLocal.slice(0, 10);
   const endDate = shiftEndsAtLocal.slice(0, 10);
   const days = new Set<string>();
@@ -86,7 +91,7 @@ function deriveWorkingFields(shiftStartsAtLocal: string, shiftEndsAtLocal: strin
   const end = new Date(`${endDate}T00:00:00Z`);
   while (cursor.getTime() <= end.getTime()) {
     const dateStr = cursor.toISOString().slice(0, 10);
-    days.add(brisbaneDayCode(dateStr));
+    days.add(dayCodeInZone(dateStr, timeZone));
     cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
 
@@ -131,14 +136,16 @@ export async function GET(request: Request) {
       photos = photoRows ?? [];
     }
 
+    const timeZone = tenant.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
     const staff = (staffRows ?? []).map((row) =>
       mapStaffRow(
         row,
         photos.filter((photo) => photo.staff_id === row.id),
+        timeZone,
       ),
     );
 
-    return NextResponse.json({ staff });
+    return NextResponse.json({ staff, timeZone });
   } catch (error) {
     if (error instanceof TenantContextError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
@@ -163,11 +170,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Name is required." }, { status: 400 });
     }
 
-    const fallback = defaultShiftWindow();
+    const timeZone = tenant.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
+    const fallback = defaultShiftWindow(new Date(), timeZone);
     const shiftStartsAtLocal = body.shiftStartsAt ?? fallback.shiftStartsAt;
     const shiftEndsAtLocal = body.shiftEndsAt ?? fallback.shiftEndsAt;
-    const startIso = datetimeLocalToIso(shiftStartsAtLocal);
-    const endIso = datetimeLocalToIso(shiftEndsAtLocal);
+    const startIso = datetimeLocalToIso(shiftStartsAtLocal, timeZone);
+    const endIso = datetimeLocalToIso(shiftEndsAtLocal, timeZone);
 
     if (new Date(endIso).getTime() <= new Date(startIso).getTime()) {
       return NextResponse.json(
@@ -176,7 +184,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const derived = deriveWorkingFields(shiftStartsAtLocal, shiftEndsAtLocal);
+    const derived = deriveWorkingFields(
+      shiftStartsAtLocal,
+      shiftEndsAtLocal,
+      timeZone,
+    );
     const attributes: StaffAttributes = {
       ...(body.attributes ?? {}),
       shiftStartsAt: startIso,
@@ -208,7 +220,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
-      staff: mapStaffRow(data, []),
+      staff: mapStaffRow(data, [], timeZone),
     });
   } catch (error) {
     if (error instanceof TenantContextError) {
