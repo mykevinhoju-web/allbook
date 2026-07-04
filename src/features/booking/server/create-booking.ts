@@ -1,12 +1,8 @@
 import { assignAvailableRoom } from "@/features/booking/lib/assign-room";
 import { hasStaffBookingConflict } from "@/features/booking/lib/staff-conflict";
+import { isStartTimeOnFiveMinuteSlot } from "@/features/booking/lib/schedule-utils";
 import {
-  hourlySlotsBetween,
-  isStartTimeOnFiveMinuteSlot,
-  normalizeTimeSlot,
-} from "@/features/booking/lib/schedule-utils";
-import {
-  getBookableSlotsFromAttributes,
+  getShiftWindowFromAttributes,
   parseStaffAttributes,
 } from "@/features/staff/utils/attributes";
 import { getServicePriceCents } from "@/features/services/server/get-service-price";
@@ -15,18 +11,6 @@ import { createServiceSupabase } from "@/lib/admin/tenant-context";
 import type { Tenant } from "@/features/tenants/types";
 import type { BookingStatus } from "@/types";
 
-function formatTimeInZone(iso: string, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone,
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).formatToParts(new Date(iso));
-
-  const hour = parts.find((part) => part.type === "hour")?.value ?? "00";
-  const minute = parts.find((part) => part.type === "minute")?.value ?? "00";
-  return `${hour === "24" ? "00" : hour}:${minute}`;
-}
 
 export interface CreatedBooking {
   id: string;
@@ -147,7 +131,7 @@ export async function createTenantBooking(
 
   const { data: staffRow } = await supabase
     .from("staff")
-    .select("id, status, attributes, working_hours_start, working_hours_end")
+    .select("id, status, attributes")
     .eq("tenant_id", tenant.id)
     .eq("id", body.staffId)
     .maybeSingle();
@@ -157,30 +141,29 @@ export async function createTenantBooking(
   }
 
   const attributes = parseStaffAttributes(staffRow.attributes as never);
-  const configuredSlots = getBookableSlotsFromAttributes(attributes);
-  const bookableSlots =
-    configuredSlots.length > 0
-      ? configuredSlots
-      : hourlySlotsBetween(
-          staffRow.working_hours_start.slice(0, 5),
-          staffRow.working_hours_end.slice(0, 5),
-        );
+  const { shiftStartsAt, shiftEndsAt } =
+    getShiftWindowFromAttributes(attributes);
 
-  const startTime = normalizeTimeSlot(
-    formatTimeInZone(
-      startsAt.toISOString(),
-      tenant.settings.timezone || "Australia/Sydney",
-    ),
-  );
-
-  if (!startTime || !bookableSlots.includes(startTime)) {
+  if (!shiftStartsAt || !shiftEndsAt) {
     throw new CreateBookingError(
-      "Selected time is not available for this staff member.",
+      "No availability window is set for this staff member.",
       400,
     );
   }
 
   const endsAt = new Date(startsAt.getTime() + durationMinutes * 60_000);
+  const shiftStartMs = new Date(shiftStartsAt).getTime();
+  const shiftEndMs = new Date(shiftEndsAt).getTime();
+
+  if (
+    startsAt.getTime() < shiftStartMs ||
+    endsAt.getTime() > shiftEndMs
+  ) {
+    throw new CreateBookingError(
+      "Selected time is outside this staff member's availability window.",
+      400,
+    );
+  }
 
   if (
     await hasStaffBookingConflict(

@@ -26,6 +26,8 @@ export interface StaffAttributes {
   experience?: string;
   introduction?: string;
   username?: string;
+  shiftStartsAt?: string;
+  shiftEndsAt?: string;
   [key: string]: string | string[] | number | boolean | null | undefined;
 }
 
@@ -37,7 +39,9 @@ export interface StaffRecord {
   workingDays: string[];
   workingHoursStart: string;
   workingHoursEnd: string;
-  bookableSlots: string[];
+  /** datetime-local values for admin form */
+  shiftStartsAt: string;
+  shiftEndsAt: string;
   sortOrder: number;
   photos: StaffPhoto[];
   photoUrl?: string;
@@ -66,9 +70,7 @@ export interface StaffFormValues {
   introduction: string;
   loginId: string;
   password: string;
-  workingDays: string[];
-  workingHoursStart: string;
-  workingHoursEnd: string;
-  bookableSlots: string[];
+  shiftStartsAt: string;
+  shiftEndsAt: string;
   status: StaffStatus;
 }

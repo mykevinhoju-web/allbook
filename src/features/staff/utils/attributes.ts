@@ -10,6 +10,11 @@ export interface StaffAttributes {
   experience?: string;
   introduction?: string;
   username?: string;
+  /** ISO start of current availability window (may span midnight). */
+  shiftStartsAt?: string;
+  /** ISO end of current availability window. */
+  shiftEndsAt?: string;
+  bookableSlots?: string[];
   [key: string]: string | string[] | number | boolean | null | undefined;
 }
 
@@ -27,12 +32,18 @@ export function toStaffAttributesJson(
   return attributes as Record<string, Json>;
 }
 
-export function getBookableSlotsFromAttributes(
-  attributes: StaffAttributes,
-): string[] {
-  const slots = attributes.bookableSlots;
-  if (!Array.isArray(slots)) return [];
-  return slots
-    .filter((slot): slot is string => typeof slot === "string")
-    .map((slot) => slot.slice(0, 5));
+export function getShiftWindowFromAttributes(attributes: StaffAttributes): {
+  shiftStartsAt: string | null;
+  shiftEndsAt: string | null;
+} {
+  const shiftStartsAt =
+    typeof attributes.shiftStartsAt === "string" && attributes.shiftStartsAt
+      ? attributes.shiftStartsAt
+      : null;
+  const shiftEndsAt =
+    typeof attributes.shiftEndsAt === "string" && attributes.shiftEndsAt
+      ? attributes.shiftEndsAt
+      : null;
+
+  return { shiftStartsAt, shiftEndsAt };
 }

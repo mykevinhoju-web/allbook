@@ -105,6 +105,106 @@ export function todayDateInputValue(date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
+/** Value for `<input type="datetime-local">` in the browser local timezone. */
+export function toDatetimeLocalValue(date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+export function datetimeLocalToIso(value: string): string {
+  return new Date(value).toISOString();
+}
+
+export function isoToDatetimeLocal(iso: string): string {
+  return toDatetimeLocalValue(new Date(iso));
+}
+
+/** Clear date + 24h time label, e.g. "4 Jul 2026, 14:00". */
+export function formatShiftDateTime(iso: string): string {
+  return new Date(iso).toLocaleString("en-AU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+export function defaultShiftWindow(now = new Date()): {
+  shiftStartsAt: string;
+  shiftEndsAt: string;
+} {
+  const start = new Date(now);
+  start.setMinutes(0, 0, 0);
+  if (start.getTime() < now.getTime()) {
+    start.setHours(start.getHours() + 1);
+  }
+
+  const end = new Date(start);
+  end.setHours(end.getHours() + 12);
+
+  return {
+    shiftStartsAt: toDatetimeLocalValue(start),
+    shiftEndsAt: toDatetimeLocalValue(end),
+  };
+}
+
+export interface ShiftSlotOption {
+  startsAt: string;
+  label: string;
+}
+
+/** Open start times inside a shift window (overnight-safe). */
+export function getSlotsInShiftWindow(
+  shiftStartsAtIso: string,
+  shiftEndsAtIso: string,
+  durationMinutes: number,
+  bookings: { startsAt: string; endsAt: string }[],
+  options?: { now?: Date; stepMinutes?: number },
+): ShiftSlotOption[] {
+  const shiftStart = new Date(shiftStartsAtIso).getTime();
+  const shiftEnd = new Date(shiftEndsAtIso).getTime();
+  if (
+    Number.isNaN(shiftStart) ||
+    Number.isNaN(shiftEnd) ||
+    shiftEnd <= shiftStart
+  ) {
+    return [];
+  }
+
+  const durationMs = durationMinutes * 60_000;
+  const stepMs = (options?.stepMinutes ?? 30) * 60_000;
+  const now = options?.now ?? new Date();
+  const earliest = now.getTime() + 5 * 60_000;
+  const slots: ShiftSlotOption[] = [];
+
+  for (let start = shiftStart; start + durationMs <= shiftEnd; start += stepMs) {
+    if (start < earliest) continue;
+
+    const end = start + durationMs;
+    const overlaps = bookings.some((booking) => {
+      const bookingStart = new Date(booking.startsAt).getTime();
+      const bookingEnd = new Date(booking.endsAt).getTime();
+      return start < bookingEnd && end > bookingStart;
+    });
+
+    if (!overlaps) {
+      const startsAt = new Date(start).toISOString();
+      slots.push({
+        startsAt,
+        label: formatShiftDateTime(startsAt),
+      });
+    }
+  }
+
+  return slots;
+}
+
 const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
 
 export function dayCodeForDate(date: Date): string {

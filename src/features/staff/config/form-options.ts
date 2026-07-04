@@ -1,3 +1,5 @@
+import { defaultShiftWindow } from "@/features/booking/lib/schedule-utils";
+
 import type { StaffFilterStatus, StaffStatus } from "../types";
 
 export const staffStatusOptions: { value: StaffStatus; label: string }[] = [
@@ -11,16 +13,6 @@ export const staffFilterOptions: { value: StaffFilterStatus; label: string }[] =
     { value: "all", label: "All Status" },
     ...staffStatusOptions,
   ];
-
-export const workingDayOptions = [
-  { value: "mon", label: "Mon" },
-  { value: "tue", label: "Tue" },
-  { value: "wed", label: "Wed" },
-  { value: "thu", label: "Thu" },
-  { value: "fri", label: "Fri" },
-  { value: "sat", label: "Sat" },
-  { value: "sun", label: "Sun" },
-] as const;
 
 export const nationalityOptions = [
   "Australian",
@@ -46,6 +38,8 @@ export const languageOptions = [
   "Tagalog",
 ];
 
+const defaultShift = defaultShiftWindow();
+
 export const defaultStaffFormValues = {
   photos: [] as File[],
   name: "",
@@ -58,19 +52,7 @@ export const defaultStaffFormValues = {
   introduction: "",
   loginId: "",
   password: "",
-  workingDays: ["mon", "tue", "wed", "thu", "fri"] as string[],
-  workingHoursStart: "09:00",
-  workingHoursEnd: "18:00",
-  bookableSlots: [
-    "09:00",
-    "10:00",
-    "11:00",
-    "12:00",
-    "13:00",
-    "14:00",
-    "15:00",
-    "16:00",
-    "17:00",
-  ] as string[],
+  shiftStartsAt: defaultShift.shiftStartsAt,
+  shiftEndsAt: defaultShift.shiftEndsAt,
   status: "active" as StaffStatus,
 };

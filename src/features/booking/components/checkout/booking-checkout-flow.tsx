@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, ChevronLeft } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -14,11 +14,9 @@ import {
 import type { ServiceOption } from "@/features/services";
 
 import {
-  buildStartsAtIso,
   formatAmPmTime,
   formatScheduleDate,
-  nextWorkingDateInputValue,
-  todayDateInputValue,
+  formatShiftDateTime,
 } from "../../lib/schedule-utils";
 
 type Step = "form" | "payment" | "done";
@@ -34,7 +32,18 @@ interface StaffInfo {
   photoUrl: string | null;
   role: string;
   initials?: string;
-  workingDays?: string[];
+}
+
+interface SlotOption {
+  startsAt: string;
+  label: string;
+}
+
+interface BookedRow {
+  startsAt: string;
+  endsAt: string;
+  label: string;
+  customerName: string | null;
 }
 
 interface CreatedBooking {
@@ -77,59 +86,6 @@ function StaffAvatar({ staff }: { staff: StaffInfo }) {
   );
 }
 
-function DateField({
-  value,
-  min,
-  onChange,
-}: {
-  value: string;
-  min: string;
-  onChange: (value: string) => void;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const openPicker = () => {
-    const input = inputRef.current;
-    if (!input) return;
-    try {
-      input.showPicker();
-    } catch {
-      input.focus();
-      input.click();
-    }
-  };
-
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={openPicker}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          openPicker();
-        }
-      }}
-      className="relative mt-1 flex h-11 w-full cursor-pointer items-center rounded-xl border border-pink-200 bg-white px-3 text-left text-sm text-stone-800"
-    >
-      <span className={value ? "text-stone-800" : "text-stone-400"}>
-        {value
-          ? formatScheduleDate(buildStartsAtIso(value, "12:00"))
-          : "Select date"}
-      </span>
-      <input
-        ref={inputRef}
-        type="date"
-        value={value}
-        min={min}
-        onChange={(event) => onChange(event.target.value)}
-        className="absolute inset-0 cursor-pointer opacity-0"
-        aria-label="Select date"
-      />
-    </div>
-  );
-}
-
 export function BookingCheckoutFlow({
   staffId,
   returnTo = "/booking",
@@ -141,10 +97,11 @@ export function BookingCheckoutFlow({
   const [loadingStaff, setLoadingStaff] = useState(true);
   const [serviceOptions, setServiceOptions] = useState<ServiceOption[]>([]);
   const [currency, setCurrency] = useState("AUD");
-  const [date, setDate] = useState(todayDateInputValue());
   const [durationMinutes, setDurationMinutes] = useState("");
   const [startsAt, setStartsAt] = useState("");
-  const [slots, setSlots] = useState<string[]>([]);
+  const [slots, setSlots] = useState<SlotOption[]>([]);
+  const [booked, setBooked] = useState<BookedRow[]>([]);
+  const [shiftLabel, setShiftLabel] = useState<string | null>(null);
   const [slotsReason, setSlotsReason] = useState<string | null>(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [customerName, setCustomerName] = useState("");
@@ -176,9 +133,6 @@ export function BookingCheckoutFlow({
           if (!cancelled) {
             setStaff(member);
             if (staffData.currency) setCurrency(staffData.currency);
-            if (member?.workingDays) {
-              setDate(nextWorkingDateInputValue(member.workingDays));
-            }
           }
         }
 
@@ -207,7 +161,7 @@ export function BookingCheckoutFlow({
   }, [staffId]);
 
   useEffect(() => {
-    if (!durationMinutes || !staffId || !date) {
+    if (!durationMinutes || !staffId) {
       setSlots([]);
       return;
     }
@@ -220,12 +174,13 @@ export function BookingCheckoutFlow({
       try {
         const params = new URLSearchParams({
           staffId,
-          date,
           durationMinutes,
         });
         const response = await fetch(`/api/booking/availability?${params}`);
         const data = (await response.json()) as {
-          slots?: string[];
+          slots?: SlotOption[];
+          booked?: BookedRow[];
+          shiftLabel?: string | null;
           reason?: string | null;
           error?: string;
         };
@@ -233,15 +188,21 @@ export function BookingCheckoutFlow({
         if (!cancelled) {
           if (!response.ok) {
             setSlots([]);
+            setBooked([]);
+            setShiftLabel(null);
             setSlotsReason(data.error ?? "Could not load times.");
             setStartsAt("");
             return;
           }
 
           setSlots(data.slots ?? []);
+          setBooked(data.booked ?? []);
+          setShiftLabel(data.shiftLabel ?? null);
           setSlotsReason(data.reason ?? null);
           setStartsAt((current) =>
-            current && data.slots?.includes(current) ? current : "",
+            current && data.slots?.some((slot) => slot.startsAt === current)
+              ? current
+              : "",
           );
         }
       } catch {
@@ -257,7 +218,7 @@ export function BookingCheckoutFlow({
     return () => {
       cancelled = true;
     };
-  }, [staffId, date, durationMinutes]);
+  }, [staffId, durationMinutes]);
 
   const selectedOption = useMemo(
     () =>
@@ -270,9 +231,6 @@ export function BookingCheckoutFlow({
   const priceLabel = selectedOption
     ? formatPriceFromCents(selectedOption.priceCents, currency)
     : null;
-
-  const startsAtIso =
-    startsAt && date ? buildStartsAtIso(date, startsAt) : null;
 
   const canBook =
     Boolean(startsAt) &&
@@ -300,7 +258,7 @@ export function BookingCheckoutFlow({
   };
 
   const submitBooking = async () => {
-    if (!startsAtIso || !durationMinutes) {
+    if (!startsAt || !durationMinutes) {
       setError("Missing appointment details.");
       return;
     }
@@ -314,7 +272,7 @@ export function BookingCheckoutFlow({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           staffId,
-          startsAt: startsAtIso,
+          startsAt,
           durationMinutes: Number(durationMinutes),
           customerName: customerName.trim(),
           customerPhone: customerPhone.trim(),
@@ -432,18 +390,11 @@ export function BookingCheckoutFlow({
               </div>
 
               <div className="space-y-4 rounded-2xl border border-pink-200/80 bg-white/70 p-4">
-                <div>
-                  <label className={labelClass}>Date</label>
-                  <DateField
-                    value={date}
-                    min={todayDateInputValue()}
-                    onChange={(nextDate) => {
-                      setDate(nextDate);
-                      setStartsAt("");
-                      setFormHint(null);
-                    }}
-                  />
-                </div>
+                {shiftLabel ? (
+                  <div className="rounded-xl bg-rose-50/80 px-3 py-2 text-center text-sm text-stone-700">
+                    {shiftLabel}
+                  </div>
+                ) : null}
 
                 <div>
                   <label className={labelClass}>Service time</label>
@@ -477,7 +428,7 @@ export function BookingCheckoutFlow({
                     <p className="mt-2 text-sm text-stone-400">Loading times…</p>
                   ) : slots.length === 0 ? (
                     <p className="mt-2 text-sm text-stone-400">
-                      {slotsReason ?? "No times available for this day."}
+                      {slotsReason ?? "No times available."}
                     </p>
                   ) : (
                     <select
@@ -490,13 +441,26 @@ export function BookingCheckoutFlow({
                     >
                       <option value="">Select a time</option>
                       {slots.map((slot) => (
-                        <option key={slot} value={slot}>
-                          {formatAmPmTime(buildStartsAtIso(date, slot))}
+                        <option key={slot.startsAt} value={slot.startsAt}>
+                          {slot.label}
                         </option>
                       ))}
                     </select>
                   )}
                 </div>
+
+                {booked.length > 0 ? (
+                  <div>
+                    <label className={labelClass}>Already booked</label>
+                    <ul className="mt-2 space-y-1.5 rounded-xl border border-pink-100 bg-white/80 px-3 py-2 text-sm text-stone-500">
+                      {booked.map((row) => (
+                        <li key={`${row.startsAt}-${row.endsAt}`}>
+                          {row.label}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
 
                 <div>
                   <label className={labelClass}>Name</label>
@@ -552,10 +516,7 @@ export function BookingCheckoutFlow({
               <button
                 type="button"
                 onClick={goToPayment}
-                className={cn(
-                  pillButtonClass,
-                  !canBook && "opacity-60",
-                )}
+                className={cn(pillButtonClass, !canBook && "opacity-60")}
               >
                 Book
               </button>
@@ -569,8 +530,7 @@ export function BookingCheckoutFlow({
                 <p className="mt-3 text-sm text-stone-500">Demo payment — no real charge</p>
                 <p className="mt-2 text-3xl font-semibold">{priceLabel}</p>
                 <p className="mt-1 text-sm text-stone-500">
-                  {staff.name} · {formatScheduleDate(startsAtIso!)} ·{" "}
-                  {formatAmPmTime(startsAtIso!)}
+                  {staff.name} · {formatShiftDateTime(startsAt)}
                 </p>
 
                 <label className={cn(labelClass, "mt-5 text-left")}>

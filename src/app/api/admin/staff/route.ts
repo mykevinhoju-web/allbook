@@ -1,12 +1,18 @@
 import { NextResponse } from "next/server";
 
 import {
+  dayCodeForDate,
+  datetimeLocalToIso,
+  isoToDatetimeLocal,
+  defaultShiftWindow,
+} from "@/features/booking/lib/schedule-utils";
+import {
   createServiceSupabase,
   requireTenantFromRequest,
   TenantContextError,
 } from "@/lib/admin/tenant-context";
 import {
-  getBookableSlotsFromAttributes,
+  getShiftWindowFromAttributes,
   parseStaffAttributes,
   toStaffAttributesJson,
   type StaffAttributes,
@@ -29,6 +35,8 @@ function mapStaffRow(
   photos: { id: string; url: string; sort_order: number }[],
 ) {
   const attributes = parseStaffAttributes(row.attributes as never);
+  const shift = getShiftWindowFromAttributes(attributes);
+  const fallback = defaultShiftWindow();
 
   return {
     id: row.id,
@@ -38,7 +46,12 @@ function mapStaffRow(
     workingDays: row.working_days,
     workingHoursStart: row.working_hours_start.slice(0, 5),
     workingHoursEnd: row.working_hours_end.slice(0, 5),
-    bookableSlots: getBookableSlotsFromAttributes(attributes),
+    shiftStartsAt: shift.shiftStartsAt
+      ? isoToDatetimeLocal(shift.shiftStartsAt)
+      : fallback.shiftStartsAt,
+    shiftEndsAt: shift.shiftEndsAt
+      ? isoToDatetimeLocal(shift.shiftEndsAt)
+      : fallback.shiftEndsAt,
     sortOrder: row.sort_order,
     photos: photos
       .sort((a, b) => a.sort_order - b.sort_order)
@@ -50,6 +63,30 @@ function mapStaffRow(
     photoUrl: photos.find((p) => p.sort_order === 0)?.url ?? photos[0]?.url,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+function deriveWorkingFields(shiftStartsAtLocal: string, shiftEndsAtLocal: string) {
+  const start = new Date(shiftStartsAtLocal);
+  const end = new Date(shiftEndsAtLocal);
+  const days = new Set<string>();
+  const cursor = new Date(start);
+  cursor.setHours(12, 0, 0, 0);
+  const endDay = new Date(end);
+  endDay.setHours(12, 0, 0, 0);
+
+  while (cursor.getTime() <= endDay.getTime()) {
+    days.add(dayCodeForDate(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  const startTime = `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}`;
+  const endTime = `${String(end.getHours()).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}`;
+
+  return {
+    workingDays: [...days],
+    workingHoursStart: startTime,
+    workingHoursEnd: endTime === startTime ? "23:59" : endTime,
   };
 }
 
@@ -108,29 +145,32 @@ export async function POST(request: Request) {
       name?: string;
       status?: StaffStatus;
       attributes?: StaffAttributes;
-      workingDays?: string[];
-      workingHoursStart?: string;
-      workingHoursEnd?: string;
-      bookableSlots?: string[];
+      shiftStartsAt?: string;
+      shiftEndsAt?: string;
     };
 
     if (!body.name?.trim()) {
       return NextResponse.json({ error: "Name is required." }, { status: 400 });
     }
 
+    const fallback = defaultShiftWindow();
+    const shiftStartsAtLocal = body.shiftStartsAt ?? fallback.shiftStartsAt;
+    const shiftEndsAtLocal = body.shiftEndsAt ?? fallback.shiftEndsAt;
+    const startIso = datetimeLocalToIso(shiftStartsAtLocal);
+    const endIso = datetimeLocalToIso(shiftEndsAtLocal);
+
+    if (new Date(endIso).getTime() <= new Date(startIso).getTime()) {
+      return NextResponse.json(
+        { error: "Available until must be after available from." },
+        { status: 400 },
+      );
+    }
+
+    const derived = deriveWorkingFields(shiftStartsAtLocal, shiftEndsAtLocal);
     const attributes: StaffAttributes = {
       ...(body.attributes ?? {}),
-      bookableSlots: body.bookableSlots ?? [
-        "09:00",
-        "10:00",
-        "11:00",
-        "12:00",
-        "13:00",
-        "14:00",
-        "15:00",
-        "16:00",
-        "17:00",
-      ],
+      shiftStartsAt: startIso,
+      shiftEndsAt: endIso,
     };
 
     const supabase = createServiceSupabase();
@@ -141,9 +181,9 @@ export async function POST(request: Request) {
         name: body.name.trim(),
         status: body.status ?? "active",
         attributes: toStaffAttributesJson(attributes),
-        working_days: body.workingDays ?? ["mon", "tue", "wed", "thu", "fri"],
-        working_hours_start: body.workingHoursStart ?? "09:00",
-        working_hours_end: body.workingHoursEnd ?? "18:00",
+        working_days: derived.workingDays,
+        working_hours_start: derived.workingHoursStart,
+        working_hours_end: derived.workingHoursEnd,
       })
       .select(
         "id, name, status, attributes, working_days, working_hours_start, working_hours_end, sort_order, created_at, updated_at",

@@ -17,12 +17,9 @@ import {
 import { cn } from "@/lib/utils";
 
 import {
-  allDayTimeSlots,
-  formatAmPmTime,
-  buildStartsAtIso,
-  hourlySlotsBetween,
-  sortTimeSlots,
-  todayDateInputValue,
+  datetimeLocalToIso,
+  formatShiftDateTime,
+  toDatetimeLocalValue,
 } from "@/features/booking/lib/schedule-utils";
 
 import {
@@ -30,13 +27,17 @@ import {
   languageOptions,
   nationalityOptions,
   staffStatusOptions,
-  workingDayOptions,
 } from "../config";
 import type { StaffFormValues, StaffPhoto, StaffRecord, StaffStatus } from "../types";
 import { StaffFormField } from "./staff-form-field";
 import { StaffFormSection } from "./staff-form-section";
 
-const DAY_SLOT_OPTIONS = allDayTimeSlots(30);
+interface ShiftBookingRow {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  customerName: string | null;
+}
 
 const inputClassName =
   "h-10 rounded-xl border-border/60 bg-background shadow-sm focus-visible:ring-2 focus-visible:ring-ring/30";
@@ -75,16 +76,8 @@ function mapRecordToForm(record: StaffRecord): StaffFormValues {
     introduction: record.attributes.introduction ?? "",
     loginId: "",
     password: "",
-    workingDays: record.workingDays,
-    workingHoursStart: record.workingHoursStart,
-    workingHoursEnd: record.workingHoursEnd,
-    bookableSlots:
-      record.bookableSlots?.length > 0
-        ? record.bookableSlots
-        : hourlySlotsBetween(
-            record.workingHoursStart,
-            record.workingHoursEnd,
-          ),
+    shiftStartsAt: record.shiftStartsAt,
+    shiftEndsAt: record.shiftEndsAt,
     status: record.status,
   };
 }
@@ -97,6 +90,7 @@ export function StaffForm({ staffId }: StaffFormProps) {
   const [hasLoginAccount, setHasLoginAccount] = useState(false);
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
+  const [shiftBookings, setShiftBookings] = useState<ShiftBookingRow[]>([]);
 
   useEffect(() => {
     if (!staffId) return;
@@ -142,6 +136,38 @@ export function StaffForm({ staffId }: StaffFormProps) {
     })();
   }, [staffId]);
 
+  useEffect(() => {
+    if (!staffId || !form.shiftStartsAt || !form.shiftEndsAt) {
+      setShiftBookings([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const params = new URLSearchParams({
+          staffId,
+          from: datetimeLocalToIso(form.shiftStartsAt),
+          to: datetimeLocalToIso(form.shiftEndsAt),
+        });
+        const response = await fetch(`/api/admin/bookings?${params}`);
+        const data = (await response.json()) as {
+          bookings?: ShiftBookingRow[];
+        };
+        if (!cancelled && response.ok) {
+          setShiftBookings(data.bookings ?? []);
+        }
+      } catch {
+        if (!cancelled) setShiftBookings([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [staffId, form.shiftStartsAt, form.shiftEndsAt]);
+
   const updateField = <K extends keyof StaffFormValues>(
     key: K,
     value: StaffFormValues[K],
@@ -155,31 +181,6 @@ export function StaffForm({ staffId }: StaffFormProps) {
       form.languages.includes(language)
         ? form.languages.filter((item) => item !== language)
         : [...form.languages, language],
-    );
-  };
-
-  const toggleWorkingDay = (day: string) => {
-    updateField(
-      "workingDays",
-      form.workingDays.includes(day)
-        ? form.workingDays.filter((item) => item !== day)
-        : [...form.workingDays, day],
-    );
-  };
-
-  const toggleBookableSlot = (slot: string) => {
-    updateField(
-      "bookableSlots",
-      form.bookableSlots.includes(slot)
-        ? form.bookableSlots.filter((item) => item !== slot)
-        : sortTimeSlots([...form.bookableSlots, slot]),
-    );
-  };
-
-  const fillBookableFromWorkingHours = () => {
-    updateField(
-      "bookableSlots",
-      hourlySlotsBetween(form.workingHoursStart, form.workingHoursEnd),
     );
   };
 
@@ -210,16 +211,22 @@ export function StaffForm({ staffId }: StaffFormProps) {
       return;
     }
 
+    if (
+      new Date(form.shiftEndsAt).getTime() <=
+      new Date(form.shiftStartsAt).getTime()
+    ) {
+      toast.error("Available until must be after available from");
+      return;
+    }
+
     setSaving(true);
 
     try {
       const payload = {
         name: form.name.trim(),
         status: form.status,
-        workingDays: form.workingDays,
-        workingHoursStart: form.workingHoursStart,
-        workingHoursEnd: form.workingHoursEnd,
-        bookableSlots: form.bookableSlots,
+        shiftStartsAt: form.shiftStartsAt,
+        shiftEndsAt: form.shiftEndsAt,
         attributes: {
           age: form.age,
           height: form.height,
@@ -454,106 +461,83 @@ export function StaffForm({ staffId }: StaffFormProps) {
         </StaffFormSection>
 
         <StaffFormSection
-          title="Work Information"
-          description="Schedule and availability used by the live booking board."
+          title="Availability window"
+          description="Set one continuous window. Overnight is fine — e.g. 4 Jul 14:00 to 5 Jul 02:00."
         >
-          <StaffFormField label="Working Days">
-            <div className="flex flex-wrap gap-2">
-              {workingDayOptions.map((day) => {
-                const isSelected = form.workingDays.includes(day.value);
-
-                return (
-                  <button
-                    key={day.value}
-                    type="button"
-                    onClick={() => toggleWorkingDay(day.value)}
-                    className={cn(
-                      "min-w-12 rounded-xl border px-3 py-2 text-sm font-medium transition-colors",
-                      isSelected
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border/60 bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground",
-                    )}
-                  >
-                    {day.label}
-                  </button>
-                );
-              })}
-            </div>
-          </StaffFormField>
-
-          <StaffFormField label="Working Hours">
-            <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <StaffFormField label="Available from" htmlFor="shift-start" required>
               <Input
-                type="time"
-                value={form.workingHoursStart}
+                id="shift-start"
+                type="datetime-local"
+                min={toDatetimeLocalValue()}
+                value={form.shiftStartsAt}
                 onChange={(event) =>
-                  updateField("workingHoursStart", event.target.value)
+                  updateField("shiftStartsAt", event.target.value)
                 }
                 className={inputClassName}
               />
-              <Input
-                type="time"
-                value={form.workingHoursEnd}
-                onChange={(event) =>
-                  updateField("workingHoursEnd", event.target.value)
-                }
-                className={inputClassName}
-              />
-            </div>
-          </StaffFormField>
-
-          <StaffFormField label="Bookable times">
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Choose start times customers can book (24-hour day, 30-minute
-                steps). Already-booked times are blocked automatically.
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                {form.shiftStartsAt
+                  ? formatShiftDateTime(datetimeLocalToIso(form.shiftStartsAt))
+                  : "Pick start date and time"}
               </p>
-              <div className="flex flex-wrap gap-2">
-                <AppButton
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={fillBookableFromWorkingHours}
-                >
-                  Fill from working hours
-                </AppButton>
-                <AppButton
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => updateField("bookableSlots", [])}
-                >
-                  Clear all
-                </AppButton>
-                <span className="self-center text-xs text-muted-foreground">
-                  {form.bookableSlots.length} selected
-                </span>
-              </div>
-              <div className="max-h-56 overflow-y-auto rounded-xl border border-border/60 bg-background p-2">
-                <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6">
-                  {DAY_SLOT_OPTIONS.map((slot) => {
-                    const selected = form.bookableSlots.includes(slot);
-                    return (
-                      <button
-                        key={slot}
-                        type="button"
-                        onClick={() => toggleBookableSlot(slot)}
-                        className={cn(
-                          "rounded-lg border px-1.5 py-1.5 text-xs font-medium tabular-nums transition-colors",
-                          selected
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-transparent bg-muted/40 text-muted-foreground hover:border-border hover:text-foreground",
-                        )}
-                      >
-                        {formatAmPmTime(
-                          buildStartsAtIso(todayDateInputValue(), slot),
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+            </StaffFormField>
+
+            <StaffFormField label="Available until" htmlFor="shift-end" required>
+              <Input
+                id="shift-end"
+                type="datetime-local"
+                min={form.shiftStartsAt || toDatetimeLocalValue()}
+                value={form.shiftEndsAt}
+                onChange={(event) =>
+                  updateField("shiftEndsAt", event.target.value)
+                }
+                className={inputClassName}
+              />
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                {form.shiftEndsAt
+                  ? formatShiftDateTime(datetimeLocalToIso(form.shiftEndsAt))
+                  : "Pick end date and time"}
+              </p>
+            </StaffFormField>
+          </div>
+
+          {form.shiftStartsAt && form.shiftEndsAt ? (
+            <div className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-sm">
+              <p className="font-medium text-foreground">
+                {formatShiftDateTime(datetimeLocalToIso(form.shiftStartsAt))}
+                {" → "}
+                {formatShiftDateTime(datetimeLocalToIso(form.shiftEndsAt))}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Customers can only book open times inside this window.
+              </p>
             </div>
+          ) : null}
+
+          <StaffFormField label="Bookings in this window">
+            {shiftBookings.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No bookings in this window yet.
+              </p>
+            ) : (
+              <ul className="space-y-2 rounded-xl border border-border/60 bg-background p-3">
+                {shiftBookings.map((booking) => (
+                  <li
+                    key={booking.id}
+                    className="flex flex-col gap-0.5 text-sm sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <span className="font-medium text-foreground">
+                      {booking.customerName ?? "Customer"}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {formatShiftDateTime(booking.startsAt)} –{" "}
+                      {formatShiftDateTime(booking.endsAt)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </StaffFormField>
 
           <StaffFormField label="Status" htmlFor="staff-status">

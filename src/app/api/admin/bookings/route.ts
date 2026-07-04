@@ -100,20 +100,33 @@ export async function GET(request: Request) {
     const tenant = await requireTenantFromRequest(request);
     const { searchParams } = new URL(request.url);
     const date = searchParams.get("date");
+    const from = searchParams.get("from");
+    const to = searchParams.get("to");
     const staffId = searchParams.get("staffId");
 
-    if (!date) {
-      return NextResponse.json({ error: "date is required." }, { status: 400 });
-    }
+    let rangeStart: string;
+    let rangeEnd: string;
 
-    // Filter bookings by tenant-local day, not UTC midnight.
-    const timeZone = tenant.settings.timezone || "Australia/Sydney";
-    const dayStart = zonedMidnightToUtcIso(date, timeZone);
-    const [y, m, d] = date.split("-").map(Number);
-    const nextDay = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1, 12, 0, 0));
-    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-    const nextDate = nextDay.toISOString().slice(0, 10);
-    const dayEndExclusive = zonedMidnightToUtcIso(nextDate, timeZone);
+    if (from && to) {
+      rangeStart = from;
+      rangeEnd = to;
+    } else if (date) {
+      // Filter bookings by tenant-local day, not UTC midnight.
+      const timeZone = tenant.settings.timezone || "Australia/Sydney";
+      rangeStart = zonedMidnightToUtcIso(date, timeZone);
+      const [y, m, d] = date.split("-").map(Number);
+      const nextDay = new Date(
+        Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1, 12, 0, 0),
+      );
+      nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+      const nextDate = nextDay.toISOString().slice(0, 10);
+      rangeEnd = zonedMidnightToUtcIso(nextDate, timeZone);
+    } else {
+      return NextResponse.json(
+        { error: "date or from/to is required." },
+        { status: 400 },
+      );
+    }
 
     const supabase = createServiceSupabase();
     let query = supabase
@@ -123,9 +136,14 @@ export async function GET(request: Request) {
       )
       .eq("tenant_id", tenant.id)
       .neq("status", "cancelled")
-      .gte("starts_at", dayStart)
-      .lt("starts_at", dayEndExclusive)
       .order("starts_at", { ascending: true });
+
+    if (from && to) {
+      // Overlap with the availability window (supports overnight shifts).
+      query = query.lt("starts_at", rangeEnd).gt("ends_at", rangeStart);
+    } else {
+      query = query.gte("starts_at", rangeStart).lt("starts_at", rangeEnd);
+    }
 
     if (staffId) {
       query = query.eq("staff_id", staffId);
