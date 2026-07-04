@@ -2,7 +2,6 @@ export { BookingSampleShell } from "./booking-sample-shell";
 export {
   BookingSampleCards,
   BookingSampleList,
-  BookingSamplePastel,
   BookingSamplePortrait,
 } from "./booking-sample-variants";
 export {

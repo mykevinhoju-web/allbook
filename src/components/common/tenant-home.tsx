@@ -22,8 +22,8 @@ export function TenantHomePage({ tenant }: TenantHomePageProps) {
           {tenant.branding.tagline}
         </p>
         <div className="flex flex-wrap gap-3">
-          <Link href="/shops" className={cn(buttonVariants())}>
-            Browse shops
+          <Link href="/booking" className={cn(buttonVariants())}>
+            Book now
           </Link>
           <Link href="/login" className={cn(buttonVariants({ variant: "outline" }))}>
             Sign in

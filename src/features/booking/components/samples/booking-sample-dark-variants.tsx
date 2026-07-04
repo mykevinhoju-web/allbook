@@ -1,6 +1,5 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
 
@@ -54,14 +53,13 @@ function ReserveButton({
   label?: string;
 }) {
   const { bookStaff } = useBookStaff();
-  const pathname = usePathname();
   const available = staff.available;
 
   return (
     <button
       type="button"
       disabled={!available}
-      onClick={() => bookStaff(staff, { returnTo: pathname })}
+      onClick={() => bookStaff(staff)}
       className={cn(
         "inline-flex items-center justify-center gap-1.5 text-sm font-medium tracking-wide transition-all active:scale-[0.98] disabled:opacity-40",
         available
@@ -76,12 +74,19 @@ function ReserveButton({
 }
 
 interface DarkSampleProps {
-  staff: BookingStaffItem[];
+  staff?: BookingStaffItem[];
 }
 
 /** Sample 4 — Noir cinematic cards with full-bleed portraits */
-export function BookingSampleNoir({ staff: fallback }: DarkSampleProps) {
-  const { staff } = useBookingStaffList(fallback);
+export function BookingSampleNoir() {
+  const { staff, loading } = useBookingStaffList();
+
+  if (loading) {
+    return (
+      <p className="py-8 text-center text-sm text-stone-500">Loading staff…</p>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <p className="text-center text-xs tracking-[0.2em] text-stone-500 uppercase">
@@ -123,8 +128,15 @@ export function BookingSampleNoir({ staff: fallback }: DarkSampleProps) {
 }
 
 /** Sample 5 — Velvet lounge rows with soft glow borders */
-export function BookingSampleVelvet({ staff: fallback }: DarkSampleProps) {
-  const { staff } = useBookingStaffList(fallback);
+export function BookingSampleVelvet() {
+  const { staff, loading } = useBookingStaffList();
+
+  if (loading) {
+    return (
+      <p className="py-8 text-center text-sm text-stone-500">Loading staff…</p>
+    );
+  }
+
   return (
     <div className="space-y-3">
       <div className="rounded-2xl border border-rose-900/30 bg-gradient-to-br from-stone-900/80 to-stone-950 px-4 py-3 text-center">

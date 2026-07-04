@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 
 import type { BookingStaffItem } from "../config/booking-staff-mock";
 
-export function useBookingStaffList(fallback: BookingStaffItem[]) {
-  const [staff, setStaff] = useState<BookingStaffItem[]>(fallback);
+export function useBookingStaffList() {
+  const [staff, setStaff] = useState<BookingStaffItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -14,14 +15,25 @@ export function useBookingStaffList(fallback: BookingStaffItem[]) {
     void (async () => {
       try {
         const response = await fetch("/api/booking/staff");
-        if (!response.ok) return;
+        if (!response.ok) {
+          const data = (await response.json()) as { error?: string };
+          throw new Error(data.error ?? "Could not load staff");
+        }
 
         const data = (await response.json()) as {
           staff?: BookingStaffItem[];
         };
 
-        if (!cancelled && data.staff?.length) {
-          setStaff(data.staff);
+        if (!cancelled) {
+          setStaff(data.staff ?? []);
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : "Could not load staff",
+          );
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -33,5 +45,5 @@ export function useBookingStaffList(fallback: BookingStaffItem[]) {
     };
   }, []);
 
-  return { staff, loading };
+  return { staff, loading, error };
 }

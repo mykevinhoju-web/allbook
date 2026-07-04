@@ -34,14 +34,14 @@ const lightSamples = [
     style: "Pink button",
     pink: true,
   },
-  {
-    number: 7,
-    title: "Sample 7 — Pastel Boutique",
-    description: "Soft pink background with white pill buttons and magenta outline.",
-    style: "Pastel magenta",
-    pink: true,
-  },
 ] as const;
+
+const liveBooking = {
+  href: "/booking",
+  title: "Live booking",
+  description: "Pastel staff picker → appointment form → payment.",
+  style: "Production flow",
+} as const;
 
 const darkSamples = [
   {
@@ -142,6 +142,25 @@ export default function BookingSamplesIndexPage() {
           <p className="text-sm text-muted-foreground">
             Mobile-optimized staff picker mockups. Tap a sample to preview.
           </p>
+        </div>
+
+        <div className="mb-8 space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Live booking
+          </p>
+          <Link
+            href={liveBooking.href}
+            className="block rounded-2xl border border-rose-100 bg-white p-4 shadow-[0_4px_20px_-8px_rgba(251,113,133,0.25)] transition-colors active:bg-rose-50/50"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-rose-400">{liveBooking.style}</p>
+                <h2 className="font-semibold text-stone-800">{liveBooking.title}</h2>
+                <p className="text-sm text-rose-400/70">{liveBooking.description}</p>
+              </div>
+              <ArrowRight className="mt-1 size-4 shrink-0 text-rose-300" />
+            </div>
+          </Link>
         </div>
 
         <div className="space-y-3">
