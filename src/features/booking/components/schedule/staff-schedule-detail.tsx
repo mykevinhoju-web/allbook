@@ -1,6 +1,5 @@
 "use client";
 
-import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { AppAvatar } from "@/components/common";
@@ -18,9 +17,9 @@ import {
   formatDurationLabel,
   formatScheduleDate,
   getAvailableStartSlots,
-  groupTimeSlotsByHour,
 } from "../../lib/schedule-utils";
 import type { AdminBooking } from "../../types/admin-booking";
+import { BookingTimePicker } from "./booking-time-picker";
 
 interface StaffScheduleDetailProps {
   staff: StaffRecord;
@@ -50,7 +49,6 @@ export function StaffScheduleDetail({
   const [durationMinutes, setDurationMinutes] = useState(
     serviceOptions[0]?.durationMinutes ?? 30,
   );
-  const [expandedHours, setExpandedHours] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (serviceOptions[0]?.durationMinutes) {
@@ -84,34 +82,14 @@ export function StaffScheduleDetail({
     ],
   );
 
-  const slotGroups = useMemo(
-    () => groupTimeSlotsByHour(date, availableSlots),
+  const slotOptions = useMemo(
+    () =>
+      availableSlots.map((slot) => ({
+        value: slot,
+        label: formatAmPmTime(buildStartsAtIso(date, slot)),
+      })),
     [availableSlots, date],
   );
-
-  useEffect(() => {
-    if (slotGroups.length === 0) {
-      setExpandedHours(new Set());
-      return;
-    }
-
-    const first = slotGroups[0]?.hourLabel;
-    if (first) {
-      setExpandedHours(new Set([first]));
-    }
-  }, [durationMinutes, slotGroups]);
-
-  const toggleHour = (hourLabel: string) => {
-    setExpandedHours((current) => {
-      const next = new Set(current);
-      if (next.has(hourLabel)) {
-        next.delete(hourLabel);
-      } else {
-        next.add(hourLabel);
-      }
-      return next;
-    });
-  };
 
   return (
     <div className="space-y-6 pb-6">
@@ -205,66 +183,14 @@ export function StaffScheduleDetail({
         </div>
       </section>
 
-      <section>
-        <IosSectionLabel>
-          Pick a time · {formatDurationLabel(durationMinutes)}
-        </IosSectionLabel>
-
-        {slotGroups.length === 0 ? (
-          <div className="rounded-2xl border border-border/40 bg-card px-4 py-6 text-center shadow-soft">
-            <p className="text-sm text-muted-foreground">
-              No open slots in working hours.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {slotGroups.map((group) => {
-              const expanded = expandedHours.has(group.hourLabel);
-              return (
-                <div
-                  key={group.hourLabel}
-                  className="overflow-hidden rounded-2xl border border-border/40 bg-card shadow-soft"
-                >
-                  <button
-                    type="button"
-                    onClick={() => toggleHour(group.hourLabel)}
-                    className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-muted/40"
-                  >
-                    {expanded ? (
-                      <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-                    )}
-                    <span className="flex-1 text-sm font-semibold">
-                      {group.hourLabel}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {group.slots.length} open
-                    </span>
-                  </button>
-
-                  {expanded ? (
-                    <div className="border-t border-border/40 bg-muted/25 px-3 py-3">
-                      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                        {group.slots.map((slot) => (
-                          <button
-                            key={slot}
-                            type="button"
-                            onClick={() => onAddBooking(slot, durationMinutes)}
-                            className="rounded-xl bg-background py-2.5 text-sm font-medium tabular-nums shadow-sm ring-1 ring-black/5 transition active:scale-[0.97] active:bg-primary active:text-primary-foreground"
-                          >
-                            {formatAmPmTime(buildStartsAtIso(date, slot))}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+      <BookingTimePicker
+        date={date}
+        durationMinutes={durationMinutes}
+        slotOptions={slotOptions}
+        selectedValue=""
+        onSelect={(slot) => onAddBooking(slot, durationMinutes)}
+        emptyMessage="No open slots in working hours."
+      />
     </div>
   );
 }

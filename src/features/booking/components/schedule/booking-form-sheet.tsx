@@ -16,6 +16,7 @@ import {
 import type { ServiceOption } from "@/features/services";
 
 import { formatAmPmTime, buildStartsAtIso } from "../../lib/schedule-utils";
+import { BookingTimePicker } from "./booking-time-picker";
 
 export interface BookingFormValues {
   staffId: string;
@@ -179,8 +180,13 @@ export function BookingFormSheet({
     (option) => String(option.durationMinutes) === values.durationMinutes,
   );
 
-  const timeDisabled =
-    !values.staffId || !values.durationMinutes || timeSlotsLoading;
+  const durationMinutes = Number(values.durationMinutes) || 0;
+  const timePickerDisabled = !values.staffId || !values.durationMinutes;
+  const timePickerHint = !values.staffId
+    ? "Select staff first"
+    : !values.durationMinutes
+      ? "Select service first"
+      : timeSlotsHint;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -253,33 +259,19 @@ export function BookingFormSheet({
                 ) : null}
               </IosRow>
 
-              <IosRow label="Available times" required border={false}>
-                <IosSelect
-                  value={values.startsAt}
-                  onChange={(value) => update("startsAt", value)}
-                  className={timeDisabled ? "opacity-50" : undefined}
-                >
-                  <option value="">
-                    {!values.staffId
-                      ? "Select staff first"
-                      : !values.durationMinutes
-                        ? "Select service first"
-                        : timeSlotsLoading
-                          ? "Loading times…"
-                          : "Select time"}
-                  </option>
-                  {slotOptions.map((slot) => (
-                    <option key={slot.value} value={slot.value}>
-                      {slot.label}
-                    </option>
-                  ))}
-                </IosSelect>
-                {timeSlotsHint ? (
-                  <p className="text-xs text-muted-foreground">{timeSlotsHint}</p>
-                ) : null}
-              </IosRow>
             </IosGroupedCard>
           </section>
+
+          <BookingTimePicker
+            date={date}
+            durationMinutes={durationMinutes || 30}
+            slotOptions={slotOptions}
+            selectedValue={values.startsAt}
+            onSelect={(value) => update("startsAt", value)}
+            loading={timeSlotsLoading}
+            hint={timePickerHint}
+            disabled={timePickerDisabled}
+          />
 
           <section>
             <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
