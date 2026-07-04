@@ -10,14 +10,20 @@ export async function hasStaffBookingConflict(
   endsAt: string,
   excludeBookingId?: string,
 ): Promise<boolean> {
-  const { data } = await supabase
+  let query = supabase
     .from("bookings")
     .select("id")
     .eq("tenant_id", tenantId)
     .eq("staff_id", staffId)
     .neq("status", "cancelled")
     .lt("starts_at", endsAt)
-    .gt("ends_at", startsAt);
+    .gt("ends_at", startsAt)
+    .limit(1);
 
-  return (data ?? []).some((booking) => booking.id !== excludeBookingId);
+  if (excludeBookingId) {
+    query = query.neq("id", excludeBookingId);
+  }
+
+  const { data } = await query;
+  return (data?.length ?? 0) > 0;
 }

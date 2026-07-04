@@ -1,3 +1,4 @@
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 
 import {
@@ -218,6 +219,8 @@ export async function POST(request: Request) {
         { status: 503 },
       );
     }
+
+    revalidateTag("booking-staff");
 
     return NextResponse.json({
       staff: mapStaffRow(data, [], timeZone),

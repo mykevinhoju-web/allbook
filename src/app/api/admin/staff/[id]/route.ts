@@ -1,3 +1,4 @@
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 
 import type { Database } from "@/types/database";
@@ -261,6 +262,8 @@ export async function PATCH(
       .eq("staff_id", id)
       .order("sort_order", { ascending: true });
 
+    revalidateTag("booking-staff");
+
     return NextResponse.json({
       staff: mapStaffRow(data, photos ?? [], timeZone),
       timeZone,
@@ -292,6 +295,8 @@ export async function DELETE(
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 503 });
     }
+
+    revalidateTag("booking-staff");
 
     return NextResponse.json({ ok: true });
   } catch (error) {

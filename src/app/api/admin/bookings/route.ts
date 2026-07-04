@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { NextResponse } from "next/server";
 
 import { assignAvailableRoom } from "@/features/booking/lib/assign-room";
@@ -11,6 +12,15 @@ import {
   TenantContextError,
 } from "@/lib/admin/tenant-context";
 import type { BookingStatus } from "@/types";
+
+function isOverlapConstraintError(error: { code?: string; message?: string } | null) {
+  if (!error) return false;
+  return (
+    error.code === "23P01" ||
+    error.message?.includes("bookings_staff_no_overlap") === true ||
+    error.message?.includes("bookings_room_no_overlap") === true
+  );
+}
 
 function getTimeZoneOffsetMs(timeZone: string, utcDate: Date): number {
   const dtf = new Intl.DateTimeFormat("en-US", {
@@ -278,6 +288,13 @@ export async function POST(request: Request) {
       .single();
 
     if (error || !data) {
+      if (isOverlapConstraintError(error)) {
+        return NextResponse.json(
+          { error: "This staff member already has a booking in that time slot." },
+          { status: 409 },
+        );
+      }
+
       return NextResponse.json(
         { error: error?.message ?? "Failed to create booking." },
         { status: 503 },
@@ -286,18 +303,20 @@ export async function POST(request: Request) {
 
     const created = mapBooking(data);
 
-    // Notify staff/admin clients (realtime + push). Must await — serverless exits after response.
-    await supabase.from("booking_alert_events").insert({
-      tenant_slug: tenant.slug,
-      staff_id: created.staffId,
-      staff_name: created.staffName,
-    });
-    await sendBookingPushNotifications(tenant.slug, {
-      staffId: created.staffId,
-      staffName: created.staffName,
-      roomName: created.roomName,
-      startsAt: created.startsAt,
-      endsAt: created.endsAt,
+    // Notifications run after the response so booking latency stays low at scale.
+    after(async () => {
+      await supabase.from("booking_alert_events").insert({
+        tenant_slug: tenant.slug,
+        staff_id: created.staffId,
+        staff_name: created.staffName,
+      });
+      await sendBookingPushNotifications(tenant.slug, {
+        staffId: created.staffId,
+        staffName: created.staffName,
+        roomName: created.roomName,
+        startsAt: created.startsAt,
+        endsAt: created.endsAt,
+      });
     });
 
     return NextResponse.json({ booking: created });

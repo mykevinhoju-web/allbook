@@ -1,3 +1,4 @@
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 
 import {
@@ -119,6 +120,8 @@ export async function PUT(request: Request) {
     if (insertError) {
       return NextResponse.json({ error: insertError.message }, { status: 503 });
     }
+
+    revalidateTag("service-options");
 
     return NextResponse.json({
       options: (data ?? []).map(mapOption),

@@ -23,12 +23,16 @@ export async function middleware(request: NextRequest) {
 
   if (tenantSlug) {
     response.headers.set(TENANT_SLUG_HEADER, tenantSlug);
-    response.cookies.set(TENANT_SLUG_COOKIE, tenantSlug, {
-      path: "/",
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 24 * 365 * 10,
-    });
+    // Only write the cookie when missing/changed — avoids Set-Cookie on every hit.
+    const existingSlug = request.cookies.get(TENANT_SLUG_COOKIE)?.value;
+    if (existingSlug !== tenantSlug) {
+      response.cookies.set(TENANT_SLUG_COOKIE, tenantSlug, {
+        path: "/",
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 60 * 60 * 24 * 365 * 10,
+      });
+    }
   }
 
   const adminToken = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;

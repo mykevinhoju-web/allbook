@@ -12,6 +12,30 @@ function configureWebPush() {
   );
 }
 
+const PUSH_CONCURRENCY = 20;
+
+async function mapPool<T>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T) => Promise<void>,
+) {
+  let index = 0;
+
+  async function run() {
+    while (index < items.length) {
+      const current = index;
+      index += 1;
+      await worker(items[current]!);
+    }
+  }
+
+  const runners = Array.from(
+    { length: Math.min(concurrency, items.length) },
+    () => run(),
+  );
+  await Promise.all(runners);
+}
+
 export async function sendBookingPushNotifications(
   tenantSlug: string,
   booking: {
@@ -28,10 +52,14 @@ export async function sendBookingPushNotifications(
 
   const supabase = createServiceSupabase();
 
+  // Only load recipients that should receive this booking alert.
   const { data: subscriptions, error } = await supabase
     .from("push_subscriptions")
     .select("id, endpoint, p256dh, auth, audience, staff_id")
-    .eq("tenant_slug", tenantSlug);
+    .eq("tenant_slug", tenantSlug)
+    .or(
+      `audience.is.null,audience.eq.admin,and(audience.eq.staff,staff_id.eq.${booking.staffId})`,
+    );
 
   if (error || !subscriptions?.length) {
     return { sent: 0, failed: 0, skipped: false as const };
@@ -56,13 +84,9 @@ export async function sendBookingPushNotifications(
 
   let sent = 0;
   let failed = 0;
+  const staleIds: string[] = [];
 
-  for (const subscription of subscriptions) {
-    const audience = (subscription as { audience?: string }).audience;
-    const staffId = (subscription as { staff_id?: string | null }).staff_id ?? null;
-    const isAdmin = !audience || audience === "admin";
-    const isStaff = audience === "staff" && staffId === booking.staffId;
-    if (!isAdmin && !isStaff) continue;
+  await mapPool(subscriptions, PUSH_CONCURRENCY, async (subscription) => {
     try {
       await webpush.sendNotification(
         {
@@ -83,12 +107,13 @@ export async function sendBookingPushNotifications(
           : undefined;
 
       if (statusCode === 404 || statusCode === 410) {
-        await supabase
-          .from("push_subscriptions")
-          .delete()
-          .eq("id", subscription.id);
+        staleIds.push(subscription.id);
       }
     }
+  });
+
+  if (staleIds.length > 0) {
+    await supabase.from("push_subscriptions").delete().in("id", staleIds);
   }
 
   return { sent, failed, skipped: false as const };
