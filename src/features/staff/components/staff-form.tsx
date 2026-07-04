@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 
 import { AppButton, MultiImageUpload, toast } from "@/components/common";
@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import {
+  BOOKING_TIMEZONE,
   datetimeLocalToIso,
   formatShiftDateTime,
   toDatetimeLocalValue,
@@ -37,6 +38,73 @@ interface ShiftBookingRow {
   startsAt: string;
   endsAt: string;
   customerName: string | null;
+}
+
+function BrisbaneDatetimeField({
+  id,
+  value,
+  min,
+  onChange,
+  placeholder,
+}: {
+  id: string;
+  value: string;
+  min?: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const openPicker = () => {
+    const input = inputRef.current;
+    if (!input) return;
+    try {
+      input.showPicker();
+    } catch {
+      input.focus();
+      input.click();
+    }
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={openPicker}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openPicker();
+        }
+      }}
+      className={cn(
+        "relative flex h-10 w-full cursor-pointer items-center rounded-xl border border-border/60 bg-background px-3 text-left text-sm shadow-sm transition-colors",
+        "hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30",
+      )}
+    >
+      <span className={value ? "text-foreground" : "text-muted-foreground"}>
+        {value ? formatShiftDateTime(datetimeLocalToIso(value)) : placeholder}
+      </span>
+      <input
+        ref={inputRef}
+        id={id}
+        type="datetime-local"
+        value={value}
+        min={min}
+        onChange={(event) => {
+          const next = event.target.value;
+          if (min && next && next < min) {
+            onChange(min);
+            return;
+          }
+          onChange(next);
+        }}
+        onClick={(event) => event.stopPropagation()}
+        className="absolute inset-0 cursor-pointer opacity-0"
+        aria-label={placeholder}
+      />
+    </div>
+  );
 }
 
 const inputClassName =
@@ -91,6 +159,14 @@ export function StaffForm({ staffId }: StaffFormProps) {
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
   const [shiftBookings, setShiftBookings] = useState<ShiftBookingRow[]>([]);
+  const [brisbaneNow, setBrisbaneNow] = useState(() => toDatetimeLocalValue());
+
+  useEffect(() => {
+    const tick = () => setBrisbaneNow(toDatetimeLocalValue());
+    tick();
+    const timer = window.setInterval(tick, 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!staffId) return;
@@ -211,10 +287,12 @@ export function StaffForm({ staffId }: StaffFormProps) {
       return;
     }
 
-    if (
-      new Date(form.shiftEndsAt).getTime() <=
-      new Date(form.shiftStartsAt).getTime()
-    ) {
+    if (form.shiftStartsAt < brisbaneNow) {
+      toast.error("Available from must be after Brisbane current time");
+      return;
+    }
+
+    if (form.shiftEndsAt <= form.shiftStartsAt) {
       toast.error("Available until must be after available from");
       return;
     }
@@ -462,43 +540,44 @@ export function StaffForm({ staffId }: StaffFormProps) {
 
         <StaffFormSection
           title="Availability window"
-          description="Set one continuous window. Overnight is fine — e.g. 4 Jul 14:00 to 5 Jul 02:00."
+          description="Tap the field to open the calendar. Times use Brisbane (AEST). Overnight is fine — e.g. 4 Jul 14:00 to 5 Jul 02:00."
         >
+          <p className="text-xs text-muted-foreground">
+            Brisbane now:{" "}
+            <span className="font-medium text-foreground">
+              {formatShiftDateTime(datetimeLocalToIso(brisbaneNow))}
+            </span>{" "}
+            ({BOOKING_TIMEZONE})
+          </p>
+
           <div className="grid gap-5 sm:grid-cols-2">
             <StaffFormField label="Available from" htmlFor="shift-start" required>
-              <Input
+              <BrisbaneDatetimeField
                 id="shift-start"
-                type="datetime-local"
-                min={toDatetimeLocalValue()}
                 value={form.shiftStartsAt}
-                onChange={(event) =>
-                  updateField("shiftStartsAt", event.target.value)
-                }
-                className={inputClassName}
+                min={brisbaneNow}
+                placeholder="Select start date & time"
+                onChange={(value) => {
+                  updateField("shiftStartsAt", value);
+                  if (form.shiftEndsAt && form.shiftEndsAt <= value) {
+                    updateField("shiftEndsAt", "");
+                  }
+                }}
               />
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                {form.shiftStartsAt
-                  ? formatShiftDateTime(datetimeLocalToIso(form.shiftStartsAt))
-                  : "Pick start date and time"}
-              </p>
             </StaffFormField>
 
             <StaffFormField label="Available until" htmlFor="shift-end" required>
-              <Input
+              <BrisbaneDatetimeField
                 id="shift-end"
-                type="datetime-local"
-                min={form.shiftStartsAt || toDatetimeLocalValue()}
                 value={form.shiftEndsAt}
-                onChange={(event) =>
-                  updateField("shiftEndsAt", event.target.value)
+                min={
+                  form.shiftStartsAt > brisbaneNow
+                    ? form.shiftStartsAt
+                    : brisbaneNow
                 }
-                className={inputClassName}
+                placeholder="Select end date & time"
+                onChange={(value) => updateField("shiftEndsAt", value)}
               />
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                {form.shiftEndsAt
-                  ? formatShiftDateTime(datetimeLocalToIso(form.shiftEndsAt))
-                  : "Pick end date and time"}
-              </p>
             </StaffFormField>
           </div>
 

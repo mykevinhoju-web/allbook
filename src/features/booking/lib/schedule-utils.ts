@@ -105,27 +105,47 @@ export function todayDateInputValue(date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
-/** Value for `<input type="datetime-local">` in the browser local timezone. */
-export function toDatetimeLocalValue(date = new Date()): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
+/** Booking availability is always managed in Brisbane time. */
+export const BOOKING_TIMEZONE = "Australia/Brisbane";
+const BRISBANE_OFFSET = "+10:00";
+
+function toDatetimeLocalInZone(date: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+
+  const get = (type: string) =>
+    parts.find((part) => part.type === type)?.value ?? "00";
+  const hour = get("hour") === "24" ? "00" : get("hour");
+
+  return `${get("year")}-${get("month")}-${get("day")}T${hour}:${get("minute")}`;
 }
 
+/** Brisbane wall-clock value for `<input type="datetime-local">`. */
+export function toDatetimeLocalValue(date = new Date()): string {
+  return toDatetimeLocalInZone(date, BOOKING_TIMEZONE);
+}
+
+/** Interpret a datetime-local string as Brisbane time and return UTC ISO. */
 export function datetimeLocalToIso(value: string): string {
-  return new Date(value).toISOString();
+  const normalized = value.length === 16 ? `${value}:00` : value;
+  return new Date(`${normalized}${BRISBANE_OFFSET}`).toISOString();
 }
 
 export function isoToDatetimeLocal(iso: string): string {
-  return toDatetimeLocalValue(new Date(iso));
+  return toDatetimeLocalInZone(new Date(iso), BOOKING_TIMEZONE);
 }
 
-/** Clear date + 24h time label, e.g. "4 Jul 2026, 14:00". */
+/** Clear date + 24h Brisbane time label, e.g. "4 Jul 2026, 14:00". */
 export function formatShiftDateTime(iso: string): string {
   return new Date(iso).toLocaleString("en-AU", {
+    timeZone: BOOKING_TIMEZONE,
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -139,18 +159,17 @@ export function defaultShiftWindow(now = new Date()): {
   shiftStartsAt: string;
   shiftEndsAt: string;
 } {
-  const start = new Date(now);
-  start.setMinutes(0, 0, 0);
-  if (start.getTime() < now.getTime()) {
-    start.setHours(start.getHours() + 1);
+  const start = new Date(datetimeLocalToIso(toDatetimeLocalValue(now)));
+  start.setUTCMinutes(0, 0, 0);
+  if (start.getTime() <= now.getTime()) {
+    start.setUTCHours(start.getUTCHours() + 1);
   }
 
-  const end = new Date(start);
-  end.setHours(end.getHours() + 12);
+  const end = new Date(start.getTime() + 12 * 60 * 60 * 1000);
 
   return {
-    shiftStartsAt: toDatetimeLocalValue(start),
-    shiftEndsAt: toDatetimeLocalValue(end),
+    shiftStartsAt: isoToDatetimeLocal(start.toISOString()),
+    shiftEndsAt: isoToDatetimeLocal(end.toISOString()),
   };
 }
 

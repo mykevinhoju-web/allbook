@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import {
-  dayCodeForDate,
+  BOOKING_TIMEZONE,
   datetimeLocalToIso,
   isoToDatetimeLocal,
   defaultShiftWindow,
@@ -66,22 +66,32 @@ function mapStaffRow(
   };
 }
 
-function deriveWorkingFields(shiftStartsAtLocal: string, shiftEndsAtLocal: string) {
-  const start = new Date(shiftStartsAtLocal);
-  const end = new Date(shiftEndsAtLocal);
-  const days = new Set<string>();
-  const cursor = new Date(start);
-  cursor.setHours(12, 0, 0, 0);
-  const endDay = new Date(end);
-  endDay.setHours(12, 0, 0, 0);
+function brisbaneDayCode(dateStr: string): string {
+  const iso = datetimeLocalToIso(`${dateStr}T12:00`);
+  return new Date(iso)
+    .toLocaleDateString("en-US", {
+      timeZone: BOOKING_TIMEZONE,
+      weekday: "short",
+    })
+    .toLowerCase()
+    .slice(0, 3);
+}
 
-  while (cursor.getTime() <= endDay.getTime()) {
-    days.add(dayCodeForDate(cursor));
-    cursor.setDate(cursor.getDate() + 1);
+function deriveWorkingFields(shiftStartsAtLocal: string, shiftEndsAtLocal: string) {
+  const startDate = shiftStartsAtLocal.slice(0, 10);
+  const endDate = shiftEndsAtLocal.slice(0, 10);
+  const days = new Set<string>();
+
+  const cursor = new Date(`${startDate}T00:00:00Z`);
+  const end = new Date(`${endDate}T00:00:00Z`);
+  while (cursor.getTime() <= end.getTime()) {
+    const dateStr = cursor.toISOString().slice(0, 10);
+    days.add(brisbaneDayCode(dateStr));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
 
-  const startTime = `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}`;
-  const endTime = `${String(end.getHours()).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}`;
+  const startTime = shiftStartsAtLocal.slice(11, 16);
+  const endTime = shiftEndsAtLocal.slice(11, 16);
 
   return {
     workingDays: [...days],
