@@ -49,6 +49,7 @@ export function useAdminAvailabilitySlots({
         const params = new URLSearchParams({
           staffId,
           durationMinutes,
+          date,
         });
         const response = await fetch(`/api/booking/availability?${params}`);
         const data = (await response.json()) as {

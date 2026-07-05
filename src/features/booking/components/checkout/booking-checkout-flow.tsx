@@ -19,6 +19,7 @@ import {
   formatAmPmTime,
   formatScheduleDate,
   formatShiftDateTime,
+  todayDateInZone,
 } from "../../lib/schedule-utils";
 
 type Step = "form" | "payment" | "done";
@@ -97,6 +98,7 @@ export function BookingCheckoutFlow({
   const tenant = useOptionalTenant();
   const timeZone =
     tenant?.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
+  const bookingDate = todayDateInZone(timeZone);
 
   const [step, setStep] = useState<Step>("form");
   const [staff, setStaff] = useState<StaffInfo | null>(null);
@@ -181,6 +183,7 @@ export function BookingCheckoutFlow({
         const params = new URLSearchParams({
           staffId,
           durationMinutes,
+          date: bookingDate,
         });
         const response = await fetch(`/api/booking/availability?${params}`);
         const data = (await response.json()) as {
@@ -224,7 +227,7 @@ export function BookingCheckoutFlow({
     return () => {
       cancelled = true;
     };
-  }, [staffId, durationMinutes]);
+  }, [staffId, durationMinutes, bookingDate]);
 
   const selectedOption = useMemo(
     () =>

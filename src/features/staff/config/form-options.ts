@@ -1,8 +1,3 @@
-import {
-  DEFAULT_BOOKING_TIMEZONE,
-  defaultShiftWindow,
-} from "@/features/booking/lib/schedule-utils";
-
 import type { StaffFilterStatus, StaffStatus } from "../types";
 
 export const staffStatusOptions: { value: StaffStatus; label: string }[] = [
@@ -41,11 +36,7 @@ export const languageOptions = [
   "Tagalog",
 ];
 
-export function getDefaultStaffFormValues(
-  timeZone = DEFAULT_BOOKING_TIMEZONE,
-) {
-  const shift = defaultShiftWindow(new Date(), timeZone);
-
+export function getDefaultStaffFormValues() {
   return {
     photos: [] as File[],
     name: "",
@@ -58,11 +49,10 @@ export function getDefaultStaffFormValues(
     introduction: "",
     loginId: "",
     password: "",
-    shiftStartsAt: shift.shiftStartsAt,
-    shiftEndsAt: shift.shiftEndsAt,
+    daySchedule: {} as Record<string, boolean>,
     status: "active" as StaffStatus,
   };
 }
 
-/** @deprecated Prefer getDefaultStaffFormValues(tenantTimezone) */
+/** @deprecated Prefer getDefaultStaffFormValues() */
 export const defaultStaffFormValues = getDefaultStaffFormValues();

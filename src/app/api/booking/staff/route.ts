@@ -7,6 +7,14 @@ import {
   TenantContextError,
 } from "@/lib/admin/tenant-context";
 import { parseStaffAttributes } from "@/features/staff/utils/attributes";
+import {
+  isStaffWorkingOnDate,
+  parseDaySchedule,
+} from "@/features/staff/utils/day-schedule";
+import {
+  DEFAULT_BOOKING_TIMEZONE,
+  todayDateInZone,
+} from "@/features/booking/lib/schedule-utils";
 
 const getBookingStaffForTenant = unstable_cache(
   async (tenantId: string, currency: string) => {
@@ -43,8 +51,10 @@ const getBookingStaffForTenant = unstable_cache(
       }
     }
 
-    const staff = (staffRows ?? []).map((row) => {
+    const staff = (staffRows ?? [])
+      .map((row) => {
       const attributes = parseStaffAttributes(row.attributes as never);
+      const daySchedule = parseDaySchedule(attributes.daySchedule);
       const initials = row.name
         .split(/\s+/)
         .map((part) => part[0])
@@ -63,11 +73,13 @@ const getBookingStaffForTenant = unstable_cache(
         initials,
         photoUrl: photoByStaffId.get(row.id) ?? "",
         available: row.status === "active",
+        daySchedule,
         workingDays: row.working_days,
         workingHoursStart: row.working_hours_start.slice(0, 5),
         workingHoursEnd: row.working_hours_end.slice(0, 5),
       };
-    });
+    })
+      .filter((row) => row.available);
 
     return { staff, currency };
   },
@@ -78,16 +90,25 @@ const getBookingStaffForTenant = unstable_cache(
 export async function GET(request: Request) {
   try {
     const tenant = await requireTenantFromRequest(request);
+    const timeZone = tenant.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
+    const today = todayDateInZone(timeZone);
     const payload = await getBookingStaffForTenant(
       tenant.id,
       tenant.settings.currency,
     );
 
-    return NextResponse.json(payload, {
-      headers: {
-        "Cache-Control": "private, max-age=15, stale-while-revalidate=30",
+    const staff = payload.staff.filter((member) =>
+      isStaffWorkingOnDate("active", member.daySchedule, today),
+    );
+
+    return NextResponse.json(
+      { ...payload, staff },
+      {
+        headers: {
+          "Cache-Control": "private, max-age=15, stale-while-revalidate=30",
+        },
       },
-    });
+    );
   } catch (error) {
     if (error instanceof TenantContextError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

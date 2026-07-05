@@ -36,12 +36,10 @@ export interface StaffRecord {
   name: string;
   status: StaffStatus;
   attributes: StaffAttributes;
+  daySchedule: Record<string, boolean>;
   workingDays: string[];
   workingHoursStart: string;
   workingHoursEnd: string;
-  /** datetime-local values for admin form */
-  shiftStartsAt: string;
-  shiftEndsAt: string;
   sortOrder: number;
   photos: StaffPhoto[];
   photoUrl?: string;
@@ -54,6 +52,7 @@ export interface AdminStaffRow {
   name: string;
   photoUrl?: string;
   status: StaffStatus;
+  daySchedule: Record<string, boolean>;
   workingToday: boolean;
   nextBooking: string | null;
 }
@@ -70,7 +69,6 @@ export interface StaffFormValues {
   introduction: string;
   loginId: string;
   password: string;
-  shiftStartsAt: string;
-  shiftEndsAt: string;
+  daySchedule: Record<string, boolean>;
   status: StaffStatus;
 }

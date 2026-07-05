@@ -27,6 +27,7 @@ import {
   isValidServiceDuration,
   todayDateInputValue,
 } from "../../lib/schedule-utils";
+import { isStaffWorkingOnDate } from "@/features/staff/utils/day-schedule";
 import type { AdminBooking } from "../../types/admin-booking";
 import {
   BookingFormSheet,
@@ -102,8 +103,13 @@ export function BookingScheduleContent() {
       : "";
 
   const workingStaff = useMemo(
-    () => staff.filter((member) => member.status === "active"),
-    [staff],
+    () =>
+      staff.filter(
+        (member) =>
+          member.status === "active" &&
+          isStaffWorkingOnDate(member.status, member.daySchedule ?? {}, date),
+      ),
+    [staff, date],
   );
 
   useEffect(() => {

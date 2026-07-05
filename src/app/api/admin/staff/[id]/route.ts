@@ -2,23 +2,18 @@ import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 
 import type { Database } from "@/types/database";
-import {
-  DEFAULT_BOOKING_TIMEZONE,
-  datetimeLocalToIso,
-  defaultShiftWindow,
-  isoToDatetimeLocal,
-} from "@/features/booking/lib/schedule-utils";
+import { DEFAULT_BOOKING_TIMEZONE } from "@/features/booking/lib/schedule-utils";
 import {
   createServiceSupabase,
   requireTenantFromRequest,
   TenantContextError,
 } from "@/lib/admin/tenant-context";
 import {
-  getShiftWindowFromAttributes,
   parseStaffAttributes,
   toStaffAttributesJson,
   type StaffAttributes,
 } from "@/features/staff/utils/attributes";
+import { parseDaySchedule } from "@/features/staff/utils/day-schedule";
 import type { StaffStatus } from "@/features/staff/types";
 
 const STAFF_SELECT =
@@ -38,26 +33,18 @@ function mapStaffRow(
     updated_at: string;
   },
   photos: { id: string; url: string; sort_order: number }[],
-  timeZone: string,
 ) {
   const attributes = parseStaffAttributes(row.attributes as never);
-  const shift = getShiftWindowFromAttributes(attributes);
-  const fallback = defaultShiftWindow(new Date(), timeZone);
 
   return {
     id: row.id,
     name: row.name,
     status: row.status as StaffStatus,
     attributes,
+    daySchedule: parseDaySchedule(attributes.daySchedule),
     workingDays: row.working_days,
     workingHoursStart: row.working_hours_start.slice(0, 5),
     workingHoursEnd: row.working_hours_end.slice(0, 5),
-    shiftStartsAt: shift.shiftStartsAt
-      ? isoToDatetimeLocal(shift.shiftStartsAt, timeZone)
-      : fallback.shiftStartsAt,
-    shiftEndsAt: shift.shiftEndsAt
-      ? isoToDatetimeLocal(shift.shiftEndsAt, timeZone)
-      : fallback.shiftEndsAt,
     sortOrder: row.sort_order,
     photos: photos
       .sort((a, b) => a.sort_order - b.sort_order)
@@ -69,44 +56,6 @@ function mapStaffRow(
     photoUrl: photos.find((p) => p.sort_order === 0)?.url ?? photos[0]?.url,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-  };
-}
-
-function dayCodeInZone(dateStr: string, timeZone: string): string {
-  const iso = datetimeLocalToIso(`${dateStr}T12:00`, timeZone);
-  return new Date(iso)
-    .toLocaleDateString("en-US", {
-      timeZone,
-      weekday: "short",
-    })
-    .toLowerCase()
-    .slice(0, 3);
-}
-
-function deriveWorkingFields(
-  shiftStartsAtLocal: string,
-  shiftEndsAtLocal: string,
-  timeZone: string,
-) {
-  const startDate = shiftStartsAtLocal.slice(0, 10);
-  const endDate = shiftEndsAtLocal.slice(0, 10);
-  const days = new Set<string>();
-
-  const cursor = new Date(`${startDate}T00:00:00Z`);
-  const end = new Date(`${endDate}T00:00:00Z`);
-  while (cursor.getTime() <= end.getTime()) {
-    const dateStr = cursor.toISOString().slice(0, 10);
-    days.add(dayCodeInZone(dateStr, timeZone));
-    cursor.setUTCDate(cursor.getUTCDate() + 1);
-  }
-
-  const startTime = shiftStartsAtLocal.slice(11, 16);
-  const endTime = shiftEndsAtLocal.slice(11, 16);
-
-  return {
-    workingDays: [...days],
-    workingHoursStart: startTime,
-    workingHoursEnd: endTime === startTime ? "23:59" : endTime,
   };
 }
 
@@ -143,7 +92,7 @@ export async function GET(
     const timeZone = tenant.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
 
     return NextResponse.json({
-      staff: mapStaffRow(data, photos ?? [], timeZone),
+      staff: mapStaffRow(data, photos ?? []),
       timeZone,
     });
   } catch (error) {
@@ -166,8 +115,7 @@ export async function PATCH(
       name?: string;
       status?: StaffStatus;
       attributes?: StaffAttributes;
-      shiftStartsAt?: string;
-      shiftEndsAt?: string;
+      daySchedule?: Record<string, boolean>;
     };
 
     const supabase = createServiceSupabase();
@@ -200,42 +148,11 @@ export async function PATCH(
       ...(body.attributes ?? {}),
     };
 
-    const timeZone = tenant.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
-
-    if (body.shiftStartsAt !== undefined || body.shiftEndsAt !== undefined) {
-      const fallback = defaultShiftWindow(new Date(), timeZone);
-      const shiftStartsAtLocal =
-        body.shiftStartsAt ??
-        (current.shiftStartsAt
-          ? isoToDatetimeLocal(current.shiftStartsAt, timeZone)
-          : fallback.shiftStartsAt);
-      const shiftEndsAtLocal =
-        body.shiftEndsAt ??
-        (current.shiftEndsAt
-          ? isoToDatetimeLocal(current.shiftEndsAt, timeZone)
-          : fallback.shiftEndsAt);
-
-      const startIso = datetimeLocalToIso(shiftStartsAtLocal, timeZone);
-      const endIso = datetimeLocalToIso(shiftEndsAtLocal, timeZone);
-
-      if (new Date(endIso).getTime() <= new Date(startIso).getTime()) {
-        return NextResponse.json(
-          { error: "Available until must be after available from." },
-          { status: 400 },
-        );
-      }
-
-      next.shiftStartsAt = startIso;
-      next.shiftEndsAt = endIso;
-
-      const derived = deriveWorkingFields(
-        shiftStartsAtLocal,
-        shiftEndsAtLocal,
-        timeZone,
-      );
-      updates.working_days = derived.workingDays;
-      updates.working_hours_start = derived.workingHoursStart;
-      updates.working_hours_end = derived.workingHoursEnd;
+    if (body.daySchedule !== undefined) {
+      next.daySchedule = {
+        ...parseDaySchedule(current.daySchedule),
+        ...parseDaySchedule(body.daySchedule),
+      };
     }
 
     updates.attributes = toStaffAttributesJson(next);
@@ -264,8 +181,10 @@ export async function PATCH(
 
     revalidateTag("booking-staff");
 
+    const timeZone = tenant.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
+
     return NextResponse.json({
-      staff: mapStaffRow(data, photos ?? [], timeZone),
+      staff: mapStaffRow(data, photos ?? []),
       timeZone,
     });
   } catch (error) {

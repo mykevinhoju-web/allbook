@@ -12,17 +12,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
 
 import type { AdminStaffRow } from "../types";
 import { StaffStatusBadge } from "./staff-status-badge";
+import { StaffWorkingTodayToggle } from "./staff-working-today-toggle";
 
 interface StaffTableProps {
   staff: AdminStaffRow[];
+  today: string;
   onChanged?: () => void;
 }
 
-export function StaffTable({ staff, onChanged }: StaffTableProps) {
+export function StaffTable({ staff, today, onChanged }: StaffTableProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -87,19 +88,19 @@ export function StaffTable({ staff, onChanged }: StaffTableProps) {
     },
     {
       key: "workingToday",
-      header: "Working Today",
+      header: "Today",
       className: "hidden sm:table-cell",
       cell: (row) => (
-        <span
-          className={cn(
-            "text-sm font-medium",
-            row.workingToday
-              ? "text-emerald-600 dark:text-emerald-400"
-              : "text-muted-foreground",
-          )}
-        >
-          {row.workingToday ? "Yes" : "No"}
-        </span>
+        <StaffWorkingTodayToggle
+          staffId={row.id}
+          staffName={row.name}
+          status={row.status}
+          daySchedule={row.daySchedule}
+          today={today}
+          workingToday={row.workingToday}
+          onChanged={onChanged}
+          compact
+        />
       ),
     },
     {
