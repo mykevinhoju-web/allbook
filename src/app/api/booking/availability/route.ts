@@ -6,11 +6,17 @@ import {
   defaultShiftWindow,
   formatShiftDateTime,
   getSlotsInShiftWindow,
+  todayDateInZone,
 } from "@/features/booking/lib/schedule-utils";
 import {
   getShiftWindowFromAttributes,
   parseStaffAttributes,
 } from "@/features/staff/utils/attributes";
+import {
+  isStaffWorkingOnDate,
+  parseDaySchedule,
+} from "@/features/staff/utils/day-schedule";
+import type { StaffStatus } from "@/features/staff/types";
 import {
   createServiceSupabase,
   requireTenantFromRequest,
@@ -68,6 +74,18 @@ export async function GET(request: Request) {
         shiftStartsAt,
         shiftEndsAt,
         reason: "Staff is not available.",
+      });
+    }
+
+    const daySchedule = parseDaySchedule(attributes.daySchedule);
+    const today = todayDateInZone(timeZone);
+    if (!isStaffWorkingOnDate(staffRow.status as StaffStatus, daySchedule, today)) {
+      return NextResponse.json({
+        slots: [],
+        booked: [],
+        shiftStartsAt,
+        shiftEndsAt,
+        reason: "Staff is not working today.",
       });
     }
 

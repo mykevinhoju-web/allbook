@@ -28,7 +28,8 @@ export interface StaffAttributes {
   username?: string;
   shiftStartsAt?: string;
   shiftEndsAt?: string;
-  [key: string]: string | string[] | number | boolean | null | undefined;
+  daySchedule?: Record<string, boolean>;
+  [key: string]: string | string[] | number | boolean | Record<string, boolean> | null | undefined;
 }
 
 export interface StaffRecord {
@@ -72,5 +73,7 @@ export interface StaffFormValues {
   password: string;
   shiftStartsAt: string;
   shiftEndsAt: string;
+  workingToday: boolean;
+  daySchedule: Record<string, boolean>;
   status: StaffStatus;
 }

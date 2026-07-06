@@ -105,6 +105,14 @@ export function todayDateInputValue(date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
+/** Today's YYYY-MM-DD in a tenant timezone. */
+export function todayDateInZone(
+  timeZone: string,
+  now = new Date(),
+): string {
+  return toDatetimeLocalValue(now, timeZone).slice(0, 10);
+}
+
 /** Default when tenant timezone is missing. */
 export const DEFAULT_BOOKING_TIMEZONE = "Australia/Sydney";
 
@@ -227,32 +235,22 @@ export function defaultShiftWindow(
   shiftEndsAt: string;
 } {
   const localNow = toDatetimeLocalValue(now, timeZone);
-  const [datePart, timePart] = localNow.split("T");
-  const [hours, minutes] = timePart.split(":").map(Number);
-  let hourOffset = hours ?? 0;
-  if ((minutes ?? 0) > 0) {
-    hourOffset += 1;
+  const [datePart] = localNow.split("T");
+  const todayOpen = `${datePart}T09:00`;
+  const todayClose = `${datePart}T21:00`;
+
+  const shiftStartsAt = localNow < todayOpen ? todayOpen : localNow;
+  let shiftEndsAt = todayClose;
+
+  if (shiftEndsAt <= shiftStartsAt) {
+    const startIso = datetimeLocalToIso(shiftStartsAt, timeZone);
+    shiftEndsAt = isoToDatetimeLocal(
+      new Date(new Date(startIso).getTime() + 12 * 60 * 60 * 1000).toISOString(),
+      timeZone,
+    );
   }
 
-  const dayStartIso = datetimeLocalToIso(`${datePart}T00:00`, timeZone);
-  let startIso = new Date(
-    new Date(dayStartIso).getTime() + hourOffset * 60 * 60 * 1000,
-  ).toISOString();
-
-  while (new Date(startIso).getTime() <= now.getTime()) {
-    startIso = new Date(
-      new Date(startIso).getTime() + 60 * 60 * 1000,
-    ).toISOString();
-  }
-
-  const endIso = new Date(
-    new Date(startIso).getTime() + 12 * 60 * 60 * 1000,
-  ).toISOString();
-
-  return {
-    shiftStartsAt: isoToDatetimeLocal(startIso, timeZone),
-    shiftEndsAt: isoToDatetimeLocal(endIso, timeZone),
-  };
+  return { shiftStartsAt, shiftEndsAt };
 }
 
 export interface ShiftSlotOption {

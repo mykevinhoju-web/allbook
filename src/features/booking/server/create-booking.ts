@@ -10,11 +10,17 @@ import {
   datetimeLocalToIso,
   defaultShiftWindow,
   isStartTimeOnFiveMinuteSlot,
+  todayDateInZone,
 } from "@/features/booking/lib/schedule-utils";
 import {
   getShiftWindowFromAttributes,
   parseStaffAttributes,
 } from "@/features/staff/utils/attributes";
+import {
+  isStaffWorkingOnDate,
+  parseDaySchedule,
+} from "@/features/staff/utils/day-schedule";
+import type { StaffStatus } from "@/features/staff/types";
 import { getServicePriceCents } from "@/features/services/server/get-service-price";
 import { sendBookingPushNotifications } from "@/lib/push/send-booking-push";
 import { createServiceSupabase } from "@/lib/admin/tenant-context";
@@ -162,6 +168,11 @@ export async function createTenantBooking(
   const attributes = parseStaffAttributes(staffRow.attributes as never);
   const configured = getShiftWindowFromAttributes(attributes);
   const timeZone = tenant.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
+  const today = todayDateInZone(timeZone);
+
+  if (!isStaffWorkingOnDate(staffRow.status as StaffStatus, parseDaySchedule(attributes.daySchedule), today)) {
+    throw new CreateBookingError("Staff is not working today.", 400);
+  }
 
   let shiftStartsAt = configured.shiftStartsAt;
   let shiftEndsAt = configured.shiftEndsAt;

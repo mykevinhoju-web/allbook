@@ -17,9 +17,13 @@ import {
 } from "@/components/ui/select";
 import {
   formatScheduleTime,
-  isWorkingToday,
+  todayDateInZone,
 } from "@/features/booking/lib/schedule-utils";
-
+import {
+  isStaffWorkingOnDate,
+  parseDaySchedule,
+} from "../utils/day-schedule";
+import { useOptionalTenant } from "@/features/tenants";
 import { mockStaffList, staffFilterOptions } from "../config";
 import type { AdminStaffRow, StaffFilterStatus, StaffRecord } from "../types";
 import { StaffTable } from "./staff-table";
@@ -31,6 +35,8 @@ interface BookingSummary {
 }
 
 export function StaffListContent() {
+  const tenant = useOptionalTenant();
+  const today = todayDateInZone(tenant?.settings.timezone || "Australia/Sydney");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StaffFilterStatus>("all");
   const [staff, setStaff] = useState<StaffRecord[]>([]);
@@ -129,14 +135,17 @@ export function StaffListContent() {
         name: member.name,
         photoUrl: member.photoUrl,
         status: member.status,
-        workingToday:
-          member.status === "active" && isWorkingToday(member.workingDays),
+        workingToday: isStaffWorkingOnDate(
+          member.status,
+          parseDaySchedule(member.attributes.daySchedule),
+          today,
+        ),
         nextBooking: upcoming
           ? `Today, ${formatScheduleTime(upcoming.startsAt)}`
           : null,
       };
     });
-  }, [bookings, staff, useMock]);
+  }, [bookings, staff, today, useMock]);
 
   const filteredStaff = useMemo(() => {
     const query = search.trim().toLowerCase();

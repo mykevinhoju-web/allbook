@@ -21,6 +21,7 @@ import {
   datetimeLocalToIso,
   formatShiftDateTime,
   formatTimezoneLabel,
+  todayDateInZone,
   toDatetimeLocalValue,
 } from "@/features/booking/lib/schedule-utils";
 import { useOptionalTenant } from "@/features/tenants";
@@ -30,6 +31,11 @@ import {
   nationalityOptions,
 } from "../config";
 import type { StaffFormValues, StaffPhoto, StaffRecord } from "../types";
+import {
+  applyWorkingToday,
+  isStaffWorkingOnDate,
+  parseDaySchedule,
+} from "../utils/day-schedule";
 import { StaffFormField } from "./staff-form-field";
 import { StaffFormSection } from "./staff-form-section";
 
@@ -117,7 +123,15 @@ interface StaffFormProps {
   staffId?: string;
 }
 
-function mapRecordToForm(record: StaffRecord): StaffFormValues {
+function mapRecordToForm(record: StaffRecord, timeZone: string): StaffFormValues {
+  const localNow = toDatetimeLocalValue(new Date(), timeZone);
+  const today = todayDateInZone(timeZone);
+  const daySchedule = parseDaySchedule(record.attributes.daySchedule);
+  const shiftStartsAt =
+    !record.shiftStartsAt || record.shiftStartsAt < localNow
+      ? localNow
+      : record.shiftStartsAt;
+
   return {
     photos: [],
     name: record.name,
@@ -130,8 +144,10 @@ function mapRecordToForm(record: StaffRecord): StaffFormValues {
     introduction: record.attributes.introduction ?? "",
     loginId: "",
     password: "",
-    shiftStartsAt: record.shiftStartsAt,
+    shiftStartsAt,
     shiftEndsAt: record.shiftEndsAt,
+    workingToday: isStaffWorkingOnDate(record.status, daySchedule, today),
+    daySchedule,
     status: record.status,
   };
 }
@@ -182,7 +198,7 @@ export function StaffForm({ staffId }: StaffFormProps) {
           throw new Error(data.error ?? "Failed to load staff.");
         }
 
-        setForm(mapRecordToForm(data.staff));
+        setForm(mapRecordToForm(data.staff, timeZone));
         setExistingPhotos(data.staff.photos);
 
         const accountResponse = await fetch(`/api/admin/staff/${staffId}/account`);
@@ -209,7 +225,7 @@ export function StaffForm({ staffId }: StaffFormProps) {
         setLoading(false);
       }
     })();
-  }, [staffId]);
+  }, [staffId, timeZone]);
 
   useEffect(() => {
     if (!staffId || !form.shiftStartsAt || !form.shiftEndsAt) {
@@ -277,6 +293,11 @@ export function StaffForm({ staffId }: StaffFormProps) {
       return;
     }
 
+    if (form.shiftStartsAt < localNow) {
+      toast.error("Available from cannot be in the past");
+      return;
+    }
+
     if (form.shiftEndsAt <= form.shiftStartsAt) {
       toast.error("Available until must be after available from");
       return;
@@ -291,6 +312,7 @@ export function StaffForm({ staffId }: StaffFormProps) {
     setSaving(true);
 
     try {
+      const today = todayDateInZone(timeZone);
       const payload = {
         name: form.name.trim(),
         status: form.status,
@@ -304,6 +326,7 @@ export function StaffForm({ staffId }: StaffFormProps) {
           languages: form.languages,
           experience: form.experience,
           introduction: form.introduction,
+          daySchedule: applyWorkingToday(form.daySchedule, today, form.workingToday),
         },
       };
 
@@ -454,11 +477,32 @@ export function StaffForm({ staffId }: StaffFormProps) {
             · {formatTimezoneLabel(timeZone)}
           </p>
 
+          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-border/60 bg-background px-4 py-3 shadow-sm">
+            <input
+              type="checkbox"
+              checked={form.workingToday}
+              onChange={(event) => {
+                const workingToday = event.target.checked;
+                const today = todayDateInZone(timeZone);
+                updateField("workingToday", workingToday);
+                updateField(
+                  "daySchedule",
+                  applyWorkingToday(form.daySchedule, today, workingToday),
+                );
+              }}
+              className="size-4 rounded border-border accent-primary"
+            />
+            <span className="text-sm font-medium text-foreground">
+              Working today
+            </span>
+          </label>
+
           <div className="grid gap-5 sm:grid-cols-2">
             <StaffFormField label="Available from" htmlFor="shift-start" required>
               <TenantDatetimeField
                 id="shift-start"
                 value={form.shiftStartsAt}
+                min={localNow}
                 timeZone={timeZone}
                 onChange={(value) => {
                   updateField("shiftStartsAt", value);

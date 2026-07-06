@@ -60,6 +60,8 @@ export function getDefaultStaffFormValues(
     password: "",
     shiftStartsAt: shift.shiftStartsAt,
     shiftEndsAt: shift.shiftEndsAt,
+    workingToday: true,
+    daySchedule: {} as Record<string, boolean>,
     status: "active" as StaffStatus,
   };
 }

@@ -14,8 +14,17 @@ export interface StaffAttributes {
   shiftStartsAt?: string;
   /** ISO end of current availability window. */
   shiftEndsAt?: string;
+  /** Per-date overrides. false = day off. */
+  daySchedule?: Record<string, boolean>;
   bookableSlots?: string[];
-  [key: string]: string | string[] | number | boolean | null | undefined;
+  [key: string]:
+    | string
+    | string[]
+    | number
+    | boolean
+    | Record<string, boolean>
+    | null
+    | undefined;
 }
 
 export function parseStaffAttributes(value: Json | null): StaffAttributes {
