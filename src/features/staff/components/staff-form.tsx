@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 
 import { AppButton, MultiImageUpload, toast } from "@/components/common";
@@ -21,9 +21,6 @@ import {
   datetimeLocalToIso,
   formatShiftDateTime,
   formatTimezoneLabel,
-  addHoursToDatetimeLocal,
-  addMinutesToDatetimeLocal,
-  DEFAULT_SHIFT_DURATION_HOURS,
   normalizeShiftWindow,
   todayDateInZone,
   toDatetimeLocalValue,
@@ -42,6 +39,7 @@ import {
 } from "../utils/day-schedule";
 import { StaffFormField } from "./staff-form-field";
 import { StaffFormSection } from "./staff-form-section";
+import { StaffShiftCalendar } from "./staff-shift-calendar";
 
 interface ShiftBookingRow {
   id: string;
@@ -65,59 +63,6 @@ async function uploadPhotos(staffId: string, photos: File[]) {
     const data = (await response.json()) as { error?: string };
     throw new Error(data.error ?? "Failed to upload photos.");
   }
-}
-
-function TenantDatetimeField({
-  id,
-  value,
-  min,
-  timeZone,
-  onChange,
-}: {
-  id: string;
-  value: string;
-  min?: string;
-  timeZone: string;
-  onChange: (value: string) => void;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  return (
-    <div className="space-y-1.5">
-      <input
-        ref={inputRef}
-        id={id}
-        type="datetime-local"
-        value={value}
-        min={min}
-        onChange={(event) => {
-          const next = event.target.value;
-          if (min && next && next < min) {
-            onChange(min);
-            return;
-          }
-          onChange(next);
-        }}
-        onClick={(event) => {
-          const input = event.currentTarget;
-          try {
-            input.showPicker();
-          } catch {
-            // Native picker opens on tap for browsers without showPicker.
-          }
-        }}
-        className={cn(
-          inputClassName,
-          "w-full cursor-pointer bg-background px-3 text-foreground",
-        )}
-      />
-      {value ? (
-        <p className="text-xs text-muted-foreground">
-          {formatShiftDateTime(datetimeLocalToIso(value, timeZone), timeZone)}
-        </p>
-      ) : null}
-    </div>
-  );
 }
 
 const inputClassName =
@@ -507,7 +452,7 @@ export function StaffForm({ staffId }: StaffFormProps) {
 
         <StaffFormSection
           title="Available times"
-          description="From now for 12 hours by default. End time must be after start."
+          description="Pick a date on the calendar and set start and end hours."
         >
           <p className="text-xs text-muted-foreground">
             Shop time now:{" "}
@@ -520,94 +465,37 @@ export function StaffForm({ staffId }: StaffFormProps) {
             · {formatTimezoneLabel(timeZone)}
           </p>
 
-          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-border/60 bg-background px-4 py-3 shadow-sm">
-            <input
-              type="checkbox"
-              checked={form.workingToday}
-              onChange={(event) => {
-                const workingToday = event.target.checked;
-                const today = todayDateInZone(timeZone);
-                updateField("workingToday", workingToday);
-                updateField(
-                  "daySchedule",
-                  applyWorkingToday(form.daySchedule, today, workingToday),
-                );
-              }}
-              className="size-4 rounded border-border accent-primary"
-            />
-            <span className="text-sm font-medium text-foreground">
-              Working today
-            </span>
-          </label>
+          <StaffShiftCalendar
+            key={staffId ?? "new"}
+            timeZone={timeZone}
+            shiftStartsAt={form.shiftStartsAt}
+            shiftEndsAt={form.shiftEndsAt}
+            daySchedule={form.daySchedule}
+            workingToday={form.workingToday}
+            status={form.status}
+            localNow={localNow}
+            onShiftChange={(shiftStartsAt, shiftEndsAt) => {
+              setForm((current) => ({
+                ...current,
+                shiftStartsAt,
+                shiftEndsAt,
+              }));
+            }}
+            onDayScheduleChange={(daySchedule, workingToday) => {
+              setForm((current) => ({
+                ...current,
+                daySchedule,
+                workingToday,
+              }));
+            }}
+          />
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <StaffFormField label="Available from" htmlFor="shift-start" required>
-              <TenantDatetimeField
-                id="shift-start"
-                value={form.shiftStartsAt}
-                min={localNow}
-                timeZone={timeZone}
-                onChange={(value) => {
-                  const shiftEndsAt = addHoursToDatetimeLocal(
-                    value,
-                    DEFAULT_SHIFT_DURATION_HOURS,
-                    timeZone,
-                  );
-                  setForm((current) => ({
-                    ...current,
-                    shiftStartsAt: value,
-                    shiftEndsAt,
-                  }));
-                }}
-              />
-            </StaffFormField>
-
-            <StaffFormField label="Available until" htmlFor="shift-end" required>
-              <TenantDatetimeField
-                id="shift-end"
-                value={form.shiftEndsAt}
-                min={addMinutesToDatetimeLocal(
-                  form.shiftStartsAt || localNow,
-                  5,
-                  timeZone,
-                )}
-                timeZone={timeZone}
-                onChange={(value) => {
-                  const minEnd = addMinutesToDatetimeLocal(
-                    form.shiftStartsAt,
-                    5,
-                    timeZone,
-                  );
-                  updateField(
-                    "shiftEndsAt",
-                    !value || value <= form.shiftStartsAt ? minEnd : value,
-                  );
-                }}
-              />
-            </StaffFormField>
-          </div>
-
-          {form.shiftStartsAt && form.shiftEndsAt ? (
-            <div className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-sm">
-              <p className="font-medium text-foreground">
-                {formatShiftDateTime(
-                  datetimeLocalToIso(form.shiftStartsAt, timeZone),
-                  timeZone,
-                )}
-                {" → "}
-                {formatShiftDateTime(
-                  datetimeLocalToIso(form.shiftEndsAt, timeZone),
-                  timeZone,
-                )}
-              </p>
-              {shiftStartedAtIso ? (
-                <p className="mt-2 border-t border-border/50 pt-2 text-xs text-muted-foreground">
-                  Started at{" "}
-                  <span className="font-semibold text-foreground">
-                    {formatShiftDateTime(shiftStartedAtIso, timeZone)}
-                  </span>
-                </p>
-              ) : null}
+          {shiftStartedAtIso ? (
+            <div className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
+              Started at{" "}
+              <span className="font-semibold text-foreground">
+                {formatShiftDateTime(shiftStartedAtIso, timeZone)}
+              </span>
             </div>
           ) : null}
 

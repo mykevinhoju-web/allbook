@@ -2,6 +2,7 @@
 
 import { AppAvatar } from "@/components/common";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { StaffRecord } from "@/features/staff/types";
 
 import {
@@ -13,6 +14,12 @@ import {
 } from "../../lib/schedule-grid-utils";
 import { formatAmPmTime } from "../../lib/schedule-utils";
 import { isBookingOccupyingRoom } from "../../lib/room-occupancy";
+import {
+  layoutTimelineLabels,
+  TIMELINE_LABEL_ROW_HEIGHT_REM,
+  timelineLabelAreaHeightRem,
+} from "../../lib/timeline-label-layout";
+import { formatTimelineMarkerNumber } from "../../lib/timeline-marker-number";
 import type { AdminBooking } from "../../types/admin-booking";
 
 interface StaffBookingTimelineProps {
@@ -31,6 +38,7 @@ interface StaffTimelineRowProps {
   date: string;
   bookings: AdminBooking[];
   timeZone: string;
+  isMobile: boolean;
   onStaffSelect?: (staffId: string) => void;
   onSlotSelect?: (staffId: string, startsAtIso: string) => void;
   onBookingSelect?: (booking: AdminBooking) => void;
@@ -43,30 +51,12 @@ function shiftWindowFromBand(
   return { startMs, endMs };
 }
 
-function labelRowForPosition(
-  percent: number,
-  used: { percent: number; row: number }[],
-): number {
-  const collisionThreshold = 14;
-  let row = 0;
-
-  while (
-    used.some(
-      (entry) => entry.row === row && Math.abs(entry.percent - percent) < collisionThreshold,
-    )
-  ) {
-    row += 1;
-  }
-
-  used.push({ percent, row });
-  return row;
-}
-
 function StaffTimelineRow({
   member,
   date,
   bookings,
   timeZone,
+  isMobile,
   onStaffSelect,
   onSlotSelect,
   onBookingSelect,
@@ -92,13 +82,35 @@ function StaffTimelineRow({
 
   const window = shiftWindowFromBand(shift.startMs, shift.endMs);
   const staffBookings = activeBookingsForStaff(bookings, member.id, window);
-  const usedLabelRows: { percent: number; row: number }[] = [];
 
-  const markers = staffBookings.map((booking) => {
-    const startMs = new Date(booking.startsAt).getTime();
-    const percent = msToBarPercent(startMs, shift.startMs, shift.endMs);
-    const row = labelRowForPosition(percent, usedLabelRows);
-    return { booking, percent, row };
+  const markerInputs = staffBookings.map((booking) => ({
+    id: booking.id,
+    percent: msToBarPercent(
+      new Date(booking.startsAt).getTime(),
+      shift.startMs,
+      shift.endMs,
+    ),
+  }));
+
+  const labelLayouts = isMobile ? [] : layoutTimelineLabels(markerInputs);
+  const layoutById = new Map(labelLayouts.map((layout) => [layout.id, layout]));
+  const labelAreaHeight = isMobile ? 0 : timelineLabelAreaHeightRem(labelLayouts);
+
+  const markers = staffBookings.map((booking, index) => {
+    const percent = msToBarPercent(
+      new Date(booking.startsAt).getTime(),
+      shift.startMs,
+      shift.endMs,
+    );
+    const layout = layoutById.get(booking.id);
+
+    return {
+      booking,
+      index,
+      percent,
+      labelLeft: layout?.labelLeft ?? percent,
+      row: layout?.row ?? 0,
+    };
   });
 
   const handleBarClick = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -146,7 +158,7 @@ function StaffTimelineRow({
           </div>
 
           <div
-            className="relative mt-3 h-8 cursor-pointer"
+            className={cn("relative mt-3 cursor-pointer", isMobile ? "h-10" : "h-8")}
             onClick={handleBarClick}
             role="presentation"
           >
@@ -155,8 +167,9 @@ function StaffTimelineRow({
             <span className="absolute left-0 top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary bg-background" />
             <span className="absolute right-0 top-1/2 size-2.5 translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary bg-primary" />
 
-            {markers.map(({ booking, percent }) => {
+            {markers.map(({ booking, index, percent }) => {
               const inProgress = isBookingOccupyingRoom(booking, now);
+              const markerNumber = formatTimelineMarkerNumber(index);
 
               return (
                 <button
@@ -168,47 +181,92 @@ function StaffTimelineRow({
                   }}
                   className="absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2"
                   style={{ left: `${percent}%` }}
-                  aria-label={`${booking.customerName ?? "Booking"} ${formatAmPmTime(booking.startsAt)}`}
+                  aria-label={`${markerNumber} ${booking.customerName ?? "Booking"} ${formatAmPmTime(booking.startsAt)}`}
                 >
-                  <span
-                    className={cn(
-                      "block size-2.5 rounded-full ring-2 ring-card",
-                      inProgress ? "bg-amber-500" : "bg-foreground",
-                    )}
-                  />
+                  {isMobile ? (
+                    <span
+                      className={cn(
+                        "text-sm font-bold leading-none",
+                        inProgress ? "text-amber-500" : "text-primary",
+                      )}
+                    >
+                      {markerNumber}
+                    </span>
+                  ) : (
+                    <span
+                      className={cn(
+                        "block size-2.5 rounded-full ring-2 ring-card",
+                        inProgress ? "bg-amber-500" : "bg-foreground",
+                      )}
+                    />
+                  )}
                 </button>
               );
             })}
           </div>
 
-          <div className="relative mt-1 min-h-[2.5rem]">
-            {markers.length === 0 ? (
-              <p className="pt-1 text-center text-xs text-muted-foreground">
+          {isMobile ? (
+            markers.length === 0 ? (
+              <p className="mt-2 text-center text-xs text-muted-foreground">
                 No bookings · tap the line to add
               </p>
             ) : (
-              markers.map(({ booking, percent, row }) => (
-                <button
-                  key={`${booking.id}-label`}
-                  type="button"
-                  onClick={() => onBookingSelect?.(booking)}
-                  className="absolute w-24 -translate-x-1/2 text-center"
-                  style={{
-                    left: `${percent}%`,
-                    top: row * 2.25 + "rem",
-                  }}
-                >
-                  <p className="truncate text-xs font-semibold text-primary">
-                    {booking.customerName ?? "Walk-in"}
-                  </p>
-                  <p className="truncate text-[10px] tabular-nums text-muted-foreground">
-                    {formatAmPmTime(booking.startsAt)} ({booking.durationMinutes}
-                    min)
-                  </p>
-                </button>
-              ))
-            )}
-          </div>
+              <ul className="mt-3 space-y-1.5 border-t border-border/40 pt-3">
+                {markers.map(({ booking, index }) => (
+                  <li key={`${booking.id}-list`}>
+                    <button
+                      type="button"
+                      onClick={() => onBookingSelect?.(booking)}
+                      className="flex w-full items-baseline gap-1.5 text-left text-sm"
+                    >
+                      <span className="shrink-0 font-semibold tabular-nums text-primary">
+                        {formatTimelineMarkerNumber(index)}.
+                      </span>
+                      <span className="min-w-0 truncate font-semibold text-primary">
+                        {booking.customerName ?? "Walk-in"}
+                      </span>
+                      <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
+                        {formatAmPmTime(booking.startsAt)} ({booking.durationMinutes}
+                        min)
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )
+          ) : (
+            <div
+              className="relative mt-1"
+              style={{ minHeight: `${labelAreaHeight}rem` }}
+            >
+              {markers.length === 0 ? (
+                <p className="pt-1 text-center text-xs text-muted-foreground">
+                  No bookings · tap the line to add
+                </p>
+              ) : (
+                markers.map(({ booking, labelLeft, row }) => (
+                  <button
+                    key={`${booking.id}-label`}
+                    type="button"
+                    onClick={() => onBookingSelect?.(booking)}
+                    className="absolute w-[5.5rem] -translate-x-1/2 text-center"
+                    style={{
+                      left: `${labelLeft}%`,
+                      top: `${row * TIMELINE_LABEL_ROW_HEIGHT_REM}rem`,
+                    }}
+                  >
+                    <p className="truncate text-xs font-semibold text-primary">
+                      {booking.customerName ?? "Walk-in"}
+                    </p>
+                    <p className="truncate text-[10px] tabular-nums text-muted-foreground">
+                      {formatAmPmTime(booking.startsAt)} ({booking.durationMinutes}
+                      min)
+                    </p>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
         </div>
       </div>
     </article>
@@ -225,6 +283,8 @@ export function StaffBookingTimeline({
   onBookingSelect,
   className,
 }: StaffBookingTimelineProps) {
+  const isMobile = useIsMobile();
+
   if (staff.length === 0) return null;
 
   return (
@@ -236,6 +296,7 @@ export function StaffBookingTimeline({
           date={date}
           bookings={bookings}
           timeZone={timeZone}
+          isMobile={isMobile}
           onStaffSelect={onStaffSelect}
           onSlotSelect={onSlotSelect}
           onBookingSelect={onBookingSelect}
@@ -243,8 +304,9 @@ export function StaffBookingTimeline({
       ))}
 
       <p className="px-1 text-center text-[10px] text-muted-foreground">
-        Dots show bookings on the shift bar · tap a dot for details · tap the
-        line to add
+        {isMobile
+          ? "Numbers on the bar match the list below · tap for details · tap the line to add"
+          : "Dots show bookings on the shift bar · tap a dot for details · tap the line to add"}
       </p>
     </div>
   );
