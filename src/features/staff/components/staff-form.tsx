@@ -21,6 +21,10 @@ import {
   datetimeLocalToIso,
   formatShiftDateTime,
   formatTimezoneLabel,
+  addHoursToDatetimeLocal,
+  addMinutesToDatetimeLocal,
+  DEFAULT_SHIFT_DURATION_HOURS,
+  normalizeShiftWindow,
   todayDateInZone,
   toDatetimeLocalValue,
 } from "@/features/booking/lib/schedule-utils";
@@ -127,10 +131,12 @@ function mapRecordToForm(record: StaffRecord, timeZone: string): StaffFormValues
   const localNow = toDatetimeLocalValue(new Date(), timeZone);
   const today = todayDateInZone(timeZone);
   const daySchedule = parseDaySchedule(record.attributes.daySchedule);
-  const shiftStartsAt =
-    !record.shiftStartsAt || record.shiftStartsAt < localNow
-      ? localNow
-      : record.shiftStartsAt;
+  const { shiftStartsAt, shiftEndsAt } = normalizeShiftWindow(
+    record.shiftStartsAt,
+    record.shiftEndsAt,
+    localNow,
+    timeZone,
+  );
 
   return {
     photos: [],
@@ -145,7 +151,7 @@ function mapRecordToForm(record: StaffRecord, timeZone: string): StaffFormValues
     loginId: "",
     password: "",
     shiftStartsAt,
-    shiftEndsAt: record.shiftEndsAt,
+    shiftEndsAt,
     workingToday: isStaffWorkingOnDate(record.status, daySchedule, today),
     daySchedule,
     status: record.status,
@@ -182,6 +188,30 @@ export function StaffForm({ staffId }: StaffFormProps) {
     if (isEditing) return;
     setForm(getDefaultStaffFormValues(timeZone));
   }, [timeZone, isEditing]);
+
+  useEffect(() => {
+    setForm((current) => {
+      if (
+        current.shiftStartsAt >= localNow &&
+        current.shiftEndsAt > current.shiftStartsAt
+      ) {
+        return current;
+      }
+      const normalized = normalizeShiftWindow(
+        current.shiftStartsAt,
+        current.shiftEndsAt,
+        localNow,
+        timeZone,
+      );
+      if (
+        normalized.shiftStartsAt === current.shiftStartsAt &&
+        normalized.shiftEndsAt === current.shiftEndsAt
+      ) {
+        return current;
+      }
+      return { ...current, ...normalized };
+    });
+  }, [localNow, timeZone]);
 
   useEffect(() => {
     if (!staffId) return;
@@ -464,7 +494,7 @@ export function StaffForm({ staffId }: StaffFormProps) {
 
         <StaffFormSection
           title="Available times"
-          description="Tap a field to pick date and time. Uses this shop's timezone."
+          description="From now for 12 hours by default. End time must be after start."
         >
           <p className="text-xs text-muted-foreground">
             Shop time now:{" "}
@@ -505,10 +535,16 @@ export function StaffForm({ staffId }: StaffFormProps) {
                 min={localNow}
                 timeZone={timeZone}
                 onChange={(value) => {
-                  updateField("shiftStartsAt", value);
-                  if (form.shiftEndsAt && form.shiftEndsAt <= value) {
-                    updateField("shiftEndsAt", "");
-                  }
+                  const shiftEndsAt = addHoursToDatetimeLocal(
+                    value,
+                    DEFAULT_SHIFT_DURATION_HOURS,
+                    timeZone,
+                  );
+                  setForm((current) => ({
+                    ...current,
+                    shiftStartsAt: value,
+                    shiftEndsAt,
+                  }));
                 }}
               />
             </StaffFormField>
@@ -517,13 +553,23 @@ export function StaffForm({ staffId }: StaffFormProps) {
               <TenantDatetimeField
                 id="shift-end"
                 value={form.shiftEndsAt}
-                min={
-                  form.shiftStartsAt > localNow
-                    ? form.shiftStartsAt
-                    : localNow
-                }
+                min={addMinutesToDatetimeLocal(
+                  form.shiftStartsAt || localNow,
+                  5,
+                  timeZone,
+                )}
                 timeZone={timeZone}
-                onChange={(value) => updateField("shiftEndsAt", value)}
+                onChange={(value) => {
+                  const minEnd = addMinutesToDatetimeLocal(
+                    form.shiftStartsAt,
+                    5,
+                    timeZone,
+                  );
+                  updateField(
+                    "shiftEndsAt",
+                    !value || value <= form.shiftStartsAt ? minEnd : value,
+                  );
+                }}
               />
             </StaffFormField>
           </div>

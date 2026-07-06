@@ -227,6 +227,49 @@ export function formatTimezoneLabel(timeZone: string): string {
   }
 }
 
+export const DEFAULT_SHIFT_DURATION_HOURS = 12;
+
+export function addHoursToDatetimeLocal(
+  value: string,
+  hours: number,
+  timeZone: string,
+): string {
+  const iso = datetimeLocalToIso(value, timeZone);
+  return isoToDatetimeLocal(
+    new Date(new Date(iso).getTime() + hours * 60 * 60 * 1000).toISOString(),
+    timeZone,
+  );
+}
+
+export function addMinutesToDatetimeLocal(
+  value: string,
+  minutes: number,
+  timeZone: string,
+): string {
+  const iso = datetimeLocalToIso(value, timeZone);
+  return isoToDatetimeLocal(
+    new Date(new Date(iso).getTime() + minutes * 60_000).toISOString(),
+    timeZone,
+  );
+}
+
+/** Ensure shift start is not in the past and end is after start (+12h default). */
+export function normalizeShiftWindow(
+  shiftStartsAt: string,
+  shiftEndsAt: string,
+  localNow: string,
+  timeZone: string,
+): { shiftStartsAt: string; shiftEndsAt: string } {
+  const start =
+    !shiftStartsAt || shiftStartsAt < localNow ? localNow : shiftStartsAt;
+  const end =
+    !shiftEndsAt || shiftEndsAt <= start
+      ? addHoursToDatetimeLocal(start, DEFAULT_SHIFT_DURATION_HOURS, timeZone)
+      : shiftEndsAt;
+
+  return { shiftStartsAt: start, shiftEndsAt: end };
+}
+
 export function defaultShiftWindow(
   now = new Date(),
   timeZone = DEFAULT_BOOKING_TIMEZONE,
@@ -234,21 +277,12 @@ export function defaultShiftWindow(
   shiftStartsAt: string;
   shiftEndsAt: string;
 } {
-  const localNow = toDatetimeLocalValue(now, timeZone);
-  const [datePart] = localNow.split("T");
-  const todayOpen = `${datePart}T09:00`;
-  const todayClose = `${datePart}T21:00`;
-
-  const shiftStartsAt = localNow < todayOpen ? todayOpen : localNow;
-  let shiftEndsAt = todayClose;
-
-  if (shiftEndsAt <= shiftStartsAt) {
-    const startIso = datetimeLocalToIso(shiftStartsAt, timeZone);
-    shiftEndsAt = isoToDatetimeLocal(
-      new Date(new Date(startIso).getTime() + 12 * 60 * 60 * 1000).toISOString(),
-      timeZone,
-    );
-  }
+  const shiftStartsAt = toDatetimeLocalValue(now, timeZone);
+  const shiftEndsAt = addHoursToDatetimeLocal(
+    shiftStartsAt,
+    DEFAULT_SHIFT_DURATION_HOURS,
+    timeZone,
+  );
 
   return { shiftStartsAt, shiftEndsAt };
 }

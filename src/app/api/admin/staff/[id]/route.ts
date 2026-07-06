@@ -7,6 +7,8 @@ import {
   datetimeLocalToIso,
   defaultShiftWindow,
   isoToDatetimeLocal,
+  normalizeShiftWindow,
+  toDatetimeLocalValue,
 } from "@/features/booking/lib/schedule-utils";
 import {
   createServiceSupabase,
@@ -43,6 +45,17 @@ function mapStaffRow(
   const attributes = parseStaffAttributes(row.attributes as never);
   const shift = getShiftWindowFromAttributes(attributes);
   const fallback = defaultShiftWindow(new Date(), timeZone);
+  const localNow = toDatetimeLocalValue(new Date(), timeZone);
+  const normalized = normalizeShiftWindow(
+    shift.shiftStartsAt
+      ? isoToDatetimeLocal(shift.shiftStartsAt, timeZone)
+      : fallback.shiftStartsAt,
+    shift.shiftEndsAt
+      ? isoToDatetimeLocal(shift.shiftEndsAt, timeZone)
+      : fallback.shiftEndsAt,
+    localNow,
+    timeZone,
+  );
 
   return {
     id: row.id,
@@ -52,12 +65,8 @@ function mapStaffRow(
     workingDays: row.working_days,
     workingHoursStart: row.working_hours_start.slice(0, 5),
     workingHoursEnd: row.working_hours_end.slice(0, 5),
-    shiftStartsAt: shift.shiftStartsAt
-      ? isoToDatetimeLocal(shift.shiftStartsAt, timeZone)
-      : fallback.shiftStartsAt,
-    shiftEndsAt: shift.shiftEndsAt
-      ? isoToDatetimeLocal(shift.shiftEndsAt, timeZone)
-      : fallback.shiftEndsAt,
+    shiftStartsAt: normalized.shiftStartsAt,
+    shiftEndsAt: normalized.shiftEndsAt,
     sortOrder: row.sort_order,
     photos: photos
       .sort((a, b) => a.sort_order - b.sort_order)
