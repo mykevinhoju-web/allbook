@@ -15,17 +15,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { AdminStaffRow, StaffFilterStatus, StaffRecord } from "../types";
-import { StaffTable } from "./staff-table";
-import { StaffMobileList } from "./staff-mobile-list";
-import { isStaffWorkingToday } from "./staff-working-today-toggle";
-import { useOptionalTenant } from "@/features/tenants";
 import {
   formatScheduleTime,
-  todayDateInZone,
+  isWorkingToday,
 } from "@/features/booking/lib/schedule-utils";
 
 import { mockStaffList, staffFilterOptions } from "../config";
+import type { AdminStaffRow, StaffFilterStatus, StaffRecord } from "../types";
+import { StaffTable } from "./staff-table";
+import { StaffMobileList } from "./staff-mobile-list";
 
 interface BookingSummary {
   staffId: string;
@@ -33,9 +31,6 @@ interface BookingSummary {
 }
 
 export function StaffListContent() {
-  const tenant = useOptionalTenant();
-  const timeZone = tenant?.settings.timezone || "Australia/Sydney";
-  const today = todayDateInZone(timeZone);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StaffFilterStatus>("all");
   const [staff, setStaff] = useState<StaffRecord[]>([]);
@@ -134,18 +129,14 @@ export function StaffListContent() {
         name: member.name,
         photoUrl: member.photoUrl,
         status: member.status,
-        daySchedule: member.daySchedule ?? {},
-        workingToday: isStaffWorkingToday(
-          member.status,
-          member.daySchedule ?? {},
-          today,
-        ),
+        workingToday:
+          member.status === "active" && isWorkingToday(member.workingDays),
         nextBooking: upcoming
           ? `Today, ${formatScheduleTime(upcoming.startsAt)}`
           : null,
       };
     });
-  }, [bookings, staff, today, useMock]);
+  }, [bookings, staff, useMock]);
 
   const filteredStaff = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -212,15 +203,12 @@ export function StaffListContent() {
 
       <StaffMobileList
         staff={filteredStaff}
-        today={today}
         onDelete={(id) => setDeleteId(id)}
-        onChanged={() => void loadData()}
       />
 
       <div className="hidden lg:block">
         <StaffTable
           staff={filteredStaff}
-          today={today}
           onChanged={() => void loadData()}
         />
       </div>

@@ -20,21 +20,13 @@ import { cn } from "@/lib/utils";
 
 import type { AdminStaffRow } from "../types";
 import { StaffStatusBadge } from "./staff-status-badge";
-import { StaffWorkingTodayToggle } from "./staff-working-today-toggle";
 
 interface StaffMobileListProps {
   staff: AdminStaffRow[];
-  today: string;
   onDelete: (id: string) => void;
-  onChanged?: () => void;
 }
 
-export function StaffMobileList({
-  staff,
-  today,
-  onDelete,
-  onChanged,
-}: StaffMobileListProps) {
+export function StaffMobileList({ staff, onDelete }: StaffMobileListProps) {
   if (staff.length === 0) {
     return null;
   }
@@ -77,17 +69,6 @@ export function StaffMobileList({
               </div>
               <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
             </Link>
-
-            <StaffWorkingTodayToggle
-              staffId={member.id}
-              staffName={member.name}
-              status={member.status}
-              daySchedule={member.daySchedule}
-              today={today}
-              workingToday={member.workingToday}
-              onChanged={onChanged}
-              compact
-            />
 
             <DropdownMenu>
               <DropdownMenuTrigger

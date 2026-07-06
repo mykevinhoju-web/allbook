@@ -3,10 +3,6 @@ import type { AdminBooking } from "../types/admin-booking";
 const MINUTES_IN_DAY = 24 * 60;
 const SLOT_STEP_MINUTES = 5;
 
-/** Default daily booking window for staff (shop local time). */
-export const DEFAULT_WORKING_HOURS_START = "09:00";
-export const DEFAULT_WORKING_HOURS_END = "21:00";
-
 /** @deprecated Use service options from API instead. */
 export const BOOKING_SERVICE_DURATIONS = [20, 30, 45, 60] as const;
 
@@ -107,14 +103,6 @@ export function todayDateInputValue(date = new Date()): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-}
-
-/** Today's YYYY-MM-DD in a tenant timezone. */
-export function todayDateInZone(
-  timeZone: string,
-  now = new Date(),
-): string {
-  return toDatetimeLocalValue(now, timeZone).slice(0, 10);
 }
 
 /** Default when tenant timezone is missing. */

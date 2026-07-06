@@ -7,19 +7,14 @@ import {
 } from "@/features/booking/lib/staff-conflict";
 import {
   DEFAULT_BOOKING_TIMEZONE,
-  DEFAULT_WORKING_HOURS_END,
-  DEFAULT_WORKING_HOURS_START,
   datetimeLocalToIso,
-  isoToDatetimeLocal,
+  defaultShiftWindow,
   isStartTimeOnFiveMinuteSlot,
 } from "@/features/booking/lib/schedule-utils";
 import {
+  getShiftWindowFromAttributes,
   parseStaffAttributes,
 } from "@/features/staff/utils/attributes";
-import {
-  isStaffWorkingOnDate,
-  parseDaySchedule,
-} from "@/features/staff/utils/day-schedule";
 import { getServicePriceCents } from "@/features/services/server/get-service-price";
 import { sendBookingPushNotifications } from "@/lib/push/send-booking-push";
 import { createServiceSupabase } from "@/lib/admin/tenant-context";
@@ -155,7 +150,7 @@ export async function createTenantBooking(
 
   const { data: staffRow } = await supabase
     .from("staff")
-    .select("id, status, attributes, working_hours_start, working_hours_end")
+    .select("id, status, attributes")
     .eq("tenant_id", tenant.id)
     .eq("id", body.staffId)
     .maybeSingle();
@@ -165,31 +160,27 @@ export async function createTenantBooking(
   }
 
   const attributes = parseStaffAttributes(staffRow.attributes as never);
-  const daySchedule = parseDaySchedule(attributes.daySchedule);
+  const configured = getShiftWindowFromAttributes(attributes);
   const timeZone = tenant.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
-  const bookingDate = isoToDatetimeLocal(startsAt.toISOString(), timeZone).slice(0, 10);
 
-  if (!isStaffWorkingOnDate(staffRow.status as "active", daySchedule, bookingDate)) {
-    throw new CreateBookingError("Staff is not working on this day.", 400);
+  let shiftStartsAt = configured.shiftStartsAt;
+  let shiftEndsAt = configured.shiftEndsAt;
+  if (!shiftStartsAt || !shiftEndsAt) {
+    const fallback = defaultShiftWindow(new Date(), timeZone);
+    shiftStartsAt = datetimeLocalToIso(fallback.shiftStartsAt, timeZone);
+    shiftEndsAt = datetimeLocalToIso(fallback.shiftEndsAt, timeZone);
   }
 
-  const workStart =
-    staffRow.working_hours_start?.slice(0, 5) || DEFAULT_WORKING_HOURS_START;
-  const workEnd =
-    staffRow.working_hours_end?.slice(0, 5) || DEFAULT_WORKING_HOURS_END;
-  const dayStartIso = datetimeLocalToIso(`${bookingDate}T${workStart}`, timeZone);
-  const dayEndIso = datetimeLocalToIso(`${bookingDate}T${workEnd}`, timeZone);
-
   const endsAt = new Date(startsAt.getTime() + durationMinutes * 60_000);
-  const dayStartMs = new Date(dayStartIso).getTime();
-  const dayEndMs = new Date(dayEndIso).getTime();
+  const shiftStartMs = new Date(shiftStartsAt).getTime();
+  const shiftEndMs = new Date(shiftEndsAt).getTime();
 
   if (
-    startsAt.getTime() < dayStartMs ||
-    endsAt.getTime() > dayEndMs
+    startsAt.getTime() < shiftStartMs ||
+    endsAt.getTime() > shiftEndMs
   ) {
     throw new CreateBookingError(
-      "Selected time is outside working hours (9am – 9pm).",
+      "Selected time is outside this staff member's availability window.",
       400,
     );
   }
