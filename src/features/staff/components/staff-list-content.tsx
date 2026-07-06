@@ -75,7 +75,12 @@ export function StaffListContent() {
 
   const loadData = useCallback(async () => {
     try {
-      const staffResponse = await fetch("/api/admin/staff");
+      const today = new Date().toISOString().slice(0, 10);
+      const [staffResponse, bookingsResponse] = await Promise.all([
+        fetch("/api/admin/staff"),
+        fetch(`/api/admin/bookings?date=${today}`),
+      ]);
+
       const staffData = (await staffResponse.json()) as {
         staff?: StaffRecord[];
         error?: string;
@@ -90,8 +95,6 @@ export function StaffListContent() {
       setUseMock(false);
       setStaff(staffData.staff);
 
-      const today = new Date().toISOString().slice(0, 10);
-      const bookingsResponse = await fetch(`/api/admin/bookings?date=${today}`);
       const bookingsData = (await bookingsResponse.json()) as {
         bookings?: { staffId: string; startsAt: string }[];
       };

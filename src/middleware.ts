@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 import { TENANT_SLUG_COOKIE, TENANT_SLUG_HEADER } from "@/features/tenants/constants";
+import { resolveDevTenantSlugFromEnv } from "@/features/tenants/utils/dev-tenant";
 import { isPlatformHost } from "@/features/tenants/utils/resolve-host";
 import { resolveTenantSlugFromRequest } from "@/features/tenants/utils/resolve-slug";
 import {
@@ -14,12 +15,9 @@ export async function middleware(request: NextRequest) {
   const response = await updateSession(request);
   const { pathname } = request.nextUrl;
 
-  if (isPlatformHost(host)) {
-    response.cookies.delete(TENANT_SLUG_COOKIE);
-    return response;
-  }
-
-  const tenantSlug = resolveTenantSlugFromRequest(request);
+  const tenantSlug = isPlatformHost(host)
+    ? resolveDevTenantSlugFromEnv()
+    : resolveTenantSlugFromRequest(request);
 
   if (tenantSlug) {
     response.headers.set(TENANT_SLUG_HEADER, tenantSlug);
@@ -33,6 +31,8 @@ export async function middleware(request: NextRequest) {
         maxAge: 60 * 60 * 24 * 365 * 10,
       });
     }
+  } else if (isPlatformHost(host)) {
+    response.cookies.delete(TENANT_SLUG_COOKIE);
   }
 
   const adminToken = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;

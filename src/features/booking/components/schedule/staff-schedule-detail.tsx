@@ -8,18 +8,26 @@ import {
   formatPriceFromCents,
   type ServiceOption,
 } from "@/features/services";
+import { useTenant } from "@/features/tenants";
 import type { StaffRecord } from "@/features/staff/types";
 
+import { useAdminAvailabilitySlots } from "../../hooks/use-admin-availability-slots";
 import {
-  buildStartsAtIso,
   formatAmPmTime,
   formatBookingSummary,
   formatDurationLabel,
   formatScheduleDate,
-  getAvailableStartSlots,
+  resolveStaffShiftForDate,
 } from "../../lib/schedule-utils";
+import { getShiftWindowFromAttributes } from "@/features/staff/utils/attributes";
+import {
+  getCurrentRoomBooking,
+  isBookingOccupyingRoom,
+} from "../../lib/room-occupancy";
 import type { AdminBooking } from "../../types/admin-booking";
+import { BookingCheckoutButton } from "./booking-checkout-button";
 import { BookingTimePicker } from "./booking-time-picker";
+import { ShiftTimelineBar } from "./shift-timeline-bar";
 
 interface StaffScheduleDetailProps {
   staff: StaffRecord;
@@ -27,7 +35,9 @@ interface StaffScheduleDetailProps {
   bookings: AdminBooking[];
   serviceOptions: ServiceOption[];
   currency?: string;
+  currentStaffId?: string | null;
   onAddBooking: (startsAt: string, durationMinutes: number) => void;
+  onCheckedOut?: () => void;
 }
 
 function IosSectionLabel({ children }: { children: React.ReactNode }) {
@@ -44,8 +54,11 @@ export function StaffScheduleDetail({
   bookings,
   serviceOptions,
   currency = "AUD",
+  currentStaffId = null,
   onAddBooking,
+  onCheckedOut,
 }: StaffScheduleDetailProps) {
+  const tenant = useTenant();
   const [durationMinutes, setDurationMinutes] = useState(
     serviceOptions[0]?.durationMinutes ?? 30,
   );
@@ -56,6 +69,14 @@ export function StaffScheduleDetail({
     }
   }, [serviceOptions]);
 
+  const { timeSlotOptions, timeSlotsLoading, timeSlotsHint } =
+    useAdminAvailabilitySlots({
+      staffId: staff.id,
+      durationMinutes: String(durationMinutes),
+      date,
+      timeZone: tenant.settings.timezone,
+    });
+
   const sortedBookings = useMemo(
     () =>
       [...bookings].sort(
@@ -64,35 +85,55 @@ export function StaffScheduleDetail({
     [bookings],
   );
 
-  const availableSlots = useMemo(
-    () =>
-      getAvailableStartSlots(
-        date,
-        staff.workingHoursStart,
-        staff.workingHoursEnd,
-        sortedBookings,
-        durationMinutes,
-      ),
-    [
-      date,
-      durationMinutes,
-      sortedBookings,
-      staff.workingHoursEnd,
-      staff.workingHoursStart,
-    ],
+  const activeRoomBooking = useMemo(
+    () => getCurrentRoomBooking(bookings.filter((booking) => booking.roomId)),
+    [bookings],
   );
 
-  const slotOptions = useMemo(
-    () =>
-      availableSlots.map((slot) => ({
-        value: slot,
-        label: formatAmPmTime(buildStartsAtIso(date, slot)),
-      })),
-    [availableSlots, date],
-  );
+  const shiftWindow = useMemo(() => {
+    const configured = getShiftWindowFromAttributes(staff.attributes);
+    if (configured.shiftStartsAt && configured.shiftEndsAt) {
+      return configured;
+    }
+
+    return resolveStaffShiftForDate(
+      date,
+      tenant.settings.timezone,
+      configured,
+      staff.workingHoursStart,
+      staff.workingHoursEnd,
+    );
+  }, [staff, date, tenant.settings.timezone]);
+
+  const canCheckOut =
+    Boolean(activeRoomBooking) &&
+    staff.id === currentStaffId &&
+    activeRoomBooking?.staffId === staff.id;
 
   return (
     <div className="space-y-6 pb-6">
+      {canCheckOut && activeRoomBooking ? (
+        <section className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+          <p className="text-sm font-semibold">You are in a room</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {activeRoomBooking.roomName ?? "Room"} · until{" "}
+            {formatAmPmTime(activeRoomBooking.endsAt)}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Tap check out when you leave so the room is free for the next
+            booking.
+          </p>
+          <div className="mt-3">
+            <BookingCheckoutButton
+              bookingId={activeRoomBooking.id}
+              roomName={activeRoomBooking.roomName}
+              size="default"
+              className="h-11 w-full rounded-xl"
+              onCheckedOut={onCheckedOut}
+            />
+          </div>
+        </section>
+      ) : null}
       <div className="flex items-center gap-3">
         <AppAvatar
           src={staff.photoUrl ?? staff.photos[0]?.url}
@@ -143,9 +184,21 @@ export function StaffScheduleDetail({
 
       <section>
         <IosSectionLabel>
-          Today&apos;s bookings
+          Bookings this day
           {sortedBookings.length > 0 ? ` (${sortedBookings.length})` : ""}
         </IosSectionLabel>
+
+        {shiftWindow.shiftStartsAt && shiftWindow.shiftEndsAt ? (
+          <ShiftTimelineBar
+            shiftStartIso={shiftWindow.shiftStartsAt}
+            shiftEndIso={shiftWindow.shiftEndsAt}
+            startedAtIso={staff.attributes.shiftStartsAt ?? null}
+            bookings={sortedBookings}
+            timeZone={tenant.settings.timezone}
+            className="mb-3 px-1"
+          />
+        ) : null}
+
         <div className="overflow-hidden rounded-2xl border border-border/40 bg-card shadow-soft">
           {sortedBookings.length === 0 ? (
             <p className="px-4 py-6 text-center text-sm text-muted-foreground">
@@ -153,31 +206,40 @@ export function StaffScheduleDetail({
             </p>
           ) : (
             <ul className="divide-y divide-border/50">
-              {sortedBookings.map((booking) => (
-                <li
-                  key={booking.id}
-                  className="flex items-start gap-3 px-4 py-3.5"
-                >
-                  <div className="mt-0.5 min-w-[4.5rem] text-sm font-semibold tabular-nums text-primary">
-                    {formatAmPmTime(booking.startsAt)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium leading-snug">
-                      {formatBookingSummary(booking)}
-                      {booking.priceCents > 0
-                        ? ` · ${formatPriceFromCents(booking.priceCents, currency)}`
-                        : ""}
-                    </p>
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                      {booking.customerName ?? "Walk-in"}
-                      {booking.customerPhone
-                        ? ` · ${booking.customerPhone}`
-                        : ""}
-                      {booking.roomName ? ` · ${booking.roomName}` : ""}
-                    </p>
-                  </div>
-                </li>
-              ))}
+              {sortedBookings.map((booking) => {
+                const inProgress = isBookingOccupyingRoom(booking);
+
+                return (
+                  <li
+                    key={booking.id}
+                    className="flex items-start gap-3 px-4 py-3.5"
+                  >
+                    <div className="mt-0.5 min-w-[4.5rem] text-sm font-semibold tabular-nums text-primary">
+                      {formatAmPmTime(booking.startsAt)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium leading-snug">
+                        {inProgress ? (
+                          <span className="mr-1.5 text-xs font-semibold uppercase text-amber-700 dark:text-amber-400">
+                            Now
+                          </span>
+                        ) : null}
+                        {formatBookingSummary(booking)}
+                        {booking.priceCents > 0
+                          ? ` · ${formatPriceFromCents(booking.priceCents, currency)}`
+                          : ""}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                        {booking.customerName ?? "Walk-in"}
+                        {booking.customerPhone
+                          ? ` · ${booking.customerPhone}`
+                          : ""}
+                        {booking.roomName ? ` · ${booking.roomName}` : ""}
+                      </p>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
@@ -186,10 +248,12 @@ export function StaffScheduleDetail({
       <BookingTimePicker
         date={date}
         durationMinutes={durationMinutes}
-        slotOptions={slotOptions}
+        slotOptions={timeSlotOptions}
         selectedValue=""
         onSelect={(slot) => onAddBooking(slot, durationMinutes)}
-        emptyMessage="No open slots in working hours."
+        loading={timeSlotsLoading}
+        hint={timeSlotsHint}
+        emptyMessage="No open slots for this day."
       />
     </div>
   );

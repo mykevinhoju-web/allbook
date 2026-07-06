@@ -19,7 +19,10 @@ import {
   formatAmPmTime,
   formatScheduleDate,
   formatShiftDateTime,
+  isoToDatetimeLocal,
+  todayDateInZone,
 } from "../../lib/schedule-utils";
+import { BookingTimePicker } from "../schedule/booking-time-picker";
 
 type Step = "form" | "payment" | "done";
 
@@ -97,6 +100,7 @@ export function BookingCheckoutFlow({
   const tenant = useOptionalTenant();
   const timeZone =
     tenant?.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
+  const bookingDate = todayDateInZone(timeZone);
 
   const [step, setStep] = useState<Step>("form");
   const [staff, setStaff] = useState<StaffInfo | null>(null);
@@ -181,6 +185,7 @@ export function BookingCheckoutFlow({
         const params = new URLSearchParams({
           staffId,
           durationMinutes,
+          date: bookingDate,
         });
         const response = await fetch(`/api/booking/availability?${params}`);
         const data = (await response.json()) as {
@@ -224,7 +229,17 @@ export function BookingCheckoutFlow({
     return () => {
       cancelled = true;
     };
-  }, [staffId, durationMinutes]);
+  }, [staffId, durationMinutes, bookingDate]);
+
+  const slotOptions = useMemo(
+    () =>
+      slots.map((slot) => ({
+        value: slot.startsAt,
+        label: slot.label,
+        groupTime: isoToDatetimeLocal(slot.startsAt, timeZone).slice(11, 16),
+      })),
+    [slots, timeZone],
+  );
 
   const selectedOption = useMemo(
     () =>
@@ -428,32 +443,19 @@ export function BookingCheckoutFlow({
                   </select>
                 </div>
 
-                <div>
-                  <label className={labelClass}>Available times</label>
-                  {loadingSlots ? (
-                    <p className="mt-2 text-sm text-stone-400">Loading times…</p>
-                  ) : slots.length === 0 ? (
-                    <p className="mt-2 text-sm text-stone-400">
-                      {slotsReason ?? "No times available."}
-                    </p>
-                  ) : (
-                    <select
-                      value={startsAt}
-                      onChange={(event) => {
-                        setStartsAt(event.target.value);
-                        setFormHint(null);
-                      }}
-                      className={fieldClass}
-                    >
-                      <option value="">Select a time</option>
-                      {slots.map((slot) => (
-                        <option key={slot.startsAt} value={slot.startsAt}>
-                          {slot.label}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
+                <BookingTimePicker
+                  date={bookingDate}
+                  durationMinutes={Number(durationMinutes) || 30}
+                  slotOptions={slotOptions}
+                  selectedValue={startsAt}
+                  onSelect={(slotStartsAt) => {
+                    setStartsAt(slotStartsAt);
+                    setFormHint(null);
+                  }}
+                  loading={loadingSlots}
+                  hint={slotsReason}
+                  emptyMessage={slotsReason ?? "No times available."}
+                />
 
                 {booked.length > 0 ? (
                   <div>

@@ -15,7 +15,11 @@ import {
 } from "@/features/services";
 import type { ServiceOption } from "@/features/services";
 
-import { formatAmPmTime, buildStartsAtIso } from "../../lib/schedule-utils";
+import {
+  buildStartsAtIso,
+  formatAmPmTime,
+  isIsoDateTime,
+} from "../../lib/schedule-utils";
 import { BookingTimePicker } from "./booking-time-picker";
 
 export interface BookingFormValues {
@@ -41,8 +45,11 @@ export const defaultBookingFormValues: BookingFormValues = {
 };
 
 export interface BookingTimeSlotOption {
+  /** ISO start time from the API, or HH:MM for legacy static options. */
   value: string;
   label: string;
+  /** HH:MM used for hour grouping when value is an ISO timestamp. */
+  groupTime?: string;
 }
 
 interface BookingFormSheetProps {
@@ -173,7 +180,9 @@ export function BookingFormSheet({
   const previewTime =
     values.startsAt.length > 0
       ? (slotOptions.find((slot) => slot.value === values.startsAt)?.label ??
-        formatAmPmTime(buildStartsAtIso(date, values.startsAt)))
+        (isIsoDateTime(values.startsAt)
+          ? formatAmPmTime(values.startsAt)
+          : formatAmPmTime(buildStartsAtIso(date, values.startsAt))))
       : null;
 
   const selectedOption = serviceOptions.find(

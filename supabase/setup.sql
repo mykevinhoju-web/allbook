@@ -237,6 +237,7 @@ create table if not exists public.bookings (
   customer_postcode text,
   customer_email text,
   notes text,
+  checked_out_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check (ends_at > starts_at)
@@ -350,6 +351,14 @@ where t.slug = 'dayspa'
   and not exists (
     select 1 from public.service_options s where s.tenant_id = t.id
   );
+
+-- 8. Room checkout (staff early leave)
+alter table public.bookings
+  add column if not exists checked_out_at timestamptz;
+
+create index if not exists bookings_room_active_idx
+  on public.bookings (tenant_id, room_id, ends_at)
+  where room_id is not null and status not in ('cancelled', 'completed');
 
 -- 7. Verify
 select slug, display_name, is_active from public.tenants;

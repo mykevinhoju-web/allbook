@@ -9,6 +9,7 @@ export interface AdminBooking {
   durationMinutes: number;
   priceCents: number;
   status: string;
+  checkedOutAt: string | null;
   customerName: string | null;
   customerPhone: string | null;
   customerPostcode: string | null;

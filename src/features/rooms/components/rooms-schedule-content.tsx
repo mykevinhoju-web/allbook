@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { CalendarPlus } from "lucide-react";
 
 import { AppButton, toast } from "@/components/common";
@@ -11,19 +11,29 @@ import {
   defaultBookingFormValues,
   type BookingFormValues,
 } from "@/features/booking/components/schedule/booking-form-sheet";
+import { BookingCheckoutButton } from "@/features/booking/components/schedule/booking-checkout-button";
 import type { AdminBooking, AdminRoom } from "@/features/booking/types/admin-booking";
 import { useAdminAvailabilitySlots } from "@/features/booking/hooks/use-admin-availability-slots";
 import {
-  buildStartsAtIso,
+  resolveBookingStartsAt,
   formatAmPmTime,
   isValidServiceDuration,
   todayDateInputValue,
 } from "@/features/booking/lib/schedule-utils";
+import {
+  filterActiveRoomBookings,
+  getCurrentRoomBooking,
+  isBookingOccupyingRoom,
+  isBookingUpcoming,
+} from "@/features/booking/lib/room-occupancy";
+import { useBookingRealtime } from "@/features/booking/lib/booking-schedule-realtime";
 import { useBookingAlerts } from "@/features/booking/context/booking-alert-provider";
 import { formatPriceFromCents } from "@/features/services";
 import type { ServiceOption } from "@/features/services";
 import type { StaffRecord } from "@/features/staff/types";
 import { useTenant } from "@/features/tenants";
+import { useNowTick } from "@/hooks/use-now-tick";
+import { cn } from "@/lib/utils";
 
 function formatRange(startsAt: string, endsAt: string) {
   return `${formatAmPmTime(startsAt)} – ${formatAmPmTime(endsAt)}`;
@@ -31,6 +41,7 @@ function formatRange(startsAt: string, endsAt: string) {
 
 export function RoomsScheduleContent() {
   const tenant = useTenant();
+  const now = useNowTick();
   const { alertsEnabled, notifyBooking } = useBookingAlerts();
   const [date, setDate] = useState(todayDateInputValue());
   const [rooms, setRooms] = useState<AdminRoom[]>([]);
@@ -92,9 +103,16 @@ export function RoomsScheduleContent() {
     void load();
   }, [load]);
 
+  useBookingRealtime(tenant.id, load);
+
+  const activeBookings = useMemo(
+    () => filterActiveRoomBookings(bookings, now),
+    [bookings, now],
+  );
+
   const bookingsByRoom = useMemo(() => {
     const map = new Map<string, AdminBooking[]>();
-    for (const booking of bookings) {
+    for (const booking of activeBookings) {
       if (!booking.roomId) continue;
       const list = map.get(booking.roomId) ?? [];
       list.push(booking);
@@ -109,7 +127,7 @@ export function RoomsScheduleContent() {
       );
     }
     return map;
-  }, [bookings]);
+  }, [activeBookings]);
 
   const defaultDuration =
     serviceOptions[0]?.durationMinutes != null
@@ -118,13 +136,13 @@ export function RoomsScheduleContent() {
 
   const selectedRoomBookings = useMemo(
     () =>
-      bookings
+      activeBookings
         .filter((booking) => booking.roomId === form.roomId)
         .map((booking) => ({
           startsAt: booking.startsAt,
           endsAt: booking.endsAt,
         })),
-    [bookings, form.roomId],
+    [activeBookings, form.roomId],
   );
 
   const { timeSlotOptions, timeSlotsLoading, timeSlotsHint } =
@@ -178,7 +196,11 @@ export function RoomsScheduleContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           staffId: form.staffId,
-          startsAt: buildStartsAtIso(date, form.startsAt),
+          startsAt: resolveBookingStartsAt(
+            date,
+            form.startsAt,
+            tenant.settings.timezone,
+          ),
           durationMinutes,
           roomId: form.roomId,
           customerName: form.customerName.trim(),
@@ -229,7 +251,8 @@ export function RoomsScheduleContent() {
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Room schedule</h1>
           <p className="text-sm text-muted-foreground">
-            Book empty rooms or see who is in each room.{" "}
+            Past bookings clear automatically. Staff check out when they leave a
+            room.{" "}
             <Link href="/admin/rooms" className="text-primary underline">
               Manage rooms
             </Link>
@@ -258,17 +281,36 @@ export function RoomsScheduleContent() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {rooms.map((room) => {
           const roomBookings = bookingsByRoom.get(room.id) ?? [];
+          const currentBooking = getCurrentRoomBooking(roomBookings, now);
+          const upcomingBookings = roomBookings.filter(
+            (booking) =>
+              !isBookingOccupyingRoom(booking, now) &&
+              isBookingUpcoming(booking, now),
+          );
+          const isEmpty = !currentBooking && upcomingBookings.length === 0;
+
           return (
             <div
               key={room.id}
-              className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft"
+              className={cn(
+                "rounded-2xl border bg-card p-4 shadow-soft",
+                currentBooking
+                  ? "border-amber-500/40 ring-1 ring-amber-500/20"
+                  : "border-border/60",
+              )}
             >
-              <div className="mb-3 flex items-center justify-between gap-2">
+              <div className="mb-3 flex items-start justify-between gap-2">
                 <div>
                   <p className="font-semibold">{room.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {roomBookings.length} booking
-                    {roomBookings.length === 1 ? "" : "s"}
+                  <p
+                    className={cn(
+                      "text-xs font-medium",
+                      currentBooking
+                        ? "text-amber-700 dark:text-amber-400"
+                        : "text-emerald-700 dark:text-emerald-400",
+                    )}
+                  >
+                    {currentBooking ? "In use now" : "Available"}
                   </p>
                 </div>
                 <AppButton
@@ -282,15 +324,39 @@ export function RoomsScheduleContent() {
                 </AppButton>
               </div>
 
-              {roomBookings.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Empty — available to book.</p>
+              {isEmpty ? (
+                <p className="text-sm text-muted-foreground">
+                  Empty — ready for the next booking.
+                </p>
               ) : (
                 <div className="space-y-2">
-                  {roomBookings.map((booking) => (
+                  {currentBooking ? (
+                    <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+                      <p className="text-sm font-medium">
+                        {formatRange(currentBooking.startsAt, currentBooking.endsAt)}
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {currentBooking.staffName} ·{" "}
+                        {currentBooking.customerName ?? "Walk-in"}
+                      </p>
+                      <div className="mt-2">
+                        <BookingCheckoutButton
+                          bookingId={currentBooking.id}
+                          roomName={room.name}
+                          onCheckedOut={() => void load()}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {upcomingBookings.map((booking) => (
                     <div
                       key={booking.id}
                       className="rounded-xl border border-border/60 bg-background px-3 py-2"
                     >
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Upcoming
+                      </p>
                       <p className="text-sm font-medium">
                         {formatRange(booking.startsAt, booking.endsAt)}
                       </p>

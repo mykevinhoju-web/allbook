@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CalendarDays, Plus } from "lucide-react";
+import { CalendarDays, LayoutGrid, List, Plus } from "lucide-react";
 
 import { AppButton, toast } from "@/components/common";
 import { Input } from "@/components/ui/input";
@@ -17,12 +17,13 @@ import { formatPriceFromCents } from "@/features/services";
 import type { ServiceOption } from "@/features/services";
 import { useTenant } from "@/features/tenants";
 import type { StaffRecord } from "@/features/staff/types";
+import { cn } from "@/lib/utils";
 
 import { useBookingRealtime } from "../../lib/booking-schedule-realtime";
 import { useBookingAlerts } from "../../context/booking-alert-provider";
 import { useAdminAvailabilitySlots } from "../../hooks/use-admin-availability-slots";
 import {
-  buildStartsAtIso,
+  resolveBookingStartsAt,
   formatScheduleDate,
   isValidServiceDuration,
   todayDateInputValue,
@@ -35,6 +36,8 @@ import {
 } from "./booking-form-sheet";
 import { StaffScheduleColumn } from "./staff-schedule-column";
 import { StaffScheduleDetail } from "./staff-schedule-detail";
+import { StaffBookingTimeline } from "./staff-booking-timeline";
+import { BookingDetailSheet } from "./booking-detail-sheet";
 
 export function BookingScheduleContent() {
   const tenant = useTenant();
@@ -50,6 +53,14 @@ export function BookingScheduleContent() {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<BookingFormValues>(defaultBookingFormValues);
   const prefillsApplied = useRef(false);
+  const [currentUser, setCurrentUser] = useState<{
+    role: "admin" | "staff";
+    staffId?: string;
+  } | null>(null);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [selectedBooking, setSelectedBooking] = useState<AdminBooking | null>(
+    null,
+  );
 
   const loadSchedule = useCallback(async () => {
     try {
@@ -88,6 +99,16 @@ export function BookingScheduleContent() {
   useEffect(() => {
     void loadSchedule();
   }, [loadSchedule]);
+
+  useEffect(() => {
+    void (async () => {
+      const response = await fetch("/api/admin/auth/me");
+      const data = (await response.json()) as {
+        user?: { role: "admin" | "staff"; staffId?: string } | null;
+      };
+      setCurrentUser(data.user ?? null);
+    })();
+  }, []);
 
   useBookingRealtime(tenant.id, loadSchedule);
 
@@ -136,6 +157,7 @@ export function BookingScheduleContent() {
     () =>
       bookings
         .filter((booking) => booking.roomId && booking.roomId === form.roomId)
+        .filter((booking) => new Date(booking.endsAt).getTime() > Date.now())
         .map((booking) => ({
           startsAt: booking.startsAt,
           endsAt: booking.endsAt,
@@ -199,7 +221,11 @@ export function BookingScheduleContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           staffId: form.staffId,
-          startsAt: buildStartsAtIso(date, form.startsAt),
+          startsAt: resolveBookingStartsAt(
+            date,
+            form.startsAt,
+            tenant.settings.timezone,
+          ),
           durationMinutes,
           roomId: form.roomId || undefined,
           customerName: form.customerName.trim(),
@@ -247,7 +273,7 @@ export function BookingScheduleContent() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="sticky top-14 z-10 border-b border-border/40 bg-background/90 px-3 py-3 backdrop-blur-md supports-backdrop-filter:bg-background/75 sm:px-4">
-        <div className="mx-auto flex w-full max-w-3xl items-center gap-2">
+        <div className="mx-auto flex w-full max-w-6xl items-center gap-2">
           <div className="min-w-0 flex-1">
             <p className="truncate text-base font-semibold tracking-tight">
               {dateLabel}
@@ -255,6 +281,34 @@ export function BookingScheduleContent() {
             <p className="truncate text-xs text-muted-foreground">
               {workingStaff.length} staff working
             </p>
+          </div>
+          <div className="flex shrink-0 rounded-xl border border-border/60 bg-muted/40 p-0.5">
+            <button
+              type="button"
+              onClick={() => setViewMode("grid")}
+              className={cn(
+                "flex size-9 items-center justify-center rounded-lg transition",
+                viewMode === "grid"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground",
+              )}
+              aria-label="Grid view"
+            >
+              <LayoutGrid className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              className={cn(
+                "flex size-9 items-center justify-center rounded-lg transition",
+                viewMode === "list"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground",
+              )}
+              aria-label="List view"
+            >
+              <List className="size-4" />
+            </button>
           </div>
           <Input
             type="date"
@@ -274,7 +328,7 @@ export function BookingScheduleContent() {
         </div>
       </div>
 
-      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-3 py-4 sm:px-4 sm:py-5">
+      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-3 py-4 sm:px-4 sm:py-5">
         {serviceOptions.length === 0 ? (
           <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
             No service pricing yet.{" "}
@@ -293,6 +347,24 @@ export function BookingScheduleContent() {
               Add staff or update working days to see the schedule.
             </p>
           </div>
+        ) : viewMode === "grid" ? (
+          <StaffBookingTimeline
+            date={date}
+            staff={workingStaff}
+            bookings={bookings}
+            timeZone={tenant.settings.timezone}
+            onStaffSelect={setSelectedStaffId}
+            onSlotSelect={(staffId, startsAt) => {
+              openCreateForm({
+                staffId,
+                startsAt,
+                durationMinutes: defaultDuration,
+              });
+            }}
+            onBookingSelect={(booking) => {
+              setSelectedBooking(booking);
+            }}
+          />
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {workingStaff.map((member) => (
@@ -312,9 +384,21 @@ export function BookingScheduleContent() {
         )}
 
         <p className="pb-2 text-center text-xs text-muted-foreground">
-          Tap a staff member to view times and create a booking.
+          {viewMode === "grid"
+            ? "Timeline view · tap a dot for details · tap staff for schedule"
+            : "Tap a staff member to view times and create a booking."}
         </p>
       </div>
+
+      <BookingDetailSheet
+        booking={selectedBooking}
+        open={selectedBooking !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedBooking(null);
+        }}
+        currency={tenant.settings.currency}
+        onCheckedOut={() => void loadSchedule()}
+      />
 
       <Sheet
         open={selectedStaffId !== null}
@@ -337,6 +421,7 @@ export function BookingScheduleContent() {
               )}
               serviceOptions={serviceOptions}
               currency={tenant.settings.currency}
+              currentStaffId={currentUser?.staffId ?? null}
               onAddBooking={(startsAt, durationMinutes) => {
                 setSelectedStaffId(null);
                 openCreateForm({
@@ -344,6 +429,9 @@ export function BookingScheduleContent() {
                   startsAt,
                   durationMinutes: String(durationMinutes),
                 });
+              }}
+              onCheckedOut={() => {
+                void loadSchedule();
               }}
             />
           ) : null}

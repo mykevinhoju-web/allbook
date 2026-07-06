@@ -16,6 +16,7 @@ export async function hasStaffBookingConflict(
     .eq("tenant_id", tenantId)
     .eq("staff_id", staffId)
     .neq("status", "cancelled")
+    .neq("status", "completed")
     .lt("starts_at", endsAt)
     .gt("ends_at", startsAt)
     .limit(1);
@@ -42,6 +43,7 @@ export async function hasRoomBookingConflict(
     .eq("tenant_id", tenantId)
     .eq("room_id", roomId)
     .neq("status", "cancelled")
+    .neq("status", "completed")
     .lt("starts_at", endsAt)
     .gt("ends_at", startsAt)
     .limit(1);

@@ -2,6 +2,8 @@ import type { AdminBooking } from "../types/admin-booking";
 
 const MINUTES_IN_DAY = 24 * 60;
 const SLOT_STEP_MINUTES = 5;
+/** Bookable start times are offered every 10 minutes (hour groups in the UI). */
+export const BOOKING_SLOT_STEP_MINUTES = 10;
 
 /** @deprecated Use service options from API instead. */
 export const BOOKING_SERVICE_DURATIONS = [20, 30, 45, 60] as const;
@@ -103,6 +105,12 @@ export function todayDateInputValue(date = new Date()): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+export function addDaysToDateInput(date: string, days: number): string {
+  const base = new Date(`${date}T12:00:00`);
+  base.setDate(base.getDate() + days);
+  return todayDateInputValue(base);
 }
 
 /** Today's YYYY-MM-DD in a tenant timezone. */
@@ -270,6 +278,115 @@ export function normalizeShiftWindow(
   return { shiftStartsAt: start, shiftEndsAt: end };
 }
 
+function padClockTime(value: string): string {
+  const [hours, minutes = "00"] = value.split(":");
+  return `${hours.padStart(2, "0")}:${minutes.padStart(2, "0")}`;
+}
+
+function shiftFromWorkingHours(
+  date: string,
+  workingHoursStart: string,
+  workingHoursEnd: string,
+  timeZone: string,
+): { shiftStartsAt: string; shiftEndsAt: string } {
+  const start = padClockTime(workingHoursStart.slice(0, 5));
+  const end = padClockTime(workingHoursEnd.slice(0, 5));
+  const shiftStartsAt = datetimeLocalToIso(`${date}T${start}`, timeZone);
+
+  let endDate = date;
+  if (end <= start) {
+    const next = new Date(`${date}T12:00:00`);
+    next.setDate(next.getDate() + 1);
+    endDate = todayDateInputValue(next);
+  }
+
+  const shiftEndsAt = datetimeLocalToIso(`${endDate}T${end}`, timeZone);
+  return { shiftStartsAt, shiftEndsAt };
+}
+
+/**
+ * Shift window for a calendar day: live shift for today (with stale fallback),
+ * working hours for other days.
+ */
+export function resolveStaffShiftForDate(
+  date: string,
+  timeZone: string,
+  configured: { shiftStartsAt: string | null; shiftEndsAt: string | null },
+  workingHoursStart: string,
+  workingHoursEnd: string,
+  now = new Date(),
+): { shiftStartsAt: string; shiftEndsAt: string } {
+  const today = todayDateInZone(timeZone, now);
+
+  if (date === today) {
+    if (configured.shiftStartsAt && configured.shiftEndsAt) {
+      const endMs = new Date(configured.shiftEndsAt).getTime();
+      const startMs = new Date(configured.shiftStartsAt).getTime();
+      if (endMs > now.getTime() && endMs > startMs) {
+        return {
+          shiftStartsAt: configured.shiftStartsAt,
+          shiftEndsAt: configured.shiftEndsAt,
+        };
+      }
+    }
+
+    const fallback = defaultShiftWindow(now, timeZone);
+    return {
+      shiftStartsAt: datetimeLocalToIso(fallback.shiftStartsAt, timeZone),
+      shiftEndsAt: datetimeLocalToIso(fallback.shiftEndsAt, timeZone),
+    };
+  }
+
+  return shiftFromWorkingHours(
+    date,
+    workingHoursStart,
+    workingHoursEnd,
+    timeZone,
+  );
+}
+
+/**
+ * Find the staff shift window that contains a booking start time.
+ * Overnight slots (e.g. 00:50 on the next calendar day) belong to the
+ * previous day's shift anchor, not the slot's local date.
+ */
+export function resolveShiftContainingTime(
+  startsAtIso: string,
+  durationMinutes: number,
+  timeZone: string,
+  configured: { shiftStartsAt: string | null; shiftEndsAt: string | null },
+  workingHoursStart: string,
+  workingHoursEnd: string,
+  now = new Date(),
+): { shiftStartsAt: string; shiftEndsAt: string; anchorDate: string } | null {
+  const startsMs = new Date(startsAtIso).getTime();
+  const endsMs = startsMs + durationMinutes * 60_000;
+  const localDate = isoToDatetimeLocal(startsAtIso, timeZone).slice(0, 10);
+  const candidateDates = [
+    localDate,
+    addDaysToDateInput(localDate, -1),
+  ];
+
+  for (const anchorDate of candidateDates) {
+    const { shiftStartsAt, shiftEndsAt } = resolveStaffShiftForDate(
+      anchorDate,
+      timeZone,
+      configured,
+      workingHoursStart,
+      workingHoursEnd,
+      now,
+    );
+    const shiftStartMs = new Date(shiftStartsAt).getTime();
+    const shiftEndMs = new Date(shiftEndsAt).getTime();
+
+    if (startsMs >= shiftStartMs && endsMs <= shiftEndMs) {
+      return { shiftStartsAt, shiftEndsAt, anchorDate };
+    }
+  }
+
+  return null;
+}
+
 export function defaultShiftWindow(
   now = new Date(),
   timeZone = DEFAULT_BOOKING_TIMEZONE,
@@ -311,15 +428,19 @@ export function getSlotsInShiftWindow(
   }
 
   const durationMs = durationMinutes * 60_000;
-  const stepMs = (options?.stepMinutes ?? 30) * 60_000;
+  const stepMinutes = options?.stepMinutes ?? BOOKING_SLOT_STEP_MINUTES;
+  const stepMs = stepMinutes * 60_000;
   const now = options?.now ?? new Date();
   const timeZone = options?.timeZone ?? DEFAULT_BOOKING_TIMEZONE;
   const earliest = now.getTime() + 5 * 60_000;
+  const loopStart = ceilToBookingStepMs(
+    Math.max(shiftStart, earliest),
+    timeZone,
+    stepMinutes,
+  );
   const slots: ShiftSlotOption[] = [];
 
-  for (let start = shiftStart; start + durationMs <= shiftEnd; start += stepMs) {
-    if (start < earliest) continue;
-
+  for (let start = loopStart; start + durationMs <= shiftEnd; start += stepMs) {
     const end = start + durationMs;
     const overlaps = bookings.some((booking) => {
       const bookingStart = new Date(booking.startsAt).getTime();
@@ -373,6 +494,45 @@ export function nextWorkingDateInputValue(
 
 export function roundToSlotMinutes(minutes: number): number {
   return Math.round(minutes / SLOT_STEP_MINUTES) * SLOT_STEP_MINUTES;
+}
+
+/**
+ * Round up to the next clean step in tenant local time (e.g. 12:05 → 12:10).
+ */
+export function ceilToBookingStepMs(
+  timestampMs: number,
+  timeZone: string,
+  stepMinutes = BOOKING_SLOT_STEP_MINUTES,
+): number {
+  const iso = new Date(timestampMs).toISOString();
+  const local = isoToDatetimeLocal(iso, timeZone);
+  const [datePart, timePart = "00:00"] = local.split("T");
+  const [hours = 0, minutes = 0, seconds = 0] = timePart.split(":").map(Number);
+
+  let totalMinutes = hours * 60 + minutes;
+  const remainder = totalMinutes % stepMinutes;
+
+  if (remainder !== 0 || seconds > 0) {
+    totalMinutes += stepMinutes - remainder;
+  }
+
+  const dayOverflow = Math.floor(totalMinutes / (24 * 60));
+  totalMinutes %= 24 * 60;
+  const newHours = Math.floor(totalMinutes / 60);
+  const newMinutes = totalMinutes % 60;
+
+  let dateForSlot = datePart;
+  if (dayOverflow > 0) {
+    const base = new Date(`${datePart}T12:00:00`);
+    base.setDate(base.getDate() + dayOverflow);
+    dateForSlot = todayDateInputValue(base);
+  }
+
+  const hh = String(newHours).padStart(2, "0");
+  const mm = String(newMinutes).padStart(2, "0");
+  return new Date(
+    datetimeLocalToIso(`${dateForSlot}T${hh}:${mm}`, timeZone),
+  ).getTime();
 }
 
 function parseTimeOnDate(date: string, time: string): number {
@@ -472,16 +632,18 @@ export function getAvailableStartSlots(
   const workStart = parseTimeOnDate(date, workingHoursStart);
   const workEnd = parseTimeOnDate(date, workingHoursEnd);
   const durationMs = durationMinutes * 60_000;
-  const stepMs = SLOT_STEP_MINUTES * 60_000;
+  const stepMs = BOOKING_SLOT_STEP_MINUTES * 60_000;
   const slots: string[] = [];
   const now = options?.now ?? new Date();
   const today = todayDateInputValue(now);
   const earliestStart =
     date === today ? now.getTime() + 5 * 60_000 : Number.NEGATIVE_INFINITY;
+  const loopStart =
+    earliestStart === Number.NEGATIVE_INFINITY
+      ? workStart
+      : ceilToBookingStepMs(Math.max(workStart, earliestStart), DEFAULT_BOOKING_TIMEZONE);
 
-  for (let start = workStart; start + durationMs <= workEnd; start += stepMs) {
-    if (start < earliestStart) continue;
-
+  for (let start = loopStart; start + durationMs <= workEnd; start += stepMs) {
     const end = start + durationMs;
     const overlaps = bookings.some((booking) => {
       const bookingStart = new Date(booking.startsAt).getTime();
@@ -530,11 +692,32 @@ export function getAvailableBookableSlots(
   });
 }
 
+export function isIsoDateTime(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}T/.test(value);
+}
+
 export function buildStartsAtIso(date: string, time: string): string {
   const [hours, minutes] = time.split(":").map(Number);
   const value = new Date(`${date}T00:00:00`);
   value.setHours(hours ?? 0, minutes ?? 0, 0, 0);
   return value.toISOString();
+}
+
+/** Use API ISO when present; otherwise build from schedule date + HH:MM. */
+export function resolveBookingStartsAt(
+  date: string,
+  value: string,
+  timeZone?: string,
+): string {
+  if (isIsoDateTime(value)) {
+    return value;
+  }
+
+  if (timeZone) {
+    return datetimeLocalToIso(`${date}T${value}`, timeZone);
+  }
+
+  return buildStartsAtIso(date, value);
 }
 
 export { MINUTES_IN_DAY, SLOT_STEP_MINUTES };

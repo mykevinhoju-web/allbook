@@ -5,6 +5,7 @@ import {
 } from "@/features/tenants/constants";
 import { resolveTenantBySlug } from "@/features/tenants/server/resolve-tenant";
 import type { Tenant } from "@/features/tenants/types";
+import { resolveDevTenantSlugFromEnv } from "@/features/tenants/utils/dev-tenant";
 import {
   isPlatformHost,
 } from "@/features/tenants/utils/resolve-host";
@@ -27,7 +28,7 @@ export function resolveTenantSlugFromApiRequest(
   const host = request.headers.get("host") ?? "";
 
   if (isPlatformHost(host)) {
-    return null;
+    return resolveDevTenantSlugFromEnv();
   }
 
   const headerSlug = request.headers.get(TENANT_SLUG_HEADER);

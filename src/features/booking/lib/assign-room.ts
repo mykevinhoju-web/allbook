@@ -25,6 +25,7 @@ export async function assignAvailableRoom(
     .select("id, room_id")
     .eq("tenant_id", tenantId)
     .neq("status", "cancelled")
+    .neq("status", "completed")
     .not("room_id", "is", null)
     .lt("starts_at", endsAt)
     .gt("ends_at", startsAt);

@@ -2,10 +2,9 @@ import { NextResponse } from "next/server";
 
 import {
   DEFAULT_BOOKING_TIMEZONE,
-  datetimeLocalToIso,
-  defaultShiftWindow,
   formatShiftDateTime,
   getSlotsInShiftWindow,
+  resolveStaffShiftForDate,
   todayDateInZone,
 } from "@/features/booking/lib/schedule-utils";
 import {
@@ -30,6 +29,9 @@ export async function GET(request: Request) {
     const staffId = searchParams.get("staffId");
     const durationMinutes = Number(searchParams.get("durationMinutes"));
     const timeZone = tenant.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
+    const now = new Date();
+    const date =
+      searchParams.get("date")?.trim() || todayDateInZone(timeZone, now);
 
     if (!staffId) {
       return NextResponse.json({ error: "staffId is required." }, { status: 400 });
@@ -46,7 +48,9 @@ export async function GET(request: Request) {
 
     const { data: staffRow, error: staffError } = await supabase
       .from("staff")
-      .select("id, name, status, attributes")
+      .select(
+        "id, name, status, attributes, working_hours_start, working_hours_end",
+      )
       .eq("tenant_id", tenant.id)
       .eq("id", staffId)
       .maybeSingle();
@@ -57,15 +61,14 @@ export async function GET(request: Request) {
 
     const attributes = parseStaffAttributes(staffRow.attributes as never);
     const configured = getShiftWindowFromAttributes(attributes);
-
-    // Unconfigured staff: use live default window (now → +12h) so slots appear.
-    let shiftStartsAt = configured.shiftStartsAt;
-    let shiftEndsAt = configured.shiftEndsAt;
-    if (!shiftStartsAt || !shiftEndsAt) {
-      const fallback = defaultShiftWindow(new Date(), timeZone);
-      shiftStartsAt = datetimeLocalToIso(fallback.shiftStartsAt, timeZone);
-      shiftEndsAt = datetimeLocalToIso(fallback.shiftEndsAt, timeZone);
-    }
+    const { shiftStartsAt, shiftEndsAt } = resolveStaffShiftForDate(
+      date,
+      timeZone,
+      configured,
+      staffRow.working_hours_start,
+      staffRow.working_hours_end,
+      now,
+    );
 
     if (staffRow.status !== "active") {
       return NextResponse.json({
@@ -73,19 +76,22 @@ export async function GET(request: Request) {
         booked: [],
         shiftStartsAt,
         shiftEndsAt,
+        date,
         reason: "Staff is not available.",
       });
     }
 
     const daySchedule = parseDaySchedule(attributes.daySchedule);
-    const today = todayDateInZone(timeZone);
-    if (!isStaffWorkingOnDate(staffRow.status as StaffStatus, daySchedule, today)) {
+    if (
+      !isStaffWorkingOnDate(staffRow.status as StaffStatus, daySchedule, date)
+    ) {
       return NextResponse.json({
         slots: [],
         booked: [],
         shiftStartsAt,
         shiftEndsAt,
-        reason: "Staff is not working today.",
+        date,
+        reason: "Staff is not working on this day.",
       });
     }
 
@@ -95,6 +101,7 @@ export async function GET(request: Request) {
       .eq("tenant_id", tenant.id)
       .eq("staff_id", staffId)
       .neq("status", "cancelled")
+      .neq("status", "completed")
       .lt("starts_at", shiftEndsAt)
       .gt("ends_at", shiftStartsAt)
       .order("starts_at", { ascending: true });
@@ -112,7 +119,7 @@ export async function GET(request: Request) {
         startsAt: row.starts_at,
         endsAt: row.ends_at,
       })),
-      { timeZone },
+      { timeZone, now: date === todayDateInZone(timeZone, now) ? now : undefined },
     );
 
     const booked = bookingRows.map((row) => ({
@@ -127,6 +134,7 @@ export async function GET(request: Request) {
       booked,
       shiftStartsAt,
       shiftEndsAt,
+      date,
       timeZone,
       shiftLabel: `${formatShiftDateTime(shiftStartsAt, timeZone)} → ${formatShiftDateTime(shiftEndsAt, timeZone)}`,
       reason:

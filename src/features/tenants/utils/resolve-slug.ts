@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { TENANT_ENV, TENANT_SLUG_COOKIE, TENANT_SLUG_HEADER } from "../constants";
+import { resolveDevTenantSlugFromEnv } from "./dev-tenant";
 import {
   isPlatformHost,
   normalizeHostname,
@@ -9,7 +10,7 @@ import {
 /**
  * Resolves tenant slug from request context.
  * Priority: middleware header → cookie → subdomain → environment variable (dev only).
- * Platform hosts (allbook.com.au, localhost) return null — no tenant context.
+ * Platform hosts use TENANT_SLUG from .env.local in development only.
  */
 export function resolveTenantSlugFromRequest(
   request: NextRequest,
@@ -17,7 +18,7 @@ export function resolveTenantSlugFromRequest(
   const host = request.headers.get("host") ?? request.nextUrl.host;
 
   if (isPlatformHost(host)) {
-    return null;
+    return resolveDevTenantSlugFromEnv();
   }
 
   const headerSlug = request.headers.get(TENANT_SLUG_HEADER);

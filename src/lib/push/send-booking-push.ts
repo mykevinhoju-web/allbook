@@ -118,3 +118,72 @@ export async function sendBookingPushNotifications(
 
   return { sent, failed, skipped: false as const };
 }
+
+export async function sendRoomVacatedPushNotifications(
+  tenantSlug: string,
+  event: {
+    staffName: string;
+    roomName: string | null;
+  },
+) {
+  if (!isPushConfigured()) {
+    return { sent: 0, failed: 0, skipped: true as const };
+  }
+
+  const supabase = createServiceSupabase();
+
+  const { data: subscriptions, error } = await supabase
+    .from("push_subscriptions")
+    .select("id, endpoint, p256dh, auth")
+    .eq("tenant_slug", tenantSlug)
+    .or("audience.is.null,audience.eq.admin");
+
+  if (error || !subscriptions?.length) {
+    return { sent: 0, failed: 0, skipped: false as const };
+  }
+
+  configureWebPush();
+
+  const roomPart = event.roomName ?? "Room";
+  const payload = JSON.stringify({
+    title: "Room vacated",
+    body: `${roomPart} · ${event.staffName} checked out`,
+    url: "/admin/rooms/schedule",
+  });
+
+  let sent = 0;
+  let failed = 0;
+  const staleIds: string[] = [];
+
+  await mapPool(subscriptions, PUSH_CONCURRENCY, async (subscription) => {
+    try {
+      await webpush.sendNotification(
+        {
+          endpoint: subscription.endpoint,
+          keys: {
+            p256dh: subscription.p256dh,
+            auth: subscription.auth,
+          },
+        },
+        payload,
+      );
+      sent += 1;
+    } catch (pushError) {
+      failed += 1;
+      const statusCode =
+        pushError instanceof webpush.WebPushError
+          ? pushError.statusCode
+          : undefined;
+
+      if (statusCode === 404 || statusCode === 410) {
+        staleIds.push(subscription.id);
+      }
+    }
+  });
+
+  if (staleIds.length > 0) {
+    await supabase.from("push_subscriptions").delete().in("id", staleIds);
+  }
+
+  return { sent, failed, skipped: false as const };
+}

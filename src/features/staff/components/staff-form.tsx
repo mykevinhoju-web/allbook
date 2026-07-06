@@ -172,6 +172,10 @@ export function StaffForm({ staffId }: StaffFormProps) {
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
   const [shiftBookings, setShiftBookings] = useState<ShiftBookingRow[]>([]);
+  /** ISO timestamp saved when the current availability window was opened. */
+  const [shiftStartedAtIso, setShiftStartedAtIso] = useState<string | null>(
+    null,
+  );
   const [localNow, setLocalNow] = useState(() =>
     toDatetimeLocalValue(new Date(), timeZone),
   );
@@ -218,7 +222,11 @@ export function StaffForm({ staffId }: StaffFormProps) {
 
     void (async () => {
       try {
-        const response = await fetch(`/api/admin/staff/${staffId}`);
+        const [response, accountResponse] = await Promise.all([
+          fetch(`/api/admin/staff/${staffId}`),
+          fetch(`/api/admin/staff/${staffId}/account`),
+        ]);
+
         const data = (await response.json()) as {
           staff?: StaffRecord;
           error?: string;
@@ -230,8 +238,13 @@ export function StaffForm({ staffId }: StaffFormProps) {
 
         setForm(mapRecordToForm(data.staff, timeZone));
         setExistingPhotos(data.staff.photos);
+        setShiftStartedAtIso(
+          typeof data.staff.attributes.shiftStartsAt === "string" &&
+            data.staff.attributes.shiftStartsAt
+            ? data.staff.attributes.shiftStartsAt
+            : null,
+        );
 
-        const accountResponse = await fetch(`/api/admin/staff/${staffId}/account`);
         const accountData = (await accountResponse.json()) as {
           loginId?: string | null;
           hasAccount?: boolean;
@@ -587,37 +600,48 @@ export function StaffForm({ staffId }: StaffFormProps) {
                   timeZone,
                 )}
               </p>
+              {shiftStartedAtIso ? (
+                <p className="mt-2 border-t border-border/50 pt-2 text-xs text-muted-foreground">
+                  Started at{" "}
+                  <span className="font-semibold text-foreground">
+                    {formatShiftDateTime(shiftStartedAtIso, timeZone)}
+                  </span>
+                </p>
+              ) : null}
             </div>
           ) : null}
 
-          <StaffFormField label="Bookings in this window">
+          <div className="space-y-3">
+            <p className="text-[13px] font-semibold text-foreground">Booked</p>
             {!staffId ? (
               <p className="text-sm text-muted-foreground">
                 Save staff first to see bookings.
               </p>
             ) : shiftBookings.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No bookings in this window yet.
+              <p className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+                No bookings yet.
               </p>
             ) : (
-              <ul className="space-y-2 rounded-xl border border-border/60 bg-background p-3">
+              <ul className="space-y-2">
                 {shiftBookings.map((booking) => (
                   <li
                     key={booking.id}
-                    className="flex flex-col gap-0.5 text-sm sm:flex-row sm:items-center sm:justify-between"
+                    className="rounded-xl border-2 border-primary/30 bg-primary/5 px-4 py-3 shadow-sm"
                   >
-                    <span className="font-medium text-foreground">
-                      {booking.customerName ?? "Customer"}
-                    </span>
-                    <span className="text-muted-foreground">
-                      {formatShiftDateTime(booking.startsAt, timeZone)} –{" "}
-                      {formatShiftDateTime(booking.endsAt, timeZone)}
-                    </span>
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                      <span className="text-sm font-semibold text-foreground">
+                        {booking.customerName ?? "Customer"}
+                      </span>
+                      <span className="text-sm font-medium text-primary/80">
+                        {formatShiftDateTime(booking.startsAt, timeZone)} –{" "}
+                        {formatShiftDateTime(booking.endsAt, timeZone)}
+                      </span>
+                    </div>
                   </li>
                 ))}
               </ul>
             )}
-          </StaffFormField>
+          </div>
         </StaffFormSection>
 
         <StaffFormSection title="Login">

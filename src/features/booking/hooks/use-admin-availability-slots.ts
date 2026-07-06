@@ -33,7 +33,7 @@ export function useAdminAvailabilitySlots({
   const [timeSlotsHint, setTimeSlotsHint] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!staffId || !durationMinutes) {
+    if (!staffId || !durationMinutes || !date) {
       setTimeSlotOptions([]);
       setTimeSlotsHint(null);
       setTimeSlotsLoading(false);
@@ -49,6 +49,7 @@ export function useAdminAvailabilitySlots({
         const params = new URLSearchParams({
           staffId,
           durationMinutes,
+          date,
         });
         const response = await fetch(`/api/booking/availability?${params}`);
         const data = (await response.json()) as {
@@ -68,9 +69,6 @@ export function useAdminAvailabilitySlots({
         const durationMs = Number(durationMinutes) * 60_000;
         const options = (data.slots ?? [])
           .filter((slot) => {
-            const local = isoToDatetimeLocal(slot.startsAt, timeZone);
-            if (!local.startsWith(date)) return false;
-
             if (!roomId) return true;
 
             const start = new Date(slot.startsAt).getTime();
@@ -82,8 +80,9 @@ export function useAdminAvailabilitySlots({
             });
           })
           .map((slot) => ({
-            value: isoToDatetimeLocal(slot.startsAt, timeZone).slice(11, 16),
+            value: slot.startsAt,
             label: slot.label,
+            groupTime: isoToDatetimeLocal(slot.startsAt, timeZone).slice(11, 16),
           }));
 
         setTimeSlotOptions(options);

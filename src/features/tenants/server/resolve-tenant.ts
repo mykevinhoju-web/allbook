@@ -6,6 +6,8 @@ import { TENANT_ENV } from "../constants";
 import type { Tenant } from "../types";
 import { buildLogoInitials } from "../utils/resolve-slug";
 
+const devTenantBySlug = new Map<string, Tenant>();
+
 function buildTenantFromEnv(slug: string): Tenant {
   const displayName =
     process.env[TENANT_ENV.displayName] ??
@@ -96,6 +98,17 @@ async function loadTenantBySlug(slug: string): Promise<Tenant> {
  * Falls back to environment-driven config when DB is unavailable (dev/bootstrap).
  */
 export async function resolveTenantBySlug(slug: string): Promise<Tenant> {
+  if (process.env.NODE_ENV === "development") {
+    const cached = devTenantBySlug.get(slug);
+    if (cached) {
+      return cached;
+    }
+
+    const tenant = await loadTenantBySlug(slug);
+    devTenantBySlug.set(slug, tenant);
+    return tenant;
+  }
+
   return unstable_cache(
     async () => loadTenantBySlug(slug),
     ["tenant-by-slug", slug],

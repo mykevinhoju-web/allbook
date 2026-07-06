@@ -19,12 +19,10 @@ export function AdminLayoutGate({ children }: AdminLayoutGateProps) {
   const pathname = usePathname();
   const router = useRouter();
   const isLoginPage = pathname === "/admin/login";
-  const [checked, setChecked] = useState(isLoginPage);
   const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
     if (isLoginPage) {
-      setChecked(true);
       return;
     }
 
@@ -50,7 +48,6 @@ export function AdminLayoutGate({ children }: AdminLayoutGateProps) {
       }
 
       setUser(data.user);
-      setChecked(true);
     })();
 
     return () => {
@@ -60,14 +57,6 @@ export function AdminLayoutGate({ children }: AdminLayoutGateProps) {
 
   if (isLoginPage) {
     return <>{children}</>;
-  }
-
-  if (!checked) {
-    return (
-      <div className="flex min-h-svh items-center justify-center text-sm text-muted-foreground">
-        Loading...
-      </div>
-    );
   }
 
   return <AdminShell user={user}>{children}</AdminShell>;

@@ -70,6 +70,7 @@ function mapBooking(row: {
   duration_minutes: number;
   price_cents: number;
   status: string;
+  checked_out_at: string | null;
   customer_name: string | null;
   customer_phone: string | null;
   customer_postcode: string | null;
@@ -98,6 +99,7 @@ function mapBooking(row: {
     durationMinutes: row.duration_minutes,
     priceCents: row.price_cents,
     status: row.status as BookingStatus,
+    checkedOutAt: row.checked_out_at ?? null,
     customerName: row.customer_name,
     customerPhone: row.customer_phone,
     customerPostcode: row.customer_postcode,
@@ -145,7 +147,7 @@ export async function GET(request: Request) {
     let query = supabase
       .from("bookings")
       .select(
-        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, status, customer_name, customer_phone, customer_postcode, customer_email, notes, created_at, updated_at, staff(name), rooms(name)",
+        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, status, checked_out_at, customer_name, customer_phone, customer_postcode, customer_email, notes, created_at, updated_at, staff(name), rooms(name)",
       )
       .eq("tenant_id", tenant.id)
       .neq("status", "cancelled")
@@ -301,7 +303,7 @@ export async function POST(request: Request) {
         notes: body.notes ?? null,
       })
       .select(
-        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, status, customer_name, customer_phone, customer_postcode, customer_email, notes, created_at, updated_at, staff(name), rooms(name)",
+        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, status, checked_out_at, customer_name, customer_phone, customer_postcode, customer_email, notes, created_at, updated_at, staff(name), rooms(name)",
       )
       .single();
 

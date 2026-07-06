@@ -9,7 +9,7 @@ import {
   buildStartsAtIso,
   formatAmPmTime,
   formatDurationLabel,
-  groupTimeSlotsByHour,
+  isIsoDateTime,
 } from "../../lib/schedule-utils";
 import type { BookingTimeSlotOption } from "./booking-form-sheet";
 
@@ -23,6 +23,42 @@ interface BookingTimePickerProps {
   hint?: string | null;
   disabled?: boolean;
   emptyMessage?: string;
+}
+
+interface SlotHourGroup {
+  hourLabel: string;
+  options: BookingTimeSlotOption[];
+}
+
+function groupSlotOptionsByHour(
+  date: string,
+  slotOptions: BookingTimeSlotOption[],
+): SlotHourGroup[] {
+  const map = new Map<number, BookingTimeSlotOption[]>();
+
+  for (const option of slotOptions) {
+    const groupTime = option.groupTime ?? option.value;
+    const hour = Number(groupTime.split(":")[0]);
+    if (!map.has(hour)) map.set(hour, []);
+    map.get(hour)!.push(option);
+  }
+
+  return [...map.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([hour, options]) => ({
+      hourLabel: formatAmPmTime(
+        buildStartsAtIso(date, `${String(hour).padStart(2, "0")}:00`),
+      ),
+      options,
+    }));
+}
+
+function slotButtonLabel(date: string, option: BookingTimeSlotOption): string {
+  if (isIsoDateTime(option.value)) {
+    return formatAmPmTime(option.value);
+  }
+
+  return formatAmPmTime(buildStartsAtIso(date, option.value));
 }
 
 function IosSectionLabel({ children }: { children: React.ReactNode }) {
@@ -47,7 +83,7 @@ export function BookingTimePicker({
   const [expandedHours, setExpandedHours] = useState<Set<string>>(new Set());
 
   const slotGroups = useMemo(
-    () => groupTimeSlotsByHour(date, slotOptions.map((slot) => slot.value)),
+    () => groupSlotOptionsByHour(date, slotOptions),
     [date, slotOptions],
   );
 
@@ -58,7 +94,7 @@ export function BookingTimePicker({
     }
 
     const selectedHour = slotGroups.find((group) =>
-      group.slots.includes(selectedValue),
+      group.options.some((option) => option.value === selectedValue),
     )?.hourLabel;
     const first = selectedHour ?? slotGroups[0]?.hourLabel;
     if (first) {
@@ -149,20 +185,20 @@ export function BookingTimePicker({
                   {group.hourLabel}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {group.slots.length} open
+                  {group.options.length} open
                 </span>
               </button>
 
               {expanded ? (
                 <div className="border-t border-border/40 bg-muted/25 px-3 py-3">
                   <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                    {group.slots.map((slot) => {
-                      const selected = selectedValue === slot;
+                    {group.options.map((option) => {
+                      const selected = selectedValue === option.value;
                       return (
                         <button
-                          key={slot}
+                          key={option.value}
                           type="button"
-                          onClick={() => onSelect(slot)}
+                          onClick={() => onSelect(option.value)}
                           className={cn(
                             "rounded-xl py-2.5 text-sm font-medium tabular-nums shadow-sm ring-1 ring-black/5 transition active:scale-[0.97]",
                             selected
@@ -170,7 +206,7 @@ export function BookingTimePicker({
                               : "bg-background active:bg-primary active:text-primary-foreground",
                           )}
                         >
-                          {formatAmPmTime(buildStartsAtIso(date, slot))}
+                          {slotButtonLabel(date, option)}
                         </button>
                       );
                     })}
