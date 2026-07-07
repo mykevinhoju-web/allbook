@@ -9,6 +9,16 @@ export const bookingCustomerTheme = {
   eyebrow:
     "text-[11px] font-semibold uppercase tracking-widest text-[#8A6A3A]",
   title: "mt-0.5 text-lg font-semibold tracking-tight text-stone-900",
+  therapistCard:
+    "group flex items-center gap-4 rounded-[18px] border border-[#ECE8E2] bg-white px-4 py-4 shadow-[0_10px_35px_rgba(0,0,0,0.05)] transition-all duration-200 ease-out hover:-translate-y-[3px] hover:shadow-[0_20px_50px_rgba(0,0,0,0.08)]",
+  therapistPhoto:
+    "relative size-[88px] shrink-0 overflow-hidden rounded-full bg-stone-100 shadow-[0_6px_18px_rgba(0,0,0,0.12)]",
+  therapistName: "text-[28px] font-bold leading-tight tracking-tight text-[#1A1A1A]",
+  therapistRole: "text-[16px] font-medium text-[#9A8E84]",
+  therapistButton:
+    "relative inline-flex h-[42px] w-full max-w-[220px] items-center justify-center gap-2 rounded-xl border border-white/20 bg-gradient-to-b from-[#A88449] via-[#96713F] to-[#7F5E34] px-8 text-[17px] font-semibold tracking-[0.2px] text-white shadow-[0_8px_20px_rgba(0,0,0,0.12)] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-none hover:shadow-[0_14px_30px_rgba(0,0,0,0.18)] hover:from-[#B58F51] hover:via-[#A37B43] hover:to-[#8A6536] active:translate-y-0 active:shadow-[0_4px_10px_rgba(0,0,0,0.10)] disabled:pointer-events-none disabled:opacity-40",
+  therapistButtonArrow:
+    "transition-transform duration-200 ease-out group-hover:translate-x-[3px]",
   staffCard:
     "flex items-center gap-4 rounded-2xl border border-stone-200/80 bg-white px-3 py-3.5 shadow-[0_2px_16px_-8px_rgba(0,0,0,0.08)]",
   panel:
