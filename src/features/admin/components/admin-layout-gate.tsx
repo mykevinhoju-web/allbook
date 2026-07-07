@@ -43,7 +43,7 @@ export function AdminLayoutGate({ children }: AdminLayoutGateProps) {
         data.user.role === "staff" &&
         !pathname.startsWith("/admin/bookings")
       ) {
-        router.replace("/admin/bookings");
+        router.replace("/staff");
         return;
       }
 

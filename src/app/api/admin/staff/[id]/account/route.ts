@@ -6,6 +6,7 @@ import {
   requireTenantFromRequest,
   TenantContextError,
 } from "@/lib/admin/tenant-context";
+import { validateStaffPin } from "@/lib/staff-pin";
 
 const LOGIN_ID_PATTERN = /^[a-zA-Z0-9._-]{3,32}$/;
 
@@ -108,11 +109,11 @@ export async function PUT(
       );
     }
 
-    if (password && password.length < 6) {
-      return NextResponse.json(
-        { error: "Password must be at least 6 characters." },
-        { status: 400 },
-      );
+    if (password) {
+      const pinError = validateStaffPin(password);
+      if (pinError) {
+        return NextResponse.json({ error: pinError }, { status: 400 });
+      }
     }
 
     const passwordHash = password

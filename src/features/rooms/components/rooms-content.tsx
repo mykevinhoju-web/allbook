@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { DoorOpen, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, DoorOpen, Plus, Trash2 } from "lucide-react";
 
 import { AppButton, ConfirmDialog, toast } from "@/components/common";
 import { appButtonVariants } from "@/components/common/app-button";
@@ -85,11 +85,38 @@ export function RoomsContent() {
     void loadRooms();
   };
 
+  const moveRoom = async (room: AdminRoom, direction: "up" | "down") => {
+    const index = rooms.findIndex((item) => item.id === room.id);
+    const swapIndex = direction === "up" ? index - 1 : index + 1;
+    const swapRoom = rooms[swapIndex];
+    if (!swapRoom) return;
+
+    const response = await Promise.all([
+      fetch(`/api/admin/rooms/${room.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sortOrder: swapRoom.sortOrder }),
+      }),
+      fetch(`/api/admin/rooms/${swapRoom.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sortOrder: room.sortOrder }),
+      }),
+    ]);
+
+    if (response.some((item) => !item.ok)) {
+      toast.error("Could not reorder rooms");
+      return;
+    }
+
+    void loadRooms();
+  };
+
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-3 py-4 sm:px-4 lg:gap-6 lg:p-6">
       <AdminPageHeader
         title="Rooms"
-        description="Manage treatment rooms. Bookings auto-pick the first available room."
+        description="Booking priority follows the order below (e.g. Room 2 → 3 → 4 → 1 → 6). The first free room in this list is auto-assigned."
         action={
           <Link
             href="/admin/rooms/schedule"
@@ -121,7 +148,7 @@ export function RoomsContent() {
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {rooms.map((room) => (
+        {rooms.map((room, index) => (
           <div
             key={room.id}
             className="flex items-center justify-between rounded-2xl border border-border/60 bg-card px-4 py-4 shadow-soft"
@@ -133,11 +160,34 @@ export function RoomsContent() {
               <div>
                 <p className="font-medium">{room.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {room.isActive ? "Active" : "Inactive"}
+                  Priority {index + 1}
+                  {room.isActive ? "" : " · Inactive"}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <AppButton
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="rounded-lg"
+                disabled={index === 0}
+                aria-label={`Move ${room.name} up`}
+                onClick={() => void moveRoom(room, "up")}
+              >
+                <ArrowUp className="size-4" />
+              </AppButton>
+              <AppButton
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="rounded-lg"
+                disabled={index === rooms.length - 1}
+                aria-label={`Move ${room.name} down`}
+                onClick={() => void moveRoom(room, "down")}
+              >
+                <ArrowDown className="size-4" />
+              </AppButton>
               <AppButton
                 type="button"
                 variant="outline"

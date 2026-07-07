@@ -297,6 +297,7 @@ export type Database = {
           customer_email: string | null;
           notes: string | null;
           checked_out_at: string | null;
+          checked_in_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -316,6 +317,7 @@ export type Database = {
           customer_email?: string | null;
           notes?: string | null;
           checked_out_at?: string | null;
+          checked_in_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -335,6 +337,7 @@ export type Database = {
           customer_email?: string | null;
           notes?: string | null;
           checked_out_at?: string | null;
+          checked_in_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };

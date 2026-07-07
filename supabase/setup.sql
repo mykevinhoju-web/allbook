@@ -238,6 +238,7 @@ create table if not exists public.bookings (
   customer_email text,
   notes text,
   checked_out_at timestamptz,
+  checked_in_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check (ends_at > starts_at)
@@ -355,6 +356,13 @@ where t.slug = 'dayspa'
 -- 8. Room checkout (staff early leave)
 alter table public.bookings
   add column if not exists checked_out_at timestamptz;
+
+alter table public.bookings
+  add column if not exists checked_in_at timestamptz;
+
+create index if not exists bookings_staff_checked_in_idx
+  on public.bookings (tenant_id, staff_id, checked_in_at)
+  where checked_in_at is not null and checked_out_at is null;
 
 create index if not exists bookings_room_active_idx
   on public.bookings (tenant_id, room_id, ends_at)

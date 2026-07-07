@@ -102,7 +102,7 @@ export async function POST(
     const supabase = createServiceSupabase();
     const { data: existing, error: fetchError } = await supabase
       .from("bookings")
-      .select("id, staff_id, room_id, starts_at, ends_at, status, checked_out_at")
+      .select("id, staff_id, room_id, starts_at, ends_at, status, checked_out_at, checked_in_at")
       .eq("tenant_id", tenant.id)
       .eq("id", id)
       .maybeSingle();
@@ -137,8 +137,9 @@ export async function POST(
     }
 
     const now = new Date();
-    if (
-      !isBookingOccupyingRoom(
+    const inProgress =
+      Boolean(existing.checked_in_at) ||
+      isBookingOccupyingRoom(
         {
           startsAt: existing.starts_at,
           endsAt: existing.ends_at,
@@ -146,8 +147,9 @@ export async function POST(
           status: existing.status,
         },
         now,
-      )
-    ) {
+      );
+
+    if (!inProgress) {
       return NextResponse.json(
         { error: "This booking is not in progress." },
         { status: 400 },

@@ -41,8 +41,15 @@ export async function middleware(request: NextRequest) {
 
   if (pathname === "/admin/login" || pathname === "/staff/login") {
     if (isAuthed) {
-      const target = staffToken && !adminToken ? "/admin/bookings" : "/admin";
+      const target = staffToken && !adminToken ? "/staff" : "/admin";
       return NextResponse.redirect(new URL(target, request.url));
+    }
+    return response;
+  }
+
+  if (pathname.startsWith("/staff") && pathname !== "/staff/login") {
+    if (!staffToken) {
+      return NextResponse.redirect(new URL("/staff/login", request.url));
     }
     return response;
   }

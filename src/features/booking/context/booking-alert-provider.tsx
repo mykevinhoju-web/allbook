@@ -43,8 +43,10 @@ const BookingAlertContext = createContext<BookingAlertContextValue | null>(
 
 export function BookingAlertProvider({
   children,
+  filterStaffId = null,
 }: {
   children: React.ReactNode;
+  filterStaffId?: string | null;
 }) {
   const tenant = useTenant();
   const isMobile = useIsMobile();
@@ -61,6 +63,10 @@ export function BookingAlertProvider({
 
   const handleBooking = useCallback(
     (payload: BookingAlertPayload) => {
+      if (filterStaffId && payload.staffId !== filterStaffId) {
+        return;
+      }
+
       const now = Date.now();
       const last = lastAlertRef.current;
       if (
@@ -76,13 +82,13 @@ export function BookingAlertProvider({
       setBellActive(true);
       window.setTimeout(() => setBellActive(false), 2500);
 
-      toast.success("New booking", {
+      toast.success(filterStaffId ? "New booking for you" : "New booking", {
         description: payload.staffName,
         position: isMobile ? "top-center" : "top-right",
         duration: 6000,
       });
     },
-    [isMobile],
+    [filterStaffId, isMobile],
   );
 
   useEffect(() => {

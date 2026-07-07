@@ -594,6 +594,10 @@ export function StaffForm({ staffId }: StaffFormProps) {
         </StaffFormSection>
 
         <StaffFormSection title="Login">
+          <p className="mb-3 text-sm text-muted-foreground">
+            Staff sign in at /staff/login with a 4-digit PIN. The same PIN is
+            used to confirm room check-in.
+          </p>
           <div className="grid gap-5 sm:grid-cols-2">
             <StaffFormField label="Login ID" htmlFor="staff-login-id">
               <Input
@@ -607,21 +611,28 @@ export function StaffForm({ staffId }: StaffFormProps) {
             </StaffFormField>
 
             <StaffFormField
-              label="Password"
+              label="4-digit PIN"
               htmlFor="staff-password"
               hint={
                 hasLoginAccount
-                  ? "Leave blank to keep the current password."
+                  ? "Leave blank to keep the current PIN."
                   : "Required when creating a new login."
               }
             >
               <Input
                 id="staff-password"
                 type="password"
+                inputMode="numeric"
+                maxLength={4}
                 value={form.password}
-                onChange={(event) => updateField("password", event.target.value)}
-                placeholder={hasLoginAccount ? "••••••••" : "Min. 6 characters"}
-                className={inputClassName}
+                onChange={(event) =>
+                  updateField(
+                    "password",
+                    event.target.value.replace(/\D/g, "").slice(0, 4),
+                  )
+                }
+                placeholder={hasLoginAccount ? "••••" : "1234"}
+                className={cn(inputClassName, "tracking-[0.35em]")}
                 autoComplete="new-password"
               />
             </StaffFormField>
