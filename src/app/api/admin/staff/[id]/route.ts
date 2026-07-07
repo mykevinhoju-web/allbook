@@ -21,6 +21,11 @@ import {
   toStaffAttributesJson,
   type StaffAttributes,
 } from "@/features/staff/utils/attributes";
+import {
+  deriveWorkingFieldsFromPlan,
+  parseShiftPlan,
+  primaryShiftWindowLocalsFromPlan,
+} from "@/features/staff/utils/shift-plan";
 import type { StaffStatus } from "@/features/staff/types";
 
 const STAFF_SELECT =
@@ -211,15 +216,26 @@ export async function PATCH(
 
     const timeZone = tenant.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
 
-    if (body.shiftStartsAt !== undefined || body.shiftEndsAt !== undefined) {
+    if (body.shiftStartsAt !== undefined || body.shiftEndsAt !== undefined || body.attributes?.shiftPlan) {
       const fallback = defaultShiftWindow(new Date(), timeZone);
+      const incomingPlan = body.attributes?.shiftPlan
+        ? parseShiftPlan(body.attributes.shiftPlan)
+        : parseShiftPlan(next.shiftPlan);
+
+      const primaryFromPlan = primaryShiftWindowLocalsFromPlan(
+        incomingPlan,
+        timeZone,
+      );
+
       const shiftStartsAtLocal =
         body.shiftStartsAt ??
+        primaryFromPlan?.shiftStartsAt ??
         (current.shiftStartsAt
           ? isoToDatetimeLocal(current.shiftStartsAt, timeZone)
           : fallback.shiftStartsAt);
       const shiftEndsAtLocal =
         body.shiftEndsAt ??
+        primaryFromPlan?.shiftEndsAt ??
         (current.shiftEndsAt
           ? isoToDatetimeLocal(current.shiftEndsAt, timeZone)
           : fallback.shiftEndsAt);
@@ -237,11 +253,16 @@ export async function PATCH(
       next.shiftStartsAt = startIso;
       next.shiftEndsAt = endIso;
 
-      const derived = deriveWorkingFields(
-        shiftStartsAtLocal,
-        shiftEndsAtLocal,
-        timeZone,
-      );
+      const derived =
+        Object.keys(incomingPlan).length > 0
+          ? deriveWorkingFieldsFromPlan(incomingPlan, (dateStr) =>
+              dayCodeInZone(dateStr, timeZone),
+            )
+          : deriveWorkingFields(
+              shiftStartsAtLocal,
+              shiftEndsAtLocal,
+              timeZone,
+            );
       updates.working_days = derived.workingDays;
       updates.working_hours_start = derived.workingHoursStart;
       updates.working_hours_end = derived.workingHoursEnd;

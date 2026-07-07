@@ -11,6 +11,7 @@ import {
   isStaffWorkingOnDate,
   parseDaySchedule,
 } from "@/features/staff/utils/day-schedule";
+import { parseShiftPlan } from "@/features/staff/utils/shift-plan";
 
 import {
   DEFAULT_BOOKING_TIMEZONE,
@@ -53,6 +54,7 @@ export async function assertStaffSlotIsBookable(
   const today = todayDateInZone(timeZone, now);
   const attributes = parseStaffAttributes(staffRow.attributes as never);
   const daySchedule = parseDaySchedule(attributes.daySchedule);
+  const shiftPlan = parseShiftPlan(attributes.shiftPlan);
   const configured = getShiftWindowFromAttributes(attributes);
 
   const shiftMatch = resolveShiftContainingTime(
@@ -63,6 +65,7 @@ export async function assertStaffSlotIsBookable(
     staffRow.working_hours_start,
     staffRow.working_hours_end,
     now,
+    shiftPlan,
   );
 
   if (!shiftMatch) {
@@ -79,6 +82,7 @@ export async function assertStaffSlotIsBookable(
       staffRow.status as StaffStatus,
       daySchedule,
       anchorDate,
+      shiftPlan,
     )
   ) {
     throw new BookingTimeValidationError(

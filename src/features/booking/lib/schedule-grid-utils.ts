@@ -1,5 +1,6 @@
 import type { StaffRecord } from "@/features/staff/types";
 import { getShiftWindowFromAttributes } from "@/features/staff/utils/attributes";
+import { parseShiftPlan } from "@/features/staff/utils/shift-plan";
 
 import type { AdminBooking } from "../types/admin-booking";
 import {
@@ -40,20 +41,16 @@ export function getStaffShiftBand(
   now = new Date(),
 ): StaffShiftBand | null {
   const configured = getShiftWindowFromAttributes(member.attributes);
-  const { shiftStartsAt, shiftEndsAt } =
-    configured.shiftStartsAt && configured.shiftEndsAt
-      ? {
-          shiftStartsAt: configured.shiftStartsAt,
-          shiftEndsAt: configured.shiftEndsAt,
-        }
-      : resolveStaffShiftForDate(
-          date,
-          timeZone,
-          configured,
-          member.workingHoursStart,
-          member.workingHoursEnd,
-          now,
-        );
+  const shiftPlan = parseShiftPlan(member.attributes.shiftPlan);
+  const { shiftStartsAt, shiftEndsAt } = resolveStaffShiftForDate(
+    date,
+    timeZone,
+    configured,
+    member.workingHoursStart,
+    member.workingHoursEnd,
+    now,
+    shiftPlan,
+  );
 
   const startMs = new Date(shiftStartsAt).getTime();
   const endMs = new Date(shiftEndsAt).getTime();

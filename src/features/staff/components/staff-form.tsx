@@ -37,6 +37,12 @@ import {
   isStaffWorkingOnDate,
   parseDaySchedule,
 } from "../utils/day-schedule";
+import {
+  ensureShiftPlan,
+  primaryShiftWindowLocalsFromPlan,
+  shiftPlanBounds,
+  sortedShiftPlanDates,
+} from "../utils/shift-plan";
 import { StaffFormField } from "./staff-form-field";
 import { StaffFormSection } from "./staff-form-section";
 import { StaffShiftCalendar } from "./staff-shift-calendar";
@@ -82,6 +88,11 @@ function mapRecordToForm(record: StaffRecord, timeZone: string): StaffFormValues
     localNow,
     timeZone,
   );
+  const shiftPlan = ensureShiftPlan(
+    record.attributes.shiftPlan,
+    shiftStartsAt,
+    shiftEndsAt,
+  );
 
   return {
     photos: [],
@@ -97,7 +108,13 @@ function mapRecordToForm(record: StaffRecord, timeZone: string): StaffFormValues
     password: "",
     shiftStartsAt,
     shiftEndsAt,
-    workingToday: isStaffWorkingOnDate(record.status, daySchedule, today),
+    shiftPlan,
+    workingToday: isStaffWorkingOnDate(
+      record.status,
+      daySchedule,
+      today,
+      shiftPlan,
+    ),
     daySchedule,
     status: record.status,
   };
@@ -140,6 +157,10 @@ export function StaffForm({ staffId }: StaffFormProps) {
 
   useEffect(() => {
     setForm((current) => {
+      if (Object.keys(current.shiftPlan).length > 0) {
+        return current;
+      }
+
       if (
         current.shiftStartsAt >= localNow &&
         current.shiftEndsAt > current.shiftStartsAt
@@ -216,20 +237,27 @@ export function StaffForm({ staffId }: StaffFormProps) {
   }, [staffId, timeZone]);
 
   useEffect(() => {
-    if (!staffId || !form.shiftStartsAt || !form.shiftEndsAt) {
+    if (!staffId || Object.keys(form.shiftPlan).length === 0) {
       setShiftBookings([]);
       return;
     }
 
     let cancelled = false;
+    const bounds = shiftPlanBounds(form.shiftPlan);
 
     void (async () => {
       try {
-        const params = new URLSearchParams({
-          staffId,
-          from: datetimeLocalToIso(form.shiftStartsAt, timeZone),
-          to: datetimeLocalToIso(form.shiftEndsAt, timeZone),
-        });
+        const params = new URLSearchParams({ staffId });
+        if (bounds) {
+          params.set(
+            "from",
+            datetimeLocalToIso(`${bounds.from}T00:00`, timeZone),
+          );
+          params.set(
+            "to",
+            datetimeLocalToIso(`${bounds.to}T23:59`, timeZone),
+          );
+        }
         const response = await fetch(`/api/admin/bookings?${params}`);
         const data = (await response.json()) as {
           bookings?: ShiftBookingRow[];
@@ -245,7 +273,7 @@ export function StaffForm({ staffId }: StaffFormProps) {
     return () => {
       cancelled = true;
     };
-  }, [staffId, form.shiftStartsAt, form.shiftEndsAt, timeZone]);
+  }, [staffId, form.shiftPlan, timeZone]);
 
   const updateField = <K extends keyof StaffFormValues>(
     key: K,
@@ -281,31 +309,41 @@ export function StaffForm({ staffId }: StaffFormProps) {
       return;
     }
 
-    if (form.shiftStartsAt < localNow) {
-      toast.error("Available from cannot be in the past");
+    const today = todayDateInZone(timeZone);
+    const scheduledDates = sortedShiftPlanDates(form.shiftPlan).filter(
+      (date) => date >= today,
+    );
+
+    if (scheduledDates.length === 0) {
+      toast.error("Add at least one upcoming day on the calendar");
       return;
     }
 
-    if (form.shiftEndsAt <= form.shiftStartsAt) {
-      toast.error("Available until must be after available from");
+    const primary = primaryShiftWindowLocalsFromPlan(
+      form.shiftPlan,
+      timeZone,
+    );
+    if (!primary) {
+      toast.error("Could not resolve shift hours from the calendar");
       return;
     }
 
-    // Allow an ongoing window that started earlier; only the end must be in the future.
-    if (form.shiftEndsAt <= localNow) {
-      toast.error("Available until must be after the shop's current time");
-      return;
+    if (form.shiftPlan[today]) {
+      const todayStartLocal = `${today}T${form.shiftPlan[today].startTime}`;
+      if (todayStartLocal < localNow) {
+        toast.error("Today's start time cannot be in the past");
+        return;
+      }
     }
 
     setSaving(true);
 
     try {
-      const today = todayDateInZone(timeZone);
       const payload = {
         name: form.name.trim(),
         status: form.status,
-        shiftStartsAt: form.shiftStartsAt,
-        shiftEndsAt: form.shiftEndsAt,
+        shiftStartsAt: primary.shiftStartsAt,
+        shiftEndsAt: primary.shiftEndsAt,
         attributes: {
           age: form.age,
           height: form.height,
@@ -314,7 +352,12 @@ export function StaffForm({ staffId }: StaffFormProps) {
           languages: form.languages,
           experience: form.experience,
           introduction: form.introduction,
-          daySchedule: applyWorkingToday(form.daySchedule, today, form.workingToday),
+          shiftPlan: form.shiftPlan,
+          daySchedule: applyWorkingToday(
+            form.daySchedule,
+            today,
+            Boolean(form.shiftPlan[today]),
+          ),
         },
       };
 
@@ -452,7 +495,7 @@ export function StaffForm({ staffId }: StaffFormProps) {
 
         <StaffFormSection
           title="Available times"
-          description="Pick a date on the calendar and set start and end hours."
+          description="Tap dates on the calendar to pre-schedule shifts for multiple days."
         >
           <p className="text-xs text-muted-foreground">
             Shop time now:{" "}
@@ -468,24 +511,21 @@ export function StaffForm({ staffId }: StaffFormProps) {
           <StaffShiftCalendar
             key={staffId ?? "new"}
             timeZone={timeZone}
-            shiftStartsAt={form.shiftStartsAt}
-            shiftEndsAt={form.shiftEndsAt}
-            daySchedule={form.daySchedule}
-            workingToday={form.workingToday}
-            status={form.status}
+            shiftPlan={form.shiftPlan}
             localNow={localNow}
-            onShiftChange={(shiftStartsAt, shiftEndsAt) => {
+            onShiftPlanChange={(shiftPlan) => {
+              const primary = primaryShiftWindowLocalsFromPlan(
+                shiftPlan,
+                timeZone,
+              );
+              const today = todayDateInZone(timeZone);
+
               setForm((current) => ({
                 ...current,
-                shiftStartsAt,
-                shiftEndsAt,
-              }));
-            }}
-            onDayScheduleChange={(daySchedule, workingToday) => {
-              setForm((current) => ({
-                ...current,
-                daySchedule,
-                workingToday,
+                shiftPlan,
+                shiftStartsAt: primary?.shiftStartsAt ?? current.shiftStartsAt,
+                shiftEndsAt: primary?.shiftEndsAt ?? current.shiftEndsAt,
+                workingToday: Boolean(shiftPlan[today]),
               }));
             }}
           />

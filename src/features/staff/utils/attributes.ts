@@ -16,6 +16,8 @@ export interface StaffAttributes {
   shiftEndsAt?: string;
   /** Per-date overrides. false = day off. */
   daySchedule?: Record<string, boolean>;
+  /** Planned shifts by calendar date (YYYY-MM-DD → start/end HH:mm). */
+  shiftPlan?: Record<string, { startTime: string; endTime: string }>;
   bookableSlots?: string[];
   [key: string]:
     | string
@@ -23,6 +25,7 @@ export interface StaffAttributes {
     | number
     | boolean
     | Record<string, boolean>
+    | Record<string, { startTime: string; endTime: string }>
     | null
     | undefined;
 }

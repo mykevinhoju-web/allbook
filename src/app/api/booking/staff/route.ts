@@ -11,6 +11,7 @@ import {
   isStaffWorkingOnDate,
   parseDaySchedule,
 } from "@/features/staff/utils/day-schedule";
+import { parseShiftPlan } from "@/features/staff/utils/shift-plan";
 import {
   DEFAULT_BOOKING_TIMEZONE,
   todayDateInZone,
@@ -72,6 +73,7 @@ const getBookingStaffForTenant = unstable_cache(
         photoUrl: photoByStaffId.get(row.id) ?? "",
         available: row.status === "active",
         daySchedule: parseDaySchedule(attributes.daySchedule),
+        shiftPlan: parseShiftPlan(attributes.shiftPlan),
         workingDays: row.working_days,
         workingHoursStart: row.working_hours_start.slice(0, 5),
         workingHoursEnd: row.working_hours_end.slice(0, 5),
@@ -98,7 +100,12 @@ export async function GET(request: Request) {
       {
         ...payload,
         staff: payload.staff.filter((member) =>
-          isStaffWorkingOnDate("active", member.daySchedule, today),
+          isStaffWorkingOnDate(
+            "active",
+            member.daySchedule,
+            today,
+            member.shiftPlan,
+          ),
         ),
       },
       {

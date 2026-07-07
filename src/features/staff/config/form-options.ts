@@ -1,6 +1,7 @@
 import {
   DEFAULT_BOOKING_TIMEZONE,
   defaultShiftWindow,
+  todayDateInZone,
 } from "@/features/booking/lib/schedule-utils";
 
 import type { StaffFilterStatus, StaffStatus } from "../types";
@@ -45,6 +46,7 @@ export function getDefaultStaffFormValues(
   timeZone = DEFAULT_BOOKING_TIMEZONE,
 ) {
   const shift = defaultShiftWindow(new Date(), timeZone);
+  const today = todayDateInZone(timeZone);
 
   return {
     photos: [] as File[],
@@ -60,6 +62,12 @@ export function getDefaultStaffFormValues(
     password: "",
     shiftStartsAt: shift.shiftStartsAt,
     shiftEndsAt: shift.shiftEndsAt,
+    shiftPlan: {
+      [today]: {
+        startTime: shift.shiftStartsAt.slice(11, 16),
+        endTime: shift.shiftEndsAt.slice(11, 16),
+      },
+    },
     workingToday: true,
     daySchedule: {} as Record<string, boolean>,
     status: "active" as StaffStatus,

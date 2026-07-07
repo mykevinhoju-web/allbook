@@ -1,4 +1,5 @@
 import type { AdminBooking } from "../types/admin-booking";
+import type { ShiftPlan } from "@/features/staff/utils/shift-plan";
 
 const MINUTES_IN_DAY = 24 * 60;
 const SLOT_STEP_MINUTES = 5;
@@ -315,8 +316,31 @@ export function resolveStaffShiftForDate(
   workingHoursStart: string,
   workingHoursEnd: string,
   now = new Date(),
+  shiftPlan?: ShiftPlan | null,
 ): { shiftStartsAt: string; shiftEndsAt: string } {
   const today = todayDateInZone(timeZone, now);
+
+  if (shiftPlan && Object.keys(shiftPlan).length > 0) {
+    const entry = shiftPlan[date];
+    if (entry) {
+      const endDate =
+        entry.endTime <= entry.startTime
+          ? addDaysToDateInput(date, 1)
+          : date;
+      return {
+        shiftStartsAt: datetimeLocalToIso(`${date}T${entry.startTime}`, timeZone),
+        shiftEndsAt: datetimeLocalToIso(
+          `${endDate}T${entry.endTime}`,
+          timeZone,
+        ),
+      };
+    }
+
+    return {
+      shiftStartsAt: datetimeLocalToIso(`${date}T00:00`, timeZone),
+      shiftEndsAt: datetimeLocalToIso(`${date}T00:00`, timeZone),
+    };
+  }
 
   if (date === today) {
     if (configured.shiftStartsAt && configured.shiftEndsAt) {
@@ -358,6 +382,7 @@ export function resolveShiftContainingTime(
   workingHoursStart: string,
   workingHoursEnd: string,
   now = new Date(),
+  shiftPlan?: ShiftPlan | null,
 ): { shiftStartsAt: string; shiftEndsAt: string; anchorDate: string } | null {
   const startsMs = new Date(startsAtIso).getTime();
   const endsMs = startsMs + durationMinutes * 60_000;
@@ -375,6 +400,7 @@ export function resolveShiftContainingTime(
       workingHoursStart,
       workingHoursEnd,
       now,
+      shiftPlan,
     );
     const shiftStartMs = new Date(shiftStartsAt).getTime();
     const shiftEndMs = new Date(shiftEndsAt).getTime();

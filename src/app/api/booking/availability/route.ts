@@ -15,6 +15,7 @@ import {
   isStaffWorkingOnDate,
   parseDaySchedule,
 } from "@/features/staff/utils/day-schedule";
+import { parseShiftPlan } from "@/features/staff/utils/shift-plan";
 import type { StaffStatus } from "@/features/staff/types";
 import {
   createServiceSupabase,
@@ -61,6 +62,7 @@ export async function GET(request: Request) {
 
     const attributes = parseStaffAttributes(staffRow.attributes as never);
     const configured = getShiftWindowFromAttributes(attributes);
+    const shiftPlan = parseShiftPlan(attributes.shiftPlan);
     const { shiftStartsAt, shiftEndsAt } = resolveStaffShiftForDate(
       date,
       timeZone,
@@ -68,6 +70,7 @@ export async function GET(request: Request) {
       staffRow.working_hours_start,
       staffRow.working_hours_end,
       now,
+      shiftPlan,
     );
 
     if (staffRow.status !== "active") {
@@ -83,7 +86,12 @@ export async function GET(request: Request) {
 
     const daySchedule = parseDaySchedule(attributes.daySchedule);
     if (
-      !isStaffWorkingOnDate(staffRow.status as StaffStatus, daySchedule, date)
+      !isStaffWorkingOnDate(
+        staffRow.status as StaffStatus,
+        daySchedule,
+        date,
+        shiftPlan,
+      )
     ) {
       return NextResponse.json({
         slots: [],

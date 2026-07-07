@@ -3,75 +3,52 @@
 import { useMemo, useState } from "react";
 
 import { Calendar, CalendarDayButton } from "@/components/ui/calendar";
+import { AppButton } from "@/components/common";
 import { cn } from "@/lib/utils";
 import {
-  datetimeLocalToIso,
   formatShiftDateTime,
   todayDateInZone,
 } from "@/features/booking/lib/schedule-utils";
 
 import {
-  applyWorkingToday,
-  isStaffWorkingOnDate,
-} from "../utils/day-schedule";
-import {
-  buildShiftWindow,
-  compactTimeLabel,
   DEFAULT_SHIFT_END_TIME,
   DEFAULT_SHIFT_START_TIME,
-  enumerateShiftDates,
-  extractClockTime,
   formatDateInput,
-  formatShiftDayLabel,
-  isDateWorking,
   parseDateInput,
 } from "../utils/shift-calendar";
+import {
+  formatShiftPlanDayLabel,
+  shiftPlanDayToWindow,
+  sortedShiftPlanDates,
+  type DayShiftEntry,
+  type ShiftPlan,
+} from "../utils/shift-plan";
 
 interface StaffShiftCalendarProps {
   timeZone: string;
-  shiftStartsAt: string;
-  shiftEndsAt: string;
-  daySchedule: Record<string, boolean>;
-  workingToday: boolean;
-  status: "active" | "inactive" | "on_leave";
+  shiftPlan: ShiftPlan;
   localNow: string;
-  onShiftChange: (shiftStartsAt: string, shiftEndsAt: string) => void;
-  onDayScheduleChange: (
-    daySchedule: Record<string, boolean>,
-    workingToday: boolean,
-  ) => void;
+  onShiftPlanChange: (plan: ShiftPlan) => void;
 }
 
 function ScheduleDayButton({
-  scheduledDates,
-  daySchedule,
-  shiftStartsAt,
-  shiftEndsAt,
+  shiftPlan,
   ...props
 }: React.ComponentProps<typeof CalendarDayButton> & {
-  scheduledDates: Set<string>;
-  daySchedule: Record<string, boolean>;
-  shiftStartsAt: string;
-  shiftEndsAt: string;
+  shiftPlan: ShiftPlan;
 }) {
   const dateKey = formatDateInput(props.day.date);
-  const scheduled =
-    scheduledDates.has(dateKey) && isDateWorking(dateKey, daySchedule);
-  const dayOff = scheduledDates.has(dateKey) && !isDateWorking(dateKey, daySchedule);
-  const label = formatShiftDayLabel(dateKey, shiftStartsAt, shiftEndsAt);
+  const entry = shiftPlan[dateKey];
+  const label = formatShiftPlanDayLabel(dateKey, shiftPlan);
 
   return (
     <CalendarDayButton {...props}>
       <span>{props.day.date.getDate()}</span>
-      {scheduled && label ? (
+      {entry && label ? (
         <span className="text-[9px] font-semibold leading-none text-primary">
           {label}
         </span>
-      ) : dayOff ? (
-        <span className="text-[9px] font-semibold leading-none text-muted-foreground">
-          off
-        </span>
-      ) : scheduled ? (
+      ) : entry ? (
         <span className="size-1 rounded-full bg-primary" />
       ) : null}
     </CalendarDayButton>
@@ -80,99 +57,95 @@ function ScheduleDayButton({
 
 export function StaffShiftCalendar({
   timeZone,
-  shiftStartsAt,
-  shiftEndsAt,
-  daySchedule,
-  workingToday,
-  status,
+  shiftPlan,
   localNow,
-  onShiftChange,
-  onDayScheduleChange,
+  onShiftPlanChange,
 }: StaffShiftCalendarProps) {
   const today = todayDateInZone(timeZone);
-  const [selectedDate, setSelectedDate] = useState(() =>
-    shiftStartsAt ? shiftStartsAt.slice(0, 10) : today,
-  );
-  const [visibleMonth, setVisibleMonth] = useState(() =>
-    parseDateInput(shiftStartsAt ? shiftStartsAt.slice(0, 10) : today),
-  );
-
   const scheduledDates = useMemo(
-    () => new Set(enumerateShiftDates(shiftStartsAt, shiftEndsAt)),
-    [shiftStartsAt, shiftEndsAt],
+    () => sortedShiftPlanDates(shiftPlan).map((date) => parseDateInput(date)),
+    [shiftPlan],
   );
 
-  const startTime = extractClockTime(shiftStartsAt);
-  const endTime = extractClockTime(shiftEndsAt);
-  const selectedWorking = isStaffWorkingOnDate(
-    status,
-    daySchedule,
-    selectedDate,
+  const [focusedDate, setFocusedDate] = useState(() => {
+    const dates = sortedShiftPlanDates(shiftPlan);
+    return dates.find((date) => date >= today) ?? dates[0] ?? today;
+  });
+
+  const [visibleMonth, setVisibleMonth] = useState(() =>
+    parseDateInput(focusedDate),
   );
+
+  const focusedEntry: DayShiftEntry = shiftPlan[focusedDate] ?? {
+    startTime: DEFAULT_SHIFT_START_TIME,
+    endTime: DEFAULT_SHIFT_END_TIME,
+  };
 
   const minSelectableDate = parseDateInput(today);
-
-  const applyTimes = (nextStartTime: string, nextEndTime: string) => {
-    const next = buildShiftWindow(selectedDate, nextStartTime, nextEndTime);
-    onShiftChange(next.shiftStartsAt, next.shiftEndsAt);
-  };
-
-  const handleDateSelect = (date: Date | undefined) => {
-    if (!date) return;
-
-    const dateKey = formatDateInput(date);
-    if (dateKey < today) return;
-
-    setSelectedDate(dateKey);
-    setVisibleMonth(date);
-
-    const nextStartTime =
-      dateKey === shiftStartsAt.slice(0, 10)
-        ? extractClockTime(shiftStartsAt)
-        : DEFAULT_SHIFT_START_TIME;
-    const nextEndTime =
-      dateKey === shiftEndsAt.slice(0, 10)
-        ? extractClockTime(shiftEndsAt)
-        : DEFAULT_SHIFT_END_TIME;
-
-    applyTimes(nextStartTime, nextEndTime);
-  };
-
-  const handleWorkingToggle = (working: boolean) => {
-    if (selectedDate === today) {
-      onDayScheduleChange(
-        applyWorkingToday(daySchedule, today, working),
-        working,
-      );
-      return;
-    }
-
-    const next = { ...daySchedule };
-    if (working) {
-      delete next[selectedDate];
-    } else {
-      next[selectedDate] = false;
-    }
-    onDayScheduleChange(next, workingToday);
-  };
-
   const minStartTime =
-    selectedDate === today ? localNow.slice(11, 16) : undefined;
+    focusedDate === today ? localNow.slice(11, 16) : undefined;
+
+  const updateFocusedEntry = (patch: Partial<DayShiftEntry>) => {
+    if (!shiftPlan[focusedDate]) return;
+
+    const nextEntry = { ...shiftPlan[focusedDate], ...patch };
+    onShiftPlanChange({
+      ...shiftPlan,
+      [focusedDate]: nextEntry,
+    });
+  };
+
+  const handleDatesChange = (dates: Date[] | undefined) => {
+    const nextKeys = new Set((dates ?? []).map((date) => formatDateInput(date)));
+    const prevKeys = new Set(Object.keys(shiftPlan));
+    const nextPlan: ShiftPlan = { ...shiftPlan };
+
+    for (const key of nextKeys) {
+      if (!prevKeys.has(key)) {
+        nextPlan[key] = shiftPlan[focusedDate]
+          ? { ...shiftPlan[focusedDate] }
+          : {
+              startTime: DEFAULT_SHIFT_START_TIME,
+              endTime: DEFAULT_SHIFT_END_TIME,
+            };
+        setFocusedDate(key);
+        setVisibleMonth(parseDateInput(key));
+      }
+    }
+
+    for (const key of prevKeys) {
+      if (!nextKeys.has(key)) {
+        delete nextPlan[key];
+      }
+    }
+
+    onShiftPlanChange(nextPlan);
+  };
+
+  const applyHoursToAll = () => {
+    const nextPlan: ShiftPlan = {};
+    for (const date of Object.keys(shiftPlan)) {
+      nextPlan[date] = { ...focusedEntry };
+    }
+    onShiftPlanChange(nextPlan);
+  };
+
+  const focusedWindow = shiftPlan[focusedDate]
+    ? shiftPlanDayToWindow(focusedDate, shiftPlan[focusedDate], timeZone)
+    : null;
 
   return (
     <div className="space-y-4">
       <div className="overflow-hidden rounded-2xl border border-border/60 bg-background shadow-sm">
         <Calendar
-          mode="single"
+          mode="multiple"
           month={visibleMonth}
           onMonthChange={setVisibleMonth}
-          selected={parseDateInput(selectedDate)}
-          onSelect={handleDateSelect}
+          selected={scheduledDates}
+          onSelect={handleDatesChange}
           disabled={{ before: minSelectableDate }}
           modifiers={{
-            scheduled: [...scheduledDates]
-              .filter((date) => isDateWorking(date, daySchedule))
-              .map((date) => parseDateInput(date)),
+            scheduled: scheduledDates,
           }}
           modifiersClassNames={{
             scheduled: "[&_button]:bg-primary/10",
@@ -188,109 +161,134 @@ export function StaffShiftCalendar({
           }}
           components={{
             DayButton: (props) => (
-              <ScheduleDayButton
-                {...props}
-                scheduledDates={scheduledDates}
-                daySchedule={daySchedule}
-                shiftStartsAt={shiftStartsAt}
-                shiftEndsAt={shiftEndsAt}
-              />
+              <ScheduleDayButton {...props} shiftPlan={shiftPlan} />
             ),
           }}
         />
       </div>
 
       <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-4">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold text-foreground">
-            {parseDateInput(selectedDate).toLocaleDateString(undefined, {
-              weekday: "short",
-              month: "short",
-              day: "numeric",
-            })}
-          </p>
-          <label className="flex cursor-pointer items-center gap-2">
-            <input
-              type="checkbox"
-              checked={selectedWorking}
-              onChange={(event) => handleWorkingToggle(event.target.checked)}
-              className="size-4 rounded border-border accent-primary"
-            />
-            <span className="text-xs font-medium text-foreground">
-              Working this day
-            </span>
-          </label>
-        </div>
+        {shiftPlan[focusedDate] ? (
+          <>
+            <p className="text-sm font-semibold text-foreground">
+              {parseDateInput(focusedDate).toLocaleDateString(undefined, {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+              })}
+            </p>
 
-        {selectedWorking ? (
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <label className="space-y-1.5">
-              <span className="text-xs font-medium text-muted-foreground">
-                Start
-              </span>
-              <input
-                type="time"
-                value={startTime}
-                min={minStartTime}
-                onChange={(event) => {
-                  const nextStart = event.target.value || DEFAULT_SHIFT_START_TIME;
-                  const adjustedStart =
-                    minStartTime && nextStart < minStartTime
-                      ? minStartTime
-                      : nextStart;
-                  applyTimes(adjustedStart, endTime);
-                }}
-                className={timeInputClassName}
-              />
-            </label>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <label className="space-y-1.5">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Start
+                </span>
+                <input
+                  type="time"
+                  value={focusedEntry.startTime}
+                  min={minStartTime}
+                  onChange={(event) => {
+                    const nextStart =
+                      event.target.value || DEFAULT_SHIFT_START_TIME;
+                    const adjustedStart =
+                      minStartTime && nextStart < minStartTime
+                        ? minStartTime
+                        : nextStart;
+                    updateFocusedEntry({ startTime: adjustedStart });
+                  }}
+                  className={timeInputClassName}
+                />
+              </label>
 
-            <label className="space-y-1.5">
-              <span className="text-xs font-medium text-muted-foreground">
-                End
-              </span>
-              <input
-                type="time"
-                value={endTime}
-                onChange={(event) => {
-                  const nextEnd = event.target.value || DEFAULT_SHIFT_END_TIME;
-                  applyTimes(startTime, nextEnd);
-                }}
-                className={timeInputClassName}
-              />
-            </label>
-          </div>
+              <label className="space-y-1.5">
+                <span className="text-xs font-medium text-muted-foreground">
+                  End
+                </span>
+                <input
+                  type="time"
+                  value={focusedEntry.endTime}
+                  onChange={(event) => {
+                    updateFocusedEntry({
+                      endTime: event.target.value || DEFAULT_SHIFT_END_TIME,
+                    });
+                  }}
+                  className={timeInputClassName}
+                />
+              </label>
+            </div>
+
+            {Object.keys(shiftPlan).length > 1 ? (
+              <AppButton
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-3 w-full rounded-xl"
+                onClick={applyHoursToAll}
+              >
+                Apply these hours to all scheduled days
+              </AppButton>
+            ) : null}
+
+            {focusedWindow ? (
+              <p className="mt-4 border-t border-border/50 pt-3 text-sm text-foreground">
+                {formatShiftDateTime(focusedWindow.shiftStartsAt, timeZone)}
+                {" → "}
+                {formatShiftDateTime(focusedWindow.shiftEndsAt, timeZone)}
+              </p>
+            ) : null}
+          </>
         ) : (
-          <p className="mt-3 text-sm text-muted-foreground">
-            Marked as a day off on the calendar.
+          <p className="text-sm text-muted-foreground">
+            Tap dates on the calendar to add them to the schedule.
           </p>
         )}
-
-        {selectedWorking && shiftStartsAt && shiftEndsAt ? (
-          <p className="mt-4 border-t border-border/50 pt-3 text-sm text-foreground">
-            <span className="font-medium">
-              {formatShiftDateTime(
-                datetimeLocalToIso(shiftStartsAt, timeZone),
-                timeZone,
-              )}
-            </span>
-            {" → "}
-            <span className="font-medium">
-              {formatShiftDateTime(
-                datetimeLocalToIso(shiftEndsAt, timeZone),
-                timeZone,
-              )}
-            </span>
-          </p>
-        ) : null}
       </div>
 
+      {scheduledDates.length > 0 ? (
+        <ul className="space-y-1.5 rounded-2xl border border-border/60 bg-background px-4 py-3">
+          {sortedShiftPlanDates(shiftPlan).map((date) => {
+            const entry = shiftPlan[date];
+            const window = shiftPlanDayToWindow(date, entry, timeZone);
+            const isFocused = date === focusedDate;
+
+            return (
+              <li key={date}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFocusedDate(date);
+                    setVisibleMonth(parseDateInput(date));
+                  }}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm transition",
+                    isFocused
+                      ? "bg-primary/10 font-semibold text-primary"
+                      : "hover:bg-muted/60",
+                  )}
+                >
+                  <span>
+                    {parseDateInput(date).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      weekday: "short",
+                    })}
+                  </span>
+                  <span className="tabular-nums text-xs text-muted-foreground">
+                    {formatShiftDateTime(window.shiftStartsAt, timeZone).split(
+                      ", ",
+                    )[1] ?? ""}{" "}
+                    ({entry.startTime}-{entry.endTime})
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+
       <p className="text-[11px] text-muted-foreground">
-        Tap a date to set hours. Scheduled days show{" "}
-        <span className="font-medium text-foreground">
-          {compactTimeLabel(DEFAULT_SHIFT_START_TIME)}-
-          {compactTimeLabel(DEFAULT_SHIFT_END_TIME)}
-        </span>{" "}
-        on the calendar.
+        Tap multiple dates to pre-schedule shifts. Each day can share the same
+        hours or be edited individually below.
       </p>
     </div>
   );

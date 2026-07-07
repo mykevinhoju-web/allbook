@@ -23,6 +23,7 @@ import {
   isStaffWorkingOnDate,
   parseDaySchedule,
 } from "../utils/day-schedule";
+import { parseShiftPlan } from "../utils/shift-plan";
 import { useOptionalTenant } from "@/features/tenants";
 import { mockStaffList, staffFilterOptions } from "../config";
 import type { AdminStaffRow, StaffFilterStatus, StaffRecord } from "../types";
@@ -142,6 +143,7 @@ export function StaffListContent() {
           member.status,
           parseDaySchedule(member.attributes.daySchedule),
           today,
+          parseShiftPlan(member.attributes.shiftPlan),
         ),
         nextBooking: upcoming
           ? `Today, ${formatScheduleTime(upcoming.startsAt)}`

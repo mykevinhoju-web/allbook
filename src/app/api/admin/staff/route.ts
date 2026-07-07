@@ -20,6 +20,10 @@ import {
   toStaffAttributesJson,
   type StaffAttributes,
 } from "@/features/staff/utils/attributes";
+import {
+  deriveWorkingFieldsFromPlan,
+  parseShiftPlan,
+} from "@/features/staff/utils/shift-plan";
 import type { StaffStatus } from "@/features/staff/types";
 
 function mapStaffRow(
@@ -182,6 +186,7 @@ export async function POST(request: Request) {
 
     const timeZone = tenant.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
     const fallback = defaultShiftWindow(new Date(), timeZone);
+    const incomingPlan = parseShiftPlan(body.attributes?.shiftPlan);
     const shiftStartsAtLocal = body.shiftStartsAt ?? fallback.shiftStartsAt;
     const shiftEndsAtLocal = body.shiftEndsAt ?? fallback.shiftEndsAt;
     const startIso = datetimeLocalToIso(shiftStartsAtLocal, timeZone);
@@ -194,15 +199,24 @@ export async function POST(request: Request) {
       );
     }
 
-    const derived = deriveWorkingFields(
-      shiftStartsAtLocal,
-      shiftEndsAtLocal,
-      timeZone,
-    );
+    const derived =
+      Object.keys(incomingPlan).length > 0
+        ? deriveWorkingFieldsFromPlan(incomingPlan, (dateStr) =>
+            dayCodeInZone(dateStr, timeZone),
+          )
+        : deriveWorkingFields(
+            shiftStartsAtLocal,
+            shiftEndsAtLocal,
+            timeZone,
+          );
     const attributes: StaffAttributes = {
       ...(body.attributes ?? {}),
       shiftStartsAt: startIso,
       shiftEndsAt: endIso,
+      shiftPlan:
+        Object.keys(incomingPlan).length > 0
+          ? incomingPlan
+          : body.attributes?.shiftPlan,
     };
 
     const supabase = createServiceSupabase();

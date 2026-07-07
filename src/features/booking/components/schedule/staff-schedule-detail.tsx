@@ -20,6 +20,7 @@ import {
   resolveStaffShiftForDate,
 } from "../../lib/schedule-utils";
 import { getShiftWindowFromAttributes } from "@/features/staff/utils/attributes";
+import { parseShiftPlan } from "@/features/staff/utils/shift-plan";
 import {
   getCurrentRoomBooking,
   isBookingOccupyingRoom,
@@ -92,9 +93,7 @@ export function StaffScheduleDetail({
 
   const shiftWindow = useMemo(() => {
     const configured = getShiftWindowFromAttributes(staff.attributes);
-    if (configured.shiftStartsAt && configured.shiftEndsAt) {
-      return configured;
-    }
+    const shiftPlan = parseShiftPlan(staff.attributes.shiftPlan);
 
     return resolveStaffShiftForDate(
       date,
@@ -102,6 +101,8 @@ export function StaffScheduleDetail({
       configured,
       staff.workingHoursStart,
       staff.workingHoursEnd,
+      undefined,
+      shiftPlan,
     );
   }, [staff, date, tenant.settings.timezone]);
 

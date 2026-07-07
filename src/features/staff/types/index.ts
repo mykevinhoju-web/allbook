@@ -1,4 +1,6 @@
 /** Legacy domain type — kept for future API integration. */
+import type { ShiftPlan } from "../utils/shift-plan";
+
 export interface StaffMember {
   id: string;
   shopId: string;
@@ -29,7 +31,16 @@ export interface StaffAttributes {
   shiftStartsAt?: string;
   shiftEndsAt?: string;
   daySchedule?: Record<string, boolean>;
-  [key: string]: string | string[] | number | boolean | Record<string, boolean> | null | undefined;
+  shiftPlan?: ShiftPlan;
+  [key: string]:
+    | string
+    | string[]
+    | number
+    | boolean
+    | Record<string, boolean>
+    | ShiftPlan
+    | null
+    | undefined;
 }
 
 export interface StaffRecord {
@@ -73,6 +84,7 @@ export interface StaffFormValues {
   password: string;
   shiftStartsAt: string;
   shiftEndsAt: string;
+  shiftPlan: ShiftPlan;
   workingToday: boolean;
   daySchedule: Record<string, boolean>;
   status: StaffStatus;
