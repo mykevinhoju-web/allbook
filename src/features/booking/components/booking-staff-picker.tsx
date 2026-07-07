@@ -14,17 +14,15 @@ function StaffPhoto({ staff }: { staff: BookingStaffItem }) {
   const [imageError, setImageError] = useState(false);
 
   return (
-    <div className={theme.therapistPhoto}>
+    <div className={theme.photo}>
       {imageError || !staff.photoUrl ? (
-        <div className="flex size-full items-center justify-center bg-stone-100 text-lg font-semibold text-[#8A6A3A]">
-          {staff.initials}
-        </div>
+        <div className={theme.photoFallback}>{staff.initials}</div>
       ) : (
         <Image
           src={staff.photoUrl}
           alt={staff.name}
           fill
-          sizes="88px"
+          sizes="112px"
           className="object-cover object-top"
           onError={() => setImageError(true)}
         />
@@ -44,16 +42,7 @@ function SelectButton({ staff }: { staff: BookingStaffItem }) {
       onClick={() => bookStaff(staff)}
       className={cn(available ? theme.therapistButton : theme.mutedButton)}
     >
-      {available ? (
-        <>
-          Book Now
-          <span className={theme.therapistButtonArrow} aria-hidden>
-            <ArrowRight />
-          </span>
-        </>
-      ) : (
-        "Unavailable"
-      )}
+      {available ? "Book Now" : "Unavailable"}
     </button>
   );
 }
@@ -91,16 +80,16 @@ export function BookingStaffPicker() {
             </p>
           ) : (
             staff.map((member) => (
-              <article key={member.id} className={theme.therapistCard}>
+              <article key={member.id} className={theme.staffCard}>
                 <StaffPhoto staff={member} />
-                <div className="flex min-w-0 flex-1 flex-col justify-center gap-4">
+                <div className="flex min-w-0 flex-1 flex-col gap-2.5">
                   <div>
-                    <p className={theme.therapistName}>{member.name}</p>
-                    <p className={theme.therapistRole}>{member.role}</p>
+                    <p className="text-base font-semibold text-stone-900">
+                      {member.name}
+                    </p>
+                    <p className={theme.role}>{member.role}</p>
                   </div>
-                  <div className="flex items-center">
-                    <SelectButton staff={member} />
-                  </div>
+                  <SelectButton staff={member} />
                 </div>
               </article>
             ))
@@ -108,32 +97,5 @@ export function BookingStaffPicker() {
         </div>
       </div>
     </div>
-  );
-}
-
-function ArrowRight() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 20 20"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        d="M11.25 4.75L16.5 10L11.25 15.25"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M16.25 10H3.5"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
