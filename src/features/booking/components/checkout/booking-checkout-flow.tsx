@@ -22,7 +22,7 @@ import {
   isoToDatetimeLocal,
   todayDateInZone,
 } from "../../lib/schedule-utils";
-import { BookingTimePicker } from "../schedule/booking-time-picker";
+import { BookingCompactTimePicker } from "../schedule/booking-compact-time-picker";
 
 type Step = "form" | "payment" | "done";
 
@@ -443,8 +443,9 @@ export function BookingCheckoutFlow({
                   </select>
                 </div>
 
-                <BookingTimePicker
+                <BookingCompactTimePicker
                   date={bookingDate}
+                  timeZone={timeZone}
                   durationMinutes={Number(durationMinutes) || 30}
                   slotOptions={slotOptions}
                   selectedValue={startsAt}
@@ -455,6 +456,7 @@ export function BookingCheckoutFlow({
                   loading={loadingSlots}
                   hint={slotsReason}
                   emptyMessage={slotsReason ?? "No times available."}
+                  variant="customer"
                 />
 
                 {booked.length > 0 ? (

@@ -27,7 +27,7 @@ import {
 } from "../../lib/room-occupancy";
 import type { AdminBooking } from "../../types/admin-booking";
 import { BookingCheckoutButton } from "./booking-checkout-button";
-import { BookingTimePicker } from "./booking-time-picker";
+import { BookingCompactTimePicker } from "./booking-compact-time-picker";
 import { ShiftTimelineBar } from "./shift-timeline-bar";
 
 interface StaffScheduleDetailProps {
@@ -246,8 +246,9 @@ export function StaffScheduleDetail({
         </div>
       </section>
 
-      <BookingTimePicker
+      <BookingCompactTimePicker
         date={date}
+        timeZone={tenant.settings.timezone}
         durationMinutes={durationMinutes}
         slotOptions={timeSlotOptions}
         selectedValue=""
@@ -255,6 +256,8 @@ export function StaffScheduleDetail({
         loading={timeSlotsLoading}
         hint={timeSlotsHint}
         emptyMessage="No open slots for this day."
+        instantSelect
+        variant="admin"
       />
     </div>
   );

@@ -414,6 +414,7 @@ export function RoomsScheduleContent() {
         onOpenChange={setShowCreate}
         title="Book room"
         date={date}
+        timeZone={tenant.settings.timezone}
         staffOptions={staff.map((member) => ({
           id: member.id,
           name: member.name,

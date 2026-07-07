@@ -21,7 +21,7 @@ import {
   formatAmPmTime,
   isIsoDateTime,
 } from "../../lib/schedule-utils";
-import { BookingTimePicker } from "./booking-time-picker";
+import { BookingCompactTimePicker } from "./booking-compact-time-picker";
 
 export interface BookingFormValues {
   staffId: string;
@@ -72,6 +72,7 @@ interface BookingFormSheetProps {
   timeSlotsHint?: string | null;
   roomStatuses?: RoomAvailabilityStatus[];
   suggestedAutoRoomName?: string | null;
+  timeZone: string;
   values: BookingFormValues;
   onChange: (values: BookingFormValues) => void;
   onSubmit: () => void;
@@ -165,6 +166,7 @@ export function BookingFormSheet({
   timeSlotsHint = null,
   roomStatuses,
   suggestedAutoRoomName = null,
+  timeZone,
   values,
   onChange,
   onSubmit,
@@ -203,6 +205,10 @@ export function BookingFormSheet({
     : !values.durationMinutes
       ? "Select service first"
       : timeSlotsHint;
+
+  const selectedRoomName = values.roomId
+    ? roomOptions.find((room) => room.id === values.roomId)?.name ?? null
+    : null;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -278,8 +284,9 @@ export function BookingFormSheet({
             </IosGroupedCard>
           </section>
 
-          <BookingTimePicker
+          <BookingCompactTimePicker
             date={date}
+            timeZone={timeZone}
             durationMinutes={durationMinutes || 30}
             slotOptions={slotOptions}
             selectedValue={values.startsAt}
@@ -287,6 +294,8 @@ export function BookingFormSheet({
             loading={timeSlotsLoading}
             hint={timePickerHint}
             disabled={timePickerDisabled}
+            roomPreview={selectedRoomName ?? suggestedAutoRoomName}
+            variant="admin"
           />
 
           <section>
