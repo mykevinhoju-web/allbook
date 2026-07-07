@@ -54,11 +54,11 @@ function groupSlotOptionsByHour(
 }
 
 function slotButtonLabel(date: string, option: BookingTimeSlotOption): string {
-  if (isIsoDateTime(option.value)) {
-    return formatAmPmTime(option.value);
-  }
+  const time = isIsoDateTime(option.value)
+    ? formatAmPmTime(option.value)
+    : formatAmPmTime(buildStartsAtIso(date, option.value));
 
-  return formatAmPmTime(buildStartsAtIso(date, option.value));
+  return option.suggestedRoomName ? `${time} · ${option.suggestedRoomName}` : time;
 }
 
 function IosSectionLabel({ children }: { children: React.ReactNode }) {

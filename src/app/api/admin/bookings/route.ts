@@ -6,6 +6,7 @@ import {
   hasRoomBookingConflict,
   hasStaffBookingConflict,
 } from "@/features/booking/lib/staff-conflict";
+import { isBookingOverlapConstraintError, isRoomOverlapConstraintError } from "@/features/booking/lib/validate-booking-update";
 import { isStartTimeOnFiveMinuteSlot } from "@/features/booking/lib/schedule-utils";
 import { getServicePriceCents } from "@/features/services/server/get-service-price";
 import { sendBookingPushNotifications } from "@/lib/push/send-booking-push";
@@ -17,12 +18,7 @@ import {
 import type { BookingStatus } from "@/types";
 
 function isOverlapConstraintError(error: { code?: string; message?: string } | null) {
-  if (!error) return false;
-  return (
-    error.code === "23P01" ||
-    error.message?.includes("bookings_staff_no_overlap") === true ||
-    error.message?.includes("bookings_room_no_overlap") === true
-  );
+  return isBookingOverlapConstraintError(error);
 }
 
 function getTimeZoneOffsetMs(timeZone: string, utcDate: Date): number {
@@ -286,6 +282,23 @@ export async function POST(request: Request) {
       );
     }
 
+    if (body.roomId) {
+      const { data: roomRow } = await supabase
+        .from("rooms")
+        .select("id")
+        .eq("tenant_id", tenant.id)
+        .eq("id", body.roomId)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (!roomRow) {
+        return NextResponse.json(
+          { error: "Selected room is not available." },
+          { status: 400 },
+        );
+      }
+    }
+
     const { data, error } = await supabase
       .from("bookings")
       .insert({
@@ -311,7 +324,11 @@ export async function POST(request: Request) {
     if (error || !data) {
       if (isOverlapConstraintError(error)) {
         return NextResponse.json(
-          { error: "This staff member already has a booking in that time slot." },
+          {
+            error: isRoomOverlapConstraintError(error)
+              ? "This room is already booked for that time slot."
+              : "This staff member already has a booking in that time slot.",
+          },
           { status: 409 },
         );
       }

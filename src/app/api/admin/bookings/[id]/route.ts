@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { assignAvailableRoom } from "@/features/booking/lib/assign-room";
+import {
+  isBookingOverlapConstraintError,
+  isRoomOverlapConstraintError,
+  validateBookingUpdate,
+} from "@/features/booking/lib/validate-booking-update";
 import { getServicePriceCents } from "@/features/services/server/get-service-price";
 import {
   createServiceSupabase,
@@ -82,7 +86,7 @@ export async function PATCH(
     const supabase = createServiceSupabase();
     const { data: existing } = await supabase
       .from("bookings")
-      .select("starts_at, duration_minutes")
+      .select("starts_at, duration_minutes, staff_id, room_id")
       .eq("tenant_id", tenant.id)
       .eq("id", id)
       .maybeSingle();
@@ -96,6 +100,45 @@ export async function PATCH(
     };
 
     if (body.staffId !== undefined) updates.staff_id = body.staffId;
+
+    const staffId = body.staffId ?? existing.staff_id;
+    const startsAt = body.startsAt
+      ? new Date(body.startsAt)
+      : new Date(existing.starts_at);
+    const durationMinutes =
+      body.durationMinutes ?? existing.duration_minutes ?? 60;
+    const endsAt = new Date(startsAt.getTime() + durationMinutes * 60_000);
+    const startsAtIso = startsAt.toISOString();
+    const endsAtIso = endsAt.toISOString();
+
+    const scheduleChanged =
+      body.staffId !== undefined ||
+      body.startsAt !== undefined ||
+      body.durationMinutes !== undefined ||
+      body.roomId !== undefined;
+
+    if (scheduleChanged) {
+      const validation = await validateBookingUpdate({
+        supabase,
+        tenantId: tenant.id,
+        bookingId: id,
+        staffId,
+        startsAtIso,
+        endsAtIso,
+        requestedRoomId: body.roomId,
+        existingRoomId: existing.room_id,
+      });
+
+      if (!validation.ok) {
+        return NextResponse.json(
+          { error: validation.error },
+          { status: validation.status },
+        );
+      }
+
+      updates.room_id = validation.roomId;
+    }
+
     if (body.status !== undefined) updates.status = body.status;
     if (body.customerName !== undefined) updates.customer_name = body.customerName;
     if (body.customerPhone !== undefined) updates.customer_phone = body.customerPhone;
@@ -105,16 +148,9 @@ export async function PATCH(
     if (body.customerEmail !== undefined) updates.customer_email = body.customerEmail;
     if (body.notes !== undefined) updates.notes = body.notes;
 
-    const startsAt = body.startsAt
-      ? new Date(body.startsAt)
-      : new Date(existing.starts_at);
-    const durationMinutes =
-      body.durationMinutes ?? existing.duration_minutes ?? 60;
-    const endsAt = new Date(startsAt.getTime() + durationMinutes * 60_000);
-
     if (body.startsAt !== undefined || body.durationMinutes !== undefined) {
-      updates.starts_at = startsAt.toISOString();
-      updates.ends_at = endsAt.toISOString();
+      updates.starts_at = startsAtIso;
+      updates.ends_at = endsAtIso;
       updates.duration_minutes = durationMinutes;
     }
 
@@ -135,18 +171,6 @@ export async function PATCH(
       updates.price_cents = priceCents;
     }
 
-    if (body.roomId !== undefined || body.startsAt !== undefined || body.durationMinutes !== undefined) {
-      updates.room_id =
-        body.roomId ??
-        (await assignAvailableRoom(
-          supabase,
-          tenant.id,
-          startsAt.toISOString(),
-          endsAt.toISOString(),
-          id,
-        ));
-    }
-
     const { data, error } = await supabase
       .from("bookings")
       .update(updates)
@@ -158,6 +182,17 @@ export async function PATCH(
       .maybeSingle();
 
     if (error) {
+      if (isBookingOverlapConstraintError(error)) {
+        return NextResponse.json(
+          {
+            error: isRoomOverlapConstraintError(error)
+              ? "This room is already booked for that time slot."
+              : "This staff member already has a booking in that time slot.",
+          },
+          { status: 409 },
+        );
+      }
+
       return NextResponse.json({ error: error.message }, { status: 503 });
     }
 

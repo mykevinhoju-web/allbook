@@ -97,16 +97,15 @@ function BookingTimelineList({
             {formatTimelineMarkerNumber(index)}.
           </span>
         ) : null}
+        {booking.roomName ? (
+          <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+            {booking.roomName}
+          </span>
+        ) : null}
         <span className="min-w-0 truncate text-xs font-semibold text-primary">
           {booking.customerName ?? "Walk-in"}
         </span>
         <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground">
-          {booking.roomName ? (
-            <span className="font-medium text-foreground/70">
-              {booking.roomName}
-              {" · "}
-            </span>
-          ) : null}
           {formatAmPmTime(booking.startsAt)} ({booking.durationMinutes}min)
         </span>
       </button>

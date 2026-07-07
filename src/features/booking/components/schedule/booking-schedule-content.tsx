@@ -28,6 +28,11 @@ import { useBookingRealtime } from "../../lib/booking-schedule-realtime";
 import { useBookingAlerts } from "../../context/booking-alert-provider";
 import { useAdminAvailabilitySlots } from "../../hooks/use-admin-availability-slots";
 import {
+  getRoomAvailabilityAtTime,
+  pickFirstAvailableRoom,
+  toRoomSlotBookings,
+} from "../../lib/room-availability";
+import {
   resolveBookingStartsAt,
   formatScheduleDate,
   isValidServiceDuration,
@@ -169,16 +174,20 @@ export function BookingScheduleContent() {
     staff.find((member) => member.id === selectedStaffId) ??
     null;
 
+  const allRoomBookings = useMemo(
+    () => toRoomSlotBookings(bookings),
+    [bookings],
+  );
+
   const selectedRoomBookings = useMemo(
     () =>
-      bookings
-        .filter((booking) => booking.roomId && booking.roomId === form.roomId)
-        .filter((booking) => new Date(booking.endsAt).getTime() > Date.now())
+      allRoomBookings
+        .filter((booking) => booking.roomId === form.roomId)
         .map((booking) => ({
           startsAt: booking.startsAt,
           endsAt: booking.endsAt,
         })),
-    [bookings, form.roomId],
+    [allRoomBookings, form.roomId],
   );
 
   const { timeSlotOptions, timeSlotsLoading, timeSlotsHint } =
@@ -189,7 +198,45 @@ export function BookingScheduleContent() {
       timeZone: tenant.settings.timezone,
       roomId: form.roomId || undefined,
       roomBookings: selectedRoomBookings,
+      rooms,
+      allRoomBookings,
     });
+
+  const resolvedStartsAt = useMemo(() => {
+    if (!form.startsAt) return null;
+    try {
+      return resolveBookingStartsAt(
+        date,
+        form.startsAt,
+        tenant.settings.timezone,
+      );
+    } catch {
+      return null;
+    }
+  }, [date, form.startsAt, tenant.settings.timezone]);
+
+  const roomStatuses = useMemo(() => {
+    if (!resolvedStartsAt || !form.durationMinutes) return undefined;
+    return getRoomAvailabilityAtTime(
+      rooms,
+      resolvedStartsAt,
+      Number(form.durationMinutes),
+      allRoomBookings,
+    );
+  }, [resolvedStartsAt, form.durationMinutes, rooms, allRoomBookings]);
+
+  const suggestedAutoRoomName = useMemo(() => {
+    if (!resolvedStartsAt || !form.durationMinutes || form.roomId) return null;
+    const startMs = new Date(resolvedStartsAt).getTime();
+    const endMs = startMs + Number(form.durationMinutes) * 60_000;
+    return pickFirstAvailableRoom(rooms, startMs, endMs, allRoomBookings)?.name ?? null;
+  }, [
+    resolvedStartsAt,
+    form.durationMinutes,
+    form.roomId,
+    rooms,
+    allRoomBookings,
+  ]);
 
   const dateLabel = useMemo(
     () => formatScheduleDate(`${date}T12:00:00`),
@@ -465,6 +512,8 @@ export function BookingScheduleContent() {
         timeSlotOptions={timeSlotOptions}
         timeSlotsLoading={timeSlotsLoading}
         timeSlotsHint={timeSlotsHint}
+        roomStatuses={roomStatuses}
+        suggestedAutoRoomName={suggestedAutoRoomName}
         values={form}
         onChange={setForm}
         onSubmit={() => void createBooking()}

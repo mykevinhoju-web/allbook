@@ -6,7 +6,7 @@ import { AppAvatar } from "@/components/common";
 import { formatPriceFromCents } from "@/features/services";
 import { cn } from "@/lib/utils";
 
-import { formatAmPmTime, formatBookingSummary } from "../../lib/schedule-utils";
+import { formatAmPmTime } from "../../lib/schedule-utils";
 import type { AdminBooking } from "../../types/admin-booking";
 
 interface StaffScheduleColumnProps {
@@ -57,11 +57,19 @@ export function StaffScheduleColumn({
 
         {nextBooking ? (
           <p className="mt-1 truncate text-sm text-muted-foreground">
+            {nextBooking.roomName ? (
+              <span className="mr-1 inline-flex shrink-0 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                {nextBooking.roomName}
+              </span>
+            ) : null}
             <span className="font-medium text-foreground">
               {formatAmPmTime(nextBooking.startsAt)}
             </span>
             {" · "}
-            {formatBookingSummary(nextBooking)}
+            {nextBooking.customerName ?? "Walk-in"}
+            {nextBooking.durationMinutes
+              ? ` (${nextBooking.durationMinutes}min)`
+              : ""}
             {nextBooking.priceCents > 0
               ? ` · ${formatPriceFromCents(nextBooking.priceCents, currency)}`
               : ""}

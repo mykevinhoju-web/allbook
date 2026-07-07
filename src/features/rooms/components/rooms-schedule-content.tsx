@@ -15,6 +15,10 @@ import { BookingCheckoutButton } from "@/features/booking/components/schedule/bo
 import type { AdminBooking, AdminRoom } from "@/features/booking/types/admin-booking";
 import { useAdminAvailabilitySlots } from "@/features/booking/hooks/use-admin-availability-slots";
 import {
+  getRoomAvailabilityAtTime,
+  toRoomSlotBookings,
+} from "@/features/booking/lib/room-availability";
+import {
   resolveBookingStartsAt,
   formatAmPmTime,
   isValidServiceDuration,
@@ -134,15 +138,20 @@ export function RoomsScheduleContent() {
       ? String(serviceOptions[0].durationMinutes)
       : "";
 
+  const allRoomBookings = useMemo(
+    () => toRoomSlotBookings(activeBookings),
+    [activeBookings],
+  );
+
   const selectedRoomBookings = useMemo(
     () =>
-      activeBookings
+      allRoomBookings
         .filter((booking) => booking.roomId === form.roomId)
         .map((booking) => ({
           startsAt: booking.startsAt,
           endsAt: booking.endsAt,
         })),
-    [activeBookings, form.roomId],
+    [allRoomBookings, form.roomId],
   );
 
   const { timeSlotOptions, timeSlotsLoading, timeSlotsHint } =
@@ -153,7 +162,35 @@ export function RoomsScheduleContent() {
       timeZone: tenant.settings.timezone,
       roomId: form.roomId,
       roomBookings: selectedRoomBookings,
+      rooms: rooms.map((room) => ({ id: room.id, name: room.name })),
+      allRoomBookings,
     });
+
+  const resolvedStartsAt = useMemo(() => {
+    if (!form.startsAt) return null;
+    try {
+      return resolveBookingStartsAt(
+        date,
+        form.startsAt,
+        tenant.settings.timezone,
+      );
+    } catch {
+      return null;
+    }
+  }, [date, form.startsAt, tenant.settings.timezone]);
+
+  const roomStatuses = useMemo(() => {
+    if (!resolvedStartsAt || !form.durationMinutes || !form.roomId) {
+      return undefined;
+    }
+
+    return getRoomAvailabilityAtTime(
+      rooms.map((room) => ({ id: room.id, name: room.name })),
+      resolvedStartsAt,
+      Number(form.durationMinutes),
+      allRoomBookings,
+    );
+  }, [resolvedStartsAt, form.durationMinutes, form.roomId, rooms, allRoomBookings]);
 
   const openCreateForm = (roomId: string) => {
     setForm({
@@ -390,6 +427,7 @@ export function RoomsScheduleContent() {
         timeSlotOptions={timeSlotOptions}
         timeSlotsLoading={timeSlotsLoading}
         timeSlotsHint={timeSlotsHint}
+        roomStatuses={roomStatuses}
         values={form}
         onChange={setForm}
         onSubmit={() => void createBooking()}

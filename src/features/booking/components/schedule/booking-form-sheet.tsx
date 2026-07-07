@@ -15,6 +15,7 @@ import {
 } from "@/features/services";
 import type { ServiceOption } from "@/features/services";
 
+import type { RoomAvailabilityStatus } from "../../lib/room-availability";
 import {
   buildStartsAtIso,
   formatAmPmTime,
@@ -50,6 +51,8 @@ export interface BookingTimeSlotOption {
   label: string;
   /** HH:MM used for hour grouping when value is an ISO timestamp. */
   groupTime?: string;
+  /** First room that would be auto-assigned at this time. */
+  suggestedRoomName?: string;
 }
 
 interface BookingFormSheetProps {
@@ -67,6 +70,8 @@ interface BookingFormSheetProps {
   timeSlotOptions?: BookingTimeSlotOption[];
   timeSlotsLoading?: boolean;
   timeSlotsHint?: string | null;
+  roomStatuses?: RoomAvailabilityStatus[];
+  suggestedAutoRoomName?: string | null;
   values: BookingFormValues;
   onChange: (values: BookingFormValues) => void;
   onSubmit: () => void;
@@ -158,6 +163,8 @@ export function BookingFormSheet({
   timeSlotOptions,
   timeSlotsLoading = false,
   timeSlotsHint = null,
+  roomStatuses,
+  suggestedAutoRoomName = null,
   values,
   onChange,
   onSubmit,
@@ -290,17 +297,35 @@ export function BookingFormSheet({
               <IosRow label="Treatment room" border={false}>
                 <IosSelect
                   value={values.roomId}
-                  onChange={(value) => update("roomId", value)}
+                  onChange={(value) =>
+                    onChange({ ...values, roomId: value, startsAt: "" })
+                  }
                 >
-                  <option value="">Auto-assign</option>
-                  {roomOptions.map((room) => (
-                    <option key={room.id} value={room.id}>
-                      {room.name}
+                  <option value="">
+                    {suggestedAutoRoomName
+                      ? `Auto-assign (${suggestedAutoRoomName})`
+                      : "Auto-assign (first free room)"}
+                  </option>
+                  {(roomStatuses ?? roomOptions.map((room) => ({
+                    id: room.id,
+                    name: room.name,
+                    available: true,
+                  }))).map((room) => (
+                    <option
+                      key={room.id}
+                      value={room.id}
+                      disabled={room.available === false}
+                    >
+                      {room.available
+                        ? room.name
+                        : `${room.name} — booked${room.conflictLabel ? ` ${room.conflictLabel}` : ""}`}
                     </option>
                   ))}
                 </IosSelect>
                 <p className="text-xs text-muted-foreground">
-                  Auto-assign picks the first available room.
+                  {values.startsAt
+                    ? "Unavailable rooms are disabled for the selected time."
+                    : "Pick a time to see which rooms are free. Auto-assign uses the first available room."}
                 </p>
               </IosRow>
             </IosGroupedCard>
