@@ -157,7 +157,8 @@ export async function GET(request: Request) {
       // Overlap with the availability window (supports overnight shifts).
       query = query.lt("starts_at", rangeEnd).gt("ends_at", rangeStart);
     } else {
-      query = query.gte("starts_at", rangeStart).lt("starts_at", rangeEnd);
+      // Any booking that touches this tenant-local calendar day.
+      query = query.lt("starts_at", rangeEnd).gt("ends_at", rangeStart);
     }
 
     if (staffId) {

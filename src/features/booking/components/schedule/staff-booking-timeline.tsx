@@ -154,7 +154,10 @@ function StaffTimelineRow({
   }
 
   const window = shiftWindowFromBand(shift.startMs, shift.endMs);
-  const staffBookings = activeBookingsForStaff(bookings, member.id, window);
+  const staffBookings = activeBookingsForStaff(bookings, member.id, window, {
+    strictWindow: false,
+    includeCompleted: true,
+  });
 
   const markers = staffBookings.map((booking, index) => ({
     booking,
@@ -194,9 +197,11 @@ function StaffTimelineRow({
             <p className="truncate text-base font-semibold text-primary">
               {member.name}
             </p>
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              Booked
-            </p>
+            {markers.length > 0 ? (
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                Booked
+              </p>
+            ) : null}
           </div>
         </button>
 

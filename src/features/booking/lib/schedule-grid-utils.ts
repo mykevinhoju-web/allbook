@@ -170,15 +170,21 @@ export function activeBookingsForStaff(
   bookings: AdminBooking[],
   staffId: string,
   window: ScheduleGridWindow,
+  options?: { strictWindow?: boolean; includeCompleted?: boolean },
 ): AdminBooking[] {
+  const strictWindow = options?.strictWindow ?? true;
+  const includeCompleted = options?.includeCompleted ?? false;
+
   return bookings
     .filter(
       (booking) =>
         booking.staffId === staffId &&
         booking.status !== "cancelled" &&
-        booking.status !== "completed",
+        (includeCompleted || booking.status !== "completed"),
     )
     .filter((booking) => {
+      if (!strictWindow) return true;
+
       const start = new Date(booking.startsAt).getTime();
       const end = new Date(booking.endsAt).getTime();
       return end > window.startMs && start < window.endMs;
