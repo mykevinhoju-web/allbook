@@ -17,6 +17,32 @@ import { isBookingOccupyingRoom } from "../../lib/room-occupancy";
 import { formatTimelineMarkerNumber } from "../../lib/timeline-marker-number";
 import type { AdminBooking } from "../../types/admin-booking";
 
+function computeTimelineBarRange(
+  shiftStartMs: number,
+  shiftEndMs: number,
+  bookings: AdminBooking[],
+): { startMs: number; endMs: number } {
+  let startMs = shiftStartMs;
+  let endMs = shiftEndMs;
+
+  for (const booking of bookings) {
+    const bookingStart = new Date(booking.startsAt).getTime();
+    const bookingEnd = new Date(booking.endsAt).getTime();
+    if (Number.isFinite(bookingStart)) {
+      startMs = Math.min(startMs, bookingStart);
+    }
+    if (Number.isFinite(bookingEnd)) {
+      endMs = Math.max(endMs, bookingEnd);
+    }
+  }
+
+  if (endMs <= startMs) {
+    return { startMs: shiftStartMs, endMs: shiftEndMs };
+  }
+
+  return { startMs, endMs };
+}
+
 function splitIntoTwoColumns<T>(items: T[]): [T[], T[]] {
   if (items.length <= 3) {
     return [items, []];
@@ -74,6 +100,12 @@ function BookingTimelineList({
           {booking.customerName ?? "Walk-in"}
         </span>
         <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground">
+          {booking.roomName ? (
+            <span className="font-medium text-foreground/70">
+              {booking.roomName}
+              {" · "}
+            </span>
+          ) : null}
           {formatAmPmTime(booking.startsAt)} ({booking.durationMinutes}min)
         </span>
       </button>
@@ -159,15 +191,32 @@ function StaffTimelineRow({
     includeCompleted: true,
   });
 
+  const barRange = computeTimelineBarRange(
+    shift.startMs,
+    shift.endMs,
+    staffBookings,
+  );
+
   const markers = staffBookings.map((booking, index) => ({
     booking,
     index,
     percent: msToBarPercent(
       new Date(booking.startsAt).getTime(),
-      shift.startMs,
-      shift.endMs,
+      barRange.startMs,
+      barRange.endMs,
     ),
   }));
+
+  const shiftStartPercent = msToBarPercent(
+    shift.startMs,
+    barRange.startMs,
+    barRange.endMs,
+  );
+  const shiftEndPercent = msToBarPercent(
+    shift.endMs,
+    barRange.startMs,
+    barRange.endMs,
+  );
 
   const handleBarClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!onSlotSelect) return;
@@ -222,12 +271,19 @@ function StaffTimelineRow({
           >
             <div className="absolute left-0 right-0 top-1/2 h-0.5 -translate-y-1/2 rounded-full bg-border" />
 
-            <span className="absolute left-0 top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary bg-background" />
-            <span className="absolute right-0 top-1/2 size-2.5 translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary bg-primary" />
+            <span
+              className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary bg-background"
+              style={{ left: `${shiftStartPercent}%` }}
+            />
+            <span
+              className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary bg-primary"
+              style={{ left: `${shiftEndPercent}%` }}
+            />
 
             {markers.map(({ booking, index, percent }) => {
               const inProgress = isBookingOccupyingRoom(booking, now);
               const markerNumber = formatTimelineMarkerNumber(index);
+              const roomLabel = booking.roomName ? ` ${booking.roomName}` : "";
 
               return (
                 <button
@@ -237,9 +293,9 @@ function StaffTimelineRow({
                     event.stopPropagation();
                     onBookingSelect?.(booking);
                   }}
-                  className="absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2"
+                  className="absolute top-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
                   style={{ left: `${percent}%` }}
-                  aria-label={`${markerNumber} ${booking.customerName ?? "Booking"} ${formatAmPmTime(booking.startsAt)}`}
+                  aria-label={`${markerNumber} ${booking.customerName ?? "Booking"}${roomLabel} ${formatAmPmTime(booking.startsAt)}`}
                 >
                   {isMobile ? (
                     <span
@@ -250,14 +306,14 @@ function StaffTimelineRow({
                     >
                       {markerNumber}
                     </span>
-                  ) : (
-                    <span
-                      className={cn(
-                        "block size-2.5 rounded-full ring-2 ring-card",
-                        inProgress ? "bg-amber-500" : "bg-foreground",
-                      )}
-                    />
-                  )}
+                  ) : null}
+                  <span
+                    className={cn(
+                      "block rounded-full ring-2 ring-card",
+                      isMobile ? "mt-0.5 size-2" : "size-3.5",
+                      inProgress ? "bg-amber-500" : "bg-primary",
+                    )}
+                  />
                 </button>
               );
             })}

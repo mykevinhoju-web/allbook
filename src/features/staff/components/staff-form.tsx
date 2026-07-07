@@ -408,7 +408,21 @@ export function StaffForm({ staffId }: StaffFormProps) {
       }
 
       toast.success(isEditing ? "Staff updated" : "Staff created");
-      router.push("/admin/staff");
+
+      if (!isEditing && data.staff.id) {
+        router.replace(`/admin/staff/${data.staff.id}`);
+        router.refresh();
+        return;
+      }
+
+      setForm(mapRecordToForm(data.staff, timeZone));
+      setExistingPhotos(data.staff.photos);
+      setShiftStartedAtIso(
+        typeof data.staff.attributes.shiftStartsAt === "string" &&
+          data.staff.attributes.shiftStartsAt
+          ? data.staff.attributes.shiftStartsAt
+          : null,
+      );
       router.refresh();
     } catch (error) {
       toast.error("Could not save staff", {
