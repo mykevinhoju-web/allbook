@@ -23,6 +23,7 @@ import {
   todayDateInZone,
 } from "../../lib/schedule-utils";
 import { BookingCompactTimePicker } from "../schedule/booking-compact-time-picker";
+import { bookingCustomerTheme as theme } from "../../lib/booking-customer-theme";
 
 type Step = "form" | "payment" | "done";
 
@@ -73,9 +74,9 @@ function StaffAvatar({ staff }: { staff: StaffInfo }) {
       .toUpperCase();
 
   return (
-    <div className="relative mx-auto size-28 overflow-hidden rounded-full bg-rose-50 ring-4 ring-white shadow-md shadow-rose-100/50">
+    <div className={cn(theme.photoHero, "ring-stone-100")}>
       {imageError || !staff.photoUrl ? (
-        <div className="flex size-full items-center justify-center text-xl font-semibold text-rose-500">
+        <div className="flex size-full items-center justify-center text-xl font-semibold text-[#A68B2A]">
           {initials}
         </div>
       ) : (
@@ -323,18 +324,15 @@ export function BookingCheckoutFlow({
     }
   };
 
-  const fieldClass =
-    "mt-1 h-11 w-full rounded-xl border border-pink-200 bg-white px-3 text-sm text-stone-800 outline-none focus:border-[#e91e63]";
-  const labelClass =
-    "block text-xs font-semibold uppercase tracking-wider text-[#e91e63]/80";
-  const pillButtonClass =
-    "inline-flex h-11 w-full items-center justify-center rounded-full border-2 border-[#e91e63] bg-white text-sm font-semibold text-[#e91e63] transition-all active:scale-[0.98] disabled:opacity-40";
+  const fieldClass = theme.field;
+  const labelClass = theme.label;
+  const pillButtonClass = theme.goldButton;
 
   if (loadingStaff) {
     return (
-      <div className="min-h-svh bg-[#fce4ec]">
+      <div className={theme.page}>
         <div className="mx-auto flex min-h-svh max-w-md items-center justify-center">
-          <div className="size-10 animate-pulse rounded-full bg-white/70" />
+          <div className="size-10 animate-pulse rounded-full bg-stone-100" />
         </div>
       </div>
     );
@@ -342,7 +340,7 @@ export function BookingCheckoutFlow({
 
   if (!tenant) {
     return (
-      <div className="mx-auto flex min-h-svh max-w-md flex-col items-center justify-center bg-[#fce4ec] px-6 text-center">
+      <div className={cn(theme.page, "mx-auto flex max-w-md flex-col items-center justify-center px-6 text-center min-h-svh")}>
         <p className="text-lg font-semibold text-stone-800">Open on your spa site</p>
         <p className="mt-2 text-sm text-stone-500">
           Booking requires a tenant subdomain (e.g. dayspa.allbook.com.au).
@@ -356,7 +354,7 @@ export function BookingCheckoutFlow({
 
   if (!staff) {
     return (
-      <div className="mx-auto flex min-h-svh max-w-md flex-col items-center justify-center bg-[#fce4ec] px-6 text-center">
+      <div className={cn(theme.page, "mx-auto flex max-w-md flex-col items-center justify-center px-6 text-center min-h-svh")}>
         <p className="text-lg font-semibold text-stone-800">Staff not found</p>
         <p className="mt-2 text-sm text-stone-500">
           This therapist may no longer be available.
@@ -369,9 +367,9 @@ export function BookingCheckoutFlow({
   }
 
   return (
-    <div className="min-h-svh bg-[#fce4ec] text-stone-800">
-      <div className="mx-auto min-h-svh max-w-md border-pink-200/60 md:border-x">
-        <header className="sticky top-0 z-10 flex items-center gap-2 border-b border-pink-200/80 bg-[#fce4ec]/95 px-4 py-3 backdrop-blur-md">
+    <div className={theme.page}>
+      <div className={theme.shell}>
+        <header className={theme.headerCompact}>
           {step !== "done" ? (
             <Link
               href={step === "payment" ? "#" : returnTo}
@@ -381,7 +379,7 @@ export function BookingCheckoutFlow({
                   setStep("form");
                 }
               }}
-              className="flex size-9 items-center justify-center rounded-full text-[#e91e63]"
+              className={theme.backButton}
               aria-label="Back"
             >
               <ChevronLeft className="size-5" />
@@ -390,7 +388,7 @@ export function BookingCheckoutFlow({
             <span className="size-9" />
           )}
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-[#e91e63]">
+            <p className={theme.eyebrow}>
               {step === "payment"
                 ? "Payment"
                 : step === "done"
@@ -407,12 +405,12 @@ export function BookingCheckoutFlow({
               <div className="pt-2 text-center">
                 <StaffAvatar staff={staff} />
                 <p className="mt-3 text-lg font-semibold">{staff.name}</p>
-                <p className="text-xs text-[#e91e63]/70">{staff.role}</p>
+                <p className={theme.role}>{staff.role}</p>
               </div>
 
-              <div className="space-y-4 rounded-2xl border border-pink-200/80 bg-white/70 p-4">
+              <div className={cn(theme.panel, "space-y-4")}>
                 {shiftLabel ? (
-                  <div className="rounded-xl bg-rose-50/80 px-3 py-2 text-center text-sm text-stone-700">
+                  <div className={theme.shiftBanner}>
                     {shiftLabel}
                   </div>
                 ) : null}
@@ -462,7 +460,7 @@ export function BookingCheckoutFlow({
                 {booked.length > 0 ? (
                   <div>
                     <label className={labelClass}>Already booked</label>
-                    <ul className="mt-2 space-y-1.5 rounded-xl border border-pink-100 bg-white/80 px-3 py-2 text-sm text-stone-500">
+                    <ul className="mt-2 space-y-1.5 rounded-xl border border-stone-100 bg-stone-50 px-3 py-2 text-sm text-stone-500">
                       {booked.map((row) => (
                         <li key={`${row.startsAt}-${row.endsAt}`}>
                           {row.label}
@@ -509,8 +507,8 @@ export function BookingCheckoutFlow({
                   />
                 </div>
 
-                <div className="rounded-xl bg-rose-50/80 px-4 py-3 text-center">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-[#e91e63]/80">
+                <div className={theme.priceBox}>
+                  <p className={theme.priceLabel}>
                     Amount to pay
                   </p>
                   <p className="mt-1 text-2xl font-semibold text-stone-800">
@@ -520,7 +518,7 @@ export function BookingCheckoutFlow({
               </div>
 
               {formHint ? (
-                <p className="text-center text-sm text-rose-600">{formHint}</p>
+                <p className="text-center text-sm text-red-600">{formHint}</p>
               ) : null}
 
               <button
@@ -535,7 +533,7 @@ export function BookingCheckoutFlow({
 
           {step === "payment" ? (
             <>
-              <div className="rounded-2xl border border-pink-200/80 bg-white/70 p-4 text-center">
+              <div className={cn(theme.panel, "text-center")}>
                 <StaffAvatar staff={staff} />
                 <p className="mt-3 text-sm text-stone-500">Demo payment — no real charge</p>
                 <p className="mt-2 text-3xl font-semibold">{priceLabel}</p>
@@ -570,14 +568,14 @@ export function BookingCheckoutFlow({
 
           {step === "done" && booking ? (
             <div className="space-y-4 pt-8 text-center">
-              <CheckCircle2 className="mx-auto size-14 text-[#e91e63]" />
+              <CheckCircle2 className={theme.successIcon} />
               <div>
                 <h2 className="text-xl font-semibold">Booking confirmed</h2>
                 <p className="mt-2 text-sm text-stone-500">
                   {booking.staffName} and admin have been notified.
                 </p>
               </div>
-              <div className="rounded-2xl border border-pink-200/80 bg-white/70 p-4 text-left text-sm">
+              <div className={cn(theme.panel, "text-left text-sm")}>
                 <p className="font-medium">{formatScheduleDate(booking.startsAt)}</p>
                 <p className="text-stone-500">
                   {formatAmPmTime(booking.startsAt)} –{" "}

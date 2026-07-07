@@ -15,6 +15,7 @@ import {
   minutesForHourGroup,
   slotToIso,
 } from "../../lib/compact-time-picker-utils";
+import { bookingCustomerTheme as customerTheme } from "../../lib/booking-customer-theme";
 import { formatAmPmTime, isoToDatetimeLocal } from "../../lib/schedule-utils";
 import type { BookingTimeSlotOption } from "./booking-form-sheet";
 
@@ -198,10 +199,20 @@ export function BookingCompactTimePicker({
         <AppButton
           type="button"
           variant="outline"
-          className="h-11 w-full justify-start gap-2 rounded-2xl border-primary/30 bg-primary/5 text-left text-sm font-medium"
+          className={cn(
+            "h-11 w-full justify-start gap-2 rounded-2xl text-left text-sm font-medium",
+            variant === "customer"
+              ? customerTheme.goldNextSlot
+              : "border-primary/30 bg-primary/5",
+          )}
           onClick={() => onSelect(slotToIso(date, nextSlot.value))}
         >
-          <Zap className="size-4 shrink-0 text-primary" />
+          <Zap
+            className={cn(
+              "size-4 shrink-0",
+              variant === "customer" ? customerTheme.goldAccent : "text-primary",
+            )}
+          />
           <span className="truncate">
             Next available: {formatAmPmTime(slotToIso(date, nextSlot.value))}
             {nextSlot.suggestedRoomName ? ` · ${nextSlot.suggestedRoomName}` : ""}
@@ -223,8 +234,12 @@ export function BookingCompactTimePicker({
                   className={cn(
                     "rounded-xl px-2 py-2.5 text-sm font-semibold tabular-nums transition",
                     selected
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted/50 hover:bg-muted",
+                      ? variant === "customer"
+                        ? customerTheme.goldChipSelected
+                        : "bg-primary text-primary-foreground"
+                      : variant === "customer"
+                        ? customerTheme.goldChipIdle
+                        : "bg-muted/50 hover:bg-muted",
                   )}
                 >
                   {formatAmPmTime(iso)}
@@ -235,7 +250,10 @@ export function BookingCompactTimePicker({
           {slotOptions.length > chipSlots.length ? (
             <button
               type="button"
-              className="w-full border-t border-border/40 py-3 text-sm font-medium text-primary"
+              className={cn(
+                "w-full border-t border-border/40 py-3 text-sm font-medium",
+                variant === "customer" ? customerTheme.goldAccent : "text-primary",
+              )}
               onClick={() => setShowMoreTimes(true)}
             >
               More times
