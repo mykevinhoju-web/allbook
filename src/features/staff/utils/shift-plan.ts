@@ -1,4 +1,5 @@
 import {
+  addDaysToDateInput,
   datetimeLocalToIso,
   isoToDatetimeLocal,
   todayDateInZone,
@@ -17,6 +18,99 @@ export interface DayShiftEntry {
 }
 
 export type ShiftPlan = Record<string, DayShiftEntry>;
+
+export interface ResolvedShiftForDate {
+  anchorDate: string;
+  entry: DayShiftEntry;
+  /** Full shift window (anchor start → end, may cross midnight). */
+  shiftStartsAt: string;
+  shiftEndsAt: string;
+  /** Portion of the shift visible on the requested calendar date. */
+  viewStartsAt: string;
+  viewEndsAt: string;
+  isTailOnly: boolean;
+  isOvernight: boolean;
+}
+
+export function isOvernightShift(entry: DayShiftEntry): boolean {
+  return entry.endTime <= entry.startTime;
+}
+
+export function spilloverAnchorForDate(
+  plan: ShiftPlan,
+  date: string,
+): string | null {
+  const prevDate = addDaysToDateInput(date, -1);
+  const prevEntry = plan[prevDate];
+  if (prevEntry && isOvernightShift(prevEntry)) {
+    return prevDate;
+  }
+  return null;
+}
+
+export function isDateCoveredByShiftPlan(
+  plan: ShiftPlan,
+  date: string,
+  timeZone: string,
+): boolean {
+  return resolveShiftForCalendarDate(plan, date, timeZone) !== null;
+}
+
+export function resolveShiftForCalendarDate(
+  plan: ShiftPlan,
+  date: string,
+  timeZone: string,
+): ResolvedShiftForDate | null {
+  const anchorEntry = plan[date];
+  if (anchorEntry) {
+    const window = shiftPlanDayToWindow(date, anchorEntry, timeZone);
+    return {
+      anchorDate: date,
+      entry: anchorEntry,
+      shiftStartsAt: window.shiftStartsAt,
+      shiftEndsAt: window.shiftEndsAt,
+      viewStartsAt: window.shiftStartsAt,
+      viewEndsAt: window.shiftEndsAt,
+      isTailOnly: false,
+      isOvernight: isOvernightShift(anchorEntry),
+    };
+  }
+
+  const spilloverAnchor = spilloverAnchorForDate(plan, date);
+  if (!spilloverAnchor) return null;
+
+  const prevEntry = plan[spilloverAnchor];
+  if (!prevEntry) return null;
+
+  const window = shiftPlanDayToWindow(spilloverAnchor, prevEntry, timeZone);
+  const dayStartIso = datetimeLocalToIso(`${date}T00:00`, timeZone);
+  const shiftEndMs = new Date(window.shiftEndsAt).getTime();
+  const dayStartMs = new Date(dayStartIso).getTime();
+
+  if (shiftEndMs <= dayStartMs) return null;
+
+  return {
+    anchorDate: spilloverAnchor,
+    entry: prevEntry,
+    shiftStartsAt: window.shiftStartsAt,
+    shiftEndsAt: window.shiftEndsAt,
+    viewStartsAt: dayStartIso,
+    viewEndsAt: window.shiftEndsAt,
+    isTailOnly: true,
+    isOvernight: true,
+  };
+}
+
+export function tailDatesForPlan(plan: ShiftPlan): string[] {
+  const tails: string[] = [];
+  for (const date of sortedShiftPlanDates(plan)) {
+    const entry = plan[date];
+    if (entry && isOvernightShift(entry)) {
+      tails.push(addDaysToDateInput(date, 1));
+    }
+  }
+  return tails;
+}
 
 export function parseShiftPlan(value: unknown): ShiftPlan {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -95,7 +189,14 @@ export function shiftPlanBounds(plan: ShiftPlan): {
 } | null {
   const dates = sortedShiftPlanDates(plan);
   if (dates.length === 0) return null;
-  return { from: dates[0], to: dates[dates.length - 1] };
+
+  let to = dates[dates.length - 1];
+  const lastEntry = plan[to];
+  if (lastEntry && isOvernightShift(lastEntry)) {
+    to = addDaysToDateInput(to, 1);
+  }
+
+  return { from: dates[0], to };
 }
 
 export function formatShiftPlanDayLabel(
@@ -103,11 +204,22 @@ export function formatShiftPlanDayLabel(
   plan: ShiftPlan,
 ): string | null {
   const entry = plan[date];
-  if (!entry) return null;
+  if (entry) {
+    const start = compactHour(entry.startTime);
+    const end = compactHour(entry.endTime);
+    if (isOvernightShift(entry)) return `${start}→${end}`;
+    return `${start}-${end}`;
+  }
 
-  const start = compactHour(entry.startTime);
-  const end = compactHour(entry.endTime);
-  return `${start}-${end}`;
+  const spilloverAnchor = spilloverAnchorForDate(plan, date);
+  if (spilloverAnchor) {
+    const prevEntry = plan[spilloverAnchor];
+    if (prevEntry) {
+      return `→${compactHour(prevEntry.endTime)}`;
+    }
+  }
+
+  return null;
 }
 
 function compactHour(time: string): string {
@@ -172,6 +284,10 @@ export function deriveWorkingFieldsFromPlan(
   const days = new Set<string>();
   for (const date of dates) {
     days.add(dayCodeInZone(date));
+    const entry = plan[date];
+    if (entry && isOvernightShift(entry)) {
+      days.add(dayCodeInZone(addDaysToDateInput(date, 1)));
+    }
   }
 
   const first = plan[dates[0]];

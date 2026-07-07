@@ -1,5 +1,8 @@
 import type { AdminBooking } from "../types/admin-booking";
-import type { ShiftPlan } from "@/features/staff/utils/shift-plan";
+import {
+  resolveShiftForCalendarDate,
+  type ShiftPlan,
+} from "@/features/staff/utils/shift-plan";
 
 const MINUTES_IN_DAY = 24 * 60;
 const SLOT_STEP_MINUTES = 5;
@@ -42,6 +45,34 @@ export function formatAmPmTime(iso: string): string {
     minute: "2-digit",
     hour12: true,
   });
+}
+
+/** Slot label for booking UI — includes date when the slot falls on a different calendar day. */
+export function formatBookingSlotLabel(
+  startsAtIso: string,
+  timeZone: string,
+  options?: { anchorDate?: string; includeDate?: boolean },
+): string {
+  const local = isoToDatetimeLocal(startsAtIso, timeZone);
+  const slotDate = local.slice(0, 10);
+  const timeLabel = formatAmPmTime(startsAtIso);
+  const anchorDate = options?.anchorDate;
+  const showDate =
+    options?.includeDate ||
+    (anchorDate ? slotDate !== anchorDate : false) ||
+    Number(local.slice(11, 13)) < 6;
+
+  if (!showDate) {
+    return timeLabel;
+  }
+
+  const dateLabel = new Date(`${slotDate}T12:00:00`).toLocaleDateString([], {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+
+  return `${dateLabel} ${timeLabel}`;
 }
 
 export function formatBookingSummary(booking: AdminBooking): string {
@@ -321,18 +352,11 @@ export function resolveStaffShiftForDate(
   const today = todayDateInZone(timeZone, now);
 
   if (shiftPlan && Object.keys(shiftPlan).length > 0) {
-    const entry = shiftPlan[date];
-    if (entry) {
-      const endDate =
-        entry.endTime <= entry.startTime
-          ? addDaysToDateInput(date, 1)
-          : date;
+    const resolved = resolveShiftForCalendarDate(shiftPlan, date, timeZone);
+    if (resolved) {
       return {
-        shiftStartsAt: datetimeLocalToIso(`${date}T${entry.startTime}`, timeZone),
-        shiftEndsAt: datetimeLocalToIso(
-          `${endDate}T${entry.endTime}`,
-          timeZone,
-        ),
+        shiftStartsAt: resolved.viewStartsAt,
+        shiftEndsAt: resolved.viewEndsAt,
       };
     }
 
@@ -441,7 +465,12 @@ export function getSlotsInShiftWindow(
   shiftEndsAtIso: string,
   durationMinutes: number,
   bookings: { startsAt: string; endsAt: string }[],
-  options?: { now?: Date; stepMinutes?: number; timeZone?: string },
+  options?: {
+    now?: Date;
+    stepMinutes?: number;
+    timeZone?: string;
+    anchorDate?: string;
+  },
 ): ShiftSlotOption[] {
   const shiftStart = new Date(shiftStartsAtIso).getTime();
   const shiftEnd = new Date(shiftEndsAtIso).getTime();
@@ -478,7 +507,9 @@ export function getSlotsInShiftWindow(
       const startsAt = new Date(start).toISOString();
       slots.push({
         startsAt,
-        label: formatShiftDateTime(startsAt, timeZone),
+        label: formatBookingSlotLabel(startsAt, timeZone, {
+          anchorDate: options?.anchorDate,
+        }),
       });
     }
   }

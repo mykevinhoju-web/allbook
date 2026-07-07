@@ -105,6 +105,7 @@ export async function GET(request: Request) {
             member.daySchedule,
             today,
             member.shiftPlan,
+            timeZone,
           ),
         ),
       },

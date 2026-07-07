@@ -114,6 +114,7 @@ function mapRecordToForm(record: StaffRecord, timeZone: string): StaffFormValues
       daySchedule,
       today,
       shiftPlan,
+      timeZone,
     ),
     daySchedule,
     status: record.status,
@@ -539,7 +540,13 @@ export function StaffForm({ staffId }: StaffFormProps) {
                 shiftPlan,
                 shiftStartsAt: primary?.shiftStartsAt ?? current.shiftStartsAt,
                 shiftEndsAt: primary?.shiftEndsAt ?? current.shiftEndsAt,
-                workingToday: Boolean(shiftPlan[today]),
+                workingToday: isStaffWorkingOnDate(
+                  current.status,
+                  current.daySchedule,
+                  today,
+                  shiftPlan,
+                  timeZone,
+                ),
               }));
             }}
           />

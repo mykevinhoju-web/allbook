@@ -15,7 +15,7 @@ import {
   isStaffWorkingOnDate,
   parseDaySchedule,
 } from "@/features/staff/utils/day-schedule";
-import { parseShiftPlan } from "@/features/staff/utils/shift-plan";
+import { parseShiftPlan, resolveShiftForCalendarDate } from "@/features/staff/utils/shift-plan";
 import type { StaffStatus } from "@/features/staff/types";
 import {
   createServiceSupabase,
@@ -85,12 +85,14 @@ export async function GET(request: Request) {
     }
 
     const daySchedule = parseDaySchedule(attributes.daySchedule);
+    const shiftContext = resolveShiftForCalendarDate(shiftPlan, date, timeZone);
     if (
       !isStaffWorkingOnDate(
         staffRow.status as StaffStatus,
         daySchedule,
         date,
         shiftPlan,
+        timeZone,
       )
     ) {
       return NextResponse.json({
@@ -127,7 +129,11 @@ export async function GET(request: Request) {
         startsAt: row.starts_at,
         endsAt: row.ends_at,
       })),
-      { timeZone, now: date === todayDateInZone(timeZone, now) ? now : undefined },
+      {
+        timeZone,
+        now: date === todayDateInZone(timeZone, now) ? now : undefined,
+        anchorDate: shiftContext?.anchorDate,
+      },
     );
 
     const booked = bookingRows.map((row) => ({
@@ -137,6 +143,12 @@ export async function GET(request: Request) {
       label: `${formatShiftDateTime(row.starts_at, timeZone)} – ${formatShiftDateTime(row.ends_at, timeZone)}`,
     }));
 
+    const shiftLabel = shiftContext
+      ? shiftContext.isTailOnly
+        ? `Night shift from ${formatShiftDateTime(shiftContext.shiftStartsAt, timeZone)} → ${formatShiftDateTime(shiftContext.shiftEndsAt, timeZone)}`
+        : `${formatShiftDateTime(shiftContext.shiftStartsAt, timeZone)} → ${formatShiftDateTime(shiftContext.shiftEndsAt, timeZone)}`
+      : `${formatShiftDateTime(shiftStartsAt, timeZone)} → ${formatShiftDateTime(shiftEndsAt, timeZone)}`;
+
     return NextResponse.json({
       slots,
       booked,
@@ -144,7 +156,7 @@ export async function GET(request: Request) {
       shiftEndsAt,
       date,
       timeZone,
-      shiftLabel: `${formatShiftDateTime(shiftStartsAt, timeZone)} → ${formatShiftDateTime(shiftEndsAt, timeZone)}`,
+      shiftLabel,
       reason:
         slots.length === 0
           ? "No open times left in this availability window."

@@ -1,9 +1,12 @@
 import type { StaffRecord } from "@/features/staff/types";
 import { getShiftWindowFromAttributes } from "@/features/staff/utils/attributes";
-import { parseShiftPlan } from "@/features/staff/utils/shift-plan";
+import { parseShiftPlan, resolveShiftForCalendarDate } from "@/features/staff/utils/shift-plan";
 
 import type { AdminBooking } from "../types/admin-booking";
 import {
+  addDaysToDateInput,
+  datetimeLocalToIso,
+  isoToDatetimeLocal,
   resolveStaffShiftForDate,
   todayDateInZone,
 } from "./schedule-utils";
@@ -22,6 +25,10 @@ export interface StaffShiftBand {
   staffId: string;
   startMs: number;
   endMs: number;
+  anchorDate?: string;
+  isTailOnly?: boolean;
+  isOvernight?: boolean;
+  midnightMs?: number | null;
 }
 
 function roundDownToStep(ms: number, stepMinutes: number): number {
@@ -42,6 +49,43 @@ export function getStaffShiftBand(
 ): StaffShiftBand | null {
   const configured = getShiftWindowFromAttributes(member.attributes);
   const shiftPlan = parseShiftPlan(member.attributes.shiftPlan);
+
+  if (Object.keys(shiftPlan).length > 0) {
+    const resolved = resolveShiftForCalendarDate(shiftPlan, date, timeZone);
+    if (!resolved) return null;
+
+    const startMs = new Date(resolved.viewStartsAt).getTime();
+    const endMs = new Date(resolved.viewEndsAt).getTime();
+    if (Number.isNaN(startMs) || Number.isNaN(endMs) || endMs <= startMs) {
+      return null;
+    }
+
+    let midnightMs: number | null = null;
+    if (resolved.isOvernight && !resolved.isTailOnly) {
+      const anchorDate = isoToDatetimeLocal(
+        resolved.shiftStartsAt,
+        timeZone,
+      ).slice(0, 10);
+      const nextDay = addDaysToDateInput(anchorDate, 1);
+      midnightMs = new Date(
+        datetimeLocalToIso(`${nextDay}T00:00`, timeZone),
+      ).getTime();
+      if (midnightMs <= startMs || midnightMs >= endMs) {
+        midnightMs = null;
+      }
+    }
+
+    return {
+      staffId: member.id,
+      startMs,
+      endMs,
+      anchorDate: resolved.anchorDate,
+      isTailOnly: resolved.isTailOnly,
+      isOvernight: resolved.isOvernight,
+      midnightMs,
+    };
+  }
+
   const { shiftStartsAt, shiftEndsAt } = resolveStaffShiftForDate(
     date,
     timeZone,

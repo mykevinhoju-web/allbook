@@ -1,11 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Moon } from "lucide-react";
 
 import { Calendar, CalendarDayButton } from "@/components/ui/calendar";
 import { AppButton } from "@/components/common";
 import { cn } from "@/lib/utils";
 import {
+  addDaysToDateInput,
   formatShiftDateTime,
   todayDateInZone,
 } from "@/features/booking/lib/schedule-utils";
@@ -18,8 +20,12 @@ import {
 } from "../utils/shift-calendar";
 import {
   formatShiftPlanDayLabel,
+  isOvernightShift,
+  resolveShiftForCalendarDate,
   shiftPlanDayToWindow,
   sortedShiftPlanDates,
+  spilloverAnchorForDate,
+  tailDatesForPlan,
   type DayShiftEntry,
   type ShiftPlan,
 } from "../utils/shift-plan";
@@ -33,26 +39,50 @@ interface StaffShiftCalendarProps {
 
 function ScheduleDayButton({
   shiftPlan,
+  onDayFocus,
   ...props
 }: React.ComponentProps<typeof CalendarDayButton> & {
   shiftPlan: ShiftPlan;
+  onDayFocus?: (day: Date) => void;
 }) {
   const dateKey = formatDateInput(props.day.date);
   const entry = shiftPlan[dateKey];
   const label = formatShiftPlanDayLabel(dateKey, shiftPlan);
+  const isTail = !entry && Boolean(spilloverAnchorForDate(shiftPlan, dateKey));
 
   return (
-    <CalendarDayButton {...props}>
+    <CalendarDayButton
+      {...props}
+      onClick={(event) => {
+        props.onClick?.(event);
+        onDayFocus?.(props.day.date);
+      }}
+    >
       <span>{props.day.date.getDate()}</span>
-      {entry && label ? (
-        <span className="text-[9px] font-semibold leading-none text-primary">
+      {label ? (
+        <span
+          className={cn(
+            "text-[9px] font-semibold leading-none",
+            entry ? "text-primary" : "text-primary/70",
+          )}
+        >
           {label}
         </span>
       ) : entry ? (
         <span className="size-1 rounded-full bg-primary" />
+      ) : isTail ? (
+        <span className="size-1 rounded-full bg-primary/40" />
       ) : null}
     </CalendarDayButton>
   );
+}
+
+function formatShortDate(date: string): string {
+  return parseDateInput(date).toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 export function StaffShiftCalendar({
@@ -66,6 +96,10 @@ export function StaffShiftCalendar({
     () => sortedShiftPlanDates(shiftPlan).map((date) => parseDateInput(date)),
     [shiftPlan],
   );
+  const tailDates = useMemo(
+    () => tailDatesForPlan(shiftPlan).map((date) => parseDateInput(date)),
+    [shiftPlan],
+  );
 
   const [focusedDate, setFocusedDate] = useState(() => {
     const dates = sortedShiftPlanDates(shiftPlan);
@@ -76,10 +110,16 @@ export function StaffShiftCalendar({
     parseDateInput(focusedDate),
   );
 
+  const focusedShift = useMemo(
+    () => resolveShiftForCalendarDate(shiftPlan, focusedDate, timeZone),
+    [shiftPlan, focusedDate, timeZone],
+  );
   const focusedEntry: DayShiftEntry = shiftPlan[focusedDate] ?? {
     startTime: DEFAULT_SHIFT_START_TIME,
     endTime: DEFAULT_SHIFT_END_TIME,
   };
+  const focusedOvernight = isOvernightShift(focusedEntry);
+  const isTailFocus = Boolean(focusedShift?.isTailOnly);
 
   const minSelectableDate = parseDateInput(today);
   const minStartTime =
@@ -98,6 +138,16 @@ export function StaffShiftCalendar({
   const handleDatesChange = (dates: Date[] | undefined) => {
     const nextKeys = new Set((dates ?? []).map((date) => formatDateInput(date)));
     const prevKeys = new Set(Object.keys(shiftPlan));
+
+    for (const key of [...nextKeys]) {
+      const spilloverAnchor = spilloverAnchorForDate(shiftPlan, key);
+      if (spilloverAnchor && !prevKeys.has(key)) {
+        nextKeys.delete(key);
+        setFocusedDate(spilloverAnchor);
+        setVisibleMonth(parseDateInput(spilloverAnchor));
+      }
+    }
+
     const nextPlan: ShiftPlan = { ...shiftPlan };
 
     for (const key of nextKeys) {
@@ -120,6 +170,11 @@ export function StaffShiftCalendar({
     }
 
     onShiftPlanChange(nextPlan);
+  };
+
+  const handleDayFocus = (day: Date) => {
+    const key = formatDateInput(day);
+    setFocusedDate(key);
   };
 
   const applyHoursToAll = () => {
@@ -146,11 +201,13 @@ export function StaffShiftCalendar({
           disabled={{ before: minSelectableDate }}
           modifiers={{
             scheduled: scheduledDates,
+            spillover: tailDates,
           }}
           modifiersClassNames={{
             scheduled: "[&_button]:bg-primary/10",
+            spillover: "[&_button]:bg-primary/5 [&_button]:ring-1 [&_button]:ring-primary/20",
           }}
-          className="w-full p-3 [--cell-size:--spacing(10)]"
+          className="w-full p-3 [--cell-size:--spacing(10)] sm:[--cell-size:--spacing(11)]"
           classNames={{
             month: "w-full gap-3",
             month_grid: "w-full",
@@ -161,22 +218,63 @@ export function StaffShiftCalendar({
           }}
           components={{
             DayButton: (props) => (
-              <ScheduleDayButton {...props} shiftPlan={shiftPlan} />
+              <ScheduleDayButton
+                {...props}
+                shiftPlan={shiftPlan}
+                onDayFocus={handleDayFocus}
+              />
             ),
           }}
         />
       </div>
 
       <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-4">
-        {shiftPlan[focusedDate] ? (
-          <>
-            <p className="text-sm font-semibold text-foreground">
-              {parseDateInput(focusedDate).toLocaleDateString(undefined, {
-                weekday: "short",
-                month: "short",
-                day: "numeric",
-              })}
+        {isTailFocus && focusedShift ? (
+          <div className="space-y-3">
+            <div className="flex items-start gap-2 rounded-xl border border-indigo-200/80 bg-indigo-50/80 px-3 py-3 dark:border-indigo-900/50 dark:bg-indigo-950/30">
+              <Moon className="mt-0.5 size-4 shrink-0 text-indigo-600 dark:text-indigo-400" />
+              <div className="min-w-0 space-y-1">
+                <p className="text-sm font-semibold text-foreground">
+                  {formatShortDate(focusedDate)} morning
+                </p>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  This is the end of the overnight shift starting{" "}
+                  {formatShortDate(focusedShift.anchorDate)}. Edit times on
+                  the start day.
+                </p>
+              </div>
+            </div>
+            <p className="text-sm text-foreground">
+              {formatShiftDateTime(focusedShift.viewStartsAt, timeZone)}
+              {" → "}
+              {formatShiftDateTime(focusedShift.viewEndsAt, timeZone)}
             </p>
+            <AppButton
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full rounded-xl"
+              onClick={() => {
+                setFocusedDate(focusedShift.anchorDate);
+                setVisibleMonth(parseDateInput(focusedShift.anchorDate));
+              }}
+            >
+              Edit {formatShortDate(focusedShift.anchorDate)} shift
+            </AppButton>
+          </div>
+        ) : shiftPlan[focusedDate] ? (
+          <>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold text-foreground">
+                {formatShortDate(focusedDate)}
+              </p>
+              {focusedOvernight ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                  <Moon className="size-3" />
+                  Ends next day
+                </span>
+              ) : null}
+            </div>
 
             <div className="mt-4 grid grid-cols-2 gap-3">
               <label className="space-y-1.5">
@@ -203,6 +301,11 @@ export function StaffShiftCalendar({
               <label className="space-y-1.5">
                 <span className="text-xs font-medium text-muted-foreground">
                   End
+                  {focusedOvernight ? (
+                    <span className="ml-1 font-normal text-indigo-600 dark:text-indigo-400">
+                      (next day)
+                    </span>
+                  ) : null}
                 </span>
                 <input
                   type="time"
@@ -230,11 +333,19 @@ export function StaffShiftCalendar({
             ) : null}
 
             {focusedWindow ? (
-              <p className="mt-4 border-t border-border/50 pt-3 text-sm text-foreground">
-                {formatShiftDateTime(focusedWindow.shiftStartsAt, timeZone)}
-                {" → "}
-                {formatShiftDateTime(focusedWindow.shiftEndsAt, timeZone)}
-              </p>
+              <div className="mt-4 space-y-1 border-t border-border/50 pt-3">
+                <p className="text-sm font-medium text-foreground">
+                  {formatShiftDateTime(focusedWindow.shiftStartsAt, timeZone)}
+                  {" → "}
+                  {formatShiftDateTime(focusedWindow.shiftEndsAt, timeZone)}
+                </p>
+                {focusedOvernight ? (
+                  <p className="text-xs text-muted-foreground">
+                    Ends {formatShortDate(addDaysToDateInput(focusedDate, 1))}{" "}
+                    at {focusedEntry.endTime}
+                  </p>
+                ) : null}
+              </div>
             ) : null}
           </>
         ) : (
@@ -250,6 +361,8 @@ export function StaffShiftCalendar({
             const entry = shiftPlan[date];
             const window = shiftPlanDayToWindow(date, entry, timeZone);
             const isFocused = date === focusedDate;
+            const overnight = isOvernightShift(entry);
+            const dayLabel = formatShiftPlanDayLabel(date, shiftPlan);
 
             return (
               <li key={date}>
@@ -260,24 +373,30 @@ export function StaffShiftCalendar({
                     setVisibleMonth(parseDateInput(date));
                   }}
                   className={cn(
-                    "flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm transition",
+                    "flex w-full flex-col gap-0.5 rounded-lg px-2 py-2 text-left text-sm transition sm:flex-row sm:items-center sm:justify-between",
                     isFocused
                       ? "bg-primary/10 font-semibold text-primary"
                       : "hover:bg-muted/60",
                   )}
                 >
-                  <span>
-                    {parseDateInput(date).toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      weekday: "short",
-                    })}
-                  </span>
+                  <span>{formatShortDate(date)}</span>
                   <span className="tabular-nums text-xs text-muted-foreground">
-                    {formatShiftDateTime(window.shiftStartsAt, timeZone).split(
-                      ", ",
-                    )[1] ?? ""}{" "}
-                    ({entry.startTime}-{entry.endTime})
+                    {overnight ? (
+                      <>
+                        <Moon className="mr-1 inline size-3" />
+                        {formatShiftDateTime(window.shiftStartsAt, timeZone)}
+                        {" → "}
+                        {formatShiftDateTime(window.shiftEndsAt, timeZone)}
+                      </>
+                    ) : (
+                      <>
+                        {dayLabel} ·{" "}
+                        {formatShiftDateTime(
+                          window.shiftStartsAt,
+                          timeZone,
+                        ).split(", ")[1] ?? ""}
+                      </>
+                    )}
                   </span>
                 </button>
               </li>
@@ -286,9 +405,11 @@ export function StaffShiftCalendar({
         </ul>
       ) : null}
 
-      <p className="text-[11px] text-muted-foreground">
-        Tap multiple dates to pre-schedule shifts. Each day can share the same
-        hours or be edited individually below.
+      <p className="text-[11px] leading-relaxed text-muted-foreground">
+        Select the <strong>shift start day</strong> only. For overnight shifts
+        (e.g. 9pm–9am), pick the evening date and set End earlier than Start —
+        the next morning is filled in automatically and shown with a light
+        highlight.
       </p>
     </div>
   );

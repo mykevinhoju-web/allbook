@@ -4,6 +4,7 @@ import { AppAvatar } from "@/components/common";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { StaffRecord } from "@/features/staff/types";
+import { Moon } from "lucide-react";
 
 import {
   activeBookingsForStaff,
@@ -217,6 +218,10 @@ function StaffTimelineRow({
     barRange.startMs,
     barRange.endMs,
   );
+  const midnightPercent =
+    shift.midnightMs != null
+      ? msToBarPercent(shift.midnightMs, barRange.startMs, barRange.endMs)
+      : null;
 
   const handleBarClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!onSlotSelect) return;
@@ -250,6 +255,16 @@ function StaffTimelineRow({
               <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                 Booked
               </p>
+            ) : shift.isTailOnly ? (
+              <p className="flex items-center gap-1 text-[10px] font-medium text-indigo-600 dark:text-indigo-400">
+                <Moon className="size-3" />
+                Overnight tail
+              </p>
+            ) : shift.isOvernight ? (
+              <p className="flex items-center gap-1 text-[10px] font-medium text-indigo-600 dark:text-indigo-400">
+                <Moon className="size-3" />
+                Overnight
+              </p>
             ) : null}
           </div>
         </button>
@@ -270,6 +285,31 @@ function StaffTimelineRow({
             role="presentation"
           >
             <div className="absolute left-0 right-0 top-1/2 h-0.5 -translate-y-1/2 rounded-full bg-border" />
+            {shift.isOvernight ? (
+              <div
+                className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-indigo-200/60 dark:bg-indigo-900/40"
+                style={{
+                  left: `${shiftStartPercent}%`,
+                  width: `${Math.max(shiftEndPercent - shiftStartPercent, 0)}%`,
+                }}
+              />
+            ) : null}
+
+            {midnightPercent != null ? (
+              <>
+                <div
+                  className="absolute top-1/2 z-[1] h-4 w-px -translate-x-1/2 -translate-y-1/2 bg-indigo-400/80"
+                  style={{ left: `${midnightPercent}%` }}
+                  aria-hidden
+                />
+                <span
+                  className="absolute top-0 z-[1] -translate-x-1/2 text-[8px] font-semibold uppercase tracking-wide text-indigo-500"
+                  style={{ left: `${midnightPercent}%` }}
+                >
+                  12am
+                </span>
+              </>
+            ) : null}
 
             <span
               className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary bg-background"

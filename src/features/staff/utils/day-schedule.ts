@@ -1,6 +1,6 @@
 import type { StaffStatus } from "../types";
 
-import type { ShiftPlan } from "./shift-plan";
+import { isDateCoveredByShiftPlan, type ShiftPlan } from "./shift-plan";
 
 export function parseDaySchedule(value: unknown): Record<string, boolean> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -21,11 +21,15 @@ export function isStaffWorkingOnDate(
   daySchedule: Record<string, boolean> | undefined,
   date: string,
   shiftPlan?: ShiftPlan,
+  timeZone?: string,
 ): boolean {
   if (status !== "active") return false;
   if (daySchedule?.[date] === false) return false;
 
   if (shiftPlan && Object.keys(shiftPlan).length > 0) {
+    if (timeZone) {
+      return isDateCoveredByShiftPlan(shiftPlan, date, timeZone);
+    }
     return Boolean(shiftPlan[date]);
   }
 

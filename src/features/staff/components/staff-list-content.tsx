@@ -37,7 +37,8 @@ interface BookingSummary {
 
 export function StaffListContent() {
   const tenant = useOptionalTenant();
-  const today = todayDateInZone(tenant?.settings.timezone || "Australia/Sydney");
+  const timeZone = tenant?.settings.timezone || "Australia/Sydney";
+  const today = todayDateInZone(timeZone);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StaffFilterStatus>("all");
   const [staff, setStaff] = useState<StaffRecord[]>([]);
@@ -144,13 +145,14 @@ export function StaffListContent() {
           parseDaySchedule(member.attributes.daySchedule),
           today,
           parseShiftPlan(member.attributes.shiftPlan),
+          timeZone,
         ),
         nextBooking: upcoming
           ? `Today, ${formatScheduleTime(upcoming.startsAt)}`
           : null,
       };
     });
-  }, [bookings, staff, today, useMock]);
+  }, [bookings, staff, today, timeZone, useMock]);
 
   const filteredStaff = useMemo(() => {
     const query = search.trim().toLowerCase();

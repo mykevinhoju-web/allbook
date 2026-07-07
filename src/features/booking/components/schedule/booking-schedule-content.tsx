@@ -17,6 +17,11 @@ import { formatPriceFromCents } from "@/features/services";
 import type { ServiceOption } from "@/features/services";
 import { useTenant } from "@/features/tenants";
 import type { StaffRecord } from "@/features/staff/types";
+import {
+  isStaffWorkingOnDate,
+  parseDaySchedule,
+} from "@/features/staff/utils/day-schedule";
+import { parseShiftPlan } from "@/features/staff/utils/shift-plan";
 import { cn } from "@/lib/utils";
 
 import { useBookingRealtime } from "../../lib/booking-schedule-realtime";
@@ -123,8 +128,19 @@ export function BookingScheduleContent() {
       : "";
 
   const workingStaff = useMemo(
-    () => staff.filter((member) => member.status === "active"),
-    [staff],
+    () =>
+      staff.filter(
+        (member) =>
+          member.status === "active" &&
+          isStaffWorkingOnDate(
+            member.status,
+            parseDaySchedule(member.attributes.daySchedule),
+            date,
+            parseShiftPlan(member.attributes.shiftPlan),
+            tenant.settings.timezone,
+          ),
+      ),
+    [staff, date, tenant.settings.timezone],
   );
 
   useEffect(() => {
