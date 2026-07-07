@@ -21,7 +21,7 @@ export const bookingCustomerTheme = {
   photoHero:
     "relative mx-auto size-28 overflow-hidden rounded-full bg-stone-100 shadow-md ring-4 ring-white",
   goldButton:
-    "inline-flex h-11 w-full items-center justify-center rounded-[15px] border border-white/15 bg-[#8A6A3A] px-5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(0,0,0,0.12)] tracking-[0.3px] transition-colors active:scale-[0.98] hover:bg-[#A98750] disabled:pointer-events-none disabled:opacity-40",
+    "inline-flex h-11 w-full items-center justify-center rounded-[15px] border border-white/15 bg-gradient-to-b from-[#9A7A46] via-[#8A6A3A] to-[#72552D] px-5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.22),inset_0_-10px_18px_rgba(0,0,0,0.18)] tracking-[0.3px] transition-all active:scale-[0.98] hover:from-[#B18E54] hover:via-[#A98750] hover:to-[#7B5C33] disabled:pointer-events-none disabled:opacity-40",
   mutedButton:
     "inline-flex h-11 w-full items-center justify-center rounded-[15px] bg-stone-100 px-5 text-sm font-semibold text-stone-400",
   label:
