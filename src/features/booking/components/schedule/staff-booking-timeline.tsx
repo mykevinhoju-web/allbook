@@ -14,13 +14,86 @@ import {
 } from "../../lib/schedule-grid-utils";
 import { formatAmPmTime } from "../../lib/schedule-utils";
 import { isBookingOccupyingRoom } from "../../lib/room-occupancy";
-import {
-  layoutTimelineLabels,
-  TIMELINE_LABEL_ROW_HEIGHT_REM,
-  timelineLabelAreaHeightRem,
-} from "../../lib/timeline-label-layout";
 import { formatTimelineMarkerNumber } from "../../lib/timeline-marker-number";
 import type { AdminBooking } from "../../types/admin-booking";
+
+function splitIntoTwoColumns<T>(items: T[]): [T[], T[]] {
+  if (items.length <= 3) {
+    return [items, []];
+  }
+
+  const splitAt = Math.ceil(items.length / 2);
+  return [items.slice(0, splitAt), items.slice(splitAt)];
+}
+
+interface BookingTimelineListProps {
+  markers: {
+    booking: AdminBooking;
+    index: number;
+  }[];
+  isMobile: boolean;
+  onBookingSelect?: (booking: AdminBooking) => void;
+}
+
+function BookingTimelineList({
+  markers,
+  isMobile,
+  onBookingSelect,
+}: BookingTimelineListProps) {
+  if (markers.length === 0) {
+    return (
+      <p className="mt-2 text-center text-xs text-muted-foreground">
+        No bookings · tap the line to add
+      </p>
+    );
+  }
+
+  const [leftColumn, rightColumn] = isMobile
+    ? [markers, []]
+    : splitIntoTwoColumns(markers);
+
+  const renderItem = ({
+    booking,
+    index,
+  }: {
+    booking: AdminBooking;
+    index: number;
+  }) => (
+    <li key={booking.id}>
+      <button
+        type="button"
+        onClick={() => onBookingSelect?.(booking)}
+        className="flex w-full min-w-0 items-baseline gap-1.5 text-left"
+      >
+        {isMobile ? (
+          <span className="shrink-0 text-sm font-semibold tabular-nums text-primary">
+            {formatTimelineMarkerNumber(index)}.
+          </span>
+        ) : null}
+        <span className="min-w-0 truncate text-xs font-semibold text-primary">
+          {booking.customerName ?? "Walk-in"}
+        </span>
+        <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground">
+          {formatAmPmTime(booking.startsAt)} ({booking.durationMinutes}min)
+        </span>
+      </button>
+    </li>
+  );
+
+  return (
+    <div
+      className={cn(
+        "mt-2 gap-x-4 gap-y-0.5 border-t border-border/40 pt-2",
+        rightColumn.length > 0 ? "grid grid-cols-2" : "grid grid-cols-1",
+      )}
+    >
+      <ul className="min-w-0 space-y-1">{leftColumn.map(renderItem)}</ul>
+      {rightColumn.length > 0 ? (
+        <ul className="min-w-0 space-y-1">{rightColumn.map(renderItem)}</ul>
+      ) : null}
+    </div>
+  );
+}
 
 interface StaffBookingTimelineProps {
   date: string;
@@ -83,35 +156,15 @@ function StaffTimelineRow({
   const window = shiftWindowFromBand(shift.startMs, shift.endMs);
   const staffBookings = activeBookingsForStaff(bookings, member.id, window);
 
-  const markerInputs = staffBookings.map((booking) => ({
-    id: booking.id,
+  const markers = staffBookings.map((booking, index) => ({
+    booking,
+    index,
     percent: msToBarPercent(
       new Date(booking.startsAt).getTime(),
       shift.startMs,
       shift.endMs,
     ),
   }));
-
-  const labelLayouts = isMobile ? [] : layoutTimelineLabels(markerInputs);
-  const layoutById = new Map(labelLayouts.map((layout) => [layout.id, layout]));
-  const labelAreaHeight = isMobile ? 0 : timelineLabelAreaHeightRem(labelLayouts);
-
-  const markers = staffBookings.map((booking, index) => {
-    const percent = msToBarPercent(
-      new Date(booking.startsAt).getTime(),
-      shift.startMs,
-      shift.endMs,
-    );
-    const layout = layoutById.get(booking.id);
-
-    return {
-      booking,
-      index,
-      percent,
-      labelLeft: layout?.labelLeft ?? percent,
-      row: layout?.row ?? 0,
-    };
-  });
 
   const handleBarClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!onSlotSelect) return;
@@ -205,68 +258,11 @@ function StaffTimelineRow({
             })}
           </div>
 
-          {isMobile ? (
-            markers.length === 0 ? (
-              <p className="mt-2 text-center text-xs text-muted-foreground">
-                No bookings · tap the line to add
-              </p>
-            ) : (
-              <ul className="mt-3 space-y-1.5 border-t border-border/40 pt-3">
-                {markers.map(({ booking, index }) => (
-                  <li key={`${booking.id}-list`}>
-                    <button
-                      type="button"
-                      onClick={() => onBookingSelect?.(booking)}
-                      className="flex w-full items-baseline gap-1.5 text-left text-sm"
-                    >
-                      <span className="shrink-0 font-semibold tabular-nums text-primary">
-                        {formatTimelineMarkerNumber(index)}.
-                      </span>
-                      <span className="min-w-0 truncate font-semibold text-primary">
-                        {booking.customerName ?? "Walk-in"}
-                      </span>
-                      <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
-                        {formatAmPmTime(booking.startsAt)} ({booking.durationMinutes}
-                        min)
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )
-          ) : (
-            <div
-              className="relative mt-1"
-              style={{ minHeight: `${labelAreaHeight}rem` }}
-            >
-              {markers.length === 0 ? (
-                <p className="pt-1 text-center text-xs text-muted-foreground">
-                  No bookings · tap the line to add
-                </p>
-              ) : (
-                markers.map(({ booking, labelLeft, row }) => (
-                  <button
-                    key={`${booking.id}-label`}
-                    type="button"
-                    onClick={() => onBookingSelect?.(booking)}
-                    className="absolute w-[5.5rem] -translate-x-1/2 text-center"
-                    style={{
-                      left: `${labelLeft}%`,
-                      top: `${row * TIMELINE_LABEL_ROW_HEIGHT_REM}rem`,
-                    }}
-                  >
-                    <p className="truncate text-xs font-semibold text-primary">
-                      {booking.customerName ?? "Walk-in"}
-                    </p>
-                    <p className="truncate text-[10px] tabular-nums text-muted-foreground">
-                      {formatAmPmTime(booking.startsAt)} ({booking.durationMinutes}
-                      min)
-                    </p>
-                  </button>
-                ))
-              )}
-            </div>
-          )}
+          <BookingTimelineList
+            markers={markers}
+            isMobile={isMobile}
+            onBookingSelect={onBookingSelect}
+          />
         </div>
       </div>
     </article>
@@ -306,7 +302,7 @@ export function StaffBookingTimeline({
       <p className="px-1 text-center text-[10px] text-muted-foreground">
         {isMobile
           ? "Numbers on the bar match the list below · tap for details · tap the line to add"
-          : "Dots show bookings on the shift bar · tap a dot for details · tap the line to add"}
+          : "Dots on the bar · list below in time order · tap for details · tap the line to add"}
       </p>
     </div>
   );
