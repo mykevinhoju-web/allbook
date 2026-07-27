@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, ChevronLeft } from "lucide-react";
@@ -22,8 +21,14 @@ import {
   isoToDatetimeLocal,
   todayDateInZone,
 } from "../../lib/schedule-utils";
-import { BookingCompactTimePicker } from "../schedule/booking-compact-time-picker";
+import { BookingCustomerDateTimePicker } from "./booking-customer-datetime-picker";
+import { StripePaymentForm } from "./stripe-payment-form";
+import { StaffPhotoGallery } from "./staff-photo-gallery";
 import { bookingCustomerTheme as theme } from "../../lib/booking-customer-theme";
+import {
+  formatCustomerBookingName,
+  isValidCustomerBookingNameParts,
+} from "../../lib/customer-booking-name";
 
 type Step = "form" | "payment" | "done";
 
@@ -36,6 +41,7 @@ interface StaffInfo {
   id: string;
   name: string;
   photoUrl: string | null;
+  photos?: string[];
   role: string;
   initials?: string;
 }
@@ -62,38 +68,6 @@ interface CreatedBooking {
   priceCents: number;
 }
 
-function StaffAvatar({ staff }: { staff: StaffInfo }) {
-  const [imageError, setImageError] = useState(false);
-  const initials =
-    staff.initials ??
-    staff.name
-      .split(/\s+/)
-      .map((part) => part[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase();
-
-  return (
-    <div className={cn(theme.photoHero, "ring-stone-100")}>
-      {imageError || !staff.photoUrl ? (
-        <div className="flex size-full items-center justify-center text-xl font-semibold text-[#A68B2A]">
-          {initials}
-        </div>
-      ) : (
-        <Image
-          src={staff.photoUrl}
-          alt={staff.name}
-          fill
-          sizes="112px"
-          className="object-cover object-top"
-          priority
-          onError={() => setImageError(true)}
-        />
-      )}
-    </div>
-  );
-}
-
 export function BookingCheckoutFlow({
   staffId,
   returnTo = "/booking",
@@ -101,27 +75,31 @@ export function BookingCheckoutFlow({
   const tenant = useOptionalTenant();
   const timeZone =
     tenant?.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
-  const bookingDate = todayDateInZone(timeZone);
-
   const [step, setStep] = useState<Step>("form");
   const [staff, setStaff] = useState<StaffInfo | null>(null);
   const [loadingStaff, setLoadingStaff] = useState(true);
   const [serviceOptions, setServiceOptions] = useState<ServiceOption[]>([]);
   const [currency, setCurrency] = useState("AUD");
+  const [bookingDate, setBookingDate] = useState(() =>
+    todayDateInZone(timeZone),
+  );
   const [durationMinutes, setDurationMinutes] = useState("");
   const [startsAt, setStartsAt] = useState("");
   const [slots, setSlots] = useState<SlotOption[]>([]);
-  const [booked, setBooked] = useState<BookedRow[]>([]);
-  const [shiftLabel, setShiftLabel] = useState<string | null>(null);
   const [slotsReason, setSlotsReason] = useState<string | null>(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
-  const [customerName, setCustomerName] = useState("");
+  const [customerFirstName, setCustomerFirstName] = useState("");
+  const [customerSecondName, setCustomerSecondName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerPostcode, setCustomerPostcode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formHint, setFormHint] = useState<string | null>(null);
   const [booking, setBooking] = useState<CreatedBooking | null>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [publishableKey, setPublishableKey] = useState<string | null>(null);
+  const [pendingBookingId, setPendingBookingId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -172,6 +150,10 @@ export function BookingCheckoutFlow({
   }, [staffId]);
 
   useEffect(() => {
+    setBookingDate(todayDateInZone(timeZone));
+  }, [timeZone]);
+
+  useEffect(() => {
     if (!durationMinutes || !staffId) {
       setSlots([]);
       return;
@@ -200,16 +182,13 @@ export function BookingCheckoutFlow({
         if (!cancelled) {
           if (!response.ok) {
             setSlots([]);
-            setBooked([]);
-            setShiftLabel(null);
             setSlotsReason(data.error ?? "Could not load times.");
             setStartsAt("");
             return;
           }
 
           setSlots(data.slots ?? []);
-          setBooked(data.booked ?? []);
-          setShiftLabel(data.shiftLabel ?? null);
+          // booked + shiftLabel intentionally not shown to customers
           setSlotsReason(data.reason ?? null);
           setStartsAt((current) =>
             current && data.slots?.some((slot) => slot.startsAt === current)
@@ -257,18 +236,21 @@ export function BookingCheckoutFlow({
   const canBook =
     Boolean(startsAt) &&
     Boolean(durationMinutes) &&
-    customerName.trim().length > 0 &&
+    isValidCustomerBookingNameParts(customerFirstName, customerSecondName) &&
     customerPhone.trim().length > 0;
 
-  const goToPayment = () => {
+  const goToPayment = async () => {
     setFormHint(null);
+    setError(null);
 
     if (!startsAt) {
-      setFormHint("Please select an available time.");
+      setFormHint("Please select an available date and time.");
       return;
     }
-    if (!customerName.trim()) {
-      setFormHint("Please enter your name.");
+    if (
+      !isValidCustomerBookingNameParts(customerFirstName, customerSecondName)
+    ) {
+      setFormHint("Enter your first name and second name.");
       return;
     }
     if (!customerPhone.trim()) {
@@ -276,48 +258,89 @@ export function BookingCheckoutFlow({
       return;
     }
 
-    setStep("payment");
-  };
+    const customerName = formatCustomerBookingName(
+      customerFirstName,
+      customerSecondName,
+    );
 
-  const submitBooking = async () => {
-    if (!startsAt || !durationMinutes) {
-      setError("Missing appointment details.");
-      return;
-    }
-
-    setSubmitting(true);
-    setError(null);
+    setCheckoutLoading(true);
 
     try {
-      const response = await fetch("/api/booking", {
+      const response = await fetch("/api/booking/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           staffId,
           startsAt,
           durationMinutes: Number(durationMinutes),
-          customerName: customerName.trim(),
+          customerName,
           customerPhone: customerPhone.trim(),
           customerPostcode: customerPostcode.trim() || undefined,
         }),
       });
 
       const data = (await response.json()) as {
-        booking?: CreatedBooking;
+        clientSecret?: string;
+        bookingId?: string;
+        publishableKey?: string;
         error?: string;
       };
 
-      if (!response.ok) {
-        throw new Error(data.error ?? "Could not complete booking");
+      if (!response.ok || !data.clientSecret || !data.bookingId || !data.publishableKey) {
+        throw new Error(data.error ?? "Could not start payment.");
       }
 
-      setBooking(data.booking ?? null);
-      setStep("done");
-    } catch (submitError) {
+      setClientSecret(data.clientSecret);
+      setPublishableKey(data.publishableKey);
+      setPendingBookingId(data.bookingId);
+      setStep("payment");
+    } catch (checkoutError) {
+      const message =
+        checkoutError instanceof Error
+          ? checkoutError.message
+          : "Could not start payment.";
+      setError(message);
+      setFormHint(message);
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
+  const waitForPaidBooking = async (bookingId: string) => {
+    await fetch(`/api/booking/${bookingId}/confirm`, { method: "POST" });
+
+    for (let attempt = 0; attempt < 15; attempt += 1) {
+      const response = await fetch(`/api/booking/${bookingId}/status`);
+      const data = (await response.json()) as {
+        paid?: boolean;
+        booking?: CreatedBooking;
+      };
+
+      if (response.ok && data.paid && data.booking) {
+        setBooking(data.booking);
+        setStep("done");
+        return;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
+    throw new Error("Payment received but confirmation is still processing.");
+  };
+
+  const handlePaymentSuccess = async () => {
+    if (!pendingBookingId) return;
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      await waitForPaidBooking(pendingBookingId);
+    } catch (successError) {
       setError(
-        submitError instanceof Error
-          ? submitError.message
-          : "Could not complete booking",
+        successError instanceof Error
+          ? successError.message
+          : "Could not confirm booking.",
       );
     } finally {
       setSubmitting(false);
@@ -341,8 +364,8 @@ export function BookingCheckoutFlow({
   if (!tenant) {
     return (
       <div className={cn(theme.page, "mx-auto flex max-w-md flex-col items-center justify-center px-6 text-center min-h-svh")}>
-        <p className="text-lg font-semibold text-stone-800">Open on your spa site</p>
-        <p className="mt-2 text-sm text-stone-500">
+        <p className={cn(theme.sectionTitle)}>Open on your spa site</p>
+        <p className={cn(theme.bodyMuted, "mt-2")}>
           Booking requires a tenant subdomain (e.g. dayspa.allbook.com.au).
         </p>
         <Link href={returnTo} className={cn(pillButtonClass, "mt-6 max-w-xs")}>
@@ -355,8 +378,8 @@ export function BookingCheckoutFlow({
   if (!staff) {
     return (
       <div className={cn(theme.page, "mx-auto flex max-w-md flex-col items-center justify-center px-6 text-center min-h-svh")}>
-        <p className="text-lg font-semibold text-stone-800">Staff not found</p>
-        <p className="mt-2 text-sm text-stone-500">
+        <p className={cn(theme.sectionTitle)}>Staff not found</p>
+        <p className={cn(theme.bodyMuted, "mt-2")}>
           This therapist may no longer be available.
         </p>
         <Link href={returnTo} className={cn(pillButtonClass, "mt-6 max-w-xs")}>
@@ -395,25 +418,37 @@ export function BookingCheckoutFlow({
                   ? "Confirmed"
                   : "Book appointment"}
             </p>
-            <h1 className="truncate text-base font-semibold">{staff.name}</h1>
+            <h1 className={theme.titleCompact}>{staff.name}</h1>
           </div>
         </header>
 
-        <div className="space-y-4 px-4 py-4 pb-10">
+        <div className="space-y-5 px-4 py-5 pb-10">
           {step === "form" ? (
             <>
-              <div className="pt-2 text-center">
-                <StaffAvatar staff={staff} />
-                <p className="mt-3 text-lg font-semibold">{staff.name}</p>
-                <p className={theme.role}>{staff.role}</p>
+              <div className="space-y-3.5 pt-1">
+                <StaffPhotoGallery
+                  name={staff.name}
+                  initials={
+                    staff.initials ??
+                    staff.name
+                      .split(/\s+/)
+                      .map((part) => part[0])
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase()
+                  }
+                  photos={staff.photos ?? []}
+                  photoUrl={staff.photoUrl}
+                />
+                <div className="text-center">
+                  <p className={theme.sectionTitle}>{staff.name}</p>
+                  <p className={theme.role}>{staff.role}</p>
+                </div>
               </div>
 
-              <div className={cn(theme.panel, "space-y-4")}>
-                {shiftLabel ? (
-                  <div className={theme.shiftBanner}>
-                    {shiftLabel}
-                  </div>
-                ) : null}
+              <div className={cn(theme.panel, "space-y-5")}>
+                {/* Customer booking should not expose staff shift/booking metadata. */}
+                {null}
 
                 <div>
                   <label className={labelClass}>Service time</label>
@@ -441,8 +476,14 @@ export function BookingCheckoutFlow({
                   </select>
                 </div>
 
-                <BookingCompactTimePicker
+                <BookingCustomerDateTimePicker
                   date={bookingDate}
+                  onDateChange={(nextDate) => {
+                    setBookingDate(nextDate);
+                    setStartsAt("");
+                    setFormHint(null);
+                    setError(null);
+                  }}
                   timeZone={timeZone}
                   durationMinutes={Number(durationMinutes) || 30}
                   slotOptions={slotOptions}
@@ -450,37 +491,46 @@ export function BookingCheckoutFlow({
                   onSelect={(slotStartsAt) => {
                     setStartsAt(slotStartsAt);
                     setFormHint(null);
+                    setError(null);
                   }}
                   loading={loadingSlots}
                   hint={slotsReason}
                   emptyMessage={slotsReason ?? "No times available."}
-                  variant="customer"
                 />
 
-                {booked.length > 0 ? (
-                  <div>
-                    <label className={labelClass}>Already booked</label>
-                    <ul className="mt-2 space-y-1.5 rounded-xl border border-stone-100 bg-stone-50 px-3 py-2 text-sm text-stone-500">
-                      {booked.map((row) => (
-                        <li key={`${row.startsAt}-${row.endsAt}`}>
-                          {row.label}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
+                {/* Hide staff booking times from customer booking UI. */}
+                {null}
 
-                <div>
+                <div className="space-y-1">
                   <label className={labelClass}>Name</label>
-                  <Input
-                    value={customerName}
-                    onChange={(event) => {
-                      setCustomerName(event.target.value);
-                      setFormHint(null);
-                    }}
-                    className={fieldClass}
-                    placeholder="Full name"
-                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      value={customerFirstName}
+                      onChange={(event) => {
+                        setCustomerFirstName(event.target.value);
+                        setFormHint(null);
+                        setError(null);
+                      }}
+                      className={fieldClass}
+                      placeholder="First Name"
+                      autoCapitalize="words"
+                      autoComplete="given-name"
+                      aria-label="First Name"
+                    />
+                    <Input
+                      value={customerSecondName}
+                      onChange={(event) => {
+                        setCustomerSecondName(event.target.value);
+                        setFormHint(null);
+                        setError(null);
+                      }}
+                      className={fieldClass}
+                      placeholder="Second Name"
+                      autoCapitalize="words"
+                      autoComplete="family-name"
+                      aria-label="Second Name"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -490,6 +540,7 @@ export function BookingCheckoutFlow({
                     onChange={(event) => {
                       setCustomerPhone(event.target.value);
                       setFormHint(null);
+                      setError(null);
                     }}
                     className={fieldClass}
                     placeholder="04xx xxx xxx"
@@ -511,22 +562,25 @@ export function BookingCheckoutFlow({
                   <p className={theme.priceLabel}>
                     Amount to pay
                   </p>
-                  <p className="mt-1 text-2xl font-semibold text-stone-800">
+                  <p className={theme.priceValue}>
                     {priceLabel ?? "—"}
                   </p>
                 </div>
               </div>
 
-              {formHint ? (
-                <p className="text-center text-sm text-red-600">{formHint}</p>
+              {(formHint || error) ? (
+                <p className="text-center text-sm font-medium leading-relaxed text-red-600">
+                  {formHint ?? error}
+                </p>
               ) : null}
 
               <button
                 type="button"
-                onClick={goToPayment}
+                disabled={checkoutLoading || !canBook}
+                onClick={() => void goToPayment()}
                 className={cn(pillButtonClass, !canBook && "opacity-60")}
               >
-                Book
+                {checkoutLoading ? "Preparing…" : "Book"}
               </button>
             </>
           ) : null}
@@ -534,58 +588,75 @@ export function BookingCheckoutFlow({
           {step === "payment" ? (
             <>
               <div className={cn(theme.panel, "text-center")}>
-                <StaffAvatar staff={staff} />
-                <p className="mt-3 text-sm text-stone-500">Demo payment — no real charge</p>
-                <p className="mt-2 text-3xl font-semibold">{priceLabel}</p>
-                <p className="mt-1 text-sm text-stone-500">
+                <div className="mx-auto max-w-[160px]">
+                  <StaffPhotoGallery
+                    name={staff.name}
+                    initials={
+                      staff.initials ??
+                      staff.name
+                        .split(/\s+/)
+                        .map((part) => part[0])
+                        .join("")
+                        .slice(0, 2)
+                        .toUpperCase()
+                    }
+                    photos={(staff.photos ?? []).slice(0, 1)}
+                    photoUrl={staff.photoUrl}
+                  />
+                </div>
+                <p className={cn(theme.bodyMuted, "mt-3")}>
+                  Secure card payment
+                </p>
+                <p className={theme.priceValueLarge}>{priceLabel}</p>
+                <p className={cn(theme.bodyMuted, "mt-1.5")}>
                   {staff.name} · {formatShiftDateTime(startsAt, timeZone)}
                 </p>
-
-                <label className={cn(labelClass, "mt-5 text-left")}>
-                  Card number
-                </label>
-                <Input
-                  className={fieldClass}
-                  defaultValue="4242 4242 4242 4242"
-                  readOnly
-                />
               </div>
 
               {error ? (
-                <p className="text-center text-sm text-destructive">{error}</p>
+                <p className="text-center text-sm font-medium leading-relaxed text-destructive">{error}</p>
               ) : null}
 
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={() => void submitBooking()}
-                className={pillButtonClass}
-              >
-                {submitting ? "Processing…" : `Pay ${priceLabel}`}
-              </button>
+              {clientSecret && publishableKey && priceLabel ? (
+                <StripePaymentForm
+                  clientSecret={clientSecret}
+                  publishableKey={publishableKey}
+                  amountLabel={priceLabel}
+                  disabled={submitting}
+                  onSuccess={() => void handlePaymentSuccess()}
+                  onError={(message) => setError(message)}
+                  buttonClassName={pillButtonClass}
+                />
+              ) : (
+                <p className={cn(theme.bodyMuted, "text-center")}>
+                  Loading payment…
+                </p>
+              )}
             </>
           ) : null}
 
           {step === "done" && booking ? (
-            <div className="space-y-4 pt-8 text-center">
+            <div className="space-y-5 pt-8 text-center">
               <CheckCircle2 className={theme.successIcon} />
               <div>
-                <h2 className="text-xl font-semibold">Booking confirmed</h2>
-                <p className="mt-2 text-sm text-stone-500">
+                <h2 className={theme.sectionTitle}>Booking confirmed</h2>
+                <p className={cn(theme.bodyMuted, "mt-2")}>
                   {booking.staffName} and admin have been notified.
                 </p>
               </div>
-              <div className={cn(theme.panel, "text-left text-sm")}>
-                <p className="font-medium">{formatScheduleDate(booking.startsAt)}</p>
-                <p className="text-stone-500">
+              <div className={cn(theme.panel, "space-y-1 text-left text-sm")}>
+                <p className="font-semibold text-stone-900">
+                  {formatScheduleDate(booking.startsAt)}
+                </p>
+                <p className="font-normal leading-relaxed text-stone-500">
                   {formatAmPmTime(booking.startsAt)} –{" "}
                   {formatAmPmTime(booking.endsAt)}
                 </p>
-                <p className="mt-2 font-semibold">
+                <p className="mt-2.5 text-base font-bold tabular-nums text-stone-900">
                   {formatPriceFromCents(booking.priceCents, currency)}
                 </p>
                 {booking.roomName ? (
-                  <p className="mt-1 text-stone-500">{booking.roomName}</p>
+                  <p className="mt-1 font-normal text-stone-500">{booking.roomName}</p>
                 ) : null}
               </div>
               <Link href={returnTo} className={pillButtonClass}>
