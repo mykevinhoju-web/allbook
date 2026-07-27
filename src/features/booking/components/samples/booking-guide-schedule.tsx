@@ -29,8 +29,8 @@ const ROW_HEIGHT = 88;
 const LABEL_WIDTH = 120;
 /** How many hours fit in the first viewport. */
 const VIEWPORT_HOURS = 6;
-/** Past hours visible to the left of "now" on first load (~now near center). */
-const PAST_HOURS_ON_OPEN = 2;
+/** Past hours visible to the left of "now" on first load (now at left edge). */
+const PAST_HOURS_ON_OPEN = 0;
 const DAY_START_HOUR = 6;
 const DAY_END_HOUR = 24; // exclusive end of calendar day window
 
@@ -393,13 +393,18 @@ export function BookingGuideScheduleSample() {
                   {now.getTime() >= dayStartMs &&
                   now.getTime() <= dayEndMs ? (
                     <div
-                      className="absolute top-0 z-10 h-full w-0.5 bg-sky-500"
+                      className="absolute top-0 z-20 flex h-full flex-col items-center"
                       style={{
                         left:
                           ((now.getTime() - dayStartMs) / 60_000) *
                           pxPerMinute,
                       }}
-                    />
+                    >
+                      <span className="-translate-x-1/2 whitespace-nowrap rounded bg-sky-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow">
+                        {formatAmPmTime(now.toISOString())}
+                      </span>
+                      <div className="w-0.5 flex-1 bg-sky-500" />
+                    </div>
                   ) : null}
                 </div>
               </div>
@@ -443,7 +448,7 @@ export function BookingGuideScheduleSample() {
                       {now.getTime() >= dayStartMs &&
                       now.getTime() <= dayEndMs ? (
                         <div
-                          className="absolute inset-y-0 z-10 w-0.5 bg-sky-500/80"
+                          className="absolute inset-y-0 z-10 w-[2px] bg-sky-500"
                           style={{
                             left:
                               ((now.getTime() - dayStartMs) / 60_000) *
