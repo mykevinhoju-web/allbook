@@ -25,9 +25,10 @@ import {
 import type { AdminBooking } from "../../types/admin-booking";
 import { isBookingCheckedIn } from "../../lib/booking-check-in";
 
-const ROW_HEIGHT = 88;
-const LABEL_WIDTH = 120;
-/** How many hours fit in the first viewport. */
+const ROW_HEIGHT = 72;
+const LABEL_WIDTH = 104;
+const HEADER_HEIGHT = 52;
+/** How many hours fit in the visible timeline window. */
 const VIEWPORT_HOURS = 6;
 /** Past hours visible to the left of "now" on first load (now at left edge). */
 const PAST_HOURS_ON_OPEN = 0;
@@ -94,6 +95,39 @@ function zonedHourMs(date: string, hour: number, timeZone: string): number {
   return guess;
 }
 
+function zonedClockParts(ms: number, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "short",
+  }).formatToParts(new Date(ms));
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const hour = Number(get("hour")) % 24;
+  const minute = Number(get("minute"));
+  return {
+    hour,
+    minute,
+    day: get("day"),
+    month: get("month"),
+  };
+}
+
+/** Compact hour label for dense tablet headers, e.g. 10p / 12a. */
+function formatCompactHour(ms: number, timeZone: string): string {
+  const { hour } = zonedClockParts(ms, timeZone);
+  const h12 = hour % 12 || 12;
+  return `${h12}${hour < 12 ? "a" : "p"}`;
+}
+
+function formatDayChip(dateIso: string, timeZone: string): string {
+  const ms = zonedHourMs(dateIso, 12, timeZone);
+  const { day, month } = zonedClockParts(ms, timeZone);
+  return `${day} ${month}`;
+}
+
 function ticks(startMs: number, endMs: number, stepMin = 30): number[] {
   const step = stepMin * 60_000;
   const first = Math.ceil(startMs / step) * step;
@@ -115,19 +149,13 @@ function jumpTargetMs(
   return zonedHourMs(date, 22, timeZone);
 }
 
-function formatGuideTick(
-  markMs: number,
-  selectedDate: string,
-  timeZone: string,
-): string {
-  const time = formatAmPmTime(new Date(markMs).toISOString());
-  const markDate = todayDateInZone(timeZone, new Date(markMs));
-  if (markDate === selectedDate) return time;
-  // Annotate next-day hours so midnight / morning are clear.
-  if (!time.includes(":00 ")) return time;
-  const [, mm, dd] = markDate.split("-");
-  return `${time} ${Number(dd)}/${Number(mm)}`;
-}
+type AmPmBand = {
+  key: string;
+  left: number;
+  width: number;
+  period: "am" | "pm";
+  dateLabel: string | null;
+};
 
 export function BookingGuideScheduleSample() {
   const tenant = useTenant();
@@ -163,6 +191,44 @@ export function BookingGuideScheduleSample() {
     () => ticks(dayStartMs, dayEndMs, 30),
     [dayStartMs, dayEndMs],
   );
+  const hourMarks = useMemo(
+    () => timeMarks.filter((mark) => zonedClockParts(mark, timeZone).minute === 0),
+    [timeMarks, timeZone],
+  );
+  const amPmBands = useMemo((): AmPmBand[] => {
+    const noonMs = zonedHourMs(date, 12, timeZone);
+    const midnightMs = zonedHourMs(addDaysIso(date, 1), 0, timeZone);
+    const nextDate = addDaysIso(date, 1);
+    const toBand = (
+      key: string,
+      start: number,
+      end: number,
+      period: "am" | "pm",
+      dateLabel: string | null,
+    ): AmPmBand | null => {
+      const leftMs = Math.max(start, dayStartMs);
+      const rightMs = Math.min(end, dayEndMs);
+      if (rightMs <= leftMs) return null;
+      return {
+        key,
+        left: ((leftMs - dayStartMs) / 60_000) * pxPerMinute,
+        width: ((rightMs - leftMs) / 60_000) * pxPerMinute,
+        period,
+        dateLabel,
+      };
+    };
+    return [
+      toBand("am-today", dayStartMs, noonMs, "am", formatDayChip(date, timeZone)),
+      toBand("pm-today", noonMs, midnightMs, "pm", null),
+      toBand(
+        "am-next",
+        midnightMs,
+        dayEndMs,
+        "am",
+        formatDayChip(nextDate, timeZone),
+      ),
+    ].filter((band): band is AmPmBand => band != null);
+  }, [date, dayStartMs, dayEndMs, pxPerMinute, timeZone]);
 
   const scrollToTime = useCallback(
     (
@@ -321,19 +387,14 @@ export function BookingGuideScheduleSample() {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Experimental sample
-          </p>
-          <h1 className="mt-1 text-xl font-semibold tracking-tight md:text-2xl">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden p-3 md:gap-4 md:p-6">
+      <div className="flex shrink-0 flex-col gap-2 md:flex-row md:items-end md:justify-between md:gap-3">
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold tracking-tight md:text-2xl">
             TV Guide schedule
           </h1>
-          <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            Opens at the current time. Timeline runs until 6:00 AM next day —
-            scroll right for midnight, or use the date arrows for a full next
-            day.
+          <p className="mt-0.5 text-xs text-muted-foreground md:text-sm">
+            6-hour window · drag sideways · Overnight for midnight
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -349,7 +410,7 @@ export function BookingGuideScheduleSample() {
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="h-10 rounded-xl border border-border bg-card px-3 text-sm"
+            className="h-9 rounded-xl border border-border bg-card px-2 text-sm md:h-10 md:px-3"
           />
           <AppButton
             type="button"
@@ -361,14 +422,14 @@ export function BookingGuideScheduleSample() {
           </AppButton>
           <Link
             href="/admin/bookings"
-            className="inline-flex h-10 items-center rounded-xl border border-border bg-card px-3 text-sm font-medium hover:bg-muted"
+            className="inline-flex h-9 items-center rounded-xl border border-border bg-card px-3 text-sm font-medium hover:bg-muted md:h-10"
           >
-            Back to Bookings
+            Back
           </Link>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex shrink-0 flex-wrap gap-1.5">
         {JUMPS.map((item) => (
           <button
             key={item.id}
@@ -379,7 +440,7 @@ export function BookingGuideScheduleSample() {
               scrollToTime(target, "smooth", "start");
             }}
             className={cn(
-              "rounded-full px-3 py-1.5 text-sm font-medium transition",
+              "rounded-full px-2.5 py-1 text-xs font-medium transition md:px-3 md:py-1.5 md:text-sm",
               activeJump === item.id
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground hover:text-foreground",
@@ -390,7 +451,7 @@ export function BookingGuideScheduleSample() {
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-soft">
+      <div className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl border border-border/70 bg-card shadow-soft">
         {loading ? (
           <p className="p-6 text-sm text-muted-foreground">Loading guide…</p>
         ) : staff.length === 0 ? (
@@ -398,7 +459,7 @@ export function BookingGuideScheduleSample() {
         ) : (
           <div
             ref={scrollerRef}
-            className="max-h-[min(70vh,720px)] touch-pan-x overflow-auto overscroll-x-contain active:cursor-grabbing"
+            className="h-full max-h-[min(58vh,560px)] touch-pan-x overflow-auto overscroll-x-contain active:cursor-grabbing md:max-h-[min(65vh,640px)]"
             style={{ cursor: "grab", WebkitOverflowScrolling: "touch" }}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
@@ -409,9 +470,12 @@ export function BookingGuideScheduleSample() {
               className="relative"
               style={{ width: LABEL_WIDTH + gridWidth }}
             >
-              <div className="sticky top-0 z-20 flex border-b border-border/70 bg-card/95 backdrop-blur">
+              <div
+                className="sticky top-0 z-20 flex border-b border-border/70 bg-card"
+                style={{ height: HEADER_HEIGHT }}
+              >
                 <div
-                  className="sticky left-0 z-30 shrink-0 border-r border-border/70 bg-card px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                  className="sticky left-0 z-30 flex shrink-0 items-end border-r border-border/70 bg-card px-2.5 pb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
                   style={{ width: LABEL_WIDTH }}
                   onPointerDown={(e) => e.stopPropagation()}
                 >
@@ -419,23 +483,58 @@ export function BookingGuideScheduleSample() {
                 </div>
                 <div
                   className="relative"
-                  style={{ width: gridWidth, height: 44 }}
+                  style={{ width: gridWidth, height: HEADER_HEIGHT }}
                 >
+                  {amPmBands.map((band) => (
+                    <div
+                      key={band.key}
+                      className={cn(
+                        "absolute top-0 flex h-[18px] items-center overflow-hidden border-r border-border/30 px-1.5",
+                        band.period === "am"
+                          ? "bg-sky-500/15 text-sky-900"
+                          : "bg-amber-500/15 text-amber-950",
+                      )}
+                      style={{ left: band.left, width: band.width }}
+                    >
+                      <span className="truncate text-[9px] font-bold uppercase tracking-wider">
+                        {band.period}
+                        {band.dateLabel ? ` · ${band.dateLabel}` : ""}
+                      </span>
+                    </div>
+                  ))}
+
                   {timeMarks.map((mark) => {
+                    const { minute } = zonedClockParts(mark, timeZone);
                     const left =
                       ((mark - dayStartMs) / 60_000) * pxPerMinute;
                     return (
                       <div
                         key={mark}
-                        className="absolute top-0 flex h-full flex-col justify-end border-l border-border/40 px-1 pb-2"
+                        className={cn(
+                          "absolute bottom-0 border-l",
+                          minute === 0
+                            ? "h-[34px] border-border/50"
+                            : "h-[18px] border-border/25",
+                        )}
                         style={{ left }}
-                      >
-                        <span className="text-[11px] font-medium text-muted-foreground">
-                          {formatGuideTick(mark, date, timeZone)}
-                        </span>
-                      </div>
+                      />
                     );
                   })}
+
+                  {hourMarks.map((mark) => {
+                    const left =
+                      ((mark - dayStartMs) / 60_000) * pxPerMinute;
+                    return (
+                      <span
+                        key={`h-${mark}`}
+                        className="absolute bottom-1 -translate-x-1/2 text-[10px] font-semibold tabular-nums text-foreground/80"
+                        style={{ left }}
+                      >
+                        {formatCompactHour(mark, timeZone)}
+                      </span>
+                    );
+                  })}
+
                   {now.getTime() >= dayStartMs &&
                   now.getTime() <= dayEndMs ? (
                     <div
@@ -446,7 +545,7 @@ export function BookingGuideScheduleSample() {
                           pxPerMinute,
                       }}
                     >
-                      <span className="absolute left-0 top-0.5 -translate-x-1/2 whitespace-nowrap rounded bg-sky-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow">
+                      <span className="absolute left-0 top-[18px] -translate-x-1/2 whitespace-nowrap rounded bg-sky-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow">
                         {formatAmPmTime(now.toISOString())}
                       </span>
                       <div className="absolute inset-y-0 left-0 w-0.5 -translate-x-1/2 bg-sky-500" />
@@ -464,14 +563,14 @@ export function BookingGuideScheduleSample() {
                     style={{ height: ROW_HEIGHT }}
                   >
                     <div
-                      className="sticky left-0 z-10 flex shrink-0 flex-col justify-center border-r border-border/70 bg-card px-3"
+                      className="sticky left-0 z-10 flex shrink-0 flex-col justify-center border-r border-border/70 bg-card px-2.5"
                       style={{ width: LABEL_WIDTH }}
                       onPointerDown={(e) => e.stopPropagation()}
                     >
                       <p className="truncate text-sm font-semibold text-foreground">
                         {member.name}
                       </p>
-                      <p className="truncate text-xs text-muted-foreground">
+                      <p className="truncate text-[11px] text-muted-foreground">
                         {rowBookings.length} booking
                         {rowBookings.length === 1 ? "" : "s"}
                       </p>
@@ -480,13 +579,31 @@ export function BookingGuideScheduleSample() {
                       className="relative bg-muted/20"
                       style={{ width: gridWidth }}
                     >
+                      {amPmBands.map((band) => (
+                        <div
+                          key={`${member.id}-${band.key}`}
+                          className={cn(
+                            "absolute inset-y-0",
+                            band.period === "am"
+                              ? "bg-sky-500/[0.04]"
+                              : "bg-amber-500/[0.04]",
+                          )}
+                          style={{ left: band.left, width: band.width }}
+                        />
+                      ))}
                       {timeMarks.map((mark) => {
+                        const { minute } = zonedClockParts(mark, timeZone);
                         const left =
                           ((mark - dayStartMs) / 60_000) * pxPerMinute;
                         return (
                           <div
                             key={mark}
-                            className="absolute inset-y-0 border-l border-border/30"
+                            className={cn(
+                              "absolute inset-y-0 border-l",
+                              minute === 0
+                                ? "border-border/35"
+                                : "border-border/20",
+                            )}
                             style={{ left }}
                           />
                         );
@@ -514,15 +631,13 @@ export function BookingGuideScheduleSample() {
                             60_000) *
                           pxPerMinute;
                         const width = Math.max(
-                          48,
+                          36,
                           ((Math.min(bEnd, dayEndMs) -
                             Math.max(bStart, dayStartMs)) /
                             60_000) *
                             pxPerMinute,
                         );
-                        const active = Boolean(
-                          booking.checkedInAt && !booking.checkedOutAt,
-                        );
+                        const active = isBookingCheckedIn(booking);
                         const selected = selectedId === booking.id;
                         return (
                           <button
@@ -531,7 +646,7 @@ export function BookingGuideScheduleSample() {
                             onPointerDown={(e) => e.stopPropagation()}
                             onClick={() => setSelectedId(booking.id)}
                             className={cn(
-                              "absolute top-2 overflow-hidden rounded-lg border px-2.5 py-2 text-left shadow-sm transition",
+                              "absolute top-1.5 overflow-hidden rounded-lg border px-2 py-1.5 text-left shadow-sm transition",
                               active
                                 ? "border-sky-500/40 bg-sky-500/15"
                                 : "border-border/80 bg-card hover:border-primary/40",
@@ -540,20 +655,20 @@ export function BookingGuideScheduleSample() {
                             style={{
                               left,
                               width,
-                              height: ROW_HEIGHT - 16,
+                              height: ROW_HEIGHT - 12,
                             }}
                           >
                             <p className="truncate text-sm font-semibold text-foreground">
                               {booking.customerName?.trim() || "Guest"}
                             </p>
-                            <p className="truncate text-xs text-muted-foreground">
+                            <p className="truncate text-[11px] text-muted-foreground">
                               {formatAmPmTime(booking.startsAt)}
                               {booking.roomName
                                 ? ` · ${booking.roomName}`
                                 : ""}
                             </p>
                             {active ? (
-                              <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-sky-700">
+                              <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700">
                                 In service
                               </p>
                             ) : null}
