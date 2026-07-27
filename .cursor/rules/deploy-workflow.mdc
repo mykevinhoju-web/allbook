@@ -5,9 +5,18 @@ alwaysApply: true
 
 # AllBook Deploy & Advisory Workflow
 
-## Default: online, not local
+## Speed first
 
-The user verifies on **production**, not localhost. Local dev is slow — do not start `npm run dev` unless they explicitly ask.
+Optimize for wall-clock time. The user verifies on production and hates waiting.
+
+- **Prefer action over exploration.** Edit known files directly; skip broad codebase scans / Task explore agents unless truly blocked.
+- **Parallelize hard.** Batch independent Shell/tool calls in one turn. After commit, run `git push` and `npx vercel deploy --prod --yes` **in parallel**.
+- **No local `npm run build` before deploy** by default — Vercel already builds. Only build locally when debugging a failed deploy, or for high-risk changes the user asked to verify.
+- **No local `npm run dev`** unless the user explicitly asks.
+- **Skip ceremony:** no long status reports, no optional route probes unless deploy failed. After deploy, give live URLs immediately.
+- **Ship related work only:** commit just the files for the current request — do not wait to bundle unrelated dirty files.
+
+## Default: online, not local
 
 After completing work, share **live URLs** (not local):
 
@@ -21,31 +30,24 @@ Use `{tenant}.allbook.com.au` for other tenants.
 
 ## Commit, push, and deploy
 
-**Goal:** keep local, GitHub (`master`), and production aligned.
+**Goal:** keep local, GitHub (`master`), and production aligned — as fast as possible.
 
 After finishing a user-requested change that should be visible on production (or when the user says commit / push / deploy), do **all three together** without asking again:
 
-1. **Commit** the related changes (follow the git safety protocol; never commit secrets).
-2. **Push** to `origin master`.
-3. **Deploy** with `npx vercel deploy --prod --yes` (after `npm run build` if not already verified).
+1. **Commit** related changes only (git safety protocol; never commit secrets).
+2. **In parallel:** `git push origin master` + `npx vercel deploy --prod --yes`
+3. Report live verification links.
 
 | Step | When |
 |------|------|
 | Commit + push + deploy | After completing related prod-facing work, or when user says commit / 커밋 / push / 푸시 / deploy / 배포해 |
-| Deploy only | Only if code is already committed/pushed and only a redeploy is needed |
+| Deploy only | Code already committed/pushed and only a redeploy is needed |
 
 Do **not** auto commit/push/deploy (ask or pause first) when the change is high-risk / “important”:
 
 - Schema / migrations, auth, RLS, payments, env/secrets
 - Broad refactors that could break admin/booking/staff flows
 - Build failures or unverified critical paths
-
-When deploying (auto or requested):
-
-1. Run `npm run build` if not already verified.
-2. `npx vercel deploy --prod --yes`
-3. Verify key routes return 200 (login/booking OK; admin pages may 307 until logged in).
-4. Always report **live verification links** (tenant URLs + the specific pages/steps to check for this change). Never leave the user with only a Vercel deployment URL.
 
 Never commit: `.env.local`, secrets, credentials, or API keys.
 
