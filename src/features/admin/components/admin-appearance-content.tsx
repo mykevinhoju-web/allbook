@@ -45,13 +45,8 @@ export function AdminAppearanceContent() {
         setColors(mergePortalTheme(data.portalTheme));
       }
       toast.success("Theme saved", {
-        description: "Admin, staff, and room screens will use these colors.",
+        description: "Room tablet screens will use these colors.",
       });
-      // Apply immediately without full reload
-      const root = document.documentElement;
-      for (const field of PORTAL_THEME_FIELDS) {
-        root.style.setProperty(field.cssVar, colors[field.key]);
-      }
     } finally {
       setSaving(false);
     }
@@ -65,7 +60,7 @@ export function AdminAppearanceContent() {
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
       <AdminPageHeader
         title="Appearance"
-        description="Tone for admin, staff, and room screens. Customer booking is unchanged."
+        description="Colors for the room tablet only. Admin, staff, and customer booking stay unchanged."
       />
 
       <div className="grid gap-4 rounded-2xl border border-border/60 bg-card p-4 shadow-soft md:max-w-2xl md:p-6">
@@ -97,15 +92,12 @@ export function AdminAppearanceContent() {
             color: colors.foreground,
           }}
         >
-          <div
-            className="flex items-stretch"
-            style={{ minHeight: 120 }}
-          >
+          <div className="flex items-stretch" style={{ minHeight: 120 }}>
             <div
               className="w-24 shrink-0 p-3 text-xs"
               style={{ background: colors.sidebar }}
             >
-              Sidebar
+              Panel
             </div>
             <div className="flex flex-1 flex-col gap-2 p-3">
               <div
@@ -115,7 +107,7 @@ export function AdminAppearanceContent() {
                   borderColor: colors.border,
                 }}
               >
-                Card preview
+                Room card preview
               </div>
               <div
                 className="inline-flex w-fit rounded-lg px-3 py-1.5 text-xs text-white"

@@ -169,7 +169,7 @@ export function RoomLoginContent() {
                 className={cn(
                   "min-h-[5.5rem] rounded-2xl border px-4 py-5 text-left transition active:scale-[0.99] md:min-h-[7rem] md:px-5 md:py-6",
                   room.claimedByThis
-                    ? "border-[#9B5BAF] bg-[#9B5BAF]/10"
+                    ? "border-primary bg-primary/10"
                     : room.available
                       ? "border-border bg-card hover:border-border hover:bg-background"
                       : "border-amber-200 bg-amber-50",

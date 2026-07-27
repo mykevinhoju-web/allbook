@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useOptionalTenant } from "@/features/tenants";
 
@@ -10,7 +10,11 @@ import {
   type PortalThemeColors,
 } from "./portal-theme";
 
-const OVERRIDE_VARS = PORTAL_THEME_FIELDS.map((field) => field.cssVar);
+const OVERRIDE_VARS = [
+  ...PORTAL_THEME_FIELDS.map((field) => field.cssVar),
+  "--ring",
+  "--sidebar-primary",
+];
 
 function applyColorOverrides(colors?: PortalThemeColors | null) {
   const root = document.documentElement;
@@ -22,25 +26,70 @@ function applyColorOverrides(colors?: PortalThemeColors | null) {
       root.style.removeProperty(field.cssVar);
     }
   }
+
+  // Keep related chrome tokens in sync with the chosen primary.
+  const primary = colors?.primary;
+  if (primary) {
+    root.style.setProperty("--ring", primary);
+    root.style.setProperty("--sidebar-primary", primary);
+  } else {
+    root.style.removeProperty("--ring");
+    root.style.removeProperty("--sidebar-primary");
+  }
 }
 
-/** Attaches shared portal theme to <html> for admin / staff / room chrome. */
+/**
+ * Applies Appearance colors to the room tablet chrome only.
+ * Prefer `fetchFrom` so colors stay fresh after admin saves (tenant SSR cache).
+ */
 export function PortalThemeRoot({
   colors,
+  fetchFrom = null,
 }: {
   colors?: PortalThemeColors | null;
+  /** e.g. `/api/room/theme` — loads latest colors from DB */
+  fetchFrom?: string | null;
 } = {}) {
   const tenant = useOptionalTenant();
   const fromTenant = tenant?.settings.portalTheme ?? null;
+  const [fetched, setFetched] = useState<PortalThemeColors | null>(null);
+
+  useEffect(() => {
+    if (!fetchFrom) return;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch(fetchFrom, { cache: "no-store" });
+        if (!response.ok) return;
+        const data = (await response.json()) as {
+          portalTheme?: PortalThemeColors;
+        };
+        if (!cancelled && data.portalTheme) {
+          setFetched(data.portalTheme);
+        }
+      } catch {
+        // Keep fallback from props / tenant.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchFrom]);
+
   const themeKey = useMemo(
-    () => JSON.stringify(colors ?? fromTenant ?? null),
-    [colors, fromTenant],
+    () => JSON.stringify(fetched ?? colors ?? fromTenant ?? null),
+    [fetched, colors, fromTenant],
   );
 
   useEffect(() => {
     const root = document.documentElement;
     root.classList.add(PORTAL_THEME_CLASS);
-    const parsed = themeKey === "null" ? null : (JSON.parse(themeKey) as PortalThemeColors);
+    const parsed =
+      themeKey === "null"
+        ? null
+        : (JSON.parse(themeKey) as PortalThemeColors);
     applyColorOverrides(parsed);
 
     return () => {

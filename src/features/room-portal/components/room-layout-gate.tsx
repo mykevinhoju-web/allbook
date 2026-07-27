@@ -68,7 +68,7 @@ export function RoomLayoutGate({ children }: RoomLayoutGateProps) {
 
   return (
     <>
-      <PortalThemeRoot />
+      <PortalThemeRoot fetchFrom="/api/room/theme" />
       {!ready && !isLoginPage ? (
         <div className="flex min-h-svh items-center justify-center bg-background text-sm text-muted-foreground">
           Loading room…

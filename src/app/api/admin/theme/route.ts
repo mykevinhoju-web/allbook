@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 import {
   isHexColor,
@@ -8,6 +8,7 @@ import {
   type PortalThemeFieldKey,
   PORTAL_THEME_FIELDS,
 } from "@/features/portal-theme";
+import { invalidateDevTenantCache } from "@/features/tenants/server/resolve-tenant";
 import {
   handleAdminRouteError,
   requireTenantAndAdminActor,
@@ -90,6 +91,9 @@ export async function PUT(request: Request) {
 
     revalidateTag(`tenant:${tenant.slug}`);
     revalidateTag("tenants");
+    revalidatePath("/room");
+    revalidatePath("/room/login");
+    invalidateDevTenantCache(tenant.slug);
 
     return NextResponse.json({
       portalTheme: parsePortalTheme(nextTheme) ?? nextTheme,

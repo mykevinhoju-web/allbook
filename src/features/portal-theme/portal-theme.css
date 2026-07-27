@@ -1,9 +1,9 @@
 /**
- * Shared portal chrome theme (admin + staff + room).
- * Defaults live here as CSS; optional overrides come from tenant.settings.portalTheme (hex).
+ * Room tablet chrome theme.
+ * Defaults live here as CSS; Appearance overrides come from tenant.settings.portalTheme (hex).
  *
- * Applied via `html.portal-theme` / `.portal-theme`.
- * Customer booking is unaffected.
+ * Applied only on room routes via `html.portal-theme` (PortalThemeRoot on /room).
+ * Admin, staff, and customer booking are unaffected.
  */
 
 html.portal-theme,

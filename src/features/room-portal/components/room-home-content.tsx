@@ -65,7 +65,7 @@ function PinPad({
             className={cn(
               "size-3.5 rounded-full border-2 md:size-4",
               value.length > index
-                ? "border-[#9B5BAF] bg-[#9B5BAF]"
+                ? "border-primary bg-primary"
                 : "border-border bg-transparent",
             )}
           />

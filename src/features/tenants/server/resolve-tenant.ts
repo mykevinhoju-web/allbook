@@ -9,6 +9,15 @@ import { buildLogoInitials } from "../utils/resolve-slug";
 
 const devTenantBySlug = new Map<string, Tenant>();
 
+/** Drop in-memory tenant cache (dev) after settings like portalTheme change. */
+export function invalidateDevTenantCache(slug?: string) {
+  if (slug) {
+    devTenantBySlug.delete(slug);
+    return;
+  }
+  devTenantBySlug.clear();
+}
+
 function buildTenantFromEnv(slug: string): Tenant {
   const displayName =
     process.env[TENANT_ENV.displayName] ??

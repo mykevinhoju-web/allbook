@@ -3,11 +3,11 @@ export const PORTAL_THEME_CLASS = "portal-theme";
 /** Default PWA / browser chrome color (matches soft gray background). */
 export const PORTAL_THEME_COLOR = "#d6d2cb";
 
-/** Editable keys stored on tenant.settings.portalTheme (hex). */
+/** Editable keys stored on tenant.settings.portalTheme (hex). Used by room tablet. */
 export const PORTAL_THEME_FIELDS = [
   { key: "background", label: "Background", cssVar: "--background" },
   { key: "card", label: "Cards / panels", cssVar: "--card" },
-  { key: "sidebar", label: "Sidebar", cssVar: "--sidebar" },
+  { key: "sidebar", label: "Secondary panel", cssVar: "--sidebar" },
   { key: "muted", label: "Muted areas", cssVar: "--muted" },
   { key: "border", label: "Borders", cssVar: "--border" },
   { key: "primary", label: "Primary accent", cssVar: "--primary" },

@@ -97,9 +97,9 @@ export function RoomPwaSetup() {
   // Step 2: alerts (after Home Screen install)
   if (standalone && !alertsOn) {
     return (
-      <div className="mb-5 rounded-3xl border border-[#9B5BAF]/30 bg-card p-5 shadow-sm ring-1 ring-[#9B5BAF]/10 md:p-6">
+      <div className="mb-5 rounded-3xl border border-primary/30 bg-card p-5 shadow-sm ring-1 ring-primary/10 md:p-6">
         <div className="flex items-start gap-4">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[#9B5BAF]/10 text-[#9B5BAF]">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <BellRing className="size-6" />
           </div>
           <div className="min-w-0 flex-1 space-y-1">
@@ -114,7 +114,7 @@ export function RoomPwaSetup() {
         </div>
         <AppButton
           type="button"
-          className="mt-4 h-14 w-full rounded-2xl bg-[#9B5BAF] text-base hover:bg-[#8A4F9C] md:h-16 md:text-lg"
+          className="mt-4 h-14 w-full rounded-2xl bg-primary text-base text-primary-foreground hover:opacity-90 md:h-16 md:text-lg"
           disabled={enablingAlerts}
           onClick={() => void handleEnableAlerts()}
         >
@@ -129,9 +129,9 @@ export function RoomPwaSetup() {
 
   return (
     <>
-      <div className="mb-5 rounded-3xl border border-[#9B5BAF]/30 bg-card p-5 shadow-sm ring-1 ring-[#9B5BAF]/10 md:p-6">
+      <div className="mb-5 rounded-3xl border border-primary/30 bg-card p-5 shadow-sm ring-1 ring-primary/10 md:p-6">
         <div className="flex items-start gap-4">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[#9B5BAF]/10 text-[#9B5BAF]">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <Smartphone className="size-6" />
           </div>
           <div className="min-w-0 flex-1 space-y-1">
@@ -148,7 +148,7 @@ export function RoomPwaSetup() {
         <div className="mt-4 flex flex-wrap gap-3">
           <AppButton
             type="button"
-            className="h-14 flex-1 rounded-2xl bg-[#9B5BAF] text-base hover:bg-[#8A4F9C] md:h-16 md:text-lg"
+            className="h-14 flex-1 rounded-2xl bg-primary text-base text-primary-foreground hover:opacity-90 md:h-16 md:text-lg"
             disabled={installing}
             onClick={() => void handleInstallClick()}
           >

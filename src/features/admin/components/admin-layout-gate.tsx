@@ -4,7 +4,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AdminShell } from "@/features/admin";
-import { PortalThemeRoot } from "@/features/portal-theme";
 
 interface AdminLayoutGateProps {
   children: React.ReactNode;
@@ -58,7 +57,6 @@ export function AdminLayoutGate({ children }: AdminLayoutGateProps) {
 
   return (
     <>
-      <PortalThemeRoot />
       {isLoginPage ? children : <AdminShell user={user}>{children}</AdminShell>}
     </>
   );
