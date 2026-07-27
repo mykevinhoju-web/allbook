@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/maintenance/auto-checkout-expired",
-      "schedule": "*/5 * * * *"
+      "schedule": "15 3 * * *"
     }
   ]
 }
