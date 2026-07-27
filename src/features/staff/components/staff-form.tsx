@@ -479,7 +479,13 @@ export function StaffForm({ staffId }: StaffFormProps) {
 
       toast.success(isEditing ? "Staff updated" : "Staff created");
 
-      if (!isEditing && savedStaff.id) {
+      if (isEditing) {
+        router.push("/admin/staff");
+        router.refresh();
+        return;
+      }
+
+      if (savedStaff.id) {
         router.replace(`/admin/staff/${savedStaff.id}`);
         router.refresh();
         return;
