@@ -10,6 +10,7 @@ import {
   getActiveCheckedInBooking,
   isBookingCheckedIn,
 } from "@/features/booking/lib/booking-check-in";
+import { getAvailableExtendMinutes } from "@/features/booking/lib/booking-extend";
 import {
   playServiceEndAlarm,
   unlockBookingAudio,
@@ -254,6 +255,34 @@ export function RoomHomeContent() {
     ? new Date(activeBooking.endsAt).getTime() - now.getTime()
     : null;
 
+  const extendOptions = useMemo(() => {
+    if (!activeBooking) return [] as number[];
+    const blockingStarts = [
+      ...bookings
+        .filter(
+          (row) =>
+            row.id !== activeBooking.id &&
+            row.status !== "cancelled" &&
+            row.status !== "completed",
+        )
+        .map((row) => row.startsAt),
+      ...staffBookings
+        .filter(
+          (row) =>
+            row.id !== activeBooking.id &&
+            row.status !== "cancelled" &&
+            row.status !== "completed",
+        )
+        .map((row) => row.startsAt),
+    ];
+    return getAvailableExtendMinutes(
+      activeBooking.endsAt,
+      blockingStarts,
+      EXTEND_OPTIONS,
+      now,
+    );
+  }, [activeBooking, bookings, staffBookings, now]);
+
   const checkIn = async (bookingId: string) => {
     setActionId(bookingId);
     try {
@@ -456,22 +485,34 @@ export function RoomHomeContent() {
                   <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground md:text-sm">
                     Extend time
                   </p>
-                  <div className="grid grid-cols-3 gap-3">
-                    {EXTEND_OPTIONS.map((minutes) => (
-                      <AppButton
-                        key={minutes}
-                        type="button"
-                        variant="outline"
-                        className="h-14 rounded-2xl bg-card text-lg md:h-16"
-                        disabled={Boolean(actionId)}
-                        onClick={() =>
-                          void extendService(activeBooking.id, minutes)
-                        }
-                      >
-                        +{minutes}m
-                      </AppButton>
-                    ))}
-                  </div>
+                  {extendOptions.length === 0 ? (
+                    <p className="rounded-2xl bg-muted px-4 py-3 text-sm text-muted-foreground">
+                      No extend available — next booking is too soon.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-3">
+                      {extendOptions.map((minutes) => (
+                        <AppButton
+                          key={minutes}
+                          type="button"
+                          variant="outline"
+                          className="h-14 rounded-2xl bg-card text-lg md:h-16"
+                          disabled={Boolean(actionId)}
+                          onClick={() =>
+                            void extendService(activeBooking.id, minutes)
+                          }
+                        >
+                          +{minutes}m
+                        </AppButton>
+                      ))}
+                    </div>
+                  )}
+                  {extendOptions.length > 0 &&
+                  extendOptions.length < EXTEND_OPTIONS.length ? (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Limited by the next booking in this room.
+                    </p>
+                  ) : null}
                 </div>
 
                 <AppButton
