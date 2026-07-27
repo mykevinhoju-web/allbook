@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { AppButton } from "@/components/common";
@@ -14,27 +20,23 @@ import { useNowTick } from "@/hooks/use-now-tick";
 import { formatAmPmTime, todayDateInZone } from "../../lib/schedule-utils";
 import type { AdminBooking } from "../../types/admin-booking";
 
-type DayPart = "now" | "morning" | "afternoon" | "evening" | "full";
-
-const PX_PER_MINUTE = 2.4;
 const ROW_HEIGHT = 88;
-const LABEL_WIDTH = 128;
+const LABEL_WIDTH = 120;
+/** How many hours fit in the first viewport. */
+const VIEWPORT_HOURS = 6;
+const DAY_START_HOUR = 6;
+const DAY_END_HOUR = 24; // exclusive end of calendar day window
 
-const DAY_PARTS: { id: DayPart; label: string }[] = [
+type JumpId = "now" | "morning" | "afternoon" | "evening";
+
+const JUMPS: { id: JumpId; label: string }[] = [
   { id: "now", label: "Now" },
   { id: "morning", label: "Morning" },
   { id: "afternoon", label: "Afternoon" },
   { id: "evening", label: "Evening" },
-  { id: "full", label: "All day" },
 ];
 
 function zonedHourMs(date: string, hour: number, timeZone: string): number {
-  // Approximate via datetime-local conversion pattern used elsewhere
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const local = `${date}T${pad(hour)}:00:00`;
-  // Interpret as tenant-local wall time → UTC via Date parsing with offset guess
-  // Use the same approach as schedule: format in zone
-  const probe = new Date(`${local}Z`);
   const dtf = new Intl.DateTimeFormat("en-US", {
     timeZone,
     hour12: false,
@@ -45,7 +47,6 @@ function zonedHourMs(date: string, hour: number, timeZone: string): number {
     minute: "2-digit",
     second: "2-digit",
   });
-  // Binary-search style: start from UTC guess of that local time
   let guess = Date.UTC(
     Number(date.slice(0, 4)),
     Number(date.slice(5, 7)) - 1,
@@ -75,50 +76,27 @@ function zonedHourMs(date: string, hour: number, timeZone: string): number {
     );
     guess += target - asLocal;
   }
-  void probe;
   return guess;
-}
-
-function windowForPart(
-  part: DayPart,
-  date: string,
-  timeZone: string,
-  now: Date,
-): { startMs: number; endMs: number } {
-  if (part === "morning") {
-    return {
-      startMs: zonedHourMs(date, 6, timeZone),
-      endMs: zonedHourMs(date, 12, timeZone),
-    };
-  }
-  if (part === "afternoon") {
-    return {
-      startMs: zonedHourMs(date, 12, timeZone),
-      endMs: zonedHourMs(date, 17, timeZone),
-    };
-  }
-  if (part === "evening") {
-    return {
-      startMs: zonedHourMs(date, 17, timeZone),
-      endMs: zonedHourMs(date, 23, timeZone),
-    };
-  }
-  if (part === "now") {
-    const start = now.getTime() - 30 * 60_000;
-    return { startMs: start, endMs: start + 5 * 60 * 60_000 };
-  }
-  return {
-    startMs: zonedHourMs(date, 6, timeZone),
-    endMs: zonedHourMs(date, 23, timeZone) + 60 * 60_000,
-  };
 }
 
 function ticks(startMs: number, endMs: number, stepMin = 30): number[] {
   const step = stepMin * 60_000;
   const first = Math.ceil(startMs / step) * step;
   const out: number[] = [];
-  for (let t = first; t <= endMs; t += step) out.push(t);
+  for (let t = first; t < endMs; t += step) out.push(t);
   return out;
+}
+
+function jumpTargetMs(
+  id: JumpId,
+  date: string,
+  timeZone: string,
+  now: Date,
+): number {
+  if (id === "now") return now.getTime();
+  if (id === "morning") return zonedHourMs(date, 6, timeZone);
+  if (id === "afternoon") return zonedHourMs(date, 12, timeZone);
+  return zonedHourMs(date, 17, timeZone);
 }
 
 export function BookingGuideScheduleSample() {
@@ -126,14 +104,50 @@ export function BookingGuideScheduleSample() {
   const timeZone = tenant.settings.timezone || "Australia/Sydney";
   const now = useNowTick(30_000);
   const [date, setDate] = useState(() => todayDateInZone(timeZone));
-  const [part, setPart] = useState<DayPart>("evening");
   const [staff, setStaff] = useState<StaffRecord[]>([]);
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [pxPerMinute, setPxPerMinute] = useState(2.2);
+  const [activeJump, setActiveJump] = useState<JumpId>("now");
+
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const didInitialScroll = useRef(false);
+  const dragRef = useRef<{
+    active: boolean;
+    startX: number;
+    startScroll: number;
+    moved: boolean;
+  } | null>(null);
+
+  const dayStartMs = useMemo(
+    () => zonedHourMs(date, DAY_START_HOUR, timeZone),
+    [date, timeZone],
+  );
+  const dayEndMs = useMemo(
+    () => zonedHourMs(date, DAY_END_HOUR, timeZone),
+    [date, timeZone],
+  );
+  const gridWidth = ((dayEndMs - dayStartMs) / 60_000) * pxPerMinute;
+  const timeMarks = useMemo(
+    () => ticks(dayStartMs, dayEndMs, 30),
+    [dayStartMs, dayEndMs],
+  );
+
+  const scrollToTime = useCallback(
+    (targetMs: number, behavior: ScrollBehavior = "smooth") => {
+      const el = scrollerRef.current;
+      if (!el) return;
+      const left =
+        ((targetMs - dayStartMs) / 60_000) * pxPerMinute - 12;
+      el.scrollTo({ left: Math.max(0, left), behavior });
+    },
+    [dayStartMs, pxPerMinute],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
+    didInitialScroll.current = false;
     try {
       const [staffRes, bookingRes] = await Promise.all([
         fetchAdminApi("/api/admin/staff"),
@@ -156,13 +170,36 @@ export function BookingGuideScheduleSample() {
     void load();
   }, [load]);
 
-  const { startMs, endMs } = useMemo(
-    () => windowForPart(part, date, timeZone, now),
-    [part, date, timeZone, now],
-  );
-  const durationMs = Math.max(endMs - startMs, 60_000);
-  const gridWidth = (durationMs / 60_000) * PX_PER_MINUTE;
-  const timeMarks = useMemo(() => ticks(startMs, endMs, 30), [startMs, endMs]);
+  // Fit ~6 hours into the visible timeline area.
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const measure = () => {
+      const visible = Math.max(280, el.clientWidth - LABEL_WIDTH);
+      setPxPerMinute(visible / (VIEWPORT_HOURS * 60));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [loading]);
+
+  // First paint / date change: jump to now (or start of day if viewing another day).
+  useEffect(() => {
+    if (loading || didInitialScroll.current) return;
+    const today = todayDateInZone(timeZone, now);
+    const target =
+      date === today
+        ? now.getTime()
+        : zonedHourMs(date, DAY_START_HOUR, timeZone);
+    // Wait one frame so width/pxPerMinute settle.
+    const id = window.requestAnimationFrame(() => {
+      scrollToTime(target, "auto");
+      setActiveJump(date === today ? "now" : "morning");
+      didInitialScroll.current = true;
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [loading, date, timeZone, now, scrollToTime]);
 
   const bookingsByStaff = useMemo(() => {
     const map = new Map<string, AdminBooking[]>();
@@ -181,6 +218,38 @@ export function BookingGuideScheduleSample() {
     setDate(next.toISOString().slice(0, 10));
   };
 
+  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    const el = scrollerRef.current;
+    if (!el) return;
+    // Don't start drag from staff label clicks / booking buttons — those stopPropagation.
+    dragRef.current = {
+      active: true,
+      startX: event.clientX,
+      startScroll: el.scrollLeft,
+      moved: false,
+    };
+    el.setPointerCapture(event.pointerId);
+  };
+
+  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    const el = scrollerRef.current;
+    if (!drag?.active || !el) return;
+    const dx = event.clientX - drag.startX;
+    if (Math.abs(dx) > 4) drag.moved = true;
+    el.scrollLeft = drag.startScroll - dx;
+  };
+
+  const onPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    const el = scrollerRef.current;
+    if (drag?.active && el?.hasPointerCapture(event.pointerId)) {
+      el.releasePointerCapture(event.pointerId);
+    }
+    dragRef.current = null;
+  };
+
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -192,8 +261,8 @@ export function BookingGuideScheduleSample() {
             TV Guide schedule
           </h1>
           <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            Staff rows × time columns, with booking blocks sized by duration.
-            Live data from today — not wired into the main Bookings page yet.
+            Starts at the current time (~{VIEWPORT_HOURS}h on screen). Drag or
+            swipe sideways to see earlier or later bookings.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -229,14 +298,17 @@ export function BookingGuideScheduleSample() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {DAY_PARTS.map((item) => (
+        {JUMPS.map((item) => (
           <button
             key={item.id}
             type="button"
-            onClick={() => setPart(item.id)}
+            onClick={() => {
+              setActiveJump(item.id);
+              scrollToTime(jumpTargetMs(item.id, date, timeZone, now));
+            }}
             className={cn(
               "rounded-full px-3 py-1.5 text-sm font-medium transition",
-              part === item.id
+              activeJump === item.id
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground hover:text-foreground",
             )}
@@ -252,22 +324,34 @@ export function BookingGuideScheduleSample() {
         ) : staff.length === 0 ? (
           <p className="p-6 text-sm text-muted-foreground">No staff found.</p>
         ) : (
-          <div className="overflow-auto">
+          <div
+            ref={scrollerRef}
+            className="max-h-[min(70vh,720px)] touch-pan-x overflow-auto overscroll-x-contain active:cursor-grabbing"
+            style={{ cursor: "grab", WebkitOverflowScrolling: "touch" }}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+          >
             <div
-              className="relative min-w-full"
+              className="relative"
               style={{ width: LABEL_WIDTH + gridWidth }}
             >
-              {/* Time header */}
               <div className="sticky top-0 z-20 flex border-b border-border/70 bg-card/95 backdrop-blur">
                 <div
                   className="sticky left-0 z-30 shrink-0 border-r border-border/70 bg-card px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                   style={{ width: LABEL_WIDTH }}
+                  onPointerDown={(e) => e.stopPropagation()}
                 >
                   Staff
                 </div>
-                <div className="relative" style={{ width: gridWidth, height: 44 }}>
+                <div
+                  className="relative"
+                  style={{ width: gridWidth, height: 44 }}
+                >
                   {timeMarks.map((mark) => {
-                    const left = ((mark - startMs) / 60_000) * PX_PER_MINUTE;
+                    const left =
+                      ((mark - dayStartMs) / 60_000) * pxPerMinute;
                     return (
                       <div
                         key={mark}
@@ -280,20 +364,20 @@ export function BookingGuideScheduleSample() {
                       </div>
                     );
                   })}
-                  {/* now line in header */}
-                  {now.getTime() >= startMs && now.getTime() <= endMs ? (
+                  {now.getTime() >= dayStartMs &&
+                  now.getTime() <= dayEndMs ? (
                     <div
                       className="absolute top-0 z-10 h-full w-0.5 bg-sky-500"
                       style={{
                         left:
-                          ((now.getTime() - startMs) / 60_000) * PX_PER_MINUTE,
+                          ((now.getTime() - dayStartMs) / 60_000) *
+                          pxPerMinute,
                       }}
                     />
                   ) : null}
                 </div>
               </div>
 
-              {/* Rows */}
               {staff.map((member) => {
                 const rowBookings = bookingsByStaff.get(member.id) ?? [];
                 return (
@@ -305,6 +389,7 @@ export function BookingGuideScheduleSample() {
                     <div
                       className="sticky left-0 z-10 flex shrink-0 flex-col justify-center border-r border-border/70 bg-card px-3"
                       style={{ width: LABEL_WIDTH }}
+                      onPointerDown={(e) => e.stopPropagation()}
                     >
                       <p className="truncate text-sm font-semibold text-foreground">
                         {member.name}
@@ -318,10 +403,9 @@ export function BookingGuideScheduleSample() {
                       className="relative bg-muted/20"
                       style={{ width: gridWidth }}
                     >
-                      {/* half-hour grid lines */}
                       {timeMarks.map((mark) => {
                         const left =
-                          ((mark - startMs) / 60_000) * PX_PER_MINUTE;
+                          ((mark - dayStartMs) / 60_000) * pxPerMinute;
                         return (
                           <div
                             key={mark}
@@ -330,13 +414,14 @@ export function BookingGuideScheduleSample() {
                           />
                         );
                       })}
-                      {now.getTime() >= startMs && now.getTime() <= endMs ? (
+                      {now.getTime() >= dayStartMs &&
+                      now.getTime() <= dayEndMs ? (
                         <div
                           className="absolute inset-y-0 z-10 w-0.5 bg-sky-500/80"
                           style={{
                             left:
-                              ((now.getTime() - startMs) / 60_000) *
-                              PX_PER_MINUTE,
+                              ((now.getTime() - dayStartMs) / 60_000) *
+                              pxPerMinute,
                           }}
                         />
                       ) : null}
@@ -344,15 +429,19 @@ export function BookingGuideScheduleSample() {
                       {rowBookings.map((booking) => {
                         const bStart = new Date(booking.startsAt).getTime();
                         const bEnd = new Date(booking.endsAt).getTime();
-                        if (bEnd <= startMs || bStart >= endMs) return null;
+                        if (bEnd <= dayStartMs || bStart >= dayEndMs) {
+                          return null;
+                        }
                         const left =
-                          ((Math.max(bStart, startMs) - startMs) / 60_000) *
-                          PX_PER_MINUTE;
+                          ((Math.max(bStart, dayStartMs) - dayStartMs) /
+                            60_000) *
+                          pxPerMinute;
                         const width = Math.max(
                           48,
-                          ((Math.min(bEnd, endMs) - Math.max(bStart, startMs)) /
+                          ((Math.min(bEnd, dayEndMs) -
+                            Math.max(bStart, dayStartMs)) /
                             60_000) *
-                            PX_PER_MINUTE,
+                            pxPerMinute,
                         );
                         const active = Boolean(
                           booking.checkedInAt && !booking.checkedOutAt,
@@ -362,6 +451,7 @@ export function BookingGuideScheduleSample() {
                           <button
                             key={booking.id}
                             type="button"
+                            onPointerDown={(e) => e.stopPropagation()}
                             onClick={() => setSelectedId(booking.id)}
                             className={cn(
                               "absolute top-2 overflow-hidden rounded-lg border px-2.5 py-2 text-left shadow-sm transition",
@@ -443,8 +533,7 @@ function SelectedBookingCard({
         </AppButton>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Sample only — tap blocks here to inspect. Creating/editing still happens
-        on the main Bookings page.
+        Sample only — creating/editing still happens on the main Bookings page.
       </p>
     </div>
   );
