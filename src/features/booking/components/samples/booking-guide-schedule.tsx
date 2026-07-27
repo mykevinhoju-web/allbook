@@ -219,9 +219,12 @@ export function BookingGuideScheduleSample() {
           >
             <ChevronRight className="size-4" />
           </AppButton>
-          <AppButton asChild variant="outline" className="rounded-xl">
-            <Link href="/admin/bookings">Back to Bookings</Link>
-          </AppButton>
+          <Link
+            href="/admin/bookings"
+            className="inline-flex h-10 items-center rounded-xl border border-border bg-card px-3 text-sm font-medium hover:bg-muted"
+          >
+            Back to Bookings
+          </Link>
         </div>
       </div>
 
