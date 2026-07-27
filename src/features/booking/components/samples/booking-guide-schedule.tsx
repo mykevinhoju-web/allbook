@@ -32,16 +32,24 @@ const VIEWPORT_HOURS = 6;
 /** Past hours visible to the left of "now" on first load (now at left edge). */
 const PAST_HOURS_ON_OPEN = 0;
 const DAY_START_HOUR = 6;
-const DAY_END_HOUR = 24; // exclusive end of calendar day window
+/** Timeline continues into next morning so midnight is not cut off. */
+const OVERNIGHT_END_HOUR = 6;
 
-type JumpId = "now" | "morning" | "afternoon" | "evening";
+type JumpId = "now" | "morning" | "afternoon" | "evening" | "overnight";
 
 const JUMPS: { id: JumpId; label: string }[] = [
   { id: "now", label: "Now" },
   { id: "morning", label: "Morning" },
   { id: "afternoon", label: "Afternoon" },
   { id: "evening", label: "Evening" },
+  { id: "overnight", label: "Overnight" },
 ];
+
+function addDaysIso(date: string, days: number): string {
+  const [y, m, d] = date.split("-").map(Number);
+  const next = new Date(Date.UTC(y!, m! - 1, d! + days));
+  return next.toISOString().slice(0, 10);
+}
 
 function zonedHourMs(date: string, hour: number, timeZone: string): number {
   const dtf = new Intl.DateTimeFormat("en-US", {
@@ -103,7 +111,22 @@ function jumpTargetMs(
   if (id === "now") return now.getTime();
   if (id === "morning") return zonedHourMs(date, 6, timeZone);
   if (id === "afternoon") return zonedHourMs(date, 12, timeZone);
-  return zonedHourMs(date, 17, timeZone);
+  if (id === "evening") return zonedHourMs(date, 17, timeZone);
+  return zonedHourMs(date, 22, timeZone);
+}
+
+function formatGuideTick(
+  markMs: number,
+  selectedDate: string,
+  timeZone: string,
+): string {
+  const time = formatAmPmTime(new Date(markMs).toISOString());
+  const markDate = todayDateInZone(timeZone, new Date(markMs));
+  if (markDate === selectedDate) return time;
+  // Annotate next-day hours so midnight / morning are clear.
+  if (!time.includes(":00 ")) return time;
+  const [, mm, dd] = markDate.split("-");
+  return `${time} ${Number(dd)}/${Number(mm)}`;
 }
 
 export function BookingGuideScheduleSample() {
@@ -132,7 +155,7 @@ export function BookingGuideScheduleSample() {
     [date, timeZone],
   );
   const dayEndMs = useMemo(
-    () => zonedHourMs(date, DAY_END_HOUR, timeZone),
+    () => zonedHourMs(addDaysIso(date, 1), OVERNIGHT_END_HOUR, timeZone),
     [date, timeZone],
   );
   const gridWidth = ((dayEndMs - dayStartMs) / 60_000) * pxPerMinute;
@@ -166,10 +189,18 @@ export function BookingGuideScheduleSample() {
   const load = useCallback(async () => {
     setLoading(true);
     didInitialScroll.current = false;
+    const from = new Date(
+      zonedHourMs(date, DAY_START_HOUR, timeZone),
+    ).toISOString();
+    const to = new Date(
+      zonedHourMs(addDaysIso(date, 1), OVERNIGHT_END_HOUR, timeZone),
+    ).toISOString();
     try {
       const [staffRes, bookingRes] = await Promise.all([
         fetchAdminApi("/api/admin/staff"),
-        fetchAdminApi(`/api/admin/bookings?date=${encodeURIComponent(date)}`),
+        fetchAdminApi(
+          `/api/admin/bookings?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+        ),
       ]);
       if (staffRes.ok) {
         const data = (await staffRes.json()) as { staff?: StaffRecord[] };
@@ -182,7 +213,7 @@ export function BookingGuideScheduleSample() {
     } finally {
       setLoading(false);
     }
-  }, [date]);
+  }, [date, timeZone]);
 
   useEffect(() => {
     void load();
@@ -300,8 +331,9 @@ export function BookingGuideScheduleSample() {
             TV Guide schedule
           </h1>
           <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            Opens at the current time. Drag or swipe sideways for earlier or
-            later times.
+            Opens at the current time. Timeline runs until 6:00 AM next day —
+            scroll right for midnight, or use the date arrows for a full next
+            day.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -399,7 +431,7 @@ export function BookingGuideScheduleSample() {
                         style={{ left }}
                       >
                         <span className="text-[11px] font-medium text-muted-foreground">
-                          {formatAmPmTime(new Date(mark).toISOString())}
+                          {formatGuideTick(mark, date, timeZone)}
                         </span>
                       </div>
                     );
