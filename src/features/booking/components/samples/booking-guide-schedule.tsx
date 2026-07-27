@@ -28,16 +28,16 @@ import { isBookingCheckedIn } from "../../lib/booking-check-in";
 const ROW_HEIGHT = 72;
 const LABEL_WIDTH = 96;
 const HEADER_HEIGHT = 44;
-/** Visible hours in the guide window (TV-guide style). */
-const VIEWPORT_HOURS = 4;
-/** How far each < / > step moves. */
-const STEP_HOURS = 2;
+/** Fixed guide windows: 00–06, 06–12, 12–18, 18–24. */
+const BLOCK_HOURS = 6;
+const BLOCKS_PER_DAY = 24 / BLOCK_HOURS; // 4
 /**
  * Calendar day starts at local midnight (00:00 / 12:00 AM).
- * TV broadcast guides often use ~6 AM, but booking schedules follow the
- * calendar day so Next Day lands on midnight of the next date.
+ * Next Day always opens on the 00–06 AM block.
  */
 const DAY_START_HOUR = 0;
+
+type DayBlock = 0 | 1 | 2 | 3;
 
 function addDaysIso(date: string, days: number): string {
   const [y, m, d] = date.split("-").map(Number);
@@ -122,9 +122,29 @@ function formatDayChip(dateIso: string, timeZone: string): string {
   return `${day} ${month}`;
 }
 
-function floorToStep(ms: number, stepMs: number, originMs: number): number {
-  const offset = ms - originMs;
-  return originMs + Math.floor(offset / stepMs) * stepMs;
+function hourToBlock(hour: number): DayBlock {
+  return Math.min(BLOCKS_PER_DAY - 1, Math.floor(hour / BLOCK_HOURS)) as DayBlock;
+}
+
+function blockStartHour(block: DayBlock): number {
+  return block * BLOCK_HOURS;
+}
+
+function blockRangeLabel(block: DayBlock): string {
+  const start = blockStartHour(block);
+  const end = start + BLOCK_HOURS;
+  const fmt = (h: number) => {
+    if (h === 0 || h === 24) return "12 AM";
+    if (h === 12) return "12 PM";
+    if (h < 12) return `${h} AM`;
+    return `${h - 12} PM`;
+  };
+  return `${fmt(start)}–${fmt(end === 24 ? 0 : end)}`;
+}
+
+function isAmBlock(block: DayBlock): boolean {
+  // 00–06 and 06–12 = AM; 12–18 and 18–24 = PM
+  return block < 2;
 }
 
 function ticks(startMs: number, endMs: number, stepMin = 30): number[] {
@@ -144,40 +164,24 @@ export function BookingGuideScheduleSample() {
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [viewStartMs, setViewStartMs] = useState<number | null>(null);
+  const [block, setBlock] = useState<DayBlock>(0);
 
   const didInitView = useRef(false);
   const pendingEndRef = useRef(false);
 
-  const dayStartMs = useMemo(
-    () => zonedHourMs(date, DAY_START_HOUR, timeZone),
-    [date, timeZone],
-  );
-  const dayEndMs = useMemo(
-    () => zonedHourMs(addDaysIso(date, 1), 0, timeZone),
-    [date, timeZone],
-  );
-  const viewportMs = VIEWPORT_HOURS * 60 * 60_000;
-  const stepMs = STEP_HOURS * 60 * 60_000;
-  const maxViewStart = Math.max(dayStartMs, dayEndMs - viewportMs);
-
-  const resolvedViewStart = useMemo(() => {
-    if (viewStartMs == null) return dayStartMs;
-    return Math.min(maxViewStart, Math.max(dayStartMs, viewStartMs));
-  }, [viewStartMs, dayStartMs, maxViewStart]);
-
-  const viewEndMs = resolvedViewStart + viewportMs;
+  const viewStartMs = zonedHourMs(date, blockStartHour(block), timeZone);
+  const viewportMs = BLOCK_HOURS * 60 * 60_000;
+  const viewEndMs = viewStartMs + viewportMs;
   const timeMarks = useMemo(
-    () => ticks(resolvedViewStart, viewEndMs, 30),
-    [resolvedViewStart, viewEndMs],
+    () => ticks(viewStartMs, viewEndMs, 30),
+    [viewStartMs, viewEndMs],
   );
 
-  const pct = (ms: number) =>
-    ((ms - resolvedViewStart) / viewportMs) * 100;
+  const pct = (ms: number) => ((ms - viewStartMs) / viewportMs) * 100;
 
-  const isAmWindow = zonedClockParts(resolvedViewStart, timeZone).hour < 12;
-  const nearDayEnd = viewEndMs >= dayEndMs - 5 * 60_000;
-  const atDayStart = resolvedViewStart <= dayStartMs + 5 * 60_000;
+  const amWindow = isAmBlock(block);
+  const nearDayEnd = block === BLOCKS_PER_DAY - 1;
+  const atDayStart = block === 0;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -204,18 +208,18 @@ export function BookingGuideScheduleSample() {
     void load();
   }, [load]);
 
-  // Open on "now" (or day start) once per date load.
+  // Open on the 6h block that contains "now" (or 00–06 for other days).
   useEffect(() => {
     if (loading || didInitView.current || pendingEndRef.current) return;
     const today = todayDateInZone(timeZone, now);
     if (date === today) {
-      const floored = floorToStep(now.getTime(), 30 * 60_000, dayStartMs);
-      setViewStartMs(Math.min(maxViewStart, Math.max(dayStartMs, floored)));
+      const hour = zonedClockParts(now.getTime(), timeZone).hour;
+      setBlock(hourToBlock(hour));
     } else {
-      setViewStartMs(dayStartMs);
+      setBlock(0);
     }
     didInitView.current = true;
-  }, [loading, date, timeZone, now, dayStartMs, maxViewStart]);
+  }, [loading, date, timeZone, now]);
 
   const bookingsByStaff = useMemo(() => {
     const map = new Map<string, AdminBooking[]>();
@@ -232,46 +236,43 @@ export function BookingGuideScheduleSample() {
     if (atDayStart) {
       pendingEndRef.current = true;
       setDate(addDaysIso(date, -1));
-      setViewStartMs(null);
       didInitView.current = false;
       return;
     }
-    setViewStartMs(Math.max(dayStartMs, resolvedViewStart - stepMs));
+    setBlock((b) => (b - 1) as DayBlock);
   };
 
   const goNextOrNextDay = () => {
     if (nearDayEnd) {
-      // Next calendar day starts at 00:00 (12:00 AM).
+      // Next calendar day → 00–06 AM block.
       pendingEndRef.current = false;
       setDate(addDaysIso(date, 1));
-      setViewStartMs(null);
+      setBlock(0);
       didInitView.current = false;
       return;
     }
-    setViewStartMs(Math.min(maxViewStart, resolvedViewStart + stepMs));
+    setBlock((b) => (b + 1) as DayBlock);
   };
 
   useEffect(() => {
     if (loading || !pendingEndRef.current) return;
     pendingEndRef.current = false;
-    setViewStartMs(maxViewStart);
+    setBlock((BLOCKS_PER_DAY - 1) as DayBlock);
     didInitView.current = true;
-  }, [loading, date, maxViewStart]);
+  }, [loading, date]);
 
   const jumpToNow = () => {
     const today = todayDateInZone(timeZone, now);
     if (date !== today) {
       setDate(today);
       didInitView.current = false;
-      setViewStartMs(null);
       return;
     }
-    const floored = floorToStep(now.getTime(), 30 * 60_000, dayStartMs);
-    setViewStartMs(Math.min(maxViewStart, Math.max(dayStartMs, floored)));
+    setBlock(hourToBlock(zonedClockParts(now.getTime(), timeZone).hour));
   };
 
   const nowPct =
-    now.getTime() >= resolvedViewStart && now.getTime() <= viewEndMs
+    now.getTime() >= viewStartMs && now.getTime() <= viewEndMs
       ? pct(now.getTime())
       : null;
 
@@ -283,8 +284,8 @@ export function BookingGuideScheduleSample() {
             TV Guide schedule
           </h1>
           <p className="mt-0.5 text-xs text-muted-foreground md:text-sm">
-            {formatDayChip(date, timeZone)} · day runs 12 AM–12 AM · Next Day
-            opens at midnight
+            {formatDayChip(date, timeZone)} · blocks 00–06 / 06–12 / 12–18 /
+            18–24 · Next Day → 00–06
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -300,7 +301,6 @@ export function BookingGuideScheduleSample() {
             value={date}
             onChange={(e) => {
               didInitView.current = false;
-              setViewStartMs(null);
               setDate(e.target.value);
             }}
             className="h-9 rounded-xl border border-border bg-card px-2 text-sm"
@@ -335,7 +335,7 @@ export function BookingGuideScheduleSample() {
               <div
                 className={cn(
                   "relative min-w-0 flex-1",
-                  isAmWindow ? "bg-sky-500/10" : "bg-amber-500/10",
+                  amWindow ? "bg-sky-500/10" : "bg-amber-500/10",
                 )}
               >
                 <button
@@ -366,7 +366,8 @@ export function BookingGuideScheduleSample() {
                 </button>
 
                 <div className="pointer-events-none absolute left-10 top-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {isAmWindow ? "AM" : "PM"} · {formatDayChip(date, timeZone)}
+                  {amWindow ? "AM" : "PM"} · {blockRangeLabel(block)} ·{" "}
+                  {formatDayChip(date, timeZone)}
                 </div>
                 {timeMarks.map((mark) => {
                   const { minute } = zonedClockParts(mark, timeZone);
@@ -448,16 +449,14 @@ export function BookingGuideScheduleSample() {
                       {rowBookings.map((booking) => {
                         const bStart = new Date(booking.startsAt).getTime();
                         const bEnd = new Date(booking.endsAt).getTime();
-                        if (bEnd <= resolvedViewStart || bStart >= viewEndMs) {
+                        if (bEnd <= viewStartMs || bStart >= viewEndMs) {
                           return null;
                         }
-                        const leftPct = pct(
-                          Math.max(bStart, resolvedViewStart),
-                        );
+                        const leftPct = pct(Math.max(bStart, viewStartMs));
                         const widthPct = Math.max(
                           4,
                           ((Math.min(bEnd, viewEndMs) -
-                            Math.max(bStart, resolvedViewStart)) /
+                            Math.max(bStart, viewStartMs)) /
                             viewportMs) *
                             100,
                         );
