@@ -4,7 +4,6 @@ import {
   DoorOpen,
   Images,
   LayoutDashboard,
-  LayoutGrid,
   Palette,
   Settings,
   UserCircle,
