@@ -4,6 +4,7 @@ import {
   DoorOpen,
   Images,
   LayoutDashboard,
+  LayoutGrid,
   Palette,
   Settings,
   UserCircle,
@@ -33,6 +34,11 @@ export const adminNavItems: AdminNavItem[] = [
     title: "Bookings",
     href: "/admin/bookings",
     icon: CalendarDays,
+  },
+  {
+    title: "Guide sample",
+    href: "/admin/bookings/samples/guide",
+    icon: LayoutGrid,
   },
   {
     title: "Rooms",
