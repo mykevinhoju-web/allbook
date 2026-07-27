@@ -107,7 +107,7 @@ export function RoomPwaSetup() {
               Step 2: turn on room alerts
             </p>
             <p className="text-sm leading-relaxed text-muted-foreground md:text-base">
-              So this tablet can notify when service time ends ??even if the
+              So this tablet can notify when service time ends - even if the
               screen is locked or the app is in the background.
             </p>
           </div>
@@ -118,7 +118,7 @@ export function RoomPwaSetup() {
           disabled={enablingAlerts}
           onClick={() => void handleEnableAlerts()}
         >
-          {enablingAlerts ? "Enabling?? : "Turn on alerts"}
+          {enablingAlerts ? "Enabling..." : "Turn on alerts"}
         </AppButton>
       </div>
     );

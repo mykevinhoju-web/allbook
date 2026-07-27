@@ -129,7 +129,7 @@ export function RoomLoginContent() {
   if (checkingSession) {
     return (
       <div className="flex min-h-svh items-center justify-center bg-background text-base text-muted-foreground">
-        Loading??      </div>
+        Loading...</div>
     );
   }
 
@@ -154,10 +154,10 @@ export function RoomLoginContent() {
         <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 md:gap-5">
           {loading ? (
             <p className="col-span-full text-base text-muted-foreground">
-              Loading rooms??            </p>
+              Loading rooms...</p>
           ) : rooms.length === 0 ? (
             <p className="col-span-full text-base text-muted-foreground">
-              No active rooms. Ask an admin to add Room 1?? in Admin ??Rooms.
+              No active rooms. Ask an admin to add Room 1-6 in Admin - Rooms.
             </p>
           ) : (
             rooms.map((room) => (

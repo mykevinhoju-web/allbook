@@ -53,7 +53,7 @@ function PinPad({
   onChange: (next: string) => void;
   disabled?: boolean;
 }) {
-  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "??];
+  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"];
 
   return (
     <div className="mx-auto w-full max-w-md space-y-5 md:max-w-lg md:space-y-6">
@@ -80,7 +80,7 @@ function PinPad({
               disabled={disabled}
               className="h-16 rounded-2xl border border-border bg-card text-2xl font-semibold text-foreground shadow-sm active:scale-[0.98] active:bg-muted disabled:opacity-40 md:h-20 md:text-3xl"
               onClick={() => {
-                if (key === "??) {
+                if (key === "del") {
                   onChange(value.slice(0, -1));
                   return;
                 }
@@ -303,7 +303,7 @@ export function RoomHomeContent() {
               endedAt: new Date().toISOString(),
             });
           } catch {
-            // Alarm/broadcast best-effort ??still check out.
+            // Alarm/broadcast best-effort - still check out.
           }
         }
 
@@ -322,8 +322,8 @@ export function RoomHomeContent() {
         }
         toast.success(
           reason === "auto"
-            ? "Time?™s up ??staff signed out"
-            : "Service ended ??back to PIN",
+            ? "Time is up - staff signed out"
+            : "Service ended - back to PIN",
         );
         if (staff) {
           void broadcastStaffPresence(tenant.slug, {
@@ -480,7 +480,7 @@ export function RoomHomeContent() {
                   disabled={actionId === activeBooking.id}
                   onClick={() => void endService(activeBooking, "manual")}
                 >
-                  {actionId === activeBooking.id ? "Ending?? : "End service"}
+                  {actionId === activeBooking.id ? "Ending..." : "End service"}
                 </AppButton>
               </div>
             ) : null}
@@ -582,7 +582,7 @@ function RoomScheduleList({
     <div className="rounded-3xl border border-border bg-card p-5 md:p-6">
       <p className="text-base font-semibold md:text-lg">Today Â· {roomLabel}</p>
       {loading ? (
-        <p className="mt-4 text-base text-muted-foreground">Loading??/p>
+        <p className="mt-4 text-base text-muted-foreground">Loading...</p>
       ) : bookings.length === 0 ? (
         <p className="mt-4 text-base text-muted-foreground">
           No bookings for this room today.
