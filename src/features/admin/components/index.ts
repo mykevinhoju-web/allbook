@@ -1,9 +1,14 @@
+export { AdminAppearanceContent } from "./admin-appearance-content";
 export { AdminLayoutGate } from "./admin-layout-gate";
 export { AdminBreadcrumb } from "./admin-breadcrumb";
+export { AdminCustomersContent } from "./admin-customers-content";
 export { AdminDashboardContent } from "./admin-dashboard-content";
 export { AdminHeader } from "./admin-header";
+export { AdminNavBadge } from "./admin-nav-badge";
 export { AdminPageHeader } from "./admin-page-header";
+export { AdminPwaInstallBubble } from "./admin-pwa-install-bubble";
 export { AdminPlaceholderPage } from "./admin-placeholder-page";
+export { AdminReportsContent } from "./admin-reports-content";
 export { AdminMobileNav } from "./admin-mobile-nav";
 export { AdminShell } from "./admin-shell";
 export { AdminSidebar } from "./admin-sidebar";

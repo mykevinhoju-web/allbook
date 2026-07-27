@@ -1,0 +1,12 @@
+export {
+  DEFAULT_PORTAL_THEME,
+  PORTAL_THEME_CLASS,
+  PORTAL_THEME_COLOR,
+  PORTAL_THEME_FIELDS,
+  isHexColor,
+  mergePortalTheme,
+  parsePortalTheme,
+  type PortalThemeColors,
+  type PortalThemeFieldKey,
+} from "./portal-theme";
+export { PortalThemeRoot } from "./portal-theme-root";

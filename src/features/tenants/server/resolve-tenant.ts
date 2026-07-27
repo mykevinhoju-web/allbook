@@ -1,9 +1,10 @@
 import { unstable_cache } from "next/cache";
 
+import { parsePortalTheme } from "@/features/portal-theme";
 import { createServiceSupabase } from "@/lib/supabase/service";
 
 import { TENANT_ENV } from "../constants";
-import type { Tenant } from "../types";
+import type { Tenant, TenantSettings } from "../types";
 import { buildLogoInitials } from "../utils/resolve-slug";
 
 const devTenantBySlug = new Map<string, Tenant>();
@@ -39,6 +40,39 @@ function buildTenantFromEnv(slug: string): Tenant {
   };
 }
 
+function parseAdminModules(
+  settings: unknown,
+): TenantSettings["adminModules"] | undefined {
+  if (!settings || typeof settings !== "object") return undefined;
+
+  const raw = (settings as { adminModules?: unknown }).adminModules;
+  if (!raw || typeof raw !== "object") return undefined;
+
+  const modules = raw as Record<string, unknown>;
+  const parsed: NonNullable<TenantSettings["adminModules"]> = {};
+
+  if (typeof modules.customers === "boolean") {
+    parsed.customers = modules.customers;
+  }
+  if (typeof modules.gallery === "boolean") {
+    parsed.gallery = modules.gallery;
+  }
+  if (typeof modules.settings === "boolean") {
+    parsed.settings = modules.settings;
+  }
+
+  return Object.keys(parsed).length > 0 ? parsed : undefined;
+}
+
+function parsePortalThemeFromSettings(
+  settings: unknown,
+): TenantSettings["portalTheme"] | undefined {
+  if (!settings || typeof settings !== "object") return undefined;
+  return parsePortalTheme(
+    (settings as { portalTheme?: unknown }).portalTheme,
+  );
+}
+
 function mapRowToTenant(row: {
   id: string;
   slug: string;
@@ -50,6 +84,7 @@ function mapRowToTenant(row: {
   currency: string;
   locale: string;
   is_active: boolean;
+  settings?: unknown;
 }): Tenant {
   return {
     id: row.id,
@@ -65,6 +100,8 @@ function mapRowToTenant(row: {
       timezone: row.timezone,
       currency: row.currency,
       locale: row.locale,
+      portalTheme: parsePortalThemeFromSettings(row.settings),
+      adminModules: parseAdminModules(row.settings),
     },
     isActive: row.is_active,
   };
@@ -77,7 +114,7 @@ async function loadTenantBySlug(slug: string): Promise<Tenant> {
     const { data, error } = await supabase
       .from("tenants")
       .select(
-        "id, slug, name, display_name, tagline, logo_url, timezone, currency, locale, is_active",
+        "id, slug, name, display_name, tagline, logo_url, timezone, currency, locale, is_active, settings",
       )
       .eq("slug", slug)
       .eq("is_active", true)

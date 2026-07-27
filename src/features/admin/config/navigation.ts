@@ -4,6 +4,7 @@ import {
   DoorOpen,
   Images,
   LayoutDashboard,
+  Palette,
   Settings,
   UserCircle,
   Users,
@@ -42,11 +43,13 @@ export const adminNavItems: AdminNavItem[] = [
     title: "Customers",
     href: "/admin/customers",
     icon: UserCircle,
+    module: "customers",
   },
   {
     title: "Gallery",
     href: "/admin/gallery",
     icon: Images,
+    module: "gallery",
   },
   {
     title: "Reports",
@@ -54,8 +57,14 @@ export const adminNavItems: AdminNavItem[] = [
     icon: BarChart3,
   },
   {
+    title: "Appearance",
+    href: "/admin/appearance",
+    icon: Palette,
+  },
+  {
     title: "Settings",
     href: "/admin/settings",
     icon: Settings,
+    module: "settings",
   },
 ];

@@ -1,0 +1,614 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { LogOut } from "lucide-react";
+
+import { AppButton, toast } from "@/components/common";
+import {
+  canCheckInToBooking,
+  getActiveCheckedInBooking,
+  isBookingCheckedIn,
+} from "@/features/booking/lib/booking-check-in";
+import {
+  playServiceEndAlarm,
+  unlockBookingAudio,
+} from "@/features/booking/lib/booking-alert-sound";
+import { broadcastServiceEnd } from "@/features/booking/lib/booking-realtime";
+import { useBookingRealtime } from "@/features/booking/lib/booking-schedule-realtime";
+import {
+  formatAmPmTime,
+  todayDateInZone,
+} from "@/features/booking/lib/schedule-utils";
+import type { AdminBooking } from "@/features/booking/types/admin-booking";
+import { broadcastStaffPresence } from "@/features/staff/lib/staff-presence-realtime";
+import { useTenant } from "@/features/tenants";
+import { useNowTick } from "@/hooks/use-now-tick";
+import { cn } from "@/lib/utils";
+
+import { useRoomSession } from "./room-layout-gate";
+import { RoomPwaSetup } from "./room-pwa-setup";
+
+interface StaffUser {
+  id: string;
+  name: string;
+}
+
+const EXTEND_OPTIONS = [10, 15, 20] as const;
+
+function formatRemaining(ms: number): string {
+  if (ms <= 0) return "0:00";
+  const totalSec = Math.ceil(ms / 1000);
+  const mins = Math.floor(totalSec / 60);
+  const secs = totalSec % 60;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+function PinPad({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  disabled?: boolean;
+}) {
+  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "??];
+
+  return (
+    <div className="mx-auto w-full max-w-md space-y-5 md:max-w-lg md:space-y-6">
+      <div className="flex justify-center gap-4 md:gap-5">
+        {[0, 1, 2, 3].map((index) => (
+          <span
+            key={index}
+            className={cn(
+              "size-3.5 rounded-full border-2 md:size-4",
+              value.length > index
+                ? "border-[#9B5BAF] bg-[#9B5BAF]"
+                : "border-border bg-transparent",
+            )}
+          />
+        ))}
+      </div>
+      <div className="grid grid-cols-3 gap-3 md:gap-4">
+        {keys.map((key, index) => {
+          if (!key) return <span key={`empty-${index}`} />;
+          return (
+            <button
+              key={key}
+              type="button"
+              disabled={disabled}
+              className="h-16 rounded-2xl border border-border bg-card text-2xl font-semibold text-foreground shadow-sm active:scale-[0.98] active:bg-muted disabled:opacity-40 md:h-20 md:text-3xl"
+              onClick={() => {
+                if (key === "??) {
+                  onChange(value.slice(0, -1));
+                  return;
+                }
+                if (value.length >= 4) return;
+                onChange(value + key);
+              }}
+            >
+              {key}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function bookingStateLabel(booking: AdminBooking, now: Date): string {
+  if (isBookingCheckedIn(booking)) {
+    return "In room";
+  }
+  if (canCheckInToBooking(booking, now)) {
+    return "Ready";
+  }
+  if (new Date(booking.endsAt) <= now) return "Ended";
+  return "Booked";
+}
+
+export function RoomHomeContent() {
+  const router = useRouter();
+  const tenant = useTenant();
+  const roomSession = useRoomSession();
+  const roomLabel = roomSession?.roomName ?? "This room";
+  const timeZone = tenant.settings.timezone || "Australia/Sydney";
+  const now = useNowTick(1000);
+  const today = todayDateInZone(timeZone, now);
+
+  const [pin, setPin] = useState("");
+  const [pinLoading, setPinLoading] = useState(false);
+  const [staff, setStaff] = useState<StaffUser | null>(null);
+  const [bookings, setBookings] = useState<AdminBooking[]>([]);
+  const [staffBookings, setStaffBookings] = useState<AdminBooking[]>([]);
+  const [loadingSchedule, setLoadingSchedule] = useState(true);
+  const [actionId, setActionId] = useState<string | null>(null);
+  const autoEndingRef = useRef<string | null>(null);
+
+  const loadRoomSchedule = useCallback(async () => {
+    setLoadingSchedule(true);
+    try {
+      const response = await fetch(`/api/room/schedule?date=${today}`);
+      const data = (await response.json()) as {
+        bookings?: AdminBooking[];
+        error?: string;
+        code?: string;
+      };
+      if (response.status === 403 && data.code === "ROOM_LOGIN_REQUIRED") {
+        router.replace("/room/login");
+        return;
+      }
+      if (!response.ok) {
+        toast.error("Could not load schedule", { description: data.error });
+        return;
+      }
+      setBookings(data.bookings ?? []);
+    } finally {
+      setLoadingSchedule(false);
+    }
+  }, [router, today]);
+
+  const loadStaffMe = useCallback(async () => {
+    const response = await fetch("/api/staff/auth/me");
+    const data = (await response.json()) as {
+      user?: { role: string; staffId?: string; name?: string } | null;
+    };
+    if (data.user?.role === "staff" && data.user.staffId) {
+      setStaff({ id: data.user.staffId, name: data.user.name ?? "Staff" });
+      return true;
+    }
+    setStaff(null);
+    return false;
+  }, []);
+
+  const loadStaffSchedule = useCallback(async () => {
+    const response = await fetch(`/api/staff/schedule?date=${today}`);
+    const data = (await response.json()) as {
+      bookings?: AdminBooking[];
+    };
+    if (response.ok) {
+      setStaffBookings(data.bookings ?? []);
+    }
+  }, [today]);
+
+  const refreshAll = useCallback(async () => {
+    await loadRoomSchedule();
+    const signedIn = await loadStaffMe();
+    if (signedIn) await loadStaffSchedule();
+  }, [loadRoomSchedule, loadStaffMe, loadStaffSchedule]);
+
+  useEffect(() => {
+    void refreshAll();
+  }, [refreshAll]);
+
+  useBookingRealtime(tenant.id, () => {
+    void refreshAll();
+  });
+
+  const submitPin = async (nextPin: string) => {
+    if (nextPin.length !== 4 || pinLoading) return;
+    setPinLoading(true);
+    try {
+      await unlockBookingAudio();
+      const response = await fetch("/api/room/staff/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin: nextPin }),
+      });
+      const data = (await response.json()) as {
+        error?: string;
+        code?: string;
+        staff?: StaffUser;
+      };
+
+      if (response.status === 403 && data.code === "ROOM_LOGIN_REQUIRED") {
+        toast.error("Room login required", { description: data.error });
+        router.replace("/room/login");
+        return;
+      }
+
+      if (!response.ok) {
+        toast.error("Could not sign in", { description: data.error });
+        setPin("");
+        return;
+      }
+
+      const nextStaff = data.staff ?? null;
+      setStaff(nextStaff);
+      setPin("");
+      toast.success(`Welcome ${nextStaff?.name ?? ""}`.trim());
+      if (nextStaff) {
+        void broadcastStaffPresence(tenant.slug, {
+          type: "online",
+          staffId: nextStaff.id,
+          staffName: nextStaff.name,
+          roomName: roomLabel,
+        }).catch(() => {});
+      }
+      await loadStaffSchedule();
+      await loadRoomSchedule();
+    } finally {
+      setPinLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (pin.length === 4) {
+      void submitPin(pin);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- submit when PIN completes
+  }, [pin]);
+
+  const activeBooking = useMemo(() => {
+    if (!staff) return null;
+    return getActiveCheckedInBooking(staffBookings);
+  }, [staff, staffBookings]);
+
+  const actionable = useMemo(() => {
+    if (!staff) return [];
+    return staffBookings.filter((booking) => canCheckInToBooking(booking, now));
+  }, [staff, staffBookings, now]);
+
+  const remainingMs = activeBooking
+    ? new Date(activeBooking.endsAt).getTime() - now.getTime()
+    : null;
+
+  const checkIn = async (bookingId: string) => {
+    setActionId(bookingId);
+    try {
+      await unlockBookingAudio();
+      const response = await fetch(`/api/room/bookings/${bookingId}/check-in`, {
+        method: "POST",
+      });
+      const data = (await response.json()) as {
+        error?: string;
+        code?: string;
+        serviceWindowCapped?: boolean;
+      };
+      if (response.status === 403 && data.code === "ROOM_LOGIN_REQUIRED") {
+        toast.error("Room login required", { description: data.error });
+        router.replace("/room/login");
+        return;
+      }
+      if (!response.ok) {
+        toast.error("Could not enter room", { description: data.error });
+        return;
+      }
+      toast.success("Checked in", {
+        description: data.serviceWindowCapped
+          ? "Timer ends before the next booking"
+          : "Timer started from now",
+      });
+      await Promise.all([loadStaffSchedule(), loadRoomSchedule()]);
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const endService = useCallback(
+    async (booking: AdminBooking, reason: "manual" | "auto") => {
+      if (autoEndingRef.current === booking.id && reason === "auto") return;
+      if (reason === "auto") autoEndingRef.current = booking.id;
+      setActionId(booking.id);
+      try {
+        if (reason === "auto") {
+          try {
+            await playServiceEndAlarm(3);
+            await broadcastServiceEnd(tenant.slug, {
+              bookingId: booking.id,
+              staffId: booking.staffId,
+              staffName: staff?.name ?? booking.staffName,
+              roomName: booking.roomName ?? "Room",
+              endedAt: new Date().toISOString(),
+            });
+          } catch {
+            // Alarm/broadcast best-effort ??still check out.
+          }
+        }
+
+        const response = await fetch(
+          `/api/room/bookings/${booking.id}/checkout`,
+          { method: "POST" },
+        );
+        const data = (await response.json()) as {
+          error?: string;
+          code?: string;
+        };
+        if (!response.ok) {
+          if (reason === "auto") autoEndingRef.current = null;
+          toast.error("Could not end service", { description: data.error });
+          return;
+        }
+        toast.success(
+          reason === "auto"
+            ? "Time?檚 up ??staff signed out"
+            : "Service ended ??back to PIN",
+        );
+        if (staff) {
+          void broadcastStaffPresence(tenant.slug, {
+            type: "offline",
+            staffId: staff.id,
+            staffName: staff.name,
+            roomName: roomLabel,
+          }).catch(() => {});
+        }
+        setStaff(null);
+        setStaffBookings([]);
+        setPin("");
+        await loadRoomSchedule();
+      } finally {
+        setActionId(null);
+      }
+    },
+    [loadRoomSchedule, roomLabel, staff, tenant.slug],
+  );
+
+  useEffect(() => {
+    if (!activeBooking || remainingMs === null) return;
+    if (remainingMs > 0) {
+      if (autoEndingRef.current === activeBooking.id) {
+        autoEndingRef.current = null;
+      }
+      return;
+    }
+    void endService(activeBooking, "auto");
+  }, [activeBooking, remainingMs, endService]);
+
+  const extendService = async (bookingId: string, minutes: number) => {
+    setActionId(`extend-${bookingId}-${minutes}`);
+    try {
+      const response = await fetch(`/api/room/bookings/${bookingId}/extend`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ minutes }),
+      });
+      const data = (await response.json()) as {
+        error?: string;
+      };
+      if (!response.ok) {
+        toast.error("Could not extend", { description: data.error });
+        return;
+      }
+      toast.success(`Extended +${minutes} min`);
+      autoEndingRef.current = null;
+      await Promise.all([loadStaffSchedule(), loadRoomSchedule()]);
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const staffLogout = async () => {
+    const current = staff;
+    await fetch("/api/room/staff/logout", { method: "POST" });
+    if (current) {
+      void broadcastStaffPresence(tenant.slug, {
+        type: "offline",
+        staffId: current.id,
+        staffName: current.name,
+        roomName: roomLabel,
+      }).catch(() => {});
+    }
+    setStaff(null);
+    setStaffBookings([]);
+    setPin("");
+    toast.success("Staff signed out");
+  };
+
+  if (staff) {
+    return (
+      <div className="space-y-5 md:space-y-6">
+        <RoomPwaSetup />
+
+        <div className="flex items-center justify-between gap-4 rounded-3xl border border-border bg-card px-5 py-4 md:px-6 md:py-5">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground md:text-sm">
+              {roomLabel}
+            </p>
+            <p className="truncate text-2xl font-semibold tracking-tight md:text-3xl">
+              {staff.name}
+            </p>
+          </div>
+          <AppButton
+            type="button"
+            variant="outline"
+            className="h-12 shrink-0 rounded-2xl px-4 text-base md:h-14 md:px-5"
+            onClick={() => void staffLogout()}
+          >
+            <LogOut className="size-5" />
+            PIN screen
+          </AppButton>
+        </div>
+
+        <div className="grid gap-5 md:grid-cols-2 md:gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+          <div className="space-y-5 md:space-y-6">
+            {activeBooking ? (
+              <div
+                className={cn(
+                  "rounded-3xl border p-5 md:p-7",
+                  remainingMs !== null && remainingMs <= 60_000
+                    ? "border-red-300 bg-red-50"
+                    : "border-emerald-200 bg-emerald-50",
+                )}
+              >
+                <p
+                  className={cn(
+                    "text-xs font-semibold uppercase tracking-[0.18em] md:text-sm",
+                    remainingMs !== null && remainingMs <= 60_000
+                      ? "text-red-700"
+                      : "text-emerald-700",
+                  )}
+                >
+                  In room now
+                </p>
+                <p className="mt-2 text-lg font-semibold text-foreground md:text-xl">
+                  {formatAmPmTime(activeBooking.startsAt)} 路{" "}
+                  {activeBooking.customerName || "Guest"}
+                </p>
+                <p className="mt-4 text-6xl font-semibold tabular-nums tracking-tight text-foreground md:text-7xl">
+                  {formatRemaining(remainingMs ?? 0)}
+                </p>
+                <p className="mt-1 text-sm font-medium text-muted-foreground md:text-base">
+                  left 路 ends {formatAmPmTime(activeBooking.endsAt)}
+                </p>
+
+                <div className="mt-6">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground md:text-sm">
+                    Extend time
+                  </p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {EXTEND_OPTIONS.map((minutes) => (
+                      <AppButton
+                        key={minutes}
+                        type="button"
+                        variant="outline"
+                        className="h-14 rounded-2xl bg-card text-lg md:h-16"
+                        disabled={Boolean(actionId)}
+                        onClick={() =>
+                          void extendService(activeBooking.id, minutes)
+                        }
+                      >
+                        +{minutes}m
+                      </AppButton>
+                    ))}
+                  </div>
+                </div>
+
+                <AppButton
+                  type="button"
+                  className="mt-5 h-14 w-full rounded-2xl bg-emerald-700 text-lg hover:bg-emerald-800 md:h-16 md:text-xl"
+                  disabled={actionId === activeBooking.id}
+                  onClick={() => void endService(activeBooking, "manual")}
+                >
+                  {actionId === activeBooking.id ? "Ending?? : "End service"}
+                </AppButton>
+              </div>
+            ) : null}
+
+            <div className="rounded-3xl border border-border bg-card p-5 md:p-6">
+              <p className="text-base font-semibold md:text-lg">
+                Your bookings today
+              </p>
+              <ul className="mt-4 space-y-3">
+                {actionable.length === 0 && !activeBooking ? (
+                  <li className="rounded-2xl bg-muted px-4 py-5 text-base text-muted-foreground">
+                    No bookings ready for check-in.
+                  </li>
+                ) : (
+                  actionable.map((booking) => (
+                    <li
+                      key={booking.id}
+                      className="flex items-center justify-between gap-4 rounded-2xl border border-border/60 px-4 py-4"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-base font-medium md:text-lg">
+                          {formatAmPmTime(booking.startsAt)} 路{" "}
+                          {booking.customerName || "Guest"}
+                        </p>
+                        <p className="text-sm text-muted-foreground">Ready to enter</p>
+                      </div>
+                      <AppButton
+                        type="button"
+                        className="h-12 shrink-0 rounded-2xl px-5 text-base md:h-14 md:px-6 md:text-lg"
+                        disabled={actionId === booking.id}
+                        onClick={() => void checkIn(booking.id)}
+                      >
+                        Enter
+                      </AppButton>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+          </div>
+
+          <RoomScheduleList
+            bookings={bookings}
+            loading={loadingSchedule}
+            now={now}
+            roomLabel={roomLabel}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  const changeRoom = async () => {
+    await fetch("/api/room/auth/logout", { method: "POST" });
+    router.replace("/room/login");
+    router.refresh();
+  };
+
+  return (
+    <div className="flex min-h-[calc(100svh-2rem)] flex-col justify-center md:min-h-[calc(100svh-4rem)]">
+      <RoomPwaSetup />
+      <div className="mx-auto w-full max-w-2xl rounded-[2rem] border border-border bg-card px-6 py-10 shadow-sm md:max-w-3xl md:px-12 md:py-14">
+        <p className="text-center text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground md:text-sm">
+          This tablet
+        </p>
+        <h1 className="mt-3 text-center text-6xl font-bold tracking-tight text-foreground md:text-7xl lg:text-8xl">
+          {roomLabel}
+        </h1>
+        <p className="mt-8 text-center text-base font-medium text-muted-foreground md:mt-10 md:text-lg">
+          Staff PIN
+        </p>
+        <div className="mt-5 md:mt-6">
+          <PinPad value={pin} onChange={setPin} disabled={pinLoading} />
+        </div>
+        <button
+          type="button"
+          onClick={() => void changeRoom()}
+          className="mt-10 w-full text-center text-sm text-muted-foreground underline-offset-4 hover:text-muted-foreground hover:underline md:mt-12 md:text-base"
+        >
+          Change room
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function RoomScheduleList({
+  bookings,
+  loading,
+  now,
+  roomLabel,
+}: {
+  bookings: AdminBooking[];
+  loading: boolean;
+  now: Date;
+  roomLabel: string;
+}) {
+  return (
+    <div className="rounded-3xl border border-border bg-card p-5 md:p-6">
+      <p className="text-base font-semibold md:text-lg">Today 路 {roomLabel}</p>
+      {loading ? (
+        <p className="mt-4 text-base text-muted-foreground">Loading??/p>
+      ) : bookings.length === 0 ? (
+        <p className="mt-4 text-base text-muted-foreground">
+          No bookings for this room today.
+        </p>
+      ) : (
+        <ul className="mt-4 max-h-[min(28rem,50vh)] space-y-2 overflow-y-auto md:max-h-[min(36rem,60vh)]">
+          {bookings.map((booking) => (
+            <li
+              key={booking.id}
+              className="flex items-center justify-between gap-3 rounded-2xl bg-muted px-4 py-3.5"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-base font-medium text-foreground">
+                  {formatAmPmTime(booking.startsAt)} 路 {booking.staffName}
+                </p>
+                <p className="truncate text-sm text-muted-foreground">
+                  {booking.customerName || "Guest"}
+                </p>
+              </div>
+              <span className="shrink-0 rounded-full bg-card px-2.5 py-1 text-xs font-semibold text-muted-foreground md:text-sm">
+                {bookingStateLabel(booking, now)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

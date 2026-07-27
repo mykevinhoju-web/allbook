@@ -1,8 +1,5 @@
-/**
- * Admin chrome theme class + PWA theme color.
- * Palette lives in `src/features/admin/styles/admin-theme.css` — edit there to retone.
- */
-export const ADMIN_THEME_CLASS = "admin-theme";
-
-/** Browser chrome / PWA status bar — keep in sync with `--background` in admin-theme.css */
-export const ADMIN_THEME_COLOR = "#d6d2cb";
+/** @deprecated Use `@/features/portal-theme` */
+export {
+  PORTAL_THEME_CLASS as ADMIN_THEME_CLASS,
+  PORTAL_THEME_COLOR as ADMIN_THEME_COLOR,
+} from "@/features/portal-theme";

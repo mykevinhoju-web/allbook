@@ -1,29 +1,32 @@
 import type { Metadata, Viewport } from "next";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AdminLayoutGate, TenantAdminGateway } from "@/features/admin";
+import { TenantAdminGateway } from "@/features/admin";
 import { PORTAL_THEME_COLOR } from "@/features/portal-theme";
+import { RoomLayoutGate } from "@/features/room-portal";
 import { getTenantSlug } from "@/features/tenants/server";
 
 export const metadata: Metadata = {
-  title: "Admin",
+  title: "Room",
   robots: { index: false, follow: false },
-  manifest: "/manifest.webmanifest",
+  manifest: "/room-manifest.webmanifest",
   appleWebApp: {
     capable: true,
+    title: "Room",
     statusBarStyle: "default",
-    title: "AllBook Admin",
-  },
-  icons: {
-    apple: "/icons/icon-192.png",
   },
 };
 
 export const viewport: Viewport = {
   themeColor: PORTAL_THEME_COLOR,
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
-export default async function AdminLayout({
+export default async function RoomLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -36,7 +39,7 @@ export default async function AdminLayout({
 
   return (
     <TooltipProvider>
-      <AdminLayoutGate>{children}</AdminLayoutGate>
+      <RoomLayoutGate>{children}</RoomLayoutGate>
     </TooltipProvider>
   );
 }

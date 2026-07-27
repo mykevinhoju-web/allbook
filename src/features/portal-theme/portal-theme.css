@@ -1,17 +1,13 @@
 /**
- * Admin UI theme — single place to retone the whole admin surface.
+ * Shared portal chrome theme (admin + staff + room).
+ * Defaults live here as CSS; optional overrides come from tenant.settings.portalTheme (hex).
  *
- * Applied via `html.admin-theme` (see `admin-theme.ts` + AdminLayoutGate).
- * Booking / staff / room portals are unaffected.
- *
- * Tune brightness with the L (lightness) channel in oklch(L C H):
- *   higher L = brighter, lower L = darker. Keep L roughly 0.82–0.94 for
- *   a soft gray spa look (avoid pure white ~1.0 and near-black <0.25).
+ * Applied via `html.portal-theme` / `.portal-theme`.
+ * Customer booking is unaffected.
  */
 
-html.admin-theme,
-.admin-theme {
-  /* Soft warm-neutral gray — dimmer than pure white, not black */
+html.portal-theme,
+.portal-theme {
   --background: oklch(0.88 0.006 75);
   --foreground: oklch(0.28 0.015 75);
   --card: oklch(0.92 0.005 75);
@@ -19,7 +15,6 @@ html.admin-theme,
   --popover: oklch(0.92 0.005 75);
   --popover-foreground: oklch(0.28 0.015 75);
 
-  /* Slightly muted blue primary so accents don’t glare */
   --primary: oklch(0.48 0.12 252);
   --primary-foreground: oklch(0.97 0.005 75);
   --secondary: oklch(0.84 0.01 75);

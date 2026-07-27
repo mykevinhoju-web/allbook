@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { TenantAdminGateway } from "@/features/admin";
+import { PORTAL_THEME_COLOR } from "@/features/portal-theme";
 import { StaffLayoutGate } from "@/features/staff-portal";
 import { getTenantSlug } from "@/features/tenants/server";
 
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#2563eb",
+  themeColor: PORTAL_THEME_COLOR,
 };
 
 export default async function StaffLayout({

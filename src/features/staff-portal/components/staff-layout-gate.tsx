@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
+import { PortalThemeRoot } from "@/features/portal-theme";
+
 import { StaffShell } from "./staff-shell";
 
 interface StaffLayoutGateProps {
@@ -28,7 +30,7 @@ export function StaffLayoutGate({ children }: StaffLayoutGateProps) {
     let cancelled = false;
 
     void (async () => {
-      const response = await fetch("/api/admin/auth/me");
+      const response = await fetch("/api/staff/auth/me");
       const data = (await response.json()) as {
         user?: StaffUser | { role: string } | null;
       };
@@ -48,9 +50,10 @@ export function StaffLayoutGate({ children }: StaffLayoutGateProps) {
     };
   }, [isLoginPage, router]);
 
-  if (isLoginPage) {
-    return <>{children}</>;
-  }
-
-  return <StaffShell user={user}>{children}</StaffShell>;
+  return (
+    <>
+      <PortalThemeRoot />
+      {isLoginPage ? children : <StaffShell user={user}>{children}</StaffShell>}
+    </>
+  );
 }

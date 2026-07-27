@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AdminShell } from "@/features/admin";
-import { ADMIN_THEME_CLASS } from "@/features/admin/lib/admin-theme";
+import { PortalThemeRoot } from "@/features/portal-theme";
 
 interface AdminLayoutGateProps {
   children: React.ReactNode;
@@ -21,13 +21,6 @@ export function AdminLayoutGate({ children }: AdminLayoutGateProps) {
   const router = useRouter();
   const isLoginPage = pathname === "/admin/login";
   const [user, setUser] = useState<AuthUser | null>(null);
-
-  useEffect(() => {
-    document.documentElement.classList.add(ADMIN_THEME_CLASS);
-    return () => {
-      document.documentElement.classList.remove(ADMIN_THEME_CLASS);
-    };
-  }, []);
 
   useEffect(() => {
     if (isLoginPage) {
@@ -63,9 +56,10 @@ export function AdminLayoutGate({ children }: AdminLayoutGateProps) {
     };
   }, [isLoginPage, pathname, router]);
 
-  if (isLoginPage) {
-    return <>{children}</>;
-  }
-
-  return <AdminShell user={user}>{children}</AdminShell>;
+  return (
+    <>
+      <PortalThemeRoot />
+      {isLoginPage ? children : <AdminShell user={user}>{children}</AdminShell>}
+    </>
+  );
 }
