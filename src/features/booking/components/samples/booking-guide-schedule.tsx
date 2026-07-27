@@ -10,20 +10,27 @@ import {
 } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import { AppButton } from "@/components/common";
+import { AppButton, toast } from "@/components/common";
 import { fetchAdminApi } from "@/features/admin/lib/admin-api-client";
 import { useTenant } from "@/features/tenants";
 import type { StaffRecord } from "@/features/staff/types";
 import { cn } from "@/lib/utils";
 import { useNowTick } from "@/hooks/use-now-tick";
 
-import { formatAmPmTime, todayDateInZone } from "../../lib/schedule-utils";
+import {
+  formatAmPmTime,
+  formatBookingSummary,
+  todayDateInZone,
+} from "../../lib/schedule-utils";
 import type { AdminBooking } from "../../types/admin-booking";
+import { isBookingCheckedIn } from "../../lib/booking-check-in";
 
 const ROW_HEIGHT = 88;
 const LABEL_WIDTH = 120;
 /** How many hours fit in the first viewport. */
 const VIEWPORT_HOURS = 6;
+/** Past hours visible to the left of "now" on first load (~now near center). */
+const PAST_HOURS_ON_OPEN = 2;
 const DAY_START_HOUR = 6;
 const DAY_END_HOUR = 24; // exclusive end of calendar day window
 
@@ -135,11 +142,21 @@ export function BookingGuideScheduleSample() {
   );
 
   const scrollToTime = useCallback(
-    (targetMs: number, behavior: ScrollBehavior = "smooth") => {
+    (
+      targetMs: number,
+      behavior: ScrollBehavior = "smooth",
+      align: "start" | "center" | "past" = "past",
+    ) => {
       const el = scrollerRef.current;
       if (!el) return;
-      const left =
-        ((targetMs - dayStartMs) / 60_000) * pxPerMinute - 12;
+      const targetLeft = ((targetMs - dayStartMs) / 60_000) * pxPerMinute;
+      const visible = Math.max(280, el.clientWidth - LABEL_WIDTH);
+      let left = targetLeft;
+      if (align === "center") {
+        left = targetLeft - visible / 2;
+      } else if (align === "past") {
+        left = targetLeft - PAST_HOURS_ON_OPEN * 60 * pxPerMinute;
+      }
       el.scrollTo({ left: Math.max(0, left), behavior });
     },
     [dayStartMs, pxPerMinute],
@@ -184,18 +201,22 @@ export function BookingGuideScheduleSample() {
     return () => ro.disconnect();
   }, [loading]);
 
-  // First paint / date change: jump to now (or start of day if viewing another day).
+  // First paint / date change: now with ~2h behind (near center of 6h view).
   useEffect(() => {
     if (loading || didInitialScroll.current) return;
     const today = todayDateInZone(timeZone, now);
-    const target =
-      date === today
-        ? now.getTime()
-        : zonedHourMs(date, DAY_START_HOUR, timeZone);
-    // Wait one frame so width/pxPerMinute settle.
     const id = window.requestAnimationFrame(() => {
-      scrollToTime(target, "auto");
-      setActiveJump(date === today ? "now" : "morning");
+      if (date === today) {
+        scrollToTime(now.getTime(), "auto", "past");
+        setActiveJump("now");
+      } else {
+        scrollToTime(
+          zonedHourMs(date, DAY_START_HOUR, timeZone),
+          "auto",
+          "start",
+        );
+        setActiveJump("morning");
+      }
       didInitialScroll.current = true;
     });
     return () => window.cancelAnimationFrame(id);
@@ -261,8 +282,8 @@ export function BookingGuideScheduleSample() {
             TV Guide schedule
           </h1>
           <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            Starts at the current time (~{VIEWPORT_HOURS}h on screen). Drag or
-            swipe sideways to see earlier or later bookings.
+            Starts with ~{PAST_HOURS_ON_OPEN}h before now (now near the middle).
+            Drag or swipe sideways for earlier or later times.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -304,7 +325,12 @@ export function BookingGuideScheduleSample() {
             type="button"
             onClick={() => {
               setActiveJump(item.id);
-              scrollToTime(jumpTargetMs(item.id, date, timeZone, now));
+              const target = jumpTargetMs(item.id, date, timeZone, now);
+              scrollToTime(
+                target,
+                "smooth",
+                item.id === "now" ? "past" : "start",
+              );
             }}
             className={cn(
               "rounded-full px-3 py-1.5 text-sm font-medium transition",
@@ -493,36 +519,137 @@ export function BookingGuideScheduleSample() {
       </div>
 
       {selectedId ? (
-        <SelectedBookingCard
+        <GuideBookingBriefCard
           booking={bookings.find((b) => b.id === selectedId) ?? null}
+          timeZone={timeZone}
           onClose={() => setSelectedId(null)}
+          onCancelled={() => {
+            setSelectedId(null);
+            void load();
+          }}
         />
       ) : null}
     </div>
   );
 }
 
-function SelectedBookingCard({
+function formatGuideDateTime(iso: string): string {
+  const date = new Date(iso);
+  const time = formatAmPmTime(iso);
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yy = String(date.getFullYear()).slice(-2);
+  return `${time} · ${dd}/${mm}/${yy}`;
+}
+
+function GuideBookingBriefCard({
   booking,
   onClose,
+  onCancelled,
 }: {
   booking: AdminBooking | null;
+  timeZone: string;
   onClose: () => void;
+  onCancelled: () => void;
 }) {
+  const [cancelling, setCancelling] = useState(false);
+
   if (!booking) return null;
+
+  const canCancel =
+    booking.status !== "cancelled" &&
+    booking.status !== "completed" &&
+    !booking.checkedOutAt;
+
+  const cancelBooking = async () => {
+    if (!canCancel || cancelling) return;
+    const confirmed = window.confirm(
+      "Cancel this booking? The time slot will become available again.",
+    );
+    if (!confirmed) return;
+
+    setCancelling(true);
+    try {
+      const response = await fetchAdminApi(`/api/admin/bookings/${booking.id}`, {
+        method: "DELETE",
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        toast.error("Could not cancel", { description: data.error });
+        return;
+      }
+      toast.success("Booking cancelled");
+      onCancelled();
+    } catch {
+      toast.error("Could not cancel", { description: "Network error." });
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const guestBits = [
+    booking.customerPhone,
+    booking.customerEmail,
+    booking.customerPostcode,
+  ].filter(Boolean);
+
   return (
-    <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-soft md:max-w-lg">
-      <div className="flex items-start justify-between gap-3">
+    <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-soft md:max-w-md">
+      <div className="space-y-3 text-sm">
         <div>
-          <p className="text-sm font-semibold text-foreground">
-            {booking.customerName?.trim() || "Guest"}
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Staff
           </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {booking.staffName} · {formatAmPmTime(booking.startsAt)}–
-            {formatAmPmTime(booking.endsAt)}
-            {booking.roomName ? ` · ${booking.roomName}` : ""}
+          <p className="mt-0.5 font-semibold text-foreground">
+            {booking.staffName}
           </p>
         </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Service time
+          </p>
+          <p className="mt-0.5 text-foreground">
+            {formatBookingSummary(booking)}
+            {booking.roomName ? ` · ${booking.roomName}` : ""}
+            {isBookingCheckedIn(booking) ? " · In service" : ""}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Guest
+          </p>
+          <p className="mt-0.5 font-medium text-foreground">
+            {booking.customerName?.trim() || "Guest"}
+          </p>
+          <p className="text-muted-foreground">
+            {formatGuideDateTime(booking.startsAt)}
+          </p>
+        </div>
+        {guestBits.length > 0 ? (
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Guest info
+            </p>
+            <p className="mt-0.5 text-foreground">{guestBits.join(" · ")}</p>
+          </div>
+        ) : null}
+        {booking.notes?.trim() ? (
+          <p className="text-muted-foreground">{booking.notes.trim()}</p>
+        ) : null}
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {canCancel ? (
+          <AppButton
+            type="button"
+            variant="danger"
+            className="rounded-xl"
+            disabled={cancelling}
+            onClick={() => void cancelBooking()}
+          >
+            {cancelling ? "Cancelling…" : "Cancel"}
+          </AppButton>
+        ) : null}
         <AppButton
           type="button"
           variant="outline"
@@ -532,9 +659,6 @@ function SelectedBookingCard({
           Close
         </AppButton>
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">
-        Sample only — creating/editing still happens on the main Bookings page.
-      </p>
     </div>
   );
 }
