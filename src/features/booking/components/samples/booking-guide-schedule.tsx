@@ -32,7 +32,12 @@ const HEADER_HEIGHT = 44;
 const VIEWPORT_HOURS = 4;
 /** How far each < / > step moves. */
 const STEP_HOURS = 2;
-const DAY_START_HOUR = 6;
+/**
+ * Calendar day starts at local midnight (00:00 / 12:00 AM).
+ * TV broadcast guides often use ~6 AM, but booking schedules follow the
+ * calendar day so Next Day lands on midnight of the next date.
+ */
+const DAY_START_HOUR = 0;
 
 function addDaysIso(date: string, days: number): string {
   const [y, m, d] = date.split("-").map(Number);
@@ -236,6 +241,7 @@ export function BookingGuideScheduleSample() {
 
   const goNextOrNextDay = () => {
     if (nearDayEnd) {
+      // Next calendar day starts at 00:00 (12:00 AM).
       pendingEndRef.current = false;
       setDate(addDaysIso(date, 1));
       setViewStartMs(null);
@@ -277,8 +283,8 @@ export function BookingGuideScheduleSample() {
             TV Guide schedule
           </h1>
           <p className="mt-0.5 text-xs text-muted-foreground md:text-sm">
-            {formatDayChip(date, timeZone)} · {VIEWPORT_HOURS}h window · use
-            arrows or Next Day
+            {formatDayChip(date, timeZone)} · day runs 12 AM–12 AM · Next Day
+            opens at midnight
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
