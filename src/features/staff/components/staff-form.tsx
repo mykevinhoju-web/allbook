@@ -7,13 +7,6 @@ import { ArrowLeft } from "lucide-react";
 
 import { AppButton, MultiImageUpload, toast } from "@/components/common";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 import {
@@ -25,12 +18,12 @@ import {
   todayDateInZone,
   toDatetimeLocalValue,
 } from "@/features/booking/lib/schedule-utils";
+import { filterActiveRoomBookings } from "@/features/booking/lib/room-occupancy";
 import { useOptionalTenant } from "@/features/tenants";
+import { fetchAdminApi } from "@/features/admin/lib/admin-api-client";
+import { useNowTick } from "@/hooks/use-now-tick";
 
-import {
-  getDefaultStaffFormValues,
-  nationalityOptions,
-} from "../config";
+import { getDefaultStaffFormValues } from "../config";
 import type { StaffFormValues, StaffPhoto, StaffRecord } from "../types";
 import {
   applyWorkingToday,
@@ -55,12 +48,12 @@ interface ShiftBookingRow {
 }
 
 async function uploadPhotos(staffId: string, photos: File[]) {
-  if (photos.length === 0) return;
+  if (photos.length === 0) return [] as StaffPhoto[];
 
   const formData = new FormData();
   photos.forEach((photo) => formData.append("photos", photo));
 
-  const response = await fetch(`/api/admin/staff/${staffId}/photos`, {
+  const response = await fetchAdminApi(`/api/admin/staff/${staffId}/photos`, {
     method: "POST",
     body: formData,
   });
@@ -69,6 +62,16 @@ async function uploadPhotos(staffId: string, photos: File[]) {
     const data = (await response.json()) as { error?: string };
     throw new Error(data.error ?? "Failed to upload photos.");
   }
+
+  const data = (await response.json()) as {
+    photos?: { id: string; url: string; sortOrder: number }[];
+  };
+
+  return (data.photos ?? []).map((photo) => ({
+    id: photo.id,
+    url: photo.url,
+    sortOrder: photo.sortOrder,
+  }));
 }
 
 const inputClassName =
@@ -104,7 +107,6 @@ function mapRecordToForm(record: StaffRecord, timeZone: string): StaffFormValues
     languages: record.attributes.languages ?? [],
     experience: record.attributes.experience ?? "",
     introduction: record.attributes.introduction ?? "",
-    loginId: "",
     password: "",
     shiftStartsAt,
     shiftEndsAt,
@@ -126,6 +128,7 @@ export function StaffForm({ staffId }: StaffFormProps) {
   const tenant = useOptionalTenant();
   const timeZone =
     tenant?.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
+  const now = useNowTick(60_000);
   const isEditing = Boolean(staffId);
   const [form, setForm] = useState<StaffFormValues>(() =>
     getDefaultStaffFormValues(timeZone),
@@ -142,6 +145,8 @@ export function StaffForm({ staffId }: StaffFormProps) {
   const [localNow, setLocalNow] = useState(() =>
     toDatetimeLocalValue(new Date(), timeZone),
   );
+
+  const upcomingBookings = filterActiveRoomBookings(shiftBookings, now);
 
   useEffect(() => {
     const tick = () =>
@@ -190,8 +195,8 @@ export function StaffForm({ staffId }: StaffFormProps) {
     void (async () => {
       try {
         const [response, accountResponse] = await Promise.all([
-          fetch(`/api/admin/staff/${staffId}`),
-          fetch(`/api/admin/staff/${staffId}/account`),
+          fetchAdminApi(`/api/admin/staff/${staffId}`),
+          fetchAdminApi(`/api/admin/staff/${staffId}/account`),
         ]);
 
         const data = (await response.json()) as {
@@ -213,16 +218,16 @@ export function StaffForm({ staffId }: StaffFormProps) {
         );
 
         const accountData = (await accountResponse.json()) as {
-          loginId?: string | null;
           hasAccount?: boolean;
+          pin?: string | null;
         };
 
         if (accountResponse.ok) {
           setHasLoginAccount(Boolean(accountData.hasAccount));
-          if (accountData.loginId) {
+          if (accountData.pin) {
             setForm((current) => ({
               ...current,
-              loginId: accountData.loginId ?? "",
+              password: accountData.pin ?? "",
             }));
           }
         }
@@ -259,7 +264,7 @@ export function StaffForm({ staffId }: StaffFormProps) {
             datetimeLocalToIso(`${bounds.to}T23:59`, timeZone),
           );
         }
-        const response = await fetch(`/api/admin/bookings?${params}`);
+        const response = await fetchAdminApi(`/api/admin/bookings?${params}`);
         const data = (await response.json()) as {
           bookings?: ShiftBookingRow[];
         };
@@ -286,7 +291,7 @@ export function StaffForm({ staffId }: StaffFormProps) {
   const removeExistingPhoto = async (photoId: string) => {
     if (!staffId) return;
 
-    const response = await fetch(
+    const response = await fetchAdminApi(
       `/api/admin/staff/${staffId}/photos?photoId=${photoId}`,
       { method: "DELETE" },
     );
@@ -300,6 +305,35 @@ export function StaffForm({ staffId }: StaffFormProps) {
     setExistingPhotos((current) =>
       current.filter((photo) => photo.id !== photoId),
     );
+  };
+
+  const reorderExistingPhotos = async (orderedIds: string[]) => {
+    if (!staffId) return;
+
+    const previous = existingPhotos;
+    const byId = new Map(previous.map((photo) => [photo.id, photo]));
+    const next = orderedIds
+      .map((id, sortOrder) => {
+        const photo = byId.get(id);
+        return photo ? { ...photo, sortOrder } : null;
+      })
+      .filter((photo): photo is StaffPhoto => Boolean(photo));
+
+    if (next.length !== previous.length) return;
+
+    setExistingPhotos(next);
+
+    const response = await fetchAdminApi(`/api/admin/staff/${staffId}/photos`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ photoIds: orderedIds }),
+    });
+
+    if (!response.ok) {
+      setExistingPhotos(previous);
+      const data = (await response.json()) as { error?: string };
+      toast.error("Could not reorder photos", { description: data.error });
+    }
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -362,7 +396,7 @@ export function StaffForm({ staffId }: StaffFormProps) {
         },
       };
 
-      const response = await fetch(
+      const response = await fetchAdminApi(
         isEditing ? `/api/admin/staff/${staffId}` : "/api/admin/staff",
         {
           method: isEditing ? "PATCH" : "POST",
@@ -383,16 +417,14 @@ export function StaffForm({ staffId }: StaffFormProps) {
 
       await uploadPhotos(data.staff.id, form.photos);
 
-      if (form.loginId.trim()) {
-        const accountResponse = await fetch(
+      const pin = form.password.trim();
+      if (pin) {
+        const accountResponse = await fetchAdminApi(
           `/api/admin/staff/${data.staff.id}/account`,
           {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              loginId: form.loginId.trim(),
-              password: form.password.trim() || undefined,
-            }),
+            body: JSON.stringify({ pin }),
           },
         );
 
@@ -405,23 +437,35 @@ export function StaffForm({ staffId }: StaffFormProps) {
         }
 
         setHasLoginAccount(true);
-        setForm((current) => ({ ...current, password: "" }));
       }
+
+      // Reload after photo uploads so newly added images appear immediately.
+      const refreshResponse = await fetchAdminApi(
+        `/api/admin/staff/${data.staff.id}`,
+      );
+      const refreshData = (await refreshResponse.json()) as {
+        staff?: StaffRecord;
+        error?: string;
+      };
+      const savedStaff = refreshData.staff ?? data.staff;
 
       toast.success(isEditing ? "Staff updated" : "Staff created");
 
-      if (!isEditing && data.staff.id) {
-        router.replace(`/admin/staff/${data.staff.id}`);
+      if (!isEditing && savedStaff.id) {
+        router.replace(`/admin/staff/${savedStaff.id}`);
         router.refresh();
         return;
       }
 
-      setForm(mapRecordToForm(data.staff, timeZone));
-      setExistingPhotos(data.staff.photos);
+      setForm({
+        ...mapRecordToForm(savedStaff, timeZone),
+        password: pin,
+      });
+      setExistingPhotos(savedStaff.photos);
       setShiftStartedAtIso(
-        typeof data.staff.attributes.shiftStartsAt === "string" &&
-          data.staff.attributes.shiftStartsAt
-          ? data.staff.attributes.shiftStartsAt
+        typeof savedStaff.attributes.shiftStartsAt === "string" &&
+          savedStaff.attributes.shiftStartsAt
+          ? savedStaff.attributes.shiftStartsAt
           : null,
       );
       router.refresh();
@@ -442,7 +486,7 @@ export function StaffForm({ staffId }: StaffFormProps) {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-3 py-4 pb-8 sm:px-4 lg:gap-6 lg:p-6">
+    <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-1 flex-col gap-4 px-3 py-4 pb-8 sm:px-4 lg:gap-6 lg:p-6">
       <div className="space-y-3">
         <Link
           href="/admin/staff"
@@ -459,12 +503,12 @@ export function StaffForm({ staffId }: StaffFormProps) {
       </div>
 
       <form
-        className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-8"
+        className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-6 pb-8"
         onSubmit={(event) => void handleSubmit(event)}
       >
         <StaffFormSection
           title="Photos"
-          description="Add up to 5 photos. The first image is the main profile photo."
+          description="Add up to 5 photos. Drag to reorder — the first image is the main profile photo."
         >
           <MultiImageUpload
             value={form.photos}
@@ -472,6 +516,9 @@ export function StaffForm({ staffId }: StaffFormProps) {
             maxFiles={5}
             onChange={(photos) => updateField("photos", photos)}
             onRemoveExisting={(photoId) => void removeExistingPhoto(photoId)}
+            onReorderExisting={(orderedIds) =>
+              void reorderExistingPhotos(orderedIds)
+            }
           />
         </StaffFormSection>
 
@@ -486,31 +533,42 @@ export function StaffForm({ staffId }: StaffFormProps) {
             />
           </StaffFormField>
 
+          <StaffFormField
+            label="Introduction"
+            htmlFor="staff-introduction"
+            hint="Shown under the name on the booking page (max 48 characters)."
+          >
+            <Input
+              id="staff-introduction"
+              value={form.introduction}
+              onChange={(event) =>
+                updateField(
+                  "introduction",
+                  event.target.value.slice(0, 48),
+                )
+              }
+              placeholder="e.g. Deep tissue specialist"
+              maxLength={48}
+              className={inputClassName}
+            />
+          </StaffFormField>
+
           <StaffFormField label="Nationality" htmlFor="staff-nationality">
-            <Select
-              value={form.nationality || undefined}
-              onValueChange={(value) => updateField("nationality", value ?? "")}
-            >
-              <SelectTrigger
-                id="staff-nationality"
-                className={cn(inputClassName, "w-full")}
-              >
-                <SelectValue placeholder="Select nationality" />
-              </SelectTrigger>
-              <SelectContent>
-                {nationalityOptions.map((option) => (
-                  <SelectItem key={option} value={option}>
-                    {option}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Input
+              id="staff-nationality"
+              value={form.nationality}
+              onChange={(event) =>
+                updateField("nationality", event.target.value)
+              }
+              placeholder="e.g. Australian, Korean"
+              className={inputClassName}
+            />
           </StaffFormField>
         </StaffFormSection>
 
         <StaffFormSection
           title="Available times"
-          description="Tap dates on the calendar to pre-schedule shifts for multiple days."
+          description="Tap dates to add or edit shifts. Remove a day with the button below the calendar."
         >
           <p className="text-xs text-muted-foreground">
             Shop time now:{" "}
@@ -561,18 +619,20 @@ export function StaffForm({ staffId }: StaffFormProps) {
           ) : null}
 
           <div className="space-y-3">
-            <p className="text-[13px] font-semibold text-foreground">Booked</p>
+            <p className="text-[13px] font-semibold text-foreground">
+              Upcoming bookings
+            </p>
             {!staffId ? (
               <p className="text-sm text-muted-foreground">
                 Save staff first to see bookings.
               </p>
-            ) : shiftBookings.length === 0 ? (
+            ) : upcomingBookings.length === 0 ? (
               <p className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-                No bookings yet.
+                No upcoming bookings.
               </p>
             ) : (
               <ul className="space-y-2">
-                {shiftBookings.map((booking) => (
+                {upcomingBookings.map((booking) => (
                   <li
                     key={booking.id}
                     className="rounded-xl border-2 border-primary/30 bg-primary/5 px-4 py-3 shadow-sm"
@@ -593,36 +653,26 @@ export function StaffForm({ staffId }: StaffFormProps) {
           </div>
         </StaffFormSection>
 
-        <StaffFormSection title="Login">
+        <StaffFormSection title="PIN login">
           <p className="mb-3 text-sm text-muted-foreground">
-            Staff sign in at /staff/login with a 4-digit PIN. The same PIN is
-            used to confirm room check-in.
+            Staff sign in at /staff/login with this 4-digit PIN only. The same
+            PIN confirms room check-in.
           </p>
-          <div className="grid gap-5 sm:grid-cols-2">
-            <StaffFormField label="Login ID" htmlFor="staff-login-id">
-              <Input
-                id="staff-login-id"
-                value={form.loginId}
-                onChange={(event) => updateField("loginId", event.target.value)}
-                placeholder="e.g. anna01"
-                className={inputClassName}
-                autoComplete="off"
-              />
-            </StaffFormField>
-
+          <div className="max-w-xs">
             <StaffFormField
               label="4-digit PIN"
               htmlFor="staff-password"
               hint={
-                hasLoginAccount
-                  ? "Leave blank to keep the current PIN."
-                  : "Required when creating a new login."
+                hasLoginAccount && !form.password
+                  ? "No saved PIN on file yet — enter a new 4-digit PIN and save."
+                  : "Visible to admins. Change anytime and save."
               }
             >
               <Input
                 id="staff-password"
-                type="password"
+                type="text"
                 inputMode="numeric"
+                pattern="[0-9]*"
                 maxLength={4}
                 value={form.password}
                 onChange={(event) =>
@@ -631,26 +681,28 @@ export function StaffForm({ staffId }: StaffFormProps) {
                     event.target.value.replace(/\D/g, "").slice(0, 4),
                   )
                 }
-                placeholder={hasLoginAccount ? "••••" : "1234"}
+                placeholder="1234"
                 className={cn(inputClassName, "tracking-[0.35em]")}
-                autoComplete="new-password"
+                autoComplete="off"
               />
             </StaffFormField>
           </div>
         </StaffFormSection>
 
-        <div className="flex flex-col-reverse gap-3 border-t border-border/40 pt-6 sm:flex-row sm:justify-end">
-          <AppButton
-            type="button"
-            variant="outline"
-            className="rounded-xl"
-            onClick={() => router.push("/admin/staff")}
-          >
-            Cancel
-          </AppButton>
-          <AppButton type="submit" className="rounded-xl" disabled={saving}>
-            {saving ? "Saving..." : "Save"}
-          </AppButton>
+        <div className="sticky bottom-16 z-20 -mx-3 mt-2 border-t border-border/50 bg-background px-3 py-3 sm:-mx-4 sm:px-4 lg:bottom-0">
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <AppButton
+              type="button"
+              variant="outline"
+              className="rounded-xl"
+              onClick={() => router.push("/admin/staff")}
+            >
+              Cancel
+            </AppButton>
+            <AppButton type="submit" className="rounded-xl" disabled={saving}>
+              {saving ? "Saving..." : "Save"}
+            </AppButton>
+          </div>
         </div>
       </form>
     </div>

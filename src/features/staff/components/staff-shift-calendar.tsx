@@ -20,7 +20,6 @@ import {
   entryFromStartAndDurationHours,
   formatDateInput,
   parseDateInput,
-  roundUpClockToHalfHour,
 } from "../utils/shift-calendar";
 import {
   formatShiftPlanDayLabel,
@@ -50,6 +49,108 @@ function formatMonthYear(date: Date): string {
     month: "long",
     year: "numeric",
   });
+}
+
+/** Parse "HH:mm" (24h) into 12-hour parts with English AM/PM. */
+function parseClockToAmPm(value: string): {
+  hour12: number;
+  minute: number;
+  period: "AM" | "PM";
+} {
+  const [hRaw = "0", mRaw = "0"] = value.split(":");
+  const hour24 = Number(hRaw) % 24;
+  const minute = Number(mRaw) || 0;
+  const period: "AM" | "PM" = hour24 >= 12 ? "PM" : "AM";
+  const hour12 = hour24 % 12 || 12;
+  return { hour12, minute, period };
+}
+
+function toClock24(
+  hour12: number,
+  minute: number,
+  period: "AM" | "PM",
+): string {
+  let hour24 = hour12 % 12;
+  if (period === "PM") hour24 += 12;
+  return `${String(hour24).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+const MINUTE_OPTIONS = [0, 15, 30, 45] as const;
+
+function AmPmTimeSelect({
+  value,
+  onChange,
+  min,
+  "aria-label": ariaLabel,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  min?: string;
+  "aria-label": string;
+}) {
+  const parts = parseClockToAmPm(value);
+  const minute =
+    MINUTE_OPTIONS.reduce((best, option) =>
+      Math.abs(option - parts.minute) < Math.abs(best - parts.minute)
+        ? option
+        : best,
+    ) ?? 0;
+
+  const commit = (
+    next: Partial<{ hour12: number; minute: number; period: "AM" | "PM" }>,
+  ) => {
+    const hour12 = next.hour12 ?? parts.hour12;
+    const nextMinute = next.minute ?? minute;
+    const period = next.period ?? parts.period;
+    let clock = toClock24(hour12, nextMinute, period);
+    if (min && clock < min) clock = min;
+    onChange(clock);
+  };
+
+  const selectClassName = cn(
+    "h-11 min-w-0 flex-1 appearance-none rounded-xl border border-border/60 bg-background px-3 text-sm font-semibold tabular-nums",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30",
+  );
+
+  return (
+    <div className="flex gap-2" aria-label={ariaLabel} lang="en">
+      <select
+        aria-label={`${ariaLabel} hour`}
+        className={selectClassName}
+        value={parts.hour12}
+        onChange={(event) => commit({ hour12: Number(event.target.value) })}
+      >
+        {Array.from({ length: 12 }, (_, index) => index + 1).map((hour) => (
+          <option key={hour} value={hour}>
+            {hour}
+          </option>
+        ))}
+      </select>
+      <select
+        aria-label={`${ariaLabel} minute`}
+        className={selectClassName}
+        value={minute}
+        onChange={(event) => commit({ minute: Number(event.target.value) })}
+      >
+        {MINUTE_OPTIONS.map((option) => (
+          <option key={option} value={option}>
+            {String(option).padStart(2, "0")}
+          </option>
+        ))}
+      </select>
+      <select
+        aria-label={`${ariaLabel} AM or PM`}
+        className={cn(selectClassName, "max-w-[5.5rem]")}
+        value={parts.period}
+        onChange={(event) =>
+          commit({ period: event.target.value as "AM" | "PM" })
+        }
+      >
+        <option value="AM">AM</option>
+        <option value="PM">PM</option>
+      </select>
+    </div>
+  );
 }
 
 function defaultEntryFromPlan(
@@ -395,118 +496,22 @@ export function StaffShiftCalendar({
             </div>
 
             <div className="mt-4 space-y-3">
-              <div>
-                <p className="mb-2 text-xs font-medium text-muted-foreground">
-                  Quick start
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {(
-                    [
-                      focusedDate === today
-                        ? {
-                            label: "Now",
-                            time: roundUpClockToHalfHour(localNow.slice(11, 16)),
-                          }
-                        : null,
-                      { label: "9:00 AM", time: "09:00" },
-                      { label: "1:00 PM", time: "13:00" },
-                      { label: "2:00 PM", time: "14:00" },
-                      { label: "6:00 PM", time: "18:00" },
-                    ] as Array<{ label: string; time: string } | null>
-                  )
-                    .filter(Boolean)
-                    .map((preset) => {
-                      const item = preset!;
-                      const disabled =
-                        Boolean(minStartTime) && item.time < minStartTime!;
-                      const selected = focusedEntry.startTime === item.time;
-                      return (
-                        <button
-                          key={item.label}
-                          type="button"
-                          disabled={disabled}
-                          onClick={() => {
-                            const duration = durationHoursForEntry(focusedEntry);
-                            updateFocusedEntry(
-                              entryFromStartAndDurationHours(
-                                item.time,
-                                duration,
-                              ),
-                            );
-                          }}
-                          className={cn(
-                            "h-9 rounded-full border px-3 text-xs font-semibold transition",
-                            selected
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-border/60 bg-background hover:bg-muted/60",
-                            disabled && "pointer-events-none opacity-40",
-                          )}
-                        >
-                          {item.label}
-                        </button>
-                      );
-                    })}
-                </div>
-              </div>
-
               <label className="block space-y-1.5">
                 <span className="text-xs font-medium text-muted-foreground">
                   Start time
                 </span>
-                <input
-                  type="time"
+                <AmPmTimeSelect
+                  aria-label="Start time"
                   value={focusedEntry.startTime}
                   min={minStartTime}
-                  onChange={(event) => {
-                    const nextStart =
-                      event.target.value || DEFAULT_SHIFT_START_TIME;
-                    const adjustedStart =
-                      minStartTime && nextStart < minStartTime
-                        ? minStartTime
-                        : nextStart;
+                  onChange={(nextStart) => {
                     const duration = durationHoursForEntry(focusedEntry);
                     updateFocusedEntry(
-                      entryFromStartAndDurationHours(adjustedStart, duration),
+                      entryFromStartAndDurationHours(nextStart, duration),
                     );
                   }}
-                  className={timeInputClassName}
                 />
               </label>
-
-              <div>
-                <p className="mb-2 text-xs font-medium text-muted-foreground">
-                  Length
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  {([8, 12, 24] as const).map((hours) => {
-                    const selected =
-                      Math.abs(durationHoursForEntry(focusedEntry) - hours) <
-                      0.01;
-                    return (
-                      <button
-                        key={hours}
-                        type="button"
-                        onClick={() =>
-                          updateFocusedEntry(
-                            entryFromStartAndDurationHours(
-                              focusedEntry.startTime,
-                              hours,
-                            ),
-                          )
-                        }
-                        className={cn(
-                          "h-11 rounded-xl border text-sm font-semibold transition",
-                          selected
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border/60 bg-background hover:bg-muted/60",
-                        )}
-                      >
-                        +{hours}h
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
 
               <label className="block space-y-1.5">
                 <span className="text-xs font-medium text-muted-foreground">
@@ -517,15 +522,14 @@ export function StaffShiftCalendar({
                     </span>
                   ) : null}
                 </span>
-                <input
-                  type="time"
+                <AmPmTimeSelect
+                  aria-label="End time"
                   value={focusedEntry.endTime}
-                  onChange={(event) => {
+                  onChange={(nextEnd) => {
                     updateFocusedEntry({
-                      endTime: event.target.value || DEFAULT_SHIFT_END_TIME,
+                      endTime: nextEnd || DEFAULT_SHIFT_END_TIME,
                     });
                   }}
-                  className={timeInputClassName}
                 />
               </label>
             </div>
@@ -639,16 +643,11 @@ export function StaffShiftCalendar({
       ) : null}
 
       <p className="text-[11px] leading-relaxed text-muted-foreground">
-        Pick any future date, then set start with quick buttons and length
-        (+8h / +12h / +24h). Example: 1:00 PM + 24h → next day 1:00 PM. Light
+        Pick any future date, then set start and end times (AM/PM). If end is
+        earlier than or equal to start, the shift ends the next day. Light
         morning marks are overnight spillover — you can still select those days
         and start a new shift there.
       </p>
     </div>
   );
 }
-
-const timeInputClassName = cn(
-  "h-11 w-full min-h-11 rounded-xl border border-border/60 bg-background px-3 text-base font-medium shadow-sm sm:text-sm",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30",
-);
