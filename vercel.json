@@ -3,6 +3,10 @@
     {
       "path": "/api/maintenance/cleanup-push-subscriptions",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/maintenance/auto-checkout-expired",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

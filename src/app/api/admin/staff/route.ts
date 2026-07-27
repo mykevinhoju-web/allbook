@@ -9,11 +9,14 @@ import {
   normalizeShiftWindow,
   toDatetimeLocalValue,
 } from "@/features/booking/lib/schedule-utils";
+import { autoCheckoutExpiredBookings } from "@/features/booking/server/auto-checkout-expired";
 import {
   createServiceSupabase,
-  requireTenantFromRequest,
-  TenantContextError,
 } from "@/lib/admin/tenant-context";
+import {
+  handleAdminRouteError,
+  requireTenantAndAdminActor,
+} from "@/lib/admin/require-admin-api";
 import {
   getShiftWindowFromAttributes,
   parseStaffAttributes,
@@ -24,7 +27,10 @@ import {
   deriveWorkingFieldsFromPlan,
   parseShiftPlan,
 } from "@/features/staff/utils/shift-plan";
-import type { StaffStatus } from "@/features/staff/types";
+import {
+  isStaffPresenceOnline,
+} from "@/features/staff/lib/staff-presence";
+import type { StaffPresence, StaffStatus } from "@/features/staff/types";
 
 function mapStaffRow(
   row: {
@@ -121,8 +127,9 @@ function deriveWorkingFields(
 
 export async function GET(request: Request) {
   try {
-    const tenant = await requireTenantFromRequest(request);
+    const { tenant } = await requireTenantAndAdminActor(request);
     const supabase = createServiceSupabase();
+    await autoCheckoutExpiredBookings(supabase, { tenantId: tenant.id });
 
     const { data: staffRows, error } = await supabase
       .from("staff")
@@ -140,38 +147,87 @@ export async function GET(request: Request) {
     const staffIds = staffRows?.map((row) => row.id) ?? [];
     let photos: { id: string; staff_id: string; url: string; sort_order: number }[] =
       [];
+    const lastSeenByStaff = new Map<string, string | null>();
+    const roomByStaff = new Map<string, string>();
 
     if (staffIds.length > 0) {
-      const { data: photoRows } = await supabase
-        .from("staff_photos")
-        .select("id, staff_id, url, sort_order")
-        .in("staff_id", staffIds);
+      const [{ data: photoRows }, { data: accountRows }, { data: activeRows }] =
+        await Promise.all([
+          supabase
+            .from("staff_photos")
+            .select("id, staff_id, url, sort_order")
+            .in("staff_id", staffIds),
+          supabase
+            .from("staff_accounts")
+            .select("staff_id, last_seen_at")
+            .eq("tenant_id", tenant.id)
+            .in("staff_id", staffIds),
+          supabase
+            .from("bookings")
+            .select("staff_id, rooms(name)")
+            .eq("tenant_id", tenant.id)
+            .in("staff_id", staffIds)
+            .not("checked_in_at", "is", null)
+            .is("checked_out_at", null)
+            .neq("status", "cancelled")
+            .neq("status", "completed"),
+        ]);
 
       photos = photoRows ?? [];
+      for (const account of accountRows ?? []) {
+        lastSeenByStaff.set(account.staff_id, account.last_seen_at);
+      }
+      for (const row of (activeRows ?? []) as Array<{
+        staff_id: string;
+        rooms?: { name: string } | { name: string }[] | null;
+      }>) {
+        const rooms = row.rooms;
+        const roomName = Array.isArray(rooms)
+          ? rooms[0]?.name
+          : rooms?.name;
+        if (roomName) {
+          roomByStaff.set(row.staff_id, roomName);
+        }
+      }
     }
 
     const timeZone = tenant.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
-    const staff = (staffRows ?? []).map((row) =>
-      mapStaffRow(
+    const now = Date.now();
+    const staff = (staffRows ?? []).map((row) => {
+      const mapped = mapStaffRow(
         row,
         photos.filter((photo) => photo.staff_id === row.id),
         timeZone,
-      ),
-    );
+      );
+      const currentRoomName = roomByStaff.get(row.id) ?? null;
+      const lastSeenAt = lastSeenByStaff.get(row.id) ?? null;
+      const online =
+        Boolean(currentRoomName) || isStaffPresenceOnline(lastSeenAt, now);
+      const presence: StaffPresence = currentRoomName
+        ? "in_service"
+        : online
+          ? "online"
+          : "offline";
+
+      return {
+        ...mapped,
+        presence,
+        currentRoomName,
+        lastSeenAt,
+      };
+    });
 
     return NextResponse.json({ staff, timeZone });
   } catch (error) {
-    if (error instanceof TenantContextError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
-    }
-
+    const guard = handleAdminRouteError(error);
+    if (guard) return guard;
     throw error;
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const tenant = await requireTenantFromRequest(request);
+    const { tenant } = await requireTenantAndAdminActor(request);
     const body = (await request.json()) as {
       name?: string;
       status?: StaffStatus;
@@ -249,10 +305,8 @@ export async function POST(request: Request) {
       staff: mapStaffRow(data, [], timeZone),
     });
   } catch (error) {
-    if (error instanceof TenantContextError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
-    }
-
+    const guard = handleAdminRouteError(error);
+    if (guard) return guard;
     throw error;
   }
 }

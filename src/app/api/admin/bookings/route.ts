@@ -8,13 +8,16 @@ import {
 } from "@/features/booking/lib/staff-conflict";
 import { isBookingOverlapConstraintError, isRoomOverlapConstraintError } from "@/features/booking/lib/validate-booking-update";
 import { isStartTimeOnFiveMinuteSlot } from "@/features/booking/lib/schedule-utils";
+import { autoCheckoutExpiredBookings } from "@/features/booking/server/auto-checkout-expired";
 import { getServicePriceCents } from "@/features/services/server/get-service-price";
 import { sendBookingPushNotifications } from "@/lib/push/send-booking-push";
 import {
   createServiceSupabase,
-  requireTenantFromRequest,
-  TenantContextError,
 } from "@/lib/admin/tenant-context";
+import {
+  handleAdminRouteError,
+  requireTenantAndAdminActor,
+} from "@/lib/admin/require-admin-api";
 import type { BookingStatus } from "@/types";
 
 function isOverlapConstraintError(error: { code?: string; message?: string } | null) {
@@ -110,7 +113,9 @@ function mapBooking(row: {
 
 export async function GET(request: Request) {
   try {
-    const tenant = await requireTenantFromRequest(request);
+    const { tenant } = await requireTenantAndAdminActor(request, {
+      allowStaff: true,
+    });
     const { searchParams } = new URL(request.url);
     const date = searchParams.get("date");
     const from = searchParams.get("from");
@@ -142,6 +147,7 @@ export async function GET(request: Request) {
     }
 
     const supabase = createServiceSupabase();
+    await autoCheckoutExpiredBookings(supabase, { tenantId: tenant.id });
     let query = supabase
       .from("bookings")
       .select(
@@ -173,17 +179,17 @@ export async function GET(request: Request) {
       bookings: (data ?? []).map((row) => mapBooking(row)),
     });
   } catch (error) {
-    if (error instanceof TenantContextError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
-    }
-
+    const guard = handleAdminRouteError(error);
+    if (guard) return guard;
     throw error;
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const tenant = await requireTenantFromRequest(request);
+    const { tenant } = await requireTenantAndAdminActor(request, {
+      allowStaff: true,
+    });
     const body = (await request.json()) as {
       staffId?: string;
       startsAt?: string;
@@ -361,10 +367,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ booking: created });
   } catch (error) {
-    if (error instanceof TenantContextError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
-    }
-
+    const guard = handleAdminRouteError(error);
+    if (guard) return guard;
     throw error;
   }
 }
