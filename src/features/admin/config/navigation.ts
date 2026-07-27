@@ -36,11 +36,6 @@ export const adminNavItems: AdminNavItem[] = [
     icon: CalendarDays,
   },
   {
-    title: "Guide sample",
-    href: "/admin/bookings/samples/guide",
-    icon: LayoutGrid,
-  },
-  {
     title: "Rooms",
     href: "/admin/rooms",
     icon: DoorOpen,
