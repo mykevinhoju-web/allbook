@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 
-import { AppButton, MultiImageUpload, toast } from "@/components/common";
+import { AppButton, ConfirmDialog, MultiImageUpload, toast } from "@/components/common";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -137,6 +137,8 @@ export function StaffForm({ staffId }: StaffFormProps) {
   const [hasLoginAccount, setHasLoginAccount] = useState(false);
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [shiftBookings, setShiftBookings] = useState<ShiftBookingRow[]>([]);
   /** ISO timestamp saved when the current availability window was opened. */
   const [shiftStartedAtIso, setShiftStartedAtIso] = useState<string | null>(
@@ -333,6 +335,32 @@ export function StaffForm({ staffId }: StaffFormProps) {
       setExistingPhotos(previous);
       const data = (await response.json()) as { error?: string };
       toast.error("Could not reorder photos", { description: data.error });
+    }
+  };
+
+  const handleDeleteStaff = async () => {
+    if (!staffId || deleting) return;
+
+    setDeleting(true);
+    try {
+      const response = await fetchAdminApi(`/api/admin/staff/${staffId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        const data = (await response.json()) as { error?: string };
+        throw new Error(data.error ?? "Failed to delete staff.");
+      }
+      toast.success("Staff deleted");
+      setConfirmDeleteOpen(false);
+      router.push("/admin/staff");
+      router.refresh();
+    } catch (error) {
+      toast.error("Could not delete staff", {
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+      });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -687,6 +715,24 @@ export function StaffForm({ staffId }: StaffFormProps) {
               />
             </StaffFormField>
           </div>
+
+          {isEditing ? (
+            <div className="mt-6 border-t border-border/50 pt-4">
+              <p className="mb-3 text-sm text-muted-foreground">
+                Permanently remove this staff profile, photos, and PIN login.
+              </p>
+              <AppButton
+                type="button"
+                variant="outline"
+                className="rounded-xl border-destructive/40 text-destructive hover:bg-destructive/5 hover:text-destructive"
+                disabled={deleting}
+                onClick={() => setConfirmDeleteOpen(true)}
+              >
+                <Trash2 className="size-4" />
+                Delete staff
+              </AppButton>
+            </div>
+          ) : null}
         </StaffFormSection>
 
         <div className="sticky bottom-16 z-20 -mx-3 mt-2 border-t border-border/50 bg-background px-3 py-3 sm:-mx-4 sm:px-4 lg:bottom-0">
@@ -705,6 +751,16 @@ export function StaffForm({ staffId }: StaffFormProps) {
           </div>
         </div>
       </form>
+
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        title="Delete staff member?"
+        description="This removes the staff profile, photos, and PIN login. Existing bookings may need to be reassigned. This cannot be undone."
+        confirmLabel={deleting ? "Deleting..." : "Delete"}
+        variant="danger"
+        onConfirm={() => void handleDeleteStaff()}
+      />
     </div>
   );
 }
