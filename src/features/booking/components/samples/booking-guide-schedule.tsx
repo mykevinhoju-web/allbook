@@ -145,17 +145,18 @@ export function BookingGuideScheduleSample() {
     (
       targetMs: number,
       behavior: ScrollBehavior = "smooth",
-      align: "start" | "center" | "past" = "past",
+      align: "start" | "center" | "past" = "start",
+      ppm = pxPerMinute,
     ) => {
       const el = scrollerRef.current;
       if (!el) return;
-      const targetLeft = ((targetMs - dayStartMs) / 60_000) * pxPerMinute;
+      const targetLeft = ((targetMs - dayStartMs) / 60_000) * ppm;
       const visible = Math.max(280, el.clientWidth - LABEL_WIDTH);
       let left = targetLeft;
       if (align === "center") {
         left = targetLeft - visible / 2;
       } else if (align === "past") {
-        left = targetLeft - PAST_HOURS_ON_OPEN * 60 * pxPerMinute;
+        left = targetLeft - PAST_HOURS_ON_OPEN * 60 * ppm;
       }
       el.scrollTo({ left: Math.max(0, left), behavior });
     },
@@ -187,40 +188,57 @@ export function BookingGuideScheduleSample() {
     void load();
   }, [load]);
 
-  // Fit ~6 hours into the visible timeline area.
+  // Measure scale, then scroll so "now" is at the left edge of the timeline.
   useEffect(() => {
+    if (loading) return;
     const el = scrollerRef.current;
     if (!el) return;
-    const measure = () => {
-      const visible = Math.max(280, el.clientWidth - LABEL_WIDTH);
-      setPxPerMinute(visible / (VIEWPORT_HOURS * 60));
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [loading]);
 
-  // First paint / date change: now with ~2h behind (near center of 6h view).
-  useEffect(() => {
-    if (loading || didInitialScroll.current) return;
-    const today = todayDateInZone(timeZone, now);
-    const id = window.requestAnimationFrame(() => {
+    const measurePpm = () => {
+      const visible = Math.max(280, el.clientWidth - LABEL_WIDTH);
+      return visible / (VIEWPORT_HOURS * 60);
+    };
+
+    const scrollInitial = (ppm: number) => {
+      if (didInitialScroll.current) return;
+      const today = todayDateInZone(timeZone);
       if (date === today) {
-        scrollToTime(now.getTime(), "auto", "past");
+        scrollToTime(Date.now(), "auto", "start", ppm);
         setActiveJump("now");
       } else {
         scrollToTime(
           zonedHourMs(date, DAY_START_HOUR, timeZone),
           "auto",
           "start",
+          ppm,
         );
         setActiveJump("morning");
       }
       didInitialScroll.current = true;
+    };
+
+    let cancelled = false;
+    const id = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        if (cancelled) return;
+        const ppm = measurePpm();
+        setPxPerMinute(ppm);
+        scrollInitial(ppm);
+      });
     });
-    return () => window.cancelAnimationFrame(id);
-  }, [loading, date, timeZone, now, scrollToTime]);
+
+    const ro = new ResizeObserver(() => {
+      const ppm = measurePpm();
+      setPxPerMinute(ppm);
+    });
+    ro.observe(el);
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(id);
+      ro.disconnect();
+    };
+  }, [loading, date, timeZone, staff.length, scrollToTime]);
 
   const bookingsByStaff = useMemo(() => {
     const map = new Map<string, AdminBooking[]>();
@@ -282,8 +300,8 @@ export function BookingGuideScheduleSample() {
             TV Guide schedule
           </h1>
           <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            Starts with ~{PAST_HOURS_ON_OPEN}h before now (now near the middle).
-            Drag or swipe sideways for earlier or later times.
+            Opens at the current time. Drag or swipe sideways for earlier or
+            later times.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -326,11 +344,7 @@ export function BookingGuideScheduleSample() {
             onClick={() => {
               setActiveJump(item.id);
               const target = jumpTargetMs(item.id, date, timeZone, now);
-              scrollToTime(
-                target,
-                "smooth",
-                item.id === "now" ? "past" : "start",
-              );
+              scrollToTime(target, "smooth", "start");
             }}
             className={cn(
               "rounded-full px-3 py-1.5 text-sm font-medium transition",
@@ -393,17 +407,17 @@ export function BookingGuideScheduleSample() {
                   {now.getTime() >= dayStartMs &&
                   now.getTime() <= dayEndMs ? (
                     <div
-                      className="absolute top-0 z-20 flex h-full flex-col items-center"
+                      className="pointer-events-none absolute top-0 z-20 h-full"
                       style={{
                         left:
                           ((now.getTime() - dayStartMs) / 60_000) *
                           pxPerMinute,
                       }}
                     >
-                      <span className="-translate-x-1/2 whitespace-nowrap rounded bg-sky-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow">
+                      <span className="absolute left-0 top-0.5 -translate-x-1/2 whitespace-nowrap rounded bg-sky-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow">
                         {formatAmPmTime(now.toISOString())}
                       </span>
-                      <div className="w-0.5 flex-1 bg-sky-500" />
+                      <div className="absolute inset-y-0 left-0 w-0.5 -translate-x-1/2 bg-sky-500" />
                     </div>
                   ) : null}
                 </div>
@@ -448,7 +462,7 @@ export function BookingGuideScheduleSample() {
                       {now.getTime() >= dayStartMs &&
                       now.getTime() <= dayEndMs ? (
                         <div
-                          className="absolute inset-y-0 z-10 w-[2px] bg-sky-500"
+                          className="pointer-events-none absolute inset-y-0 z-10 w-0.5 -translate-x-1/2 bg-sky-500"
                           style={{
                             left:
                               ((now.getTime() - dayStartMs) / 60_000) *
@@ -524,15 +538,25 @@ export function BookingGuideScheduleSample() {
       </div>
 
       {selectedId ? (
-        <GuideBookingBriefCard
-          booking={bookings.find((b) => b.id === selectedId) ?? null}
-          timeZone={timeZone}
-          onClose={() => setSelectedId(null)}
-          onCancelled={() => {
-            setSelectedId(null);
-            void load();
-          }}
-        />
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+          onClick={() => setSelectedId(null)}
+        >
+          <div
+            className="w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GuideBookingBriefCard
+              booking={bookings.find((b) => b.id === selectedId) ?? null}
+              timeZone={timeZone}
+              onClose={() => setSelectedId(null)}
+              onCancelled={() => {
+                setSelectedId(null);
+                void load();
+              }}
+            />
+          </div>
+        </div>
       ) : null}
     </div>
   );
@@ -599,7 +623,7 @@ function GuideBookingBriefCard({
   ].filter(Boolean);
 
   return (
-    <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-soft md:max-w-md">
+    <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-soft-lg">
       <div className="space-y-3 text-sm">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
