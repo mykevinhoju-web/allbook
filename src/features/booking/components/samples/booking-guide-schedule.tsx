@@ -31,11 +31,7 @@ const HEADER_HEIGHT = 44;
 /** Fixed guide windows: 00–06, 06–12, 12–18, 18–24. */
 const BLOCK_HOURS = 6;
 const BLOCKS_PER_DAY = 24 / BLOCK_HOURS; // 4
-/**
- * Calendar day starts at local midnight (00:00 / 12:00 AM).
- * Next Day always opens on the 00–06 AM block.
- */
-const DAY_START_HOUR = 0;
+/** Next Day always opens on the 00–06 AM block (calendar midnight). */
 
 type DayBlock = 0 | 1 | 2 | 3;
 
