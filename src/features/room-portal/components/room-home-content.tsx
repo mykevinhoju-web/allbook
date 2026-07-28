@@ -28,7 +28,6 @@ import {
   DEFAULT_PRICING_ADJUSTMENTS,
   type PricingAdjustments,
 } from "@/features/services/lib/pricing-adjustments";
-import type { ServiceOption } from "@/features/services";
 import {
   formatPriceFromCents,
   formatServiceOptionLabel,
@@ -272,7 +271,26 @@ export function RoomHomeContent() {
       const nextStaff = data.staff ?? null;
       setStaff(nextStaff);
       setPin("");
-      toast.success(`Welcome ${nextStaff?.name ?? ""}`.trim());
+
+      const scheduleRes = await fetch(`/api/staff/schedule?date=${today}`);
+      const scheduleData = (await scheduleRes.json()) as {
+        bookings?: AdminBooking[];
+      };
+      const nextBookings = scheduleRes.ok ? (scheduleData.bookings ?? []) : [];
+      setStaffBookings(nextBookings);
+      await loadRoomSchedule();
+
+      const resumed = nextBookings.some((booking) =>
+        isBookingCheckedIn(booking),
+      );
+
+      if (resumed) {
+        toast.success(`Welcome back ${nextStaff?.name ?? ""}`.trim(), {
+          description: "Service still running — timer resumed.",
+        });
+      } else {
+        toast.success(`Welcome ${nextStaff?.name ?? ""}`.trim());
+      }
       if (nextStaff) {
         void broadcastStaffPresence(tenant.slug, {
           type: "online",
@@ -281,8 +299,6 @@ export function RoomHomeContent() {
           roomName: roomLabel,
         }).catch(() => {});
       }
-      await loadStaffSchedule();
-      await loadRoomSchedule();
     } finally {
       setPinLoading(false);
     }
@@ -544,9 +560,7 @@ export function RoomHomeContent() {
           return;
         }
         toast.success(
-          reason === "auto"
-            ? "Time is up - staff signed out"
-            : "Service ended - back to PIN",
+          reason === "auto" ? "Time is up — service ended" : "Service ended",
         );
         if (staff) {
           void broadcastStaffPresence(tenant.slug, {
@@ -603,6 +617,8 @@ export function RoomHomeContent() {
 
   const staffLogout = async () => {
     const current = staff;
+    const serviceStillRunning = Boolean(activeBooking);
+    // Lock tablet only — never check out / end the in-progress booking.
     await fetch("/api/room/staff/logout", { method: "POST" });
     if (current) {
       void broadcastStaffPresence(tenant.slug, {
@@ -615,7 +631,11 @@ export function RoomHomeContent() {
     setStaff(null);
     setStaffBookings([]);
     setPin("");
-    toast.success("Staff signed out");
+    toast.success(
+      serviceStillRunning
+        ? "Tablet locked — service still running. Enter PIN to return."
+        : "Tablet locked",
+    );
   };
 
   if (staff) {
@@ -639,7 +659,7 @@ export function RoomHomeContent() {
             onClick={() => void staffLogout()}
           >
             <LogOut className="size-5" />
-            PIN screen
+            Lock
           </AppButton>
         </div>
 
@@ -876,12 +896,15 @@ export function RoomHomeContent() {
 
                 <AppButton
                   type="button"
-                  className="mt-5 h-14 w-full rounded-2xl bg-emerald-700 text-lg hover:bg-emerald-800 md:h-16 md:text-xl"
+                  className="mt-5 h-14 w-full rounded-2xl bg-red-700 text-lg text-white hover:bg-red-800 md:h-16 md:text-xl"
                   disabled={actionId === activeBooking.id}
                   onClick={() => void endService(activeBooking, "manual")}
                 >
                   {actionId === activeBooking.id ? "Ending..." : "End service"}
                 </AppButton>
+                <p className="mt-2 text-center text-xs text-muted-foreground">
+                  Only this button ends the service. Lock keeps it running.
+                </p>
               </div>
             ) : (
               <div className="rounded-3xl border border-dashed border-border bg-muted/40 px-5 py-5 md:px-6">
@@ -969,6 +992,11 @@ export function RoomHomeContent() {
     router.refresh();
   };
 
+  const roomServiceInProgress = useMemo(
+    () => bookings.some((booking) => isBookingCheckedIn(booking)),
+    [bookings],
+  );
+
   return (
     <div className="flex min-h-[calc(100svh-2rem)] flex-col justify-center md:min-h-[calc(100svh-4rem)]">
       <RoomPwaSetup />
@@ -979,6 +1007,12 @@ export function RoomHomeContent() {
         <h1 className="mt-3 text-center text-6xl font-bold tracking-tight text-foreground md:text-7xl lg:text-8xl">
           {roomLabel}
         </h1>
+        {roomServiceInProgress ? (
+          <p className="mt-6 rounded-2xl bg-emerald-50 px-4 py-3 text-center text-sm font-medium text-emerald-800 md:text-base">
+            Service in progress — enter staff PIN to return. Lock does not end
+            the service.
+          </p>
+        ) : null}
         <p className="mt-8 text-center text-base font-medium text-muted-foreground md:mt-10 md:text-lg">
           Staff PIN
         </p>
