@@ -349,6 +349,11 @@ export function BookingScheduleContent() {
       return;
     }
 
+    if (form.paymentMethod !== "cash" && form.paymentMethod !== "card") {
+      toast.error("Select cash or card payment");
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -375,6 +380,7 @@ export function BookingScheduleContent() {
           customerPhone: form.customerPhone.trim(),
           customerPostcode: form.customerPostcode.trim() || undefined,
           customerEmail: form.customerEmail.trim() || undefined,
+          paymentMethod: form.paymentMethod,
         }),
       });
 

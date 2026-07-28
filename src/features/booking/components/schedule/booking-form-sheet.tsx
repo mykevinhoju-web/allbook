@@ -20,6 +20,7 @@ import {
   DEFAULT_PRICING_ADJUSTMENTS,
   type PricingAdjustments,
 } from "@/features/services/lib/pricing-adjustments";
+import type { InternalPaymentMethod } from "@/features/booking/lib/internal-payment-method";
 
 import { bookingCustomerTheme as theme } from "../../lib/booking-customer-theme";
 import {
@@ -48,6 +49,7 @@ export interface BookingFormValues {
   customerPhone: string;
   customerPostcode: string;
   customerEmail: string;
+  paymentMethod: InternalPaymentMethod | "";
 }
 
 export const defaultBookingFormValues: BookingFormValues = {
@@ -59,6 +61,7 @@ export const defaultBookingFormValues: BookingFormValues = {
   customerPhone: "",
   customerPostcode: "",
   customerEmail: "",
+  paymentMethod: "",
 };
 
 export interface BookingTimeSlotOption {
@@ -299,6 +302,10 @@ export function BookingFormSheet({
           timeZone,
           channel: "internal",
           adjustments: pricingAdjustments,
+          paymentMethod:
+            values.paymentMethod === "cash" || values.paymentMethod === "card"
+              ? values.paymentMethod
+              : null,
         })
       : null;
 
@@ -554,17 +561,63 @@ export function BookingFormSheet({
           </div>
 
           <div className="shrink-0 border-t border-stone-100 bg-white px-4 py-4">
+            <div className="mb-3">
+              <p className="mb-2 text-xs font-medium text-stone-500">
+                Payment method
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  [
+                    { value: "cash" as const, label: "Cash" },
+                    { value: "card" as const, label: "Card" },
+                  ] as const
+                ).map((option) => {
+                  const selected = values.paymentMethod === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => update("paymentMethod", option.value)}
+                      className={cn(
+                        "min-h-11 rounded-xl border text-sm font-semibold transition",
+                        selected
+                          ? "border-[#8A6A3A] bg-[#8A6A3A]/10 text-stone-900 ring-2 ring-[#8A6A3A]/25"
+                          : "border-stone-200 bg-white text-stone-700 active:bg-stone-50",
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {values.paymentMethod === "cash" &&
+              pricingAdjustments.discountApplyInternal &&
+              pricingAdjustments.discountCents > 0 ? (
+                <p className="mt-2 text-xs text-stone-500">
+                  Cash discount applied when saving
+                </p>
+              ) : values.paymentMethod === "card" ? (
+                <p className="mt-2 text-xs text-stone-500">
+                  Card · recorded for sales, no payment terminal
+                </p>
+              ) : (
+                <p className="mt-2 text-xs text-stone-500">
+                  Select cash or card · no payment screen
+                </p>
+              )}
+            </div>
             <button
               type="button"
-              disabled={submitting || serviceOptions.length === 0}
+              disabled={
+                submitting ||
+                serviceOptions.length === 0 ||
+                !values.paymentMethod
+              }
               onClick={onSubmit}
               className={theme.goldButton}
             >
               {submitting ? "Saving…" : "Create booking"}
             </button>
-            <p className="mt-2 text-center text-xs text-stone-500">
-              Walk-in · no card payment on admin create
-            </p>
           </div>
         </div>
       </SheetContent>

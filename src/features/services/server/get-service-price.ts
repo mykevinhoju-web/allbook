@@ -57,6 +57,7 @@ export async function computeBookingPriceCents(
     timeZone: string;
     channel: BookingPriceChannel;
     adjustments?: PricingAdjustments;
+    paymentMethod?: "cash" | "card" | null;
   },
 ): Promise<BookingPriceBreakdown | null> {
   const baseCents = await getServicePriceCents(
@@ -76,5 +77,6 @@ export async function computeBookingPriceCents(
     timeZone: args.timeZone,
     channel: args.channel,
     adjustments,
+    paymentMethod: args.paymentMethod,
   });
 }

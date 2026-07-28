@@ -38,17 +38,29 @@ assert(nightExternal.nightSurchargeCents === 2000, "night surcharge applied");
 assert(nightExternal.discountCents === 0, "external discount off");
 assert(nightExternal.totalCents === 7500, "55+20=75");
 
-const nightInternal = applyPricingAdjustments({
+const nightInternalCash = applyPricingAdjustments({
   baseCents: 5500,
   startsAtIso: nightStart,
   timeZone: tz,
   channel: "internal",
   adjustments,
+  paymentMethod: "cash",
 });
-assert(nightInternal.discountCents === 1000, "internal discount on");
-assert(nightInternal.totalCents === 6500, "55+20-10=65");
+assert(nightInternalCash.discountCents === 1000, "cash discount on");
+assert(nightInternalCash.totalCents === 6500, "55+20-10=65");
 
-const morning = "2026-07-28T23:30:00.000Z"; // 09:30 Sydney next day? Jul 28 23:30Z = Jul 29 09:30 Sydney
+const nightInternalCard = applyPricingAdjustments({
+  baseCents: 5500,
+  startsAtIso: nightStart,
+  timeZone: tz,
+  channel: "internal",
+  adjustments,
+  paymentMethod: "card",
+});
+assert(nightInternalCard.discountCents === 0, "card discount off");
+assert(nightInternalCard.totalCents === 7500, "55+20=75");
+
+const morning = "2026-07-28T23:30:00.000Z"; // 09:30 Sydney
 assert(isNightSurchargeStart(morning, tz), "09:30 should be night window");
 
 const afterTen = "2026-07-29T00:05:00.000Z"; // 10:05 Sydney

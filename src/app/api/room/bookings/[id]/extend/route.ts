@@ -11,6 +11,7 @@ import {
 } from "@/features/booking/lib/staff-conflict";
 import { isRoomOverlapConstraintError } from "@/features/booking/lib/validate-booking-update";
 import { computeBookingPriceCents } from "@/features/services/server/get-service-price";
+import { parsePaymentMethodFromNotes } from "@/features/booking/lib/internal-payment-method";
 import {
   createServiceSupabase,
   requireTenantFromRequest,
@@ -81,7 +82,7 @@ export async function POST(
     const { data: existing, error: fetchError } = await supabase
       .from("bookings")
       .select(
-        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, status, checked_out_at, checked_in_at, price_cents, payment_status",
+        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, status, checked_out_at, checked_in_at, price_cents, payment_status, notes",
       )
       .eq("tenant_id", tenant.id)
       .eq("id", id)
@@ -180,14 +181,16 @@ export async function POST(
 
     let priceCents = existing.price_cents;
     try {
+      const paymentMethod = parsePaymentMethodFromNotes(existing.notes);
+      const isInternal = existing.payment_status === "not_required";
       const priced = await computeBookingPriceCents(supabase, {
         tenantId: tenant.id,
         durationMinutes,
         startsAtIso: existing.starts_at,
         timeZone: tenant.settings.timezone || "Australia/Sydney",
-        channel:
-          existing.payment_status === "not_required" ? "internal" : "external",
+        channel: isInternal ? "internal" : "external",
         adjustments: tenant.settings.pricingAdjustments,
+        paymentMethod: isInternal ? paymentMethod : null,
       });
       if (priced && priced.totalCents > 0) priceCents = priced.totalCents;
     } catch {

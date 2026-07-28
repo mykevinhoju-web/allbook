@@ -3,6 +3,12 @@ import { NextResponse } from "next/server";
 
 import { assignAvailableRoom } from "@/features/booking/lib/assign-room";
 import {
+  isInternalPaymentMethod,
+  parsePaymentMethodFromNotes,
+  stripPaymentMethodNote,
+  withPaymentMethodNote,
+} from "@/features/booking/lib/internal-payment-method";
+import {
   hasRoomBookingConflict,
   hasStaffBookingConflict,
 } from "@/features/booking/lib/staff-conflict";
@@ -105,7 +111,8 @@ function mapBooking(row: {
     customerPhone: row.customer_phone,
     customerPostcode: row.customer_postcode,
     customerEmail: row.customer_email,
-    notes: row.notes,
+    notes: stripPaymentMethodNote(row.notes) || null,
+    paymentMethod: parsePaymentMethodFromNotes(row.notes),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -201,6 +208,7 @@ export async function POST(request: Request) {
       notes?: string;
       status?: BookingStatus;
       roomId?: string | null;
+      paymentMethod?: string;
     };
 
     if (!body.staffId || !body.startsAt || !body.durationMinutes) {
@@ -217,6 +225,14 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!isInternalPaymentMethod(body.paymentMethod)) {
+      return NextResponse.json(
+        { error: "Select cash or card payment." },
+        { status: 400 },
+      );
+    }
+    const paymentMethod = body.paymentMethod;
+
     const durationMinutes = body.durationMinutes;
     const supabase = createServiceSupabase();
     const timeZone = tenant.settings.timezone || "Australia/Sydney";
@@ -228,6 +244,7 @@ export async function POST(request: Request) {
       timeZone,
       channel: "internal",
       adjustments: tenant.settings.pricingAdjustments,
+      paymentMethod,
     });
 
     if (priced === null) {
@@ -323,11 +340,13 @@ export async function POST(request: Request) {
         duration_minutes: durationMinutes,
         price_cents: priceCents,
         status: body.status ?? "confirmed",
+        // Counts toward revenue; no Stripe checkout for walk-in cash/card.
+        payment_status: "not_required",
         customer_name: body.customerName.trim(),
         customer_phone: body.customerPhone.trim(),
         customer_postcode: body.customerPostcode?.trim() ?? null,
         customer_email: body.customerEmail?.trim() ?? null,
-        notes: body.notes ?? null,
+        notes: withPaymentMethodNote(paymentMethod, body.notes),
       })
       .select(
         "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, status, checked_out_at, checked_in_at, customer_name, customer_phone, customer_postcode, customer_email, notes, created_at, updated_at, staff(name), rooms(name)",

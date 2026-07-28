@@ -11,7 +11,7 @@ export interface PricingAdjustments {
   nightSurchargeCents: number;
   /** Flat discount (cents). 0 = off. */
   discountCents: number;
-  /** Apply discount on admin / walk-in bookings. */
+  /** Apply discount on admin cash walk-in bookings (not card). */
   discountApplyInternal: boolean;
   /** Apply discount on customer online bookings. */
   discountApplyExternal: boolean;
@@ -76,6 +76,11 @@ export function applyPricingAdjustments(args: {
   timeZone: string;
   channel: BookingPriceChannel;
   adjustments: PricingAdjustments;
+  /**
+   * Internal bookings: discount only for cash.
+   * Ignored for external (uses discountApplyExternal).
+   */
+  paymentMethod?: "cash" | "card" | null;
 }): BookingPriceBreakdown {
   const adjustments = mergePricingAdjustments(args.adjustments);
   const nightSurchargeCents =
@@ -85,9 +90,9 @@ export function applyPricingAdjustments(args: {
       : 0;
 
   const discountAllowed =
-    args.channel === "internal"
-      ? adjustments.discountApplyInternal
-      : adjustments.discountApplyExternal;
+    args.channel === "external"
+      ? adjustments.discountApplyExternal
+      : adjustments.discountApplyInternal && args.paymentMethod === "cash";
   const discountCents =
     discountAllowed && adjustments.discountCents > 0
       ? adjustments.discountCents

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
 import {
+  parsePaymentMethodFromNotes,
+  stripPaymentMethodNote,
+} from "@/features/booking/lib/internal-payment-method";
+import {
   isBookingOverlapConstraintError,
   isRoomOverlapConstraintError,
   validateBookingUpdate,
@@ -57,7 +61,8 @@ function mapBooking(row: {
     customerPhone: row.customer_phone,
     customerPostcode: row.customer_postcode,
     customerEmail: row.customer_email,
-    notes: row.notes,
+    notes: stripPaymentMethodNote(row.notes) || null,
+    paymentMethod: parsePaymentMethodFromNotes(row.notes),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -86,7 +91,7 @@ export async function PATCH(
     const supabase = createServiceSupabase();
     const { data: existing } = await supabase
       .from("bookings")
-      .select("starts_at, duration_minutes, staff_id, room_id")
+      .select("starts_at, duration_minutes, staff_id, room_id, notes")
       .eq("tenant_id", tenant.id)
       .eq("id", id)
       .maybeSingle();
@@ -162,6 +167,7 @@ export async function PATCH(
         timeZone: tenant.settings.timezone || "Australia/Sydney",
         channel: "internal",
         adjustments: tenant.settings.pricingAdjustments,
+        paymentMethod: parsePaymentMethodFromNotes(existing.notes),
       });
 
       if (priced === null) {

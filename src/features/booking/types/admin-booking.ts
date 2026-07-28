@@ -16,6 +16,8 @@ export interface AdminBooking {
   customerPostcode: string | null;
   customerEmail: string | null;
   notes: string | null;
+  /** Admin walk-in: cash (discount eligible) or card (no discount). */
+  paymentMethod?: "cash" | "card" | null;
 }
 
 export interface AdminRoom {
@@ -23,4 +25,8 @@ export interface AdminRoom {
   name: string;
   sortOrder: number;
   isActive: boolean;
+  tabletClaimed?: boolean;
+  claimedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }

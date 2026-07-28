@@ -292,7 +292,8 @@ export function ServicePricingContent() {
       <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft sm:p-6">
         <h2 className="text-sm font-semibold text-foreground">Discount</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Flat amount subtracted from the booking total. Choose where it applies.
+          Flat amount subtracted from the booking total. Internal discount
+          applies to cash walk-ins only (not card).
         </p>
         <div className="mt-4 max-w-xs space-y-1">
           <label
@@ -320,7 +321,7 @@ export function ServicePricingContent() {
               checked={discountApplyInternal}
               onChange={(event) => setDiscountApplyInternal(event.target.checked)}
             />
-            Internal (admin / walk-in)
+            Internal cash (admin / walk-in)
           </label>
           <label className="flex items-center gap-2 text-sm text-foreground">
             <input
