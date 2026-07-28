@@ -14,6 +14,8 @@ import { AppButton, toast } from "@/components/common";
 import { fetchAdminApi } from "@/features/admin/lib/admin-api-client";
 import { useTenant } from "@/features/tenants";
 import type { StaffRecord } from "@/features/staff/types";
+import { isStaffWorkingOnDate, parseDaySchedule } from "@/features/staff/utils/day-schedule";
+import { parseShiftPlan } from "@/features/staff/utils/shift-plan";
 import { cn } from "@/lib/utils";
 import { useNowTick } from "@/hooks/use-now-tick";
 
@@ -22,6 +24,7 @@ import {
   formatBookingSummary,
   todayDateInZone,
 } from "../../lib/schedule-utils";
+import { useBookingRealtime } from "../../lib/booking-schedule-realtime";
 import type { AdminBooking } from "../../types/admin-booking";
 import { isBookingCheckedIn } from "../../lib/booking-check-in";
 
@@ -217,9 +220,11 @@ export function BookingGuideScheduleSample() {
   const nearDayEnd = block === BLOCKS_PER_DAY - 1;
   const atDayStart = block === 0;
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    didInitView.current = false;
+  const load = useCallback(async (opts?: { soft?: boolean }) => {
+    if (!opts?.soft) {
+      setLoading(true);
+      didInitView.current = false;
+    }
     try {
       const [staffRes, bookingRes] = await Promise.all([
         fetchAdminApi("/api/admin/staff"),
@@ -234,13 +239,17 @@ export function BookingGuideScheduleSample() {
         setBookings(data.bookings ?? []);
       }
     } finally {
-      setLoading(false);
+      if (!opts?.soft) setLoading(false);
     }
   }, [date]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useBookingRealtime(tenant.id, () => {
+    void load({ soft: true });
+  });
 
   // Open on the 6h block that contains "now" (or 00–06 for other days).
   useEffect(() => {
@@ -254,6 +263,25 @@ export function BookingGuideScheduleSample() {
     }
     didInitView.current = true;
   }, [loading, date, timeZone, now]);
+
+  const displayStaff = useMemo(() => {
+    const active = staff
+      .filter((member) => member.status === "active")
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+
+    const working = active.filter((member) =>
+      isStaffWorkingOnDate(
+        member.status,
+        parseDaySchedule(member.attributes.daySchedule),
+        date,
+        parseShiftPlan(member.attributes.shiftPlan),
+        timeZone,
+      ),
+    );
+
+    // Prefer staff with a shift today; fall back to all active if none scheduled.
+    return working.length > 0 ? working : active;
+  }, [staff, date, timeZone]);
 
   const bookingsByStaff = useMemo(() => {
     const map = new Map<string, AdminBooking[]>();
@@ -318,8 +346,8 @@ export function BookingGuideScheduleSample() {
             Staff schedule
           </h1>
           <p className="mt-0.5 text-xs text-muted-foreground md:text-sm">
-            {formatDayChip(date, timeZone)} · 6-hour blocks · Next Day →
-            midnight
+            Live staff & bookings · {formatDayChip(date, timeZone)} · 6-hour
+            blocks
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -351,7 +379,7 @@ export function BookingGuideScheduleSample() {
       <div className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl border border-border/70 bg-card shadow-soft">
         {loading ? (
           <p className="p-6 text-sm text-muted-foreground">Loading schedule…</p>
-        ) : staff.length === 0 ? (
+        ) : displayStaff.length === 0 ? (
           <p className="p-6 text-sm text-muted-foreground">No staff found.</p>
         ) : (
           <div className="flex h-full max-h-[min(58vh,560px)] flex-col md:max-h-[min(65vh,640px)]">
@@ -451,7 +479,7 @@ export function BookingGuideScheduleSample() {
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto">
-              {staff.map((member) => {
+              {displayStaff.map((member) => {
                 const rowBookings = bookingsByStaff.get(member.id) ?? [];
                 return (
                   <div
