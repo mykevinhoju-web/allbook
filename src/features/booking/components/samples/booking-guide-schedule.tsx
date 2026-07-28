@@ -33,6 +33,44 @@ const BLOCK_HOURS = 6;
 const BLOCKS_PER_DAY = 24 / BLOCK_HOURS; // 4
 /** Next Day always opens on the 00–06 AM block (calendar midnight). */
 
+/** Solid block colors so back-to-back bookings read as clear edges (no rounded gaps). */
+const BOOKING_BLOCK_PALETTE = [
+  {
+    idle: "border-sky-500/50 bg-sky-200 text-sky-950",
+    active: "border-sky-600 bg-sky-300 text-sky-950",
+    muted: "text-sky-800/80",
+  },
+  {
+    idle: "border-violet-500/50 bg-violet-200 text-violet-950",
+    active: "border-violet-600 bg-violet-300 text-violet-950",
+    muted: "text-violet-800/80",
+  },
+  {
+    idle: "border-amber-500/50 bg-amber-200 text-amber-950",
+    active: "border-amber-600 bg-amber-300 text-amber-950",
+    muted: "text-amber-900/80",
+  },
+  {
+    idle: "border-emerald-500/50 bg-emerald-200 text-emerald-950",
+    active: "border-emerald-600 bg-emerald-300 text-emerald-950",
+    muted: "text-emerald-800/80",
+  },
+  {
+    idle: "border-rose-500/50 bg-rose-200 text-rose-950",
+    active: "border-rose-600 bg-rose-300 text-rose-950",
+    muted: "text-rose-800/80",
+  },
+  {
+    idle: "border-teal-500/50 bg-teal-200 text-teal-950",
+    active: "border-teal-600 bg-teal-300 text-teal-950",
+    muted: "text-teal-800/80",
+  },
+] as const;
+
+function bookingBlockTone(index: number) {
+  return BOOKING_BLOCK_PALETTE[index % BOOKING_BLOCK_PALETTE.length]!;
+}
+
 type DayBlock = 0 | 1 | 2 | 3;
 
 function addDaysIso(date: string, days: number): string {
@@ -455,7 +493,7 @@ export function BookingGuideScheduleSample() {
                           style={{ left: `${nowPct}%` }}
                         />
                       ) : null}
-                      {rowBookings.map((booking) => {
+                      {rowBookings.map((booking, bookingIndex) => {
                         const bStart = new Date(booking.startsAt).getTime();
                         const bEnd = new Date(booking.endsAt).getTime();
                         if (bEnd <= viewStartMs || bStart >= viewEndMs) {
@@ -471,28 +509,32 @@ export function BookingGuideScheduleSample() {
                         );
                         const active = isBookingCheckedIn(booking);
                         const selected = selectedId === booking.id;
+                        const tone = bookingBlockTone(bookingIndex);
                         return (
                           <button
                             key={booking.id}
                             type="button"
                             onClick={() => setSelectedId(booking.id)}
                             className={cn(
-                              "absolute top-1.5 overflow-hidden rounded-lg border px-2 py-1.5 text-left shadow-sm transition",
-                              active
-                                ? "border-sky-500/40 bg-sky-500/15"
-                                : "border-border/80 bg-card hover:border-primary/40",
-                              selected && "ring-2 ring-primary/50",
+                              "absolute inset-y-0 z-[1] overflow-hidden rounded-none border border-y-0 border-l px-1.5 py-1 text-left transition hover:brightness-[0.97]",
+                              "border-r-2",
+                              active ? tone.active : tone.idle,
+                              selected && "z-[2] ring-2 ring-inset ring-primary",
                             )}
                             style={{
                               left: `${leftPct}%`,
                               width: `${widthPct}%`,
-                              height: ROW_HEIGHT - 12,
                             }}
                           >
-                            <p className="truncate text-sm font-semibold text-foreground">
+                            <p className="truncate text-sm font-semibold leading-tight">
                               {booking.customerName?.trim() || "Guest"}
                             </p>
-                            <p className="truncate text-[11px] text-muted-foreground">
+                            <p
+                              className={cn(
+                                "truncate text-[11px] leading-tight",
+                                tone.muted,
+                              )}
+                            >
                               {formatAmPmTime(booking.startsAt)}
                               {booking.roomName
                                 ? ` · ${booking.roomName}`
