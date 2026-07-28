@@ -538,9 +538,9 @@ export function BookingFormSheet({
             </div>
           </div>
 
-          <div className="shrink-0 border-t border-stone-100 bg-white px-4 py-4">
+          <div className="shrink-0 border-t border-stone-300 bg-stone-200/90 px-4 py-4 shadow-[0_-8px_24px_rgba(28,25,23,0.08)]">
             {displayPriceCents != null ? (
-              <div className="mb-3 rounded-xl bg-stone-50 px-3 py-2.5">
+              <div className="mb-3 rounded-xl border border-stone-300/70 bg-white px-3 py-2.5 shadow-sm">
                 <div className="flex items-baseline justify-between gap-3">
                   <p className="text-xs font-medium text-stone-500">Total</p>
                   <p className="text-xl font-semibold text-stone-900">
