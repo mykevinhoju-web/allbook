@@ -7,6 +7,7 @@ import { useOptionalTenant } from "@/features/tenants";
 import {
   PORTAL_THEME_CLASS,
   PORTAL_THEME_FIELDS,
+  resolveMutedForeground,
   type PortalThemeColors,
 } from "./portal-theme";
 
@@ -14,11 +15,15 @@ const OVERRIDE_VARS = [
   ...PORTAL_THEME_FIELDS.map((field) => field.cssVar),
   "--ring",
   "--sidebar-primary",
+  "--card-foreground",
+  "--popover-foreground",
+  "--sidebar-foreground",
 ];
 
 function applyColorOverrides(colors?: PortalThemeColors | null) {
   const root = document.documentElement;
   for (const field of PORTAL_THEME_FIELDS) {
+    if (field.key === "mutedForeground") continue;
     const value = colors?.[field.key];
     if (value) {
       root.style.setProperty(field.cssVar, value);
@@ -27,7 +32,20 @@ function applyColorOverrides(colors?: PortalThemeColors | null) {
     }
   }
 
-  // Keep related chrome tokens in sync with the chosen primary.
+  const mutedForeground = resolveMutedForeground(colors);
+  root.style.setProperty("--muted-foreground", mutedForeground);
+
+  const foreground = colors?.foreground;
+  if (foreground) {
+    root.style.setProperty("--card-foreground", foreground);
+    root.style.setProperty("--popover-foreground", foreground);
+    root.style.setProperty("--sidebar-foreground", foreground);
+  } else {
+    root.style.removeProperty("--card-foreground");
+    root.style.removeProperty("--popover-foreground");
+    root.style.removeProperty("--sidebar-foreground");
+  }
+
   const primary = colors?.primary;
   if (primary) {
     root.style.setProperty("--ring", primary);

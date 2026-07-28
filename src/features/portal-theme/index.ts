@@ -3,9 +3,11 @@ export {
   PORTAL_THEME_CLASS,
   PORTAL_THEME_COLOR,
   PORTAL_THEME_FIELDS,
+  hexLuminance,
   isHexColor,
   mergePortalTheme,
   parsePortalTheme,
+  resolveMutedForeground,
   type PortalThemeColors,
   type PortalThemeFieldKey,
 } from "./portal-theme";

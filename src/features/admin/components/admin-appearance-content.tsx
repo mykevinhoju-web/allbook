@@ -60,7 +60,7 @@ export function AdminAppearanceContent() {
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
       <AdminPageHeader
         title="Appearance"
-        description="Colors for the room tablet only. Admin, staff, and customer booking stay unchanged."
+        description="Colors for the room tablet only. Secondary text controls labels like “This tablet”, “Staff PIN”, and “Change room”. Admin, staff, and customer booking stay unchanged."
       />
 
       <div className="grid gap-4 rounded-2xl border border-border/60 bg-card p-4 shadow-soft md:max-w-2xl md:p-6">

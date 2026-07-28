@@ -599,7 +599,7 @@ export function RoomHomeContent() {
         <button
           type="button"
           onClick={() => void changeRoom()}
-          className="mt-10 w-full text-center text-sm text-muted-foreground underline-offset-4 hover:text-muted-foreground hover:underline md:mt-12 md:text-base"
+          className="mt-10 w-full text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline md:mt-12 md:text-base"
         >
           Change room
         </button>
