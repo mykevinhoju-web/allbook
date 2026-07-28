@@ -109,8 +109,8 @@ export function BookingCustomerDateTimePicker({
   const [minute, setMinute] = useState<number | "">("");
 
   const dayOptions = useMemo(
-    () => daysForMonth(dateOptions, monthKey),
-    [dateOptions, monthKey],
+    () => daysForMonth(dateOptions, monthKey, undefined, date),
+    [dateOptions, monthKey, date],
   );
 
   const clocks = useMemo(

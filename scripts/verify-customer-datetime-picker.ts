@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
 
 import {
+  BOOKABLE_DAYS_PER_MONTH,
+  BOOKABLE_MONTHS,
   availableHours,
   availableMinutes,
   availablePeriods,
   buildBookableDateOptions,
   buildSlotClocks,
+  daysForMonth,
   findSlotIso,
   uniqueMonths,
 } from "../src/features/booking/lib/customer-datetime-picker-utils";
@@ -30,9 +33,16 @@ assert.deepEqual(availableMinutes(clocks, "PM", 1), [30]);
 const iso = findSlotIso(clocks, "PM", 2, 0);
 assert.equal(iso, "2026-07-27T14:00:00+10:00");
 
-const dates = buildBookableDateOptions("2026-07-27", 13);
-assert.equal(dates.length, 14);
+const dates = buildBookableDateOptions("2026-07-27");
 assert.equal(dates[0]?.value, "2026-07-27");
-assert.ok(uniqueMonths(dates).length >= 1);
+assert.equal(uniqueMonths(dates).length, BOOKABLE_MONTHS);
+
+const julyDays = daysForMonth(dates, "2026-07");
+assert.ok(julyDays.length <= BOOKABLE_DAYS_PER_MONTH);
+assert.equal(julyDays[0]?.value, "2026-07-27");
+
+const augustDays = daysForMonth(dates, "2026-08");
+assert.equal(augustDays.length, BOOKABLE_DAYS_PER_MONTH);
+assert.equal(augustDays[0]?.value, "2026-08-01");
 
 console.log("verify-customer-datetime-picker: ok");

@@ -24,14 +24,19 @@ export interface SlotClockParts {
   iso: string;
 }
 
-const BOOKABLE_DAYS_AHEAD = 13;
+/** Month dropdown covers this many calendar months from today. */
+export const BOOKABLE_MONTHS = 3;
+/** Day dropdown shows about one week of options per selected month. */
+export const BOOKABLE_DAYS_PER_MONTH = 7;
+/** Generate enough days to cover BOOKABLE_MONTHS. */
+const BOOKABLE_DAYS_AHEAD = BOOKABLE_MONTHS * 31;
 const MINUTE_STEP = 10;
 
 export function buildBookableDateOptions(
   today: string,
   daysAhead = BOOKABLE_DAYS_AHEAD,
 ): BookableDateOption[] {
-  return Array.from({ length: daysAhead + 1 }, (_, index) => {
+  const all = Array.from({ length: daysAhead + 1 }, (_, index) => {
     const value = addDaysToDateInput(today, index);
     const monthKey = value.slice(0, 7);
     const day = Number(value.slice(8, 10));
@@ -46,6 +51,16 @@ export function buildBookableDateOptions(
       }),
     };
   });
+
+  const monthKeys: string[] = [];
+  for (const option of all) {
+    if (!monthKeys.includes(option.monthKey)) {
+      monthKeys.push(option.monthKey);
+    }
+    if (monthKeys.length >= BOOKABLE_MONTHS) break;
+  }
+  const allowed = new Set(monthKeys.slice(0, BOOKABLE_MONTHS));
+  return all.filter((option) => allowed.has(option.monthKey));
 }
 
 export function uniqueMonths(
@@ -60,11 +75,35 @@ export function uniqueMonths(
   return [...seen.entries()].map(([key, label]) => ({ key, label }));
 }
 
+/**
+ * Days for the selected month — about one week, so the list stays short.
+ * Current month: next days from today. Later months: first week of that month.
+ * Always keeps `selectedDate` in the list when it falls in this month.
+ */
 export function daysForMonth(
   options: BookableDateOption[],
   monthKey: string,
+  dayLimit = BOOKABLE_DAYS_PER_MONTH,
+  selectedDate?: string,
 ): BookableDateOption[] {
-  return options.filter((option) => option.monthKey === monthKey);
+  const inMonth = options.filter((option) => option.monthKey === monthKey);
+  if (dayLimit <= 0) return inMonth;
+
+  const limited = inMonth.slice(0, dayLimit);
+  if (
+    !selectedDate ||
+    !selectedDate.startsWith(monthKey) ||
+    limited.some((option) => option.value === selectedDate)
+  ) {
+    return limited;
+  }
+
+  const selected = inMonth.find((option) => option.value === selectedDate);
+  if (!selected) return limited;
+
+  return [...limited.slice(0, Math.max(0, dayLimit - 1)), selected].sort((a, b) =>
+    a.value.localeCompare(b.value),
+  );
 }
 
 export function parseSlotClock(
