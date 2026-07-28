@@ -1,7 +1,7 @@
 "use client";
 
 import { createClient } from "@supabase/supabase-js";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import type { Database } from "@/types/database";
 
@@ -39,9 +39,14 @@ export function useBookingRealtime(
   tenantId: string | undefined,
   onChange: () => void,
 ) {
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
   useEffect(() => {
     if (!tenantId) return undefined;
 
-    return subscribeToBookingUpdates(tenantId, onChange);
-  }, [tenantId, onChange]);
+    return subscribeToBookingUpdates(tenantId, () => {
+      onChangeRef.current();
+    });
+  }, [tenantId]);
 }

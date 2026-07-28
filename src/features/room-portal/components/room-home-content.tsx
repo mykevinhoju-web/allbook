@@ -127,8 +127,8 @@ export function RoomHomeContent() {
   const [actionId, setActionId] = useState<string | null>(null);
   const autoEndingRef = useRef<string | null>(null);
 
-  const loadRoomSchedule = useCallback(async () => {
-    setLoadingSchedule(true);
+  const loadRoomSchedule = useCallback(async (opts?: { soft?: boolean }) => {
+    if (!opts?.soft) setLoadingSchedule(true);
     try {
       const response = await fetch(`/api/room/schedule?date=${today}`);
       const data = (await response.json()) as {
@@ -141,12 +141,14 @@ export function RoomHomeContent() {
         return;
       }
       if (!response.ok) {
-        toast.error("Could not load schedule", { description: data.error });
+        if (!opts?.soft) {
+          toast.error("Could not load schedule", { description: data.error });
+        }
         return;
       }
       setBookings(data.bookings ?? []);
     } finally {
-      setLoadingSchedule(false);
+      if (!opts?.soft) setLoadingSchedule(false);
     }
   }, [router, today]);
 
@@ -173,19 +175,31 @@ export function RoomHomeContent() {
     }
   }, [today]);
 
-  const refreshAll = useCallback(async () => {
-    await loadRoomSchedule();
-    const signedIn = await loadStaffMe();
-    if (signedIn) await loadStaffSchedule();
-  }, [loadRoomSchedule, loadStaffMe, loadStaffSchedule]);
+  const refreshAll = useCallback(
+    async (opts?: { soft?: boolean }) => {
+      await loadRoomSchedule(opts);
+      const signedIn = await loadStaffMe();
+      if (signedIn) await loadStaffSchedule();
+      else setStaffBookings([]);
+    },
+    [loadRoomSchedule, loadStaffMe, loadStaffSchedule],
+  );
 
   useEffect(() => {
     void refreshAll();
   }, [refreshAll]);
 
   useBookingRealtime(tenant.id, () => {
-    void refreshAll();
+    void refreshAll({ soft: true });
   });
+
+  // Tablet fallback if realtime is delayed or drops.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      void refreshAll({ soft: true });
+    }, 45_000);
+    return () => window.clearInterval(id);
+  }, [refreshAll]);
 
   const submitPin = async (nextPin: string) => {
     if (nextPin.length !== 4 || pinLoading) return;
@@ -246,10 +260,14 @@ export function RoomHomeContent() {
     return getActiveCheckedInBooking(staffBookings);
   }, [staff, staffBookings]);
 
-  const actionable = useMemo(() => {
+  const staffDayBookings = useMemo(() => {
     if (!staff) return [];
-    return staffBookings.filter((booking) => canCheckInToBooking(booking, now));
-  }, [staff, staffBookings, now]);
+    return staffBookings.filter(
+      (booking) =>
+        booking.status !== "cancelled" &&
+        (!activeBooking || booking.id !== activeBooking.id),
+    );
+  }, [staff, staffBookings, activeBooking]);
 
   const remainingMs = activeBooking
     ? new Date(activeBooking.endsAt).getTime() - now.getTime()
@@ -531,33 +549,46 @@ export function RoomHomeContent() {
                 Your bookings today
               </p>
               <ul className="mt-4 space-y-3">
-                {actionable.length === 0 && !activeBooking ? (
+                {staffDayBookings.length === 0 && !activeBooking ? (
                   <li className="rounded-2xl bg-muted px-4 py-5 text-base text-muted-foreground">
-                    No bookings ready for check-in.
+                    No bookings for you today yet.
                   </li>
                 ) : (
-                  actionable.map((booking) => (
-                    <li
-                      key={booking.id}
-                      className="flex items-center justify-between gap-4 rounded-2xl border border-border/60 px-4 py-4"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-base font-medium md:text-lg">
-                          {formatAmPmTime(booking.startsAt)} ·{" "}
-                          {booking.customerName || "Guest"}
-                        </p>
-                        <p className="text-sm text-muted-foreground">Ready to enter</p>
-                      </div>
-                      <AppButton
-                        type="button"
-                        className="h-12 shrink-0 rounded-2xl px-5 text-base md:h-14 md:px-6 md:text-lg"
-                        disabled={actionId === booking.id}
-                        onClick={() => void checkIn(booking.id)}
+                  staffDayBookings.map((booking) => {
+                    const ready = canCheckInToBooking(booking, now);
+                    const label = bookingStateLabel(booking, now);
+                    return (
+                      <li
+                        key={booking.id}
+                        className="flex items-center justify-between gap-4 rounded-2xl border border-border/60 px-4 py-4"
                       >
-                        Enter
-                      </AppButton>
-                    </li>
-                  ))
+                        <div className="min-w-0">
+                          <p className="text-base font-medium md:text-lg">
+                            {formatAmPmTime(booking.startsAt)} ·{" "}
+                            {booking.customerName || "Guest"}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {label}
+                            {booking.roomName ? ` · ${booking.roomName}` : ""}
+                          </p>
+                        </div>
+                        {ready ? (
+                          <AppButton
+                            type="button"
+                            className="h-12 shrink-0 rounded-2xl px-5 text-base md:h-14 md:px-6 md:text-lg"
+                            disabled={actionId === booking.id}
+                            onClick={() => void checkIn(booking.id)}
+                          >
+                            Enter
+                          </AppButton>
+                        ) : (
+                          <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground md:text-sm">
+                            {label}
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })
                 )}
               </ul>
             </div>
