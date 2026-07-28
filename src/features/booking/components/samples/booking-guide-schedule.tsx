@@ -104,7 +104,7 @@ function zonedClockParts(ms: number, timeZone: string) {
   };
 }
 
-/** TV-guide labels: "9 PM" on the hour, "9:30" on half-hours. */
+/** Tick labels: "9 PM" on the hour, "9:30" on half-hours. */
 function formatGuideTick(ms: number, timeZone: string): string {
   const { hour, minute } = zonedClockParts(ms, timeZone);
   const h12 = hour % 12 || 12;
@@ -277,11 +277,11 @@ export function BookingGuideScheduleSample() {
       <div className="flex shrink-0 flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div className="min-w-0">
           <h1 className="text-lg font-semibold tracking-tight md:text-2xl">
-            TV Guide schedule
+            Staff schedule
           </h1>
           <p className="mt-0.5 text-xs text-muted-foreground md:text-sm">
-            {formatDayChip(date, timeZone)} · blocks 00–06 / 06–12 / 12–18 /
-            18–24 · Next Day → 00–06
+            {formatDayChip(date, timeZone)} · 6-hour blocks · Next Day →
+            midnight
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -312,12 +312,56 @@ export function BookingGuideScheduleSample() {
 
       <div className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl border border-border/70 bg-card shadow-soft">
         {loading ? (
-          <p className="p-6 text-sm text-muted-foreground">Loading guide…</p>
+          <p className="p-6 text-sm text-muted-foreground">Loading schedule…</p>
         ) : staff.length === 0 ? (
           <p className="p-6 text-sm text-muted-foreground">No staff found.</p>
         ) : (
           <div className="flex h-full max-h-[min(58vh,560px)] flex-col md:max-h-[min(65vh,640px)]">
-            {/* Time rail with TV-guide style prev / next */}
+            {/* Block navigation — above the time rail so labels stay visible */}
+            <div className="flex shrink-0 items-center gap-2 border-b border-border/70 px-2 py-2 md:px-3">
+              <div
+                className="hidden shrink-0 sm:block"
+                style={{ width: LABEL_WIDTH }}
+              />
+              <button
+                type="button"
+                onClick={goPrev}
+                className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-teal-700 text-white hover:bg-teal-800"
+                aria-label={atDayStart ? "Previous day" : "Earlier"}
+              >
+                <ChevronLeft className="size-5" />
+              </button>
+              <div
+                className={cn(
+                  "flex min-w-0 flex-1 items-center justify-center rounded-xl px-3 py-1.5 text-center text-xs font-semibold tabular-nums md:text-sm",
+                  amWindow ? "bg-sky-500/15 text-sky-950" : "bg-amber-500/15 text-amber-950",
+                )}
+              >
+                <span className="truncate">
+                  {amWindow ? "AM" : "PM"} · {blockRangeLabel(block)} ·{" "}
+                  {formatDayChip(date, timeZone)}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={goNextOrNextDay}
+                className={cn(
+                  "inline-flex h-9 shrink-0 items-center justify-center gap-1 rounded-xl bg-teal-700 px-2.5 text-[11px] font-bold uppercase tracking-wide text-white hover:bg-teal-800",
+                  nearDayEnd ? "min-w-[6.5rem]" : "w-9",
+                )}
+                aria-label={nearDayEnd ? "Next day" : "Later"}
+              >
+                {nearDayEnd ? (
+                  <>
+                    Next Day
+                    <ChevronRight className="size-4" />
+                  </>
+                ) : (
+                  <ChevronRight className="size-5" />
+                )}
+              </button>
+            </div>
+
             <div
               className="relative flex shrink-0 items-stretch border-b border-border/70"
               style={{ height: HEADER_HEIGHT }}
@@ -334,37 +378,6 @@ export function BookingGuideScheduleSample() {
                   amWindow ? "bg-sky-500/10" : "bg-amber-500/10",
                 )}
               >
-                <button
-                  type="button"
-                  onClick={goPrev}
-                  className="absolute left-0 top-0 z-20 flex h-full w-9 items-center justify-center bg-teal-700 text-white hover:bg-teal-800"
-                  aria-label={atDayStart ? "Previous day" : "Earlier"}
-                >
-                  <ChevronLeft className="size-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={goNextOrNextDay}
-                  className={cn(
-                    "absolute right-0 top-0 z-20 flex h-full items-center justify-center gap-1 bg-teal-700 px-2 text-[11px] font-bold uppercase tracking-wide text-white hover:bg-teal-800",
-                    nearDayEnd ? "min-w-[5.5rem]" : "w-9",
-                  )}
-                  aria-label={nearDayEnd ? "Next day" : "Later"}
-                >
-                  {nearDayEnd ? (
-                    <>
-                      Next Day
-                      <ChevronRight className="size-4" />
-                    </>
-                  ) : (
-                    <ChevronRight className="size-5" />
-                  )}
-                </button>
-
-                <div className="pointer-events-none absolute left-10 top-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {amWindow ? "AM" : "PM"} · {blockRangeLabel(block)} ·{" "}
-                  {formatDayChip(date, timeZone)}
-                </div>
                 {timeMarks.map((mark) => {
                   const { minute } = zonedClockParts(mark, timeZone);
                   return (
