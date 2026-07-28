@@ -45,9 +45,10 @@ const canEnter =
 assert.equal(roomServiceInProgress, true);
 assert.equal(canEnter, false);
 
+const noActiveBooking = null;
 const emptyRoomCanEnter =
   canCheckInToBooking(nextBooking, now) &&
-  !null &&
+  !noActiveBooking &&
   ![nextBooking].some((booking) => isBookingCheckedIn(booking));
 assert.equal(emptyRoomCanEnter, true);
 
