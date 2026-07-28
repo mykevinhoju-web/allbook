@@ -638,6 +638,11 @@ export function RoomHomeContent() {
     );
   };
 
+  const roomServiceInProgress = useMemo(
+    () => bookings.some((booking) => isBookingCheckedIn(booking)),
+    [bookings],
+  );
+
   if (staff) {
     return (
       <div className="space-y-5 md:space-y-6">
@@ -991,11 +996,6 @@ export function RoomHomeContent() {
     router.replace("/room/login");
     router.refresh();
   };
-
-  const roomServiceInProgress = useMemo(
-    () => bookings.some((booking) => isBookingCheckedIn(booking)),
-    [bookings],
-  );
 
   return (
     <div className="flex min-h-[calc(100svh-2rem)] flex-col justify-center md:min-h-[calc(100svh-4rem)]">
