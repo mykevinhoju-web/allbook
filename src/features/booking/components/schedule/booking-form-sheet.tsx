@@ -292,25 +292,27 @@ export function BookingFormSheet({
     (option) => String(option.durationMinutes) === values.durationMinutes,
   );
 
-  const priceBreakdown =
-    selectedOption && values.startsAt
-      ? applyPricingAdjustments({
-          baseCents: selectedOption.priceCents,
-          startsAtIso: isIsoDateTime(values.startsAt)
-            ? values.startsAt
-            : buildStartsAtIso(date, values.startsAt),
-          timeZone,
-          channel: "internal",
-          adjustments: pricingAdjustments,
-          paymentMethod:
-            values.paymentMethod === "cash" || values.paymentMethod === "card"
-              ? values.paymentMethod
-              : null,
-        })
-      : null;
+  const startsAtIsoForPrice = values.startsAt
+    ? isIsoDateTime(values.startsAt)
+      ? values.startsAt
+      : buildStartsAtIso(date, values.startsAt)
+    : buildStartsAtIso(date, "12:00");
 
-  const displayPriceCents =
-    priceBreakdown?.totalCents ?? selectedOption?.priceCents ?? null;
+  const priceBreakdown = selectedOption
+    ? applyPricingAdjustments({
+        baseCents: selectedOption.priceCents,
+        startsAtIso: startsAtIsoForPrice,
+        timeZone,
+        channel: "internal",
+        adjustments: pricingAdjustments,
+        paymentMethod:
+          values.paymentMethod === "cash" || values.paymentMethod === "card"
+            ? values.paymentMethod
+            : null,
+      })
+    : null;
+
+  const displayPriceCents = priceBreakdown?.totalCents ?? null;
 
   const durationMinutes = Number(values.durationMinutes) || 0;
   const timePickerDisabled = !values.staffId || !values.durationMinutes;
@@ -416,30 +418,6 @@ export function BookingFormSheet({
                     );
                   })}
                 </div>
-                {selectedOption && displayPriceCents != null ? (
-                  <div className={theme.priceBox}>
-                    <p className={theme.priceLabel}>Amount</p>
-                    <p className="mt-1 text-xl font-semibold text-stone-800">
-                      {formatPriceFromCents(displayPriceCents, currency)}
-                    </p>
-                    {priceBreakdown &&
-                    (priceBreakdown.nightSurchargeCents > 0 ||
-                      priceBreakdown.discountCents > 0) ? (
-                      <p className="mt-1 text-xs text-stone-500">
-                        {priceBreakdown.nightSurchargeCents > 0
-                          ? `+ night ${formatPriceFromCents(priceBreakdown.nightSurchargeCents, currency)}`
-                          : ""}
-                        {priceBreakdown.nightSurchargeCents > 0 &&
-                        priceBreakdown.discountCents > 0
-                          ? " · "
-                          : ""}
-                        {priceBreakdown.discountCents > 0
-                          ? `− discount ${formatPriceFromCents(priceBreakdown.discountCents, currency)}`
-                          : ""}
-                      </p>
-                    ) : null}
-                  </div>
-                ) : null}
               </FormField>
             </div>
 
@@ -561,6 +539,37 @@ export function BookingFormSheet({
           </div>
 
           <div className="shrink-0 border-t border-stone-100 bg-white px-4 py-4">
+            {displayPriceCents != null ? (
+              <div className="mb-3 rounded-xl bg-stone-50 px-3 py-2.5">
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="text-xs font-medium text-stone-500">Total</p>
+                  <p className="text-xl font-semibold text-stone-900">
+                    {formatPriceFromCents(displayPriceCents, currency)}
+                  </p>
+                </div>
+                {priceBreakdown &&
+                (priceBreakdown.nightSurchargeCents > 0 ||
+                  priceBreakdown.discountCents > 0) ? (
+                  <p className="mt-1 text-right text-xs text-stone-500">
+                    {priceBreakdown.nightSurchargeCents > 0
+                      ? `+ night ${formatPriceFromCents(priceBreakdown.nightSurchargeCents, currency)}`
+                      : ""}
+                    {priceBreakdown.nightSurchargeCents > 0 &&
+                    priceBreakdown.discountCents > 0
+                      ? " · "
+                      : ""}
+                    {priceBreakdown.discountCents > 0
+                      ? `− cash discount ${formatPriceFromCents(priceBreakdown.discountCents, currency)}`
+                      : ""}
+                  </p>
+                ) : !values.startsAt ? (
+                  <p className="mt-1 text-right text-xs text-stone-400">
+                    Night surcharge updates after time is set
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
             <div className="mb-3">
               <p className="mb-2 text-xs font-medium text-stone-500">
                 Payment method
