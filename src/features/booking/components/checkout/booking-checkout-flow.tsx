@@ -29,6 +29,14 @@ import {
   formatCustomerBookingName,
   isValidCustomerBookingNameParts,
 } from "../../lib/customer-booking-name";
+import {
+  AU_MOBILE_PREFIX,
+  formatAuMobileInput,
+  formatAuPostcodeInput,
+  isValidAuMobile,
+  isValidAuPostcode,
+  normalizeAuMobile,
+} from "../../lib/au-contact";
 
 type Step = "form" | "payment" | "done";
 
@@ -90,7 +98,7 @@ export function BookingCheckoutFlow({
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [customerFirstName, setCustomerFirstName] = useState("");
   const [customerSecondName, setCustomerSecondName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerPhone, setCustomerPhone] = useState(AU_MOBILE_PREFIX);
   const [customerPostcode, setCustomerPostcode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -240,7 +248,8 @@ export function BookingCheckoutFlow({
     Boolean(startsAt) &&
     Boolean(durationMinutes) &&
     isValidCustomerBookingNameParts(customerFirstName, customerSecondName) &&
-    customerPhone.trim().length > 0;
+    isValidAuMobile(customerPhone) &&
+    isValidAuPostcode(customerPostcode);
 
   const goToPayment = async () => {
     setFormHint(null);
@@ -256,8 +265,12 @@ export function BookingCheckoutFlow({
       setFormHint("Enter your first name and second name.");
       return;
     }
-    if (!customerPhone.trim()) {
-      setFormHint("Please enter your phone number.");
+    if (!isValidAuMobile(customerPhone)) {
+      setFormHint("Enter a valid Australian mobile (04XX XXX XXX).");
+      return;
+    }
+    if (!isValidAuPostcode(customerPostcode)) {
+      setFormHint("Enter a valid 4-digit Australian postcode.");
       return;
     }
 
@@ -277,8 +290,8 @@ export function BookingCheckoutFlow({
           startsAt,
           durationMinutes: Number(durationMinutes),
           customerName,
-          customerPhone: customerPhone.trim(),
-          customerPostcode: customerPostcode.trim() || undefined,
+          customerPhone: normalizeAuMobile(customerPhone),
+          customerPostcode: formatAuPostcodeInput(customerPostcode),
         }),
       });
 
@@ -541,24 +554,48 @@ export function BookingCheckoutFlow({
                   <Input
                     value={customerPhone}
                     onChange={(event) => {
-                      setCustomerPhone(event.target.value);
+                      setCustomerPhone(formatAuMobileInput(event.target.value));
                       setFormHint(null);
                       setError(null);
                     }}
+                    onBlur={() => {
+                      setCustomerPhone((current) =>
+                        formatAuMobileInput(current || AU_MOBILE_PREFIX),
+                      );
+                    }}
                     className={fieldClass}
-                    placeholder="04xx xxx xxx"
+                    placeholder="04XX XXX XXX"
                     inputMode="tel"
+                    autoComplete="tel-national"
+                    maxLength={12}
+                    aria-label="Australian mobile number"
                   />
+                  <p className={cn(theme.helperText, "mt-1 px-0.5")}>
+                    Australian mobile — starts with 04
+                  </p>
                 </div>
 
                 <div>
                   <label className={labelClass}>Post code</label>
                   <Input
                     value={customerPostcode}
-                    onChange={(event) => setCustomerPostcode(event.target.value)}
+                    onChange={(event) => {
+                      setCustomerPostcode(
+                        formatAuPostcodeInput(event.target.value),
+                      );
+                      setFormHint(null);
+                      setError(null);
+                    }}
                     className={fieldClass}
                     placeholder="2000"
+                    inputMode="numeric"
+                    autoComplete="postal-code"
+                    maxLength={4}
+                    aria-label="Australian postcode"
                   />
+                  <p className={cn(theme.helperText, "mt-1 px-0.5")}>
+                    4-digit Australian postcode
+                  </p>
                 </div>
 
                 <div className={theme.priceBox}>
