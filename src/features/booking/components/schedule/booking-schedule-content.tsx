@@ -22,7 +22,19 @@ import {
   parseDaySchedule,
 } from "@/features/staff/utils/day-schedule";
 import { parseShiftPlan } from "@/features/staff/utils/shift-plan";
+import {
+  getStaffShiftLabelForDate,
+  isStaffBookableOnDate,
+} from "@/features/staff/utils/shift-label";
 import { cn } from "@/lib/utils";
+import { fetchAdminApi } from "@/features/admin/lib/admin-api-client";
+
+import {
+  adminBookingSheetBodyClassName,
+  adminBookingSheetClassName,
+  adminBookingSheetHandleClassName,
+  adminBookingSheetScrollClassName,
+} from "../../lib/admin-booking-sheet";
 
 import { useBookingRealtime } from "../../lib/booking-schedule-realtime";
 import { useBookingAlerts } from "../../context/booking-alert-provider";
@@ -36,8 +48,11 @@ import {
   resolveBookingStartsAt,
   formatScheduleDate,
   isValidServiceDuration,
-  todayDateInputValue,
+  todayDateInZone,
 } from "../../lib/schedule-utils";
+import { filterActiveRoomBookings } from "../../lib/room-occupancy";
+import { useNowTick } from "@/hooks/use-now-tick";
+import { computeScheduleGridWindow } from "../../lib/schedule-grid-utils";
 import type { AdminBooking } from "../../types/admin-booking";
 import {
   BookingFormSheet,
@@ -52,8 +67,12 @@ import { BookingDetailSheet } from "./booking-detail-sheet";
 export function BookingScheduleContent() {
   const tenant = useTenant();
   const searchParams = useSearchParams();
-  const { alertsEnabled, notifyBooking } = useBookingAlerts();
-  const [date, setDate] = useState(todayDateInputValue());
+  const { notifyBooking } = useBookingAlerts();
+  const now = useNowTick(60_000);
+  const today = todayDateInZone(tenant.settings.timezone, now);
+  const [date, setDate] = useState(() =>
+    todayDateInZone(tenant.settings.timezone),
+  );
   const [staff, setStaff] = useState<StaffRecord[]>([]);
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
   const [rooms, setRooms] = useState<{ id: string; name: string }[]>([]);
@@ -74,15 +93,36 @@ export function BookingScheduleContent() {
 
   const loadSchedule = useCallback(async () => {
     try {
-      const [staffResponse, bookingsResponse, optionsResponse, roomsResponse] =
+      const timeZone = tenant.settings.timezone;
+      const now = new Date();
+
+      const staffResponse = await fetchAdminApi("/api/admin/staff");
+      const staffData = (await staffResponse.json()) as { staff?: StaffRecord[] };
+      const staffMembers = staffData.staff ?? [];
+      setStaff(staffMembers);
+
+      const gridWindow = computeScheduleGridWindow(
+        staffMembers,
+        date,
+        timeZone,
+        now,
+      );
+
+      const bookingsUrl = gridWindow
+        ? `/api/admin/bookings?from=${encodeURIComponent(
+            new Date(gridWindow.startMs).toISOString(),
+          )}&to=${encodeURIComponent(
+            new Date(gridWindow.endMs).toISOString(),
+          )}`
+        : `/api/admin/bookings?date=${date}`;
+
+      const [bookingsResponse, optionsResponse, roomsResponse] =
         await Promise.all([
-          fetch("/api/admin/staff"),
-          fetch(`/api/admin/bookings?date=${date}`),
-          fetch("/api/admin/service-options"),
-          fetch("/api/admin/rooms"),
+          fetchAdminApi(bookingsUrl),
+          fetchAdminApi("/api/admin/service-options"),
+          fetchAdminApi("/api/admin/rooms"),
         ]);
 
-      const staffData = (await staffResponse.json()) as { staff?: StaffRecord[] };
       const bookingsData = (await bookingsResponse.json()) as {
         bookings?: AdminBooking[];
       };
@@ -93,7 +133,6 @@ export function BookingScheduleContent() {
         rooms?: { id: string; name: string; isActive?: boolean }[];
       };
 
-      setStaff(staffData.staff ?? []);
       setBookings(bookingsData.bookings ?? []);
       setServiceOptions(optionsData.options ?? []);
       setRooms(
@@ -104,7 +143,7 @@ export function BookingScheduleContent() {
     } catch {
       toast.error("Could not load schedule");
     }
-  }, [date]);
+  }, [date, tenant.settings.timezone]);
 
   useEffect(() => {
     void loadSchedule();
@@ -112,7 +151,7 @@ export function BookingScheduleContent() {
 
   useEffect(() => {
     void (async () => {
-      const response = await fetch("/api/admin/auth/me");
+      const response = await fetchAdminApi("/api/admin/auth/me");
       const data = (await response.json()) as {
         user?: { role: "admin" | "staff"; staffId?: string } | null;
       };
@@ -121,6 +160,15 @@ export function BookingScheduleContent() {
   }, []);
 
   useBookingRealtime(tenant.id, loadSchedule);
+
+  const visibleBookings = useMemo(
+    () => filterActiveRoomBookings(bookings, now),
+    [bookings, now],
+  );
+
+  const setScheduleDate = (next: string) => {
+    setDate(next < today ? today : next);
+  };
 
   const allowedDurations = useMemo(
     () => serviceOptions.map((option) => option.durationMinutes),
@@ -146,6 +194,21 @@ export function BookingScheduleContent() {
           ),
       ),
     [staff, date, tenant.settings.timezone],
+  );
+
+  const bookableStaff = useMemo(
+    () =>
+      workingStaff.filter((member) =>
+        isStaffBookableOnDate({
+          status: member.status,
+          attributes: member.attributes,
+          date,
+          timeZone: tenant.settings.timezone,
+          workingHoursStart: member.workingHoursStart,
+          workingHoursEnd: member.workingHoursEnd,
+        }),
+      ),
+    [workingStaff, date, tenant.settings.timezone],
   );
 
   useEffect(() => {
@@ -244,9 +307,16 @@ export function BookingScheduleContent() {
   );
 
   const openCreateForm = (partial?: Partial<BookingFormValues>) => {
+    const requestedStaffId = partial?.staffId ?? selectedStaffId ?? "";
+    const staffId =
+      requestedStaffId &&
+      bookableStaff.some((member) => member.id === requestedStaffId)
+        ? requestedStaffId
+        : "";
+
     setForm({
       ...defaultBookingFormValues,
-      staffId: partial?.staffId ?? selectedStaffId ?? "",
+      staffId,
       startsAt: partial?.startsAt ?? "",
       durationMinutes: partial?.durationMinutes ?? defaultDuration,
       roomId: partial?.roomId ?? "",
@@ -279,7 +349,7 @@ export function BookingScheduleContent() {
         return;
       }
 
-      const response = await fetch("/api/admin/bookings", {
+      const response = await fetchAdminApi("/api/admin/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -321,7 +391,7 @@ export function BookingScheduleContent() {
           .join(" · "),
       });
 
-      if (alertsEnabled && data.booking?.staffName) {
+      if (data.booking?.staffName) {
         notifyBooking(data.booking.staffName);
       }
 
@@ -335,8 +405,69 @@ export function BookingScheduleContent() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="sticky top-14 z-10 border-b border-border/40 bg-background/90 px-3 py-3 backdrop-blur-md supports-backdrop-filter:bg-background/75 sm:px-4">
-        <div className="mx-auto flex w-full max-w-6xl items-center gap-2">
+      <div className="sticky top-14 z-10 border-b border-border/40 bg-background px-3 py-3 sm:px-4">
+        {/* Mobile: stacked so Book never clips */}
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 sm:hidden">
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-base font-semibold tracking-tight">
+                {dateLabel}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">
+                {workingStaff.length} staff working
+              </p>
+            </div>
+            <div className="flex shrink-0 rounded-xl border border-border/60 bg-muted/40 p-0.5">
+              <button
+                type="button"
+                onClick={() => setViewMode("grid")}
+                className={cn(
+                  "flex size-9 items-center justify-center rounded-lg transition",
+                  viewMode === "grid"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground",
+                )}
+                aria-label="Grid view"
+              >
+                <LayoutGrid className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("list")}
+                className={cn(
+                  "flex size-9 items-center justify-center rounded-lg transition",
+                  viewMode === "list"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground",
+                )}
+                aria-label="List view"
+              >
+                <List className="size-4" />
+              </button>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              type="date"
+              value={date}
+              min={today}
+              onChange={(event) => setScheduleDate(event.target.value)}
+              className="h-11 min-w-0 flex-1 rounded-xl text-sm"
+            />
+            <AppButton
+              type="button"
+              className="h-11 shrink-0 rounded-xl px-3"
+              onClick={() => openCreateForm()}
+              disabled={serviceOptions.length === 0}
+            >
+              <Plus className="size-4" />
+              Book
+            </AppButton>
+          </div>
+        </div>
+
+        {/* Desktop / tablet: single row */}
+        <div className="mx-auto hidden w-full max-w-6xl items-center gap-2 sm:flex">
           <div className="min-w-0 flex-1">
             <p className="truncate text-base font-semibold tracking-tight">
               {dateLabel}
@@ -376,7 +507,8 @@ export function BookingScheduleContent() {
           <Input
             type="date"
             value={date}
-            onChange={(event) => setDate(event.target.value)}
+            min={today}
+            onChange={(event) => setScheduleDate(event.target.value)}
             className="h-11 w-[9.5rem] shrink-0 rounded-xl text-sm"
           />
           <AppButton
@@ -414,7 +546,7 @@ export function BookingScheduleContent() {
           <StaffBookingTimeline
             date={date}
             staff={workingStaff}
-            bookings={bookings}
+            bookings={visibleBookings}
             timeZone={tenant.settings.timezone}
             onStaffSelect={setSelectedStaffId}
             onSlotSelect={(staffId, startsAt) => {
@@ -435,10 +567,17 @@ export function BookingScheduleContent() {
                 key={member.id}
                 name={member.name}
                 photoUrl={member.photoUrl ?? member.photos[0]?.url}
-                bookings={bookings.filter(
+                bookings={visibleBookings.filter(
                   (booking) => booking.staffId === member.id,
                 )}
                 currency={tenant.settings.currency}
+                shiftLabel={getStaffShiftLabelForDate(
+                  member.attributes,
+                  date,
+                  tenant.settings.timezone,
+                  member.workingHoursStart,
+                  member.workingHoursEnd,
+                )}
                 selected={selectedStaffId === member.id}
                 onSelect={() => setSelectedStaffId(member.id)}
               />
@@ -460,26 +599,32 @@ export function BookingScheduleContent() {
           if (!open) setSelectedBooking(null);
         }}
         currency={tenant.settings.currency}
+        rooms={rooms}
+        dayBookings={bookings}
         onCheckedOut={() => void loadSchedule()}
+        onRoomChanged={(updated) => {
+          setSelectedBooking(updated);
+          void loadSchedule();
+        }}
+        onCancelled={() => void loadSchedule()}
       />
 
       <Sheet
         open={selectedStaffId !== null}
         onOpenChange={(open) => !open && setSelectedStaffId(null)}
       >
-        <SheetContent
-          side="bottom"
-          className="max-h-[92vh] overflow-y-auto rounded-t-[1.25rem] bg-muted/30 px-4 pb-8 pt-2"
-        >
-          <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-border" />
-          <SheetHeader className="sr-only">
-            <SheetTitle>Staff schedule</SheetTitle>
-          </SheetHeader>
-          {selectedStaff ? (
-            <StaffScheduleDetail
+        <SheetContent side="bottom" showCloseButton className={adminBookingSheetClassName}>
+          <div className={adminBookingSheetBodyClassName}>
+            <div className={adminBookingSheetHandleClassName} />
+            <SheetHeader className="sr-only">
+              <SheetTitle>Staff schedule</SheetTitle>
+            </SheetHeader>
+            <div className={adminBookingSheetScrollClassName}>
+              {selectedStaff ? (
+                <StaffScheduleDetail
               staff={selectedStaff}
               date={date}
-              bookings={bookings.filter(
+              bookings={visibleBookings.filter(
                 (booking) => booking.staffId === selectedStaff.id,
               )}
               serviceOptions={serviceOptions}
@@ -496,8 +641,10 @@ export function BookingScheduleContent() {
               onCheckedOut={() => {
                 void loadSchedule();
               }}
-            />
-          ) : null}
+                />
+              ) : null}
+            </div>
+          </div>
         </SheetContent>
       </Sheet>
 
@@ -505,8 +652,11 @@ export function BookingScheduleContent() {
         open={showCreate}
         onOpenChange={setShowCreate}
         date={date}
+        onDateChange={setDate}
         timeZone={tenant.settings.timezone}
-        staffOptions={staff.map((member) => ({ id: member.id, name: member.name }))}
+        staffOptions={(bookableStaff.length > 0 ? bookableStaff : workingStaff).map(
+          (member) => ({ id: member.id, name: member.name }),
+        )}
         roomOptions={rooms}
         serviceOptions={serviceOptions}
         currency={tenant.settings.currency}

@@ -40,6 +40,8 @@ interface BookingCustomerDateTimePickerProps {
   hint?: string | null;
   emptyMessage?: string;
   roomPreview?: string | null;
+  /** When slots load with no selection, pick the earliest available start. */
+  autoSelectFirst?: boolean;
 }
 
 function FieldSelect({
@@ -92,6 +94,7 @@ export function BookingCustomerDateTimePicker({
   hint = null,
   emptyMessage = "No open slots available.",
   roomPreview = null,
+  autoSelectFirst = true,
 }: BookingCustomerDateTimePickerProps) {
   const today = todayDateInZone(timeZone);
   const dateOptions = useMemo(
@@ -114,6 +117,10 @@ export function BookingCustomerDateTimePicker({
     () => buildSlotClocks(slotOptions, date, timeZone),
     [slotOptions, date, timeZone],
   );
+  const clocksId = useMemo(
+    () => clocks.map((clock) => clock.iso).join("|"),
+    [clocks],
+  );
 
   const periods = useMemo(() => availablePeriods(clocks), [clocks]);
   const hours = useMemo(
@@ -132,7 +139,6 @@ export function BookingCustomerDateTimePicker({
       return;
     }
     setMonthKey(date.slice(0, 7));
-    // Intentionally omit onDateChange — parent passes an inline handler.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, dateOptions]);
 
@@ -155,9 +161,22 @@ export function BookingCustomerDateTimePicker({
     if (!selectedValue) return;
     const stillValid = clocks.some((clock) => clock.iso === selectedValue);
     if (!stillValid) onSelect("");
-    // Intentionally omit onSelect — parent passes an inline handler.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clocks, selectedValue]);
+
+  // Auto-pick earliest open start so hour+minute are never half-selected.
+  useEffect(() => {
+    if (!autoSelectFirst || loading || selectedValue || clocks.length === 0) {
+      return;
+    }
+    const first = clocks[0];
+    if (!first) return;
+    setPeriod(first.period);
+    setHour12(first.hour12);
+    setMinute(first.minute);
+    onSelect(first.iso);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSelectFirst, loading, selectedValue, clocksId]);
 
   const commitTime = (
     nextPeriod: DayPeriod | "",
@@ -185,16 +204,16 @@ export function BookingCustomerDateTimePicker({
     onDateChange(nextDate);
   };
 
-  const handlePeriodChange = (next: DayPeriod) => {
+  const handlePeriodChange = (raw: string) => {
+    if (!raw) {
+      commitTime("", "", "");
+      return;
+    }
+    const next = raw as DayPeriod;
     const nextHours = availableHours(clocks, next);
-    const nextHour =
-      hour12 !== "" && nextHours.includes(hour12) ? hour12 : nextHours[0] ?? "";
+    const nextHour = nextHours[0] ?? "";
     const nextMinutes = availableMinutes(clocks, next, nextHour);
-    const nextMinute =
-      minute !== "" && nextMinutes.includes(minute)
-        ? minute
-        : nextMinutes[0] ?? "";
-    commitTime(next, nextHour, nextMinute);
+    commitTime(next, nextHour, nextMinutes[0] ?? "");
   };
 
   const handleHourChange = (raw: string) => {
@@ -204,11 +223,7 @@ export function BookingCustomerDateTimePicker({
     }
     const nextHour = Number(raw);
     const nextMinutes = availableMinutes(clocks, period, nextHour);
-    const nextMinute =
-      minute !== "" && nextMinutes.includes(minute)
-        ? minute
-        : nextMinutes[0] ?? "";
-    commitTime(period, nextHour, nextMinute);
+    commitTime(period, nextHour, nextMinutes[0] ?? "");
   };
 
   const handleMinuteChange = (raw: string) => {
@@ -296,36 +311,28 @@ export function BookingCustomerDateTimePicker({
               <p className="mb-2 text-xs font-medium text-stone-500">
                 Start time
               </p>
-              <div className="mb-2.5 grid grid-cols-2 gap-2">
-                {(["AM", "PM"] as const).map((option) => {
-                  const enabled = periods.includes(option);
-                  const selected = period === option;
-                  return (
-                    <button
-                      key={option}
-                      type="button"
-                      disabled={!enabled}
-                      onClick={() => handlePeriodChange(option)}
-                      className={cn(
-                        "h-[3.25rem] rounded-xl border text-[15px] font-semibold transition",
-                        selected
-                          ? "border-[#8A6A3A] bg-[#8A6A3A]/10 text-stone-900"
-                          : "border-border/60 bg-background text-stone-500",
-                        !enabled && "cursor-not-allowed opacity-40",
-                      )}
-                    >
-                      {option}
-                    </button>
-                  );
-                })}
-              </div>
               <div className="flex items-center gap-2">
+                <FieldSelect
+                  aria-label="AM or PM"
+                  value={period}
+                  onChange={handlePeriodChange}
+                  filled={Boolean(period)}
+                  className="max-w-[5.5rem]"
+                >
+                  <option value="">AM/PM</option>
+                  {periods.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </FieldSelect>
                 <FieldSelect
                   aria-label="Hour"
                   value={hour12 === "" ? "" : String(hour12)}
                   onChange={handleHourChange}
                   disabled={!period}
                   filled={hour12 !== ""}
+                  className="max-w-[5rem]"
                 >
                   <option value="">{period ? "Hour" : "—"}</option>
                   {hours.map((hour) => (
@@ -341,7 +348,7 @@ export function BookingCustomerDateTimePicker({
                   onChange={handleMinuteChange}
                   disabled={!period || hour12 === ""}
                   filled={minute !== ""}
-                  className="max-w-[6.5rem]"
+                  className="max-w-[5.5rem]"
                 >
                   <option value="">
                     {period && hour12 !== "" ? "Min" : "—"}
@@ -353,6 +360,9 @@ export function BookingCustomerDateTimePicker({
                   ))}
                 </FieldSelect>
               </div>
+              <p className="mt-2 text-xs text-stone-500">
+                Shown as PM 4 : 35 — hour change selects the first open minute.
+              </p>
             </div>
           )}
         </div>
@@ -380,9 +390,7 @@ export function BookingCustomerDateTimePicker({
             <p className="text-sm font-normal leading-relaxed text-stone-500">
               {slotOptions.length === 0
                 ? "Pick another date"
-                : period
-                  ? "Choose hour and minute"
-                  : "Pick AM or PM, then the time"}
+                : "Choose AM/PM, hour, and minute"}
             </p>
           )}
         </div>

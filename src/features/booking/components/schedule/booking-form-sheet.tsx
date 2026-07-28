@@ -29,7 +29,7 @@ import {
   formatAmPmTime,
   isIsoDateTime,
 } from "../../lib/schedule-utils";
-import { BookingCompactTimePicker } from "./booking-compact-time-picker";
+import { BookingCustomerDateTimePicker } from "../checkout/booking-customer-datetime-picker";
 
 /** Switch to searchable scroll list once the chip grid would get tall. */
 const STAFF_CHIP_MAX = 6;
@@ -71,6 +71,7 @@ interface BookingFormSheetProps {
   onOpenChange: (open: boolean) => void;
   title?: string;
   date: string;
+  onDateChange?: (date: string) => void;
   staffOptions: { id: string; name: string }[];
   roomOptions: { id: string; name: string }[];
   serviceOptions: ServiceOption[];
@@ -218,6 +219,7 @@ export function BookingFormSheet({
   onOpenChange,
   title = "New booking",
   date,
+  onDateChange,
   staffOptions,
   roomOptions,
   serviceOptions,
@@ -395,8 +397,12 @@ export function BookingFormSheet({
               </FormField>
             </div>
 
-            <BookingCompactTimePicker
+            <BookingCustomerDateTimePicker
               date={date}
+              onDateChange={(nextDate) => {
+                onDateChange?.(nextDate);
+                onChange({ ...values, startsAt: "" });
+              }}
               timeZone={timeZone}
               durationMinutes={durationMinutes || 30}
               slotOptions={slotOptions}
@@ -404,9 +410,8 @@ export function BookingFormSheet({
               onSelect={(value) => update("startsAt", value)}
               loading={timeSlotsLoading}
               hint={timePickerHint}
-              disabled={timePickerDisabled}
               roomPreview={selectedRoomName ?? suggestedAutoRoomName}
-              variant="customer"
+              autoSelectFirst={!timePickerDisabled}
             />
 
             <div className={cn(theme.panel, "space-y-3")}>
