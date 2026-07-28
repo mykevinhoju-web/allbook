@@ -124,9 +124,18 @@ export function buildSlotClocks(
   slotOptions: BookingTimeSlotOption[],
   date: string,
   timeZone: string,
+  now: Date = new Date(),
 ): SlotClockParts[] {
+  const earliestMs = now.getTime() + 5 * 60_000;
+
   return slotOptions
     .map((slot) => parseSlotClock(date, slot.value, timeZone))
+    .filter((clock) => {
+      if (new Date(clock.iso).getTime() < earliestMs) return false;
+      // Keep the picker on the selected calendar day (drop overnight spillover).
+      const localDate = isoToDatetimeLocal(clock.iso, timeZone).slice(0, 10);
+      return localDate === date;
+    })
     .sort((a, b) => new Date(a.iso).getTime() - new Date(b.iso).getTime());
 }
 

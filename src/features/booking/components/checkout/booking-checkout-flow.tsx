@@ -187,11 +187,14 @@ export function BookingCheckoutFlow({
             return;
           }
 
-          setSlots(data.slots ?? []);
+          const nextSlots = (data.slots ?? []).filter(
+            (slot) => new Date(slot.startsAt).getTime() >= Date.now() + 5 * 60_000,
+          );
+          setSlots(nextSlots);
           // booked + shiftLabel intentionally not shown to customers
           setSlotsReason(data.reason ?? null);
           setStartsAt((current) =>
-            current && data.slots?.some((slot) => slot.startsAt === current)
+            current && nextSlots.some((slot) => slot.startsAt === current)
               ? current
               : "",
           );

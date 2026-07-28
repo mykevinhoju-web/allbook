@@ -14,6 +14,10 @@ import {
 } from "../lib/schedule-utils";
 import type { BookingTimeSlotOption } from "../components/schedule/booking-form-sheet";
 
+const EMPTY_ROOM_BOOKINGS: { startsAt: string; endsAt: string }[] = [];
+const EMPTY_ROOMS: RoomOption[] = [];
+const EMPTY_ALL_ROOM_BOOKINGS: RoomSlotBooking[] = [];
+
 interface UseAdminAvailabilitySlotsArgs {
   staffId: string;
   durationMinutes: string;
@@ -34,9 +38,9 @@ export function useAdminAvailabilitySlots({
   date,
   timeZone = DEFAULT_BOOKING_TIMEZONE,
   roomId,
-  roomBookings = [],
-  rooms = [],
-  allRoomBookings = [],
+  roomBookings = EMPTY_ROOM_BOOKINGS,
+  rooms = EMPTY_ROOMS,
+  allRoomBookings = EMPTY_ALL_ROOM_BOOKINGS,
 }: UseAdminAvailabilitySlotsArgs) {
   const [timeSlotOptions, setTimeSlotOptions] = useState<
     BookingTimeSlotOption[]
@@ -79,9 +83,18 @@ export function useAdminAvailabilitySlots({
         }
 
         const durationMs = Number(durationMinutes) * 60_000;
+        const earliestMs = Date.now() + 5 * 60_000;
         const options = (data.slots ?? [])
           .filter((slot) => {
             const start = new Date(slot.startsAt).getTime();
+            if (start < earliestMs) return false;
+
+            const localDate = isoToDatetimeLocal(slot.startsAt, timeZone).slice(
+              0,
+              10,
+            );
+            if (localDate !== date) return false;
+
             const end = start + durationMs;
 
             if (roomId) {

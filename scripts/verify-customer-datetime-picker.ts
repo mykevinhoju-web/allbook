@@ -23,7 +23,12 @@ const slots = [
   { value: "2026-07-27T14:00:00+10:00", label: "2:00 PM" },
 ];
 
-const clocks = buildSlotClocks(slots, date, timeZone);
+const clocks = buildSlotClocks(
+  slots,
+  date,
+  timeZone,
+  new Date("2026-07-27T00:30:00+10:00"),
+);
 assert.deepEqual(availablePeriods(clocks), ["AM", "PM"]);
 assert.deepEqual(availableHours(clocks, "AM"), [1]);
 assert.deepEqual(availableHours(clocks, "PM"), [1, 2]);

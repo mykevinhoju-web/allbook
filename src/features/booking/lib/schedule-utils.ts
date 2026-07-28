@@ -3,6 +3,11 @@ import {
   resolveShiftForCalendarDate,
   type ShiftPlan,
 } from "@/features/staff/utils/shift-plan";
+import {
+  DISPLAY_LOCALE,
+  formatAmPmTimeFromDate,
+  formatDisplayDate,
+} from "@/lib/display-locale";
 
 const MINUTES_IN_DAY = 24 * 60;
 const SLOT_STEP_MINUTES = 5;
@@ -32,19 +37,15 @@ export function minutesFromIso(iso: string): number {
 }
 
 export function formatScheduleTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], {
+  return new Intl.DateTimeFormat(DISPLAY_LOCALE, {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
-  });
+  }).format(new Date(iso));
 }
 
 export function formatAmPmTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
+  return formatAmPmTimeFromDate(new Date(iso));
 }
 
 /** Slot label for booking UI — includes date when the slot falls on a different calendar day. */
@@ -66,7 +67,7 @@ export function formatBookingSlotLabel(
     return timeLabel;
   }
 
-  const dateLabel = new Date(`${slotDate}T12:00:00`).toLocaleDateString([], {
+  const dateLabel = formatDisplayDate(`${slotDate}T12:00:00`, {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -117,7 +118,7 @@ export function formatDurationLabel(minutes: number): string {
 }
 
 export function formatScheduleDate(iso: string): string {
-  return new Date(iso).toLocaleDateString([], {
+  return formatDisplayDate(iso, {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -485,9 +486,12 @@ export function getSlotsInShiftWindow(
   const durationMs = durationMinutes * 60_000;
   const stepMinutes = options?.stepMinutes ?? BOOKING_SLOT_STEP_MINUTES;
   const stepMs = stepMinutes * 60_000;
-  const now = options?.now ?? new Date();
   const timeZone = options?.timeZone ?? DEFAULT_BOOKING_TIMEZONE;
-  const earliest = now.getTime() + 5 * 60_000;
+  // Only enforce "not in the past" when the caller passes `now` (typically today).
+  const earliest =
+    options?.now != null
+      ? options.now.getTime() + 5 * 60_000
+      : Number.NEGATIVE_INFINITY;
   const loopStart = ceilToBookingStepMs(
     Math.max(shiftStart, earliest),
     timeZone,
