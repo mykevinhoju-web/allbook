@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 
-import { todayDateInZone } from "@/features/booking/lib/schedule-utils";
-import { autoCheckoutExpiredBookings } from "@/features/booking/server/auto-checkout-expired";
 import type { AdminBooking } from "@/features/booking/types/admin-booking";
 import {
   createServiceSupabase,
@@ -18,6 +16,8 @@ import {
   verifyStaffSession,
 } from "@/lib/staff-session";
 import { touchStaffSessionPresence } from "@/features/staff/lib/staff-presence";
+import { todayDateInZone } from "@/features/booking/lib/schedule-utils";
+import { autoCheckoutExpiredBookings } from "@/features/booking/server/auto-checkout-expired";
 
 function zonedMidnightToUtcIso(date: string, timeZone: string): string {
   const [yearStr, monthStr, dayStr] = date.split("-");
@@ -142,10 +142,39 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 503 });
     }
 
+    const bookings = (data ?? []).map(mapBooking);
+    const bookingIds = bookings.map((row) => row.id);
+    if (bookingIds.length > 0) {
+      const { data: staffRows } = await supabase
+        .from("booking_staffs")
+        .select("booking_id, staff_id, is_primary, staff(name)")
+        .eq("tenant_id", tenant.id)
+        .in("booking_id", bookingIds);
+
+      const byBooking = new Map<string, { id: string; name: string }[]>();
+      for (const row of staffRows ?? []) {
+        if (row.is_primary) continue;
+        const staff = Array.isArray(row.staff) ? row.staff[0] : row.staff;
+        const list = byBooking.get(row.booking_id) ?? [];
+        list.push({ id: row.staff_id, name: staff?.name ?? "Staff" });
+        byBooking.set(row.booking_id, list);
+      }
+
+      for (const booking of bookings) {
+        booking.additionalStaff = byBooking.get(booking.id) ?? [];
+        if (booking.additionalStaff.length > 0) {
+          booking.staffName = [
+            booking.staffName,
+            ...booking.additionalStaff.map((member) => member.name),
+          ].join(" + ");
+        }
+      }
+    }
+
     return NextResponse.json({
       date,
       room: { id: roomSession.roomId, name: roomSession.roomName },
-      bookings: (data ?? []).map(mapBooking),
+      bookings,
     });
   } catch (error) {
     if (error instanceof TenantContextError) {

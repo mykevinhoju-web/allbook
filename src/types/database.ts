@@ -73,6 +73,7 @@ export type Database = {
           auth: string;
           audience: string;
           staff_id: string | null;
+          room_id: string | null;
           user_agent: string | null;
           created_at: string;
         };
@@ -84,6 +85,7 @@ export type Database = {
           auth: string;
           audience?: string;
           staff_id?: string | null;
+          room_id?: string | null;
           user_agent?: string | null;
           created_at?: string;
         };
@@ -95,6 +97,7 @@ export type Database = {
           auth?: string;
           audience?: string;
           staff_id?: string | null;
+          room_id?: string | null;
           user_agent?: string | null;
           created_at?: string;
         };
@@ -107,6 +110,9 @@ export type Database = {
           staff_id: string;
           login_id: string;
           password_hash: string;
+          pin: string | null;
+          last_seen_at: string | null;
+          session_started_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -116,6 +122,9 @@ export type Database = {
           staff_id: string;
           login_id: string;
           password_hash: string;
+          pin?: string | null;
+          last_seen_at?: string | null;
+          session_started_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -125,6 +134,9 @@ export type Database = {
           staff_id?: string;
           login_id?: string;
           password_hash?: string;
+          pin?: string | null;
+          last_seen_at?: string | null;
+          session_started_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -257,6 +269,8 @@ export type Database = {
           name: string;
           sort_order: number;
           is_active: boolean;
+          claimed_device_id: string | null;
+          claimed_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -266,6 +280,8 @@ export type Database = {
           name: string;
           sort_order?: number;
           is_active?: boolean;
+          claimed_device_id?: string | null;
+          claimed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -275,8 +291,37 @@ export type Database = {
           name?: string;
           sort_order?: number;
           is_active?: boolean;
+          claimed_device_id?: string | null;
+          claimed_at?: string | null;
           created_at?: string;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      booking_staffs: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          booking_id: string;
+          staff_id: string;
+          is_primary: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          booking_id: string;
+          staff_id: string;
+          is_primary?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          booking_id?: string;
+          staff_id?: string;
+          is_primary?: boolean;
+          created_at?: string;
         };
         Relationships: [];
       };
@@ -298,6 +343,8 @@ export type Database = {
           notes: string | null;
           checked_out_at: string | null;
           checked_in_at: string | null;
+          payment_status: string;
+          paid_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -318,6 +365,8 @@ export type Database = {
           notes?: string | null;
           checked_out_at?: string | null;
           checked_in_at?: string | null;
+          payment_status?: string;
+          paid_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -338,6 +387,53 @@ export type Database = {
           notes?: string | null;
           checked_out_at?: string | null;
           checked_in_at?: string | null;
+          payment_status?: string;
+          paid_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      payments: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          booking_id: string;
+          amount_cents: number;
+          currency: string;
+          status: string;
+          stripe_payment_intent_id: string | null;
+          stripe_charge_id: string | null;
+          paid_at: string | null;
+          failure_message: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          booking_id: string;
+          amount_cents: number;
+          currency?: string;
+          status?: string;
+          stripe_payment_intent_id?: string | null;
+          stripe_charge_id?: string | null;
+          paid_at?: string | null;
+          failure_message?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          booking_id?: string;
+          amount_cents?: number;
+          currency?: string;
+          status?: string;
+          stripe_payment_intent_id?: string | null;
+          stripe_charge_id?: string | null;
+          paid_at?: string | null;
+          failure_message?: string | null;
           created_at?: string;
           updated_at?: string;
         };

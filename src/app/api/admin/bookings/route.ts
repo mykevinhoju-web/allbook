@@ -2,6 +2,7 @@ import { after } from "next/server";
 import { NextResponse } from "next/server";
 
 import { assignAvailableRoom } from "@/features/booking/lib/assign-room";
+import { ensurePrimaryBookingStaff } from "@/features/booking/lib/booking-staffs";
 import {
   isInternalPaymentMethod,
   parsePaymentMethodFromNotes,
@@ -367,6 +368,25 @@ export async function POST(request: Request) {
 
       return NextResponse.json(
         { error: error?.message ?? "Failed to create booking." },
+        { status: 503 },
+      );
+    }
+
+    try {
+      await ensurePrimaryBookingStaff(supabase, {
+        tenantId: tenant.id,
+        bookingId: data.id,
+        staffId: body.staffId,
+      });
+    } catch (staffError) {
+      await supabase.from("bookings").delete().eq("id", data.id);
+      return NextResponse.json(
+        {
+          error:
+            staffError instanceof Error
+              ? staffError.message
+              : "Failed to assign staff to booking.",
+        },
         { status: 503 },
       );
     }

@@ -35,6 +35,12 @@ interface StaffUser {
   name: string;
 }
 
+interface BookingStaffMember {
+  id: string;
+  name: string;
+  isPrimary: boolean;
+}
+
 const EXTEND_OPTIONS = [10, 15, 20] as const;
 
 function formatRemaining(ms: number): string {
@@ -125,6 +131,10 @@ export function RoomHomeContent() {
   const [staffBookings, setStaffBookings] = useState<AdminBooking[]>([]);
   const [loadingSchedule, setLoadingSchedule] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
+  const [activeStaff, setActiveStaff] = useState<BookingStaffMember[]>([]);
+  const [addingStaff, setAddingStaff] = useState(false);
+  const [joinPin, setJoinPin] = useState("");
+  const [joinLoading, setJoinLoading] = useState(false);
   const autoEndingRef = useRef<string | null>(null);
 
   const loadRoomSchedule = useCallback(async (opts?: { soft?: boolean }) => {
@@ -259,6 +269,65 @@ export function RoomHomeContent() {
     if (!staff) return null;
     return getActiveCheckedInBooking(staffBookings);
   }, [staff, staffBookings]);
+
+  const loadActiveStaff = useCallback(async (bookingId: string) => {
+    const response = await fetch(`/api/room/bookings/${bookingId}/staff`);
+    const data = (await response.json()) as {
+      staff?: BookingStaffMember[];
+    };
+    if (response.ok) {
+      setActiveStaff(data.staff ?? []);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!activeBooking) {
+      setActiveStaff([]);
+      setAddingStaff(false);
+      setJoinPin("");
+      return;
+    }
+    void loadActiveStaff(activeBooking.id);
+  }, [activeBooking, loadActiveStaff]);
+
+  const submitJoinPin = async (nextPin: string) => {
+    if (!activeBooking || nextPin.length !== 4 || joinLoading) return;
+    setJoinLoading(true);
+    try {
+      const response = await fetch(
+        `/api/room/bookings/${activeBooking.id}/staff`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pin: nextPin }),
+        },
+      );
+      const data = (await response.json()) as {
+        error?: string;
+        joined?: { id: string; name: string };
+        staff?: BookingStaffMember[];
+      };
+      if (!response.ok) {
+        toast.error("Could not add staff", { description: data.error });
+        setJoinPin("");
+        return;
+      }
+      toast.success(`${data.joined?.name ?? "Staff"} joined`);
+      setActiveStaff(data.staff ?? []);
+      setAddingStaff(false);
+      setJoinPin("");
+      await Promise.all([loadStaffSchedule(), loadRoomSchedule()]);
+    } finally {
+      setJoinLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (joinPin.length === 4) {
+      void submitJoinPin(joinPin);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- submit when PIN completes
+  }, [joinPin]);
 
   const staffDayBookings = useMemo(() => {
     if (!staff) return [];
@@ -492,12 +561,62 @@ export function RoomHomeContent() {
                   {formatAmPmTime(activeBooking.startsAt)} ·{" "}
                   {activeBooking.customerName || "Guest"}
                 </p>
+                <p className="mt-2 text-sm font-medium text-muted-foreground md:text-base">
+                  Staff:{" "}
+                  {(activeStaff.length > 0
+                    ? activeStaff
+                    : [{ id: staff.id, name: staff.name, isPrimary: true }]
+                  )
+                    .map((member) => member.name)
+                    .join(" + ")}
+                </p>
                 <p className="mt-4 text-6xl font-semibold tabular-nums tracking-tight text-foreground md:text-7xl">
                   {formatRemaining(remainingMs ?? 0)}
                 </p>
                 <p className="mt-1 text-sm font-medium text-muted-foreground md:text-base">
                   left · ends {formatAmPmTime(activeBooking.endsAt)}
                 </p>
+
+                {activeStaff.length < 2 ? (
+                  <div className="mt-5">
+                    {addingStaff ? (
+                      <div className="rounded-2xl border border-border bg-card p-4">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <p className="text-sm font-semibold text-foreground">
+                            Second staff PIN
+                          </p>
+                          <button
+                            type="button"
+                            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+                            onClick={() => {
+                              setAddingStaff(false);
+                              setJoinPin("");
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                        <PinPad
+                          value={joinPin}
+                          onChange={setJoinPin}
+                          disabled={joinLoading}
+                        />
+                      </div>
+                    ) : (
+                      <AppButton
+                        type="button"
+                        variant="outline"
+                        className="h-14 w-full rounded-2xl bg-card text-lg md:h-16"
+                        onClick={() => {
+                          setAddingStaff(true);
+                          setJoinPin("");
+                        }}
+                      >
+                        Add second staff
+                      </AppButton>
+                    )}
+                  </div>
+                ) : null}
 
                 <div className="mt-6">
                   <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground md:text-sm">

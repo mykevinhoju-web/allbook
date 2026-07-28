@@ -9,6 +9,7 @@ import {
   BookingTimeValidationError,
 } from "@/features/booking/lib/validate-booking-time";
 import { scheduleBookingAlert } from "@/features/booking/server/notify-booking-alert";
+import { ensurePrimaryBookingStaff } from "@/features/booking/lib/booking-staffs";
 import { computeBookingPriceCents } from "@/features/services/server/get-service-price";
 import type { BookingPriceChannel } from "@/features/services/lib/pricing-adjustments";
 import { createServiceSupabase } from "@/lib/admin/tenant-context";
@@ -255,6 +256,22 @@ export async function createTenantBooking(
 
     throw new CreateBookingError(
       error?.message ?? "Failed to create booking.",
+      503,
+    );
+  }
+
+  try {
+    await ensurePrimaryBookingStaff(supabase, {
+      tenantId: tenant.id,
+      bookingId: data.id,
+      staffId: body.staffId,
+    });
+  } catch (staffError) {
+    await supabase.from("bookings").delete().eq("id", data.id);
+    throw new CreateBookingError(
+      staffError instanceof Error
+        ? staffError.message
+        : "Failed to assign staff to booking.",
       503,
     );
   }

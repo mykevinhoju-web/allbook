@@ -18,6 +18,8 @@ export interface AdminBooking {
   notes: string | null;
   /** Admin walk-in: cash (discount eligible) or card (no discount). */
   paymentMethod?: "cash" | "card" | null;
+  /** Extra staff joined on this booking (excludes primary). */
+  additionalStaff?: { id: string; name: string }[];
 }
 
 export interface AdminRoom {

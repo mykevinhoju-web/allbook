@@ -6,15 +6,12 @@ import {
   TenantContextError,
 } from "@/lib/admin/tenant-context";
 import { StaffAuthError, requireStaffSession } from "@/lib/server/require-staff-session";
-import { parseShiftPlan } from "@/features/staff/utils/shift-plan";
-import { getShiftWindowFromAttributes } from "@/features/staff/utils/attributes";
-import type { StaffAttributes } from "@/features/staff/types";
-import {
-  formatAmPmTime,
-  resolveStaffShiftForDate,
-  todayDateInZone,
-} from "@/features/booking/lib/schedule-utils";
+import { getStaffWorkingTodayLabel, getStaffShiftWindowForDate } from "@/features/staff/utils/shift-label";
+import type { StaffAttributes, StaffStatus } from "@/features/staff/types";
+import { todayDateInZone } from "@/features/booking/lib/schedule-utils";
+import { listBookingIdsForStaff } from "@/features/booking/lib/booking-staffs";
 import type { AdminBooking, AdminRoom } from "@/features/booking/types/admin-booking";
+import { touchStaffSessionPresence } from "@/features/staff/lib/staff-presence";
 
 function zonedMidnightToUtcIso(date: string, timeZone: string): string {
   const [yearStr, monthStr, dayStr] = date.split("-");
@@ -96,18 +93,23 @@ function mapBooking(row: {
 export async function GET(request: Request) {
   try {
     const tenant = await requireTenantFromRequest(request);
-    const session = await requireStaffSession(tenant.id);
+    const session = await requireStaffSession(tenant.id, request);
     const { searchParams } = new URL(request.url);
     const timeZone = tenant.settings.timezone || "Australia/Sydney";
     const date = searchParams.get("date") ?? todayDateInZone(timeZone);
 
     const supabase = createServiceSupabase();
 
+    void touchStaffSessionPresence(supabase, {
+      tenantId: tenant.id,
+      staffId: session.staffId,
+    });
+
     const [{ data: staffRow }, { data: roomsRows }] = await Promise.all([
       supabase
         .from("staff")
         .select(
-          "id, name, attributes, working_hours_start, working_hours_end",
+          "id, name, status, attributes, working_hours_start, working_hours_end",
         )
         .eq("tenant_id", tenant.id)
         .eq("id", session.staffId)
@@ -133,34 +135,65 @@ export async function GET(request: Request) {
       timeZone,
     );
 
-    const { data: bookingRows, error } = await supabase
+    const joinedIds = await listBookingIdsForStaff(
+      supabase,
+      tenant.id,
+      session.staffId,
+    );
+
+    let bookingQuery = supabase
       .from("bookings")
       .select(
         "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, status, checked_out_at, checked_in_at, customer_name, customer_phone, customer_postcode, customer_email, notes, staff(name), rooms(name)",
       )
       .eq("tenant_id", tenant.id)
-      .eq("staff_id", session.staffId)
       .neq("status", "cancelled")
       .lt("starts_at", rangeEnd)
       .gt("ends_at", rangeStart)
       .order("starts_at", { ascending: true });
+
+    if (joinedIds.length > 0) {
+      bookingQuery = bookingQuery.or(
+        `staff_id.eq.${session.staffId},id.in.(${joinedIds.join(",")})`,
+      );
+    } else {
+      bookingQuery = bookingQuery.eq("staff_id", session.staffId);
+    }
+
+    const { data: bookingRows, error } = await bookingQuery;
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 503 });
     }
 
     const attributes = (staffRow.attributes ?? {}) as StaffAttributes;
-    const configured = getShiftWindowFromAttributes(attributes);
-    const shiftPlan = parseShiftPlan(attributes.shiftPlan);
-    const shift = resolveStaffShiftForDate(
+    const { workingToday } = getStaffWorkingTodayLabel({
+      status: (staffRow.status as StaffStatus) ?? "active",
+      attributes,
       date,
       timeZone,
-      configured,
-      staffRow.working_hours_start,
-      staffRow.working_hours_end,
-      undefined,
-      shiftPlan,
-    );
+      workingHoursStart: staffRow.working_hours_start,
+      workingHoursEnd: staffRow.working_hours_end,
+    });
+
+    const shiftWindow = workingToday
+      ? getStaffShiftWindowForDate({
+          attributes,
+          date,
+          timeZone,
+          workingHoursStart: staffRow.working_hours_start,
+          workingHoursEnd: staffRow.working_hours_end,
+        })
+      : null;
+
+    const shift = shiftWindow
+      ? {
+          label: shiftWindow.label,
+          shiftStartsAt: shiftWindow.shiftStartsAt,
+          shiftEndsAt: shiftWindow.shiftEndsAt,
+          isOvernight: shiftWindow.isOvernight,
+        }
+      : null;
 
     const rooms: AdminRoom[] = (roomsRows ?? []).map((room) => ({
       id: room.id,
@@ -175,13 +208,7 @@ export async function GET(request: Request) {
         id: staffRow.id,
         name: staffRow.name,
       },
-      shift: shift
-        ? {
-            label: `${formatAmPmTime(shift.shiftStartsAt)} – ${formatAmPmTime(shift.shiftEndsAt)}`,
-            shiftStartsAt: shift.shiftStartsAt,
-            shiftEndsAt: shift.shiftEndsAt,
-          }
-        : null,
+      shift,
       bookings: (bookingRows ?? []).map((row) => mapBooking(row)),
       rooms,
     });
