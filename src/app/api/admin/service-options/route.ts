@@ -151,7 +151,7 @@ export async function PUT(request: Request) {
         settings: {
           ...currentSettings,
           pricingAdjustments,
-        } as Json,
+        } as unknown as Json,
       })
       .eq("id", tenant.id);
 
