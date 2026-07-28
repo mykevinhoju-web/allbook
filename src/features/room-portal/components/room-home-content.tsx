@@ -134,6 +134,12 @@ function bookingStateLabel(booking: AdminBooking, now: Date): string {
   return "Booked";
 }
 
+function staffBookingsTodayTitle(name: string): string {
+  const trimmed = name.trim() || "Staff";
+  const possessive = /s$/i.test(trimmed) ? `${trimmed}'` : `${trimmed}'s`;
+  return `${possessive} bookings today`;
+}
+
 export function RoomHomeContent() {
   const router = useRouter();
   const tenant = useTenant();
@@ -151,6 +157,9 @@ export function RoomHomeContent() {
   const [loadingSchedule, setLoadingSchedule] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
   const [companions, setCompanions] = useState<CompanionBooking[]>([]);
+  const [companionSchedules, setCompanionSchedules] = useState<
+    Record<string, AdminBooking[]>
+  >({});
   const [addingStaff, setAddingStaff] = useState(false);
   const [joinPin, setJoinPin] = useState("");
   const [joinDuration, setJoinDuration] = useState("");
@@ -350,9 +359,35 @@ export function RoomHomeContent() {
     }
   }, []);
 
+  const loadCompanionSchedules = useCallback(
+    async (rows: CompanionBooking[]) => {
+      if (rows.length === 0) {
+        setCompanionSchedules({});
+        return;
+      }
+      const entries = await Promise.all(
+        rows.map(async (row) => {
+          const response = await fetch(
+            `/api/room/staff-schedule?staffId=${encodeURIComponent(row.staffId)}&date=${today}`,
+          );
+          const data = (await response.json()) as {
+            bookings?: AdminBooking[];
+          };
+          return [
+            row.staffId,
+            response.ok ? (data.bookings ?? []) : [],
+          ] as const;
+        }),
+      );
+      setCompanionSchedules(Object.fromEntries(entries));
+    },
+    [today],
+  );
+
   useEffect(() => {
     if (!activeBooking) {
       setCompanions([]);
+      setCompanionSchedules({});
       setAddingStaff(false);
       setJoinPin("");
       setJoinPayment("");
@@ -360,6 +395,10 @@ export function RoomHomeContent() {
     }
     void loadCompanions(activeBooking.id);
   }, [activeBooking, loadCompanions]);
+
+  useEffect(() => {
+    void loadCompanionSchedules(companions);
+  }, [companions, loadCompanionSchedules]);
 
   const joinOption = useMemo(
     () =>
@@ -460,6 +499,17 @@ export function RoomHomeContent() {
         (!activeBooking || booking.id !== activeBooking.id),
     );
   }, [staff, staffBookings, activeBooking]);
+
+  const companionDaySections = useMemo(() => {
+    return companions.map((companion) => ({
+      staffId: companion.staffId,
+      staffName: companion.staffName,
+      bookings: (companionSchedules[companion.staffId] ?? []).filter(
+        (booking) =>
+          booking.status !== "cancelled" && booking.id !== companion.id,
+      ),
+    }));
+  }, [companions, companionSchedules]);
 
   const remainingMs = activeBooking
     ? new Date(activeBooking.endsAt).getTime() - now.getTime()
@@ -953,62 +1003,36 @@ export function RoomHomeContent() {
               </div>
             )}
 
-            <div className="rounded-3xl border border-border bg-card p-5 md:p-6">
-              <p className="text-base font-semibold md:text-lg">
-                Your bookings today
-              </p>
-              <ul className="mt-4 space-y-3">
-                {staffDayBookings.length === 0 && !activeBooking ? (
-                  <li className="rounded-2xl bg-muted px-4 py-5 text-base text-muted-foreground">
-                    No bookings for you today yet.
-                  </li>
-                ) : (
-                  staffDayBookings.map((booking) => {
-                    const canEnter =
-                      canCheckInToBooking(booking, now) &&
-                      !activeBooking &&
-                      !roomServiceInProgress;
-                    const label = !canEnter &&
-                      canCheckInToBooking(booking, now) &&
-                      (activeBooking || roomServiceInProgress)
-                      ? activeBooking
-                        ? "Finish current service first"
-                        : "Room in service"
-                      : bookingStateLabel(booking, now);
-                    return (
-                      <li
-                        key={booking.id}
-                        className="flex items-center justify-between gap-4 rounded-2xl border border-border/60 px-4 py-4"
-                      >
-                        <div className="min-w-0">
-                          <p className="text-base font-medium md:text-lg">
-                            {formatAmPmTime(booking.startsAt)} ·{" "}
-                            {booking.customerName || "Guest"}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {label}
-                            {booking.roomName ? ` · ${booking.roomName}` : ""}
-                          </p>
-                        </div>
-                        {canEnter ? (
-                          <AppButton
-                            type="button"
-                            className="h-12 shrink-0 rounded-2xl px-5 text-base md:h-14 md:px-6 md:text-lg"
-                            disabled={actionId === booking.id}
-                            onClick={() => void checkIn(booking.id)}
-                          >
-                            Enter
-                          </AppButton>
-                        ) : (
-                          <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground md:text-sm">
-                            {label}
-                          </span>
-                        )}
-                      </li>
-                    );
-                  })
-                )}
-              </ul>
+            <div className="space-y-5">
+              <StaffDayBookingsCard
+                title={staffBookingsTodayTitle(staff.name)}
+                bookings={staffDayBookings}
+                emptyLabel={
+                  activeBooking
+                    ? `No other bookings for ${staff.name} today.`
+                    : `No bookings for ${staff.name} today yet.`
+                }
+                now={now}
+                activeBooking={activeBooking}
+                roomServiceInProgress={roomServiceInProgress}
+                actionId={actionId}
+                onEnter={(bookingId) => void checkIn(bookingId)}
+                allowEnter
+              />
+
+              {companionDaySections.map((section) => (
+                <StaffDayBookingsCard
+                  key={section.staffId}
+                  title={staffBookingsTodayTitle(section.staffName)}
+                  bookings={section.bookings}
+                  emptyLabel={`No other bookings for ${section.staffName} today.`}
+                  now={now}
+                  activeBooking={activeBooking}
+                  roomServiceInProgress={roomServiceInProgress}
+                  actionId={actionId}
+                  allowEnter={false}
+                />
+              ))}
             </div>
           </div>
 
@@ -1025,6 +1049,7 @@ export function RoomHomeContent() {
             now={now}
             roomLabel={roomLabel}
             staffOnly
+            listTitle={`${roomLabel} today`}
             staffLabelById={
               activeBooking
                 ? {
@@ -1084,12 +1109,96 @@ export function RoomHomeContent() {
   );
 }
 
+function StaffDayBookingsCard({
+  title,
+  bookings,
+  emptyLabel,
+  now,
+  activeBooking,
+  roomServiceInProgress,
+  actionId,
+  onEnter,
+  allowEnter,
+}: {
+  title: string;
+  bookings: AdminBooking[];
+  emptyLabel: string;
+  now: Date;
+  activeBooking: AdminBooking | null;
+  roomServiceInProgress: boolean;
+  actionId: string | null;
+  onEnter?: (bookingId: string) => void;
+  allowEnter: boolean;
+}) {
+  return (
+    <div className="rounded-3xl border border-border bg-card p-5 md:p-6">
+      <p className="text-base font-semibold md:text-lg">{title}</p>
+      <ul className="mt-4 space-y-3">
+        {bookings.length === 0 ? (
+          <li className="rounded-2xl bg-muted px-4 py-5 text-base text-muted-foreground">
+            {emptyLabel}
+          </li>
+        ) : (
+          bookings.map((booking) => {
+            const ready =
+              allowEnter &&
+              canCheckInToBooking(booking, now) &&
+              !activeBooking &&
+              !roomServiceInProgress;
+            const label =
+              allowEnter &&
+              !ready &&
+              canCheckInToBooking(booking, now) &&
+              (activeBooking || roomServiceInProgress)
+                ? activeBooking
+                  ? "Finish current service first"
+                  : "Room in service"
+                : bookingStateLabel(booking, now);
+            return (
+              <li
+                key={booking.id}
+                className="flex items-center justify-between gap-4 rounded-2xl border border-border/60 px-4 py-4"
+              >
+                <div className="min-w-0">
+                  <p className="text-base font-medium md:text-lg">
+                    {formatAmPmTime(booking.startsAt)} ·{" "}
+                    {booking.customerName || "Guest"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {label}
+                    {booking.roomName ? ` · ${booking.roomName}` : ""}
+                  </p>
+                </div>
+                {ready ? (
+                  <AppButton
+                    type="button"
+                    className="h-12 shrink-0 rounded-2xl px-5 text-base md:h-14 md:px-6 md:text-lg"
+                    disabled={actionId === booking.id}
+                    onClick={() => onEnter?.(booking.id)}
+                  >
+                    Enter
+                  </AppButton>
+                ) : (
+                  <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground md:text-sm">
+                    {label}
+                  </span>
+                )}
+              </li>
+            );
+          })
+        )}
+      </ul>
+    </div>
+  );
+}
+
 function RoomScheduleList({
   bookings,
   loading,
   now,
   roomLabel,
   staffOnly = false,
+  listTitle,
   staffLabelById,
 }: {
   bookings: AdminBooking[];
@@ -1097,12 +1206,14 @@ function RoomScheduleList({
   now: Date;
   roomLabel: string;
   staffOnly?: boolean;
+  listTitle?: string;
   staffLabelById?: Record<string, string>;
 }) {
   return (
     <div className="rounded-3xl border border-border bg-card p-5 md:p-6">
       <p className="text-base font-semibold md:text-lg">
-        {staffOnly ? `Your bookings · ${roomLabel}` : `Today · ${roomLabel}`}
+        {listTitle ??
+          (staffOnly ? `Your bookings · ${roomLabel}` : `Today · ${roomLabel}`)}
       </p>
       {loading ? (
         <p className="mt-4 text-base text-muted-foreground">Loading...</p>
