@@ -14,6 +14,7 @@ import {
   handleAdminRouteError,
   requireTenantAndAdminActor,
 } from "@/lib/admin/require-admin-api";
+import type { Json } from "@/types/database";
 
 function mapOption(row: {
   id: string;
@@ -150,7 +151,7 @@ export async function PUT(request: Request) {
         settings: {
           ...currentSettings,
           pricingAdjustments,
-        },
+        } as Json,
       })
       .eq("id", tenant.id);
 
