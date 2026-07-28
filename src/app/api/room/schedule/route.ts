@@ -151,8 +151,15 @@ export async function GET(request: Request) {
         .eq("tenant_id", tenant.id)
         .in("booking_id", bookingIds);
 
+      type StaffJoinRow = {
+        booking_id: string;
+        staff_id: string;
+        is_primary: boolean;
+        staff?: { name: string } | { name: string }[] | null;
+      };
+
       const byBooking = new Map<string, { id: string; name: string }[]>();
-      for (const row of staffRows ?? []) {
+      for (const row of (staffRows ?? []) as StaffJoinRow[]) {
         if (row.is_primary) continue;
         const staff = Array.isArray(row.staff) ? row.staff[0] : row.staff;
         const list = byBooking.get(row.booking_id) ?? [];

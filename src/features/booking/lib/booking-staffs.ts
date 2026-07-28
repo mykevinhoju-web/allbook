@@ -42,7 +42,13 @@ export async function listBookingStaff(
 
   if (error || !data) return [];
 
-  return data.map((row) => {
+  type StaffJoinRow = {
+    staff_id: string;
+    is_primary: boolean;
+    staff?: { name: string } | { name: string }[] | null;
+  };
+
+  return (data as StaffJoinRow[]).map((row) => {
     const staff = Array.isArray(row.staff) ? row.staff[0] : row.staff;
     return {
       id: row.staff_id,
@@ -64,7 +70,7 @@ export async function listBookingIdsForStaff(
     .eq("staff_id", staffId);
 
   if (error || !data) return [];
-  return data.map((row) => row.booking_id);
+  return (data as { booking_id: string }[]).map((row) => row.booking_id);
 }
 
 export async function countBookingStaff(
