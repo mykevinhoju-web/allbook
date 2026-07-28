@@ -22,6 +22,17 @@ import {
   todayDateInZone,
 } from "@/features/booking/lib/schedule-utils";
 import type { AdminBooking } from "@/features/booking/types/admin-booking";
+import type { InternalPaymentMethod } from "@/features/booking/lib/internal-payment-method";
+import {
+  applyPricingAdjustments,
+  DEFAULT_PRICING_ADJUSTMENTS,
+  type PricingAdjustments,
+} from "@/features/services/lib/pricing-adjustments";
+import type { ServiceOption } from "@/features/services";
+import {
+  formatPriceFromCents,
+  formatServiceOptionLabel,
+} from "@/features/services";
 import { broadcastStaffPresence } from "@/features/staff/lib/staff-presence-realtime";
 import { useTenant } from "@/features/tenants";
 import { useNowTick } from "@/hooks/use-now-tick";
@@ -35,10 +46,19 @@ interface StaffUser {
   name: string;
 }
 
-interface BookingStaffMember {
+interface RoomServiceOption {
+  durationMinutes: number;
+  priceCents: number;
+}
+
+interface CompanionBooking {
   id: string;
-  name: string;
-  isPrimary: boolean;
+  staffId: string;
+  staffName: string;
+  startsAt: string;
+  endsAt: string;
+  durationMinutes: number;
+  priceCents: number;
 }
 
 const EXTEND_OPTIONS = [10, 15, 20] as const;
@@ -131,10 +151,20 @@ export function RoomHomeContent() {
   const [staffBookings, setStaffBookings] = useState<AdminBooking[]>([]);
   const [loadingSchedule, setLoadingSchedule] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
-  const [activeStaff, setActiveStaff] = useState<BookingStaffMember[]>([]);
+  const [companions, setCompanions] = useState<CompanionBooking[]>([]);
   const [addingStaff, setAddingStaff] = useState(false);
   const [joinPin, setJoinPin] = useState("");
+  const [joinDuration, setJoinDuration] = useState("");
+  const [joinPayment, setJoinPayment] = useState<InternalPaymentMethod | "">(
+    "",
+  );
   const [joinLoading, setJoinLoading] = useState(false);
+  const [serviceOptions, setServiceOptions] = useState<RoomServiceOption[]>([]);
+  const [pricingAdjustments, setPricingAdjustments] =
+    useState<PricingAdjustments>(DEFAULT_PRICING_ADJUSTMENTS);
+  const [currency, setCurrency] = useState(
+    () => tenant.settings.currency || "AUD",
+  );
   const autoEndingRef = useRef<string | null>(null);
 
   const loadRoomSchedule = useCallback(async (opts?: { soft?: boolean }) => {
@@ -265,33 +295,98 @@ export function RoomHomeContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- submit when PIN completes
   }, [pin]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const response = await fetch("/api/service-options");
+      if (!response.ok || cancelled) return;
+      const data = (await response.json()) as {
+        options?: RoomServiceOption[];
+        currency?: string;
+        pricingAdjustments?: PricingAdjustments;
+      };
+      if (cancelled) return;
+      const options = data.options ?? [];
+      setServiceOptions(options);
+      if (data.currency) setCurrency(data.currency);
+      if (data.pricingAdjustments) {
+        setPricingAdjustments(data.pricingAdjustments);
+      }
+      if (options[0]) setJoinDuration(String(options[0].durationMinutes));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const activeBooking = useMemo(() => {
     if (!staff) return null;
     return getActiveCheckedInBooking(staffBookings);
   }, [staff, staffBookings]);
 
-  const loadActiveStaff = useCallback(async (bookingId: string) => {
+  const loadCompanions = useCallback(async (bookingId: string) => {
     const response = await fetch(`/api/room/bookings/${bookingId}/staff`);
     const data = (await response.json()) as {
-      staff?: BookingStaffMember[];
+      companions?: CompanionBooking[];
     };
     if (response.ok) {
-      setActiveStaff(data.staff ?? []);
+      setCompanions(data.companions ?? []);
     }
   }, []);
 
   useEffect(() => {
     if (!activeBooking) {
-      setActiveStaff([]);
+      setCompanions([]);
       setAddingStaff(false);
       setJoinPin("");
+      setJoinPayment("");
       return;
     }
-    void loadActiveStaff(activeBooking.id);
-  }, [activeBooking, loadActiveStaff]);
+    void loadCompanions(activeBooking.id);
+  }, [activeBooking, loadCompanions]);
 
-  const submitJoinPin = async (nextPin: string) => {
-    if (!activeBooking || nextPin.length !== 4 || joinLoading) return;
+  const joinOption = useMemo(
+    () =>
+      serviceOptions.find(
+        (option) => String(option.durationMinutes) === joinDuration,
+      ),
+    [serviceOptions, joinDuration],
+  );
+
+  const joinPriceBreakdown = useMemo(() => {
+    if (!joinOption || !activeBooking) return null;
+    return applyPricingAdjustments({
+      baseCents: joinOption.priceCents,
+      startsAtIso: new Date().toISOString(),
+      timeZone,
+      channel: "internal",
+      adjustments: pricingAdjustments,
+      paymentMethod:
+        joinPayment === "cash" || joinPayment === "card" ? joinPayment : null,
+    });
+  }, [
+    joinOption,
+    activeBooking,
+    timeZone,
+    pricingAdjustments,
+    joinPayment,
+  ]);
+
+  const createCompanionBooking = async () => {
+    if (!activeBooking) return;
+    if (joinPin.length !== 4) {
+      toast.error("Enter the second staff PIN");
+      return;
+    }
+    if (!joinDuration) {
+      toast.error("Select a service duration");
+      return;
+    }
+    if (joinPayment !== "cash" && joinPayment !== "card") {
+      toast.error("Select cash or card");
+      return;
+    }
+
     setJoinLoading(true);
     try {
       const response = await fetch(
@@ -299,35 +394,47 @@ export function RoomHomeContent() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pin: nextPin }),
+          body: JSON.stringify({
+            pin: joinPin,
+            durationMinutes: Number(joinDuration),
+            paymentMethod: joinPayment,
+          }),
         },
       );
       const data = (await response.json()) as {
         error?: string;
         joined?: { id: string; name: string };
-        staff?: BookingStaffMember[];
+        booking?: { priceCents?: number };
       };
       if (!response.ok) {
-        toast.error("Could not add staff", { description: data.error });
+        toast.error("Could not add staff booking", {
+          description: data.error,
+        });
         setJoinPin("");
         return;
       }
-      toast.success(`${data.joined?.name ?? "Staff"} joined`);
-      setActiveStaff(data.staff ?? []);
+
+      const priceLabel =
+        data.booking?.priceCents != null
+          ? formatPriceFromCents(data.booking.priceCents, currency)
+          : null;
+      toast.success(`${data.joined?.name ?? "Staff"} booking created`, {
+        description: [priceLabel, "Starts now"]
+          .filter(Boolean)
+          .join(" · "),
+      });
       setAddingStaff(false);
       setJoinPin("");
-      await Promise.all([loadStaffSchedule(), loadRoomSchedule()]);
+      setJoinPayment("");
+      await Promise.all([
+        loadCompanions(activeBooking.id),
+        loadStaffSchedule(),
+        loadRoomSchedule(),
+      ]);
     } finally {
       setJoinLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (joinPin.length === 4) {
-      void submitJoinPin(joinPin);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- submit when PIN completes
-  }, [joinPin]);
 
   const staffDayBookings = useMemo(() => {
     if (!staff) return [];
@@ -563,12 +670,10 @@ export function RoomHomeContent() {
                 </p>
                 <p className="mt-2 text-sm font-medium text-muted-foreground md:text-base">
                   Staff:{" "}
-                  {(activeStaff.length > 0
-                    ? activeStaff
-                    : [{ id: staff.id, name: staff.name, isPrimary: true }]
-                  )
-                    .map((member) => member.name)
-                    .join(" + ")}
+                  {[
+                    staff.name,
+                    ...companions.map((row) => row.staffName),
+                  ].join(" + ")}
                 </p>
                 <p className="mt-4 text-6xl font-semibold tabular-nums tracking-tight text-foreground md:text-7xl">
                   {formatRemaining(remainingMs ?? 0)}
@@ -577,50 +682,163 @@ export function RoomHomeContent() {
                   left · ends {formatAmPmTime(activeBooking.endsAt)}
                 </p>
 
-                {activeStaff.length < 2 ? (
-                  <div className="mt-5">
-                    {addingStaff ? (
-                      <div className="rounded-2xl border border-border bg-card p-4">
-                        <div className="mb-3 flex items-center justify-between gap-3">
-                          <p className="text-sm font-semibold text-foreground">
-                            Second staff PIN
-                          </p>
-                          <button
-                            type="button"
-                            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-                            onClick={() => {
-                              setAddingStaff(false);
-                              setJoinPin("");
-                            }}
-                          >
-                            Cancel
-                          </button>
-                        </div>
+                {companions.length > 0 ? (
+                  <ul className="mt-4 space-y-2">
+                    {companions.map((row) => (
+                      <li
+                        key={row.id}
+                        className="rounded-2xl bg-card/80 px-4 py-3 text-sm text-foreground"
+                      >
+                        <span className="font-semibold">{row.staffName}</span>
+                        {" · "}
+                        {row.durationMinutes} min ·{" "}
+                        {formatPriceFromCents(row.priceCents, currency)}
+                        {" · ends "}
+                        {formatAmPmTime(row.endsAt)}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+
+                <div className="mt-5">
+                  {addingStaff ? (
+                    <div className="space-y-4 rounded-2xl border border-border bg-card p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-semibold text-foreground">
+                          Second staff booking
+                        </p>
+                        <button
+                          type="button"
+                          className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+                          onClick={() => {
+                            setAddingStaff(false);
+                            setJoinPin("");
+                            setJoinPayment("");
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+
+                      <div>
+                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                          Staff PIN
+                        </p>
                         <PinPad
                           value={joinPin}
                           onChange={setJoinPin}
                           disabled={joinLoading}
                         />
                       </div>
-                    ) : (
+
+                      <div>
+                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                          Service
+                        </p>
+                        <div className="space-y-2">
+                          {serviceOptions.map((option) => {
+                            const value = String(option.durationMinutes);
+                            const selected = joinDuration === value;
+                            return (
+                              <button
+                                key={option.durationMinutes}
+                                type="button"
+                                onClick={() => setJoinDuration(value)}
+                                className={cn(
+                                  "flex min-h-12 w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left text-sm font-semibold",
+                                  selected
+                                    ? "border-primary bg-primary/10 text-foreground ring-2 ring-primary/20"
+                                    : "border-border bg-background text-foreground",
+                                )}
+                              >
+                                {formatServiceOptionLabel(
+                                  option.durationMinutes,
+                                  option.priceCents,
+                                  currency,
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {joinPriceBreakdown ? (
+                        <div className="flex items-baseline justify-between rounded-xl bg-muted px-3 py-2.5">
+                          <p className="text-xs font-medium text-muted-foreground">
+                            Total
+                          </p>
+                          <p className="text-lg font-semibold text-foreground">
+                            {formatPriceFromCents(
+                              joinPriceBreakdown.totalCents,
+                              currency,
+                            )}
+                          </p>
+                        </div>
+                      ) : null}
+
+                      <div>
+                        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                          Payment method
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {(
+                            [
+                              { value: "cash" as const, label: "Cash" },
+                              { value: "card" as const, label: "Card" },
+                            ] as const
+                          ).map((option) => {
+                            const selected = joinPayment === option.value;
+                            return (
+                              <button
+                                key={option.value}
+                                type="button"
+                                onClick={() => setJoinPayment(option.value)}
+                                className={cn(
+                                  "min-h-12 rounded-xl border text-sm font-semibold",
+                                  selected
+                                    ? "border-primary bg-primary/10 text-foreground ring-2 ring-primary/20"
+                                    : "border-border bg-background text-foreground",
+                                )}
+                              >
+                                {option.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Starts now · guest details copied from this booking
+                        </p>
+                      </div>
+
                       <AppButton
                         type="button"
-                        variant="outline"
-                        className="h-14 w-full rounded-2xl bg-card text-lg md:h-16"
-                        onClick={() => {
-                          setAddingStaff(true);
-                          setJoinPin("");
-                        }}
+                        className="h-14 w-full rounded-2xl text-lg"
+                        disabled={
+                          joinLoading ||
+                          joinPin.length !== 4 ||
+                          !joinDuration ||
+                          !joinPayment
+                        }
+                        onClick={() => void createCompanionBooking()}
                       >
-                        Add second staff
+                        {joinLoading ? "Creating..." : "Create second booking"}
                       </AppButton>
-                    )}
-                  </div>
-                ) : (
-                  <p className="mt-5 rounded-2xl bg-card/70 px-4 py-3 text-sm text-muted-foreground">
-                    Two staff already on this service.
-                  </p>
-                )}
+                    </div>
+                  ) : (
+                    <AppButton
+                      type="button"
+                      variant="outline"
+                      className="h-14 w-full rounded-2xl bg-card text-lg md:h-16"
+                      onClick={() => {
+                        setAddingStaff(true);
+                        setJoinPin("");
+                        setJoinPayment("");
+                      }}
+                    >
+                      Add second staff
+                    </AppButton>
+                  )}
+                </div>
 
                 <div className="mt-6">
                   <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground md:text-sm">
@@ -672,11 +890,9 @@ export function RoomHomeContent() {
                 </p>
                 <p className="mt-2 text-sm text-muted-foreground md:text-base">
                   Tap <span className="font-semibold text-foreground">Enter</span>{" "}
-                  on your booking below. After check-in,{" "}
-                  <span className="font-semibold text-foreground">
-                    Add second staff
-                  </span>{" "}
-                  appears on the active service card.
+                  on your booking. After check-in, create a second booking with
+                  another staff PIN, service length, and cash/card — guest
+                  details are copied automatically.
                 </p>
               </div>
             )}

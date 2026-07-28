@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 
-import {
-  countBookingStaff,
-  ensurePrimaryBookingStaff,
-  listBookingStaff,
-  MAX_BOOKING_STAFF,
-} from "@/features/booking/lib/booking-staffs";
 import { isBookingCheckedIn } from "@/features/booking/lib/booking-check-in";
-import { hasStaffBookingConflict } from "@/features/booking/lib/staff-conflict";
+import { ensurePrimaryBookingStaff } from "@/features/booking/lib/booking-staffs";
+import {
+  isInternalPaymentMethod,
+  withPaymentMethodNote,
+} from "@/features/booking/lib/internal-payment-method";
+import {
+  hasRoomBookingConflict,
+  hasStaffBookingConflict,
+} from "@/features/booking/lib/staff-conflict";
+import { computeBookingPriceCents } from "@/features/services/server/get-service-price";
 import { findStaffAccountsByPin } from "@/lib/staff-pin-auth";
 import { validateStaffPin } from "@/lib/staff-pin";
 import {
@@ -19,11 +22,26 @@ import {
   RoomAuthError,
   requireRoomSession,
 } from "@/lib/server/require-room-session";
-import { StaffAuthError, requireStaffSession } from "@/lib/server/require-staff-session";
+import {
+  StaffAuthError,
+  requireStaffSession,
+} from "@/lib/server/require-staff-session";
+
+const PAIR_PREFIX = "[pair:";
+
+function pairNote(primaryBookingId: string): string {
+  return `${PAIR_PREFIX}${primaryBookingId}]`;
+}
+
+function parsePairBookingId(notes?: string | null): string | null {
+  if (!notes) return null;
+  const match = notes.match(/\[pair:([0-9a-f-]{36})\]/i);
+  return match?.[1] ?? null;
+}
 
 /**
- * Room tablet: join a second staff member onto an in-progress booking via PIN.
- * Primary staff must already be signed in on this tablet.
+ * Room tablet: create a second (companion) booking for another staff.
+ * Same customer + room as the in-progress booking; starts now; cash/card like admin.
  */
 export async function POST(
   request: Request,
@@ -33,50 +51,72 @@ export async function POST(
     const tenant = await requireTenantFromRequest(request);
     const roomSession = await requireRoomSession(tenant.id, request);
     const primarySession = await requireStaffSession(tenant.id, request);
-    const { id } = await params;
-    const body = (await request.json()) as { pin?: string };
+    const { id: primaryBookingId } = await params;
+    const body = (await request.json()) as {
+      pin?: string;
+      durationMinutes?: number;
+      paymentMethod?: string;
+    };
+
     const pin = (body.pin ?? "").trim();
     const pinError = validateStaffPin(pin);
     if (pinError) {
       return NextResponse.json({ error: pinError }, { status: 400 });
     }
 
+    const durationMinutes = Number(body.durationMinutes);
+    if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+      return NextResponse.json(
+        { error: "Select a service duration." },
+        { status: 400 },
+      );
+    }
+
+    if (!isInternalPaymentMethod(body.paymentMethod)) {
+      return NextResponse.json(
+        { error: "Select cash or card payment." },
+        { status: 400 },
+      );
+    }
+    const paymentMethod = body.paymentMethod;
+
     const supabase = createServiceSupabase();
-    const { data: booking, error: fetchError } = await supabase
+    const { data: primary, error: fetchError } = await supabase
       .from("bookings")
       .select(
-        "id, staff_id, room_id, starts_at, ends_at, status, checked_out_at, checked_in_at",
+        "id, staff_id, room_id, starts_at, ends_at, status, checked_out_at, checked_in_at, customer_name, customer_phone, customer_postcode, customer_email",
       )
       .eq("tenant_id", tenant.id)
-      .eq("id", id)
+      .eq("id", primaryBookingId)
       .maybeSingle();
 
     if (fetchError) {
       return NextResponse.json({ error: fetchError.message }, { status: 503 });
     }
-    if (!booking) {
+    if (!primary) {
       return NextResponse.json({ error: "Booking not found." }, { status: 404 });
     }
 
-    if (booking.room_id && booking.room_id !== roomSession.roomId) {
+    const roomId = primary.room_id ?? roomSession.roomId;
+    if (primary.room_id && primary.room_id !== roomSession.roomId) {
       return NextResponse.json(
         { error: "This booking is not in this room." },
         { status: 409 },
       );
     }
 
-    if (booking.staff_id !== primarySession.staffId) {
+    if (primary.staff_id !== primarySession.staffId) {
       return NextResponse.json(
-        { error: "Only the primary staff can add a second staff." },
+        { error: "Only the staff on this booking can add a second staff." },
         { status: 403 },
       );
     }
 
     if (
       !isBookingCheckedIn({
-        checkedInAt: booking.checked_in_at,
-        checkedOutAt: booking.checked_out_at,
-        status: booking.status,
+        checkedInAt: primary.checked_in_at,
+        checkedOutAt: primary.checked_out_at,
+        status: primary.status,
       })
     ) {
       return NextResponse.json(
@@ -85,22 +125,10 @@ export async function POST(
       );
     }
 
-    const currentCount = await countBookingStaff(supabase, tenant.id, id);
-    if (currentCount === 0) {
-      await ensurePrimaryBookingStaff(supabase, {
-        tenantId: tenant.id,
-        bookingId: id,
-        staffId: booking.staff_id,
-      });
-    }
-    const staffCount = Math.max(
-      currentCount,
-      await countBookingStaff(supabase, tenant.id, id),
-    );
-    if (staffCount >= MAX_BOOKING_STAFF) {
+    if (!primary.customer_name?.trim() || !primary.customer_phone?.trim()) {
       return NextResponse.json(
-        { error: "This booking already has two staff." },
-        { status: 409 },
+        { error: "Primary booking is missing customer details." },
+        { status: 400 },
       );
     }
 
@@ -119,36 +147,10 @@ export async function POST(
     }
 
     const joinStaffId = matches[0]!.staff_id;
-    if (joinStaffId === booking.staff_id) {
+    if (joinStaffId === primary.staff_id) {
       return NextResponse.json(
-        { error: "That staff is already the primary on this booking." },
+        { error: "Choose a different staff PIN for the second booking." },
         { status: 400 },
-      );
-    }
-
-    const alreadyAssigned = (await listBookingStaff(supabase, tenant.id, id)).some(
-      (row) => row.id === joinStaffId,
-    );
-    if (alreadyAssigned) {
-      return NextResponse.json(
-        { error: "That staff is already on this booking." },
-        { status: 409 },
-      );
-    }
-
-    if (
-      await hasStaffBookingConflict(
-        supabase,
-        tenant.id,
-        joinStaffId,
-        booking.starts_at,
-        booking.ends_at,
-        id,
-      )
-    ) {
-      return NextResponse.json(
-        { error: "That staff already has another booking in this time window." },
-        { status: 409 },
       );
     }
 
@@ -166,26 +168,123 @@ export async function POST(
       );
     }
 
-    const { error: insertError } = await supabase.from("booking_staffs").insert({
-      tenant_id: tenant.id,
-      booking_id: id,
-      staff_id: joinStaffId,
-      is_primary: false,
-    });
+    const now = new Date();
+    const startsAtIso = now.toISOString();
+    const endsAtIso = new Date(
+      now.getTime() + durationMinutes * 60_000,
+    ).toISOString();
+    const timeZone = tenant.settings.timezone || "Australia/Sydney";
 
-    if (insertError) {
-      return NextResponse.json({ error: insertError.message }, { status: 503 });
+    if (
+      await hasStaffBookingConflict(
+        supabase,
+        tenant.id,
+        joinStaffId,
+        startsAtIso,
+        endsAtIso,
+      )
+    ) {
+      return NextResponse.json(
+        { error: "That staff already has another booking in this time window." },
+        { status: 409 },
+      );
     }
 
-    const staff = await listBookingStaff(supabase, tenant.id, id);
+    // Same room as primary is allowed; still block other room bookings.
+    if (
+      await hasRoomBookingConflict(
+        supabase,
+        tenant.id,
+        roomId,
+        startsAtIso,
+        endsAtIso,
+        primaryBookingId,
+      )
+    ) {
+      return NextResponse.json(
+        { error: "This room has another booking that overlaps that duration." },
+        { status: 409 },
+      );
+    }
+
+    const priced = await computeBookingPriceCents(supabase, {
+      tenantId: tenant.id,
+      durationMinutes,
+      startsAtIso,
+      timeZone,
+      channel: "internal",
+      adjustments: tenant.settings.pricingAdjustments,
+      paymentMethod,
+    });
+
+    if (priced === null) {
+      return NextResponse.json(
+        { error: "No price configured for this service duration." },
+        { status: 400 },
+      );
+    }
+
+    const { data: created, error: insertError } = await supabase
+      .from("bookings")
+      .insert({
+        tenant_id: tenant.id,
+        staff_id: joinStaffId,
+        room_id: roomId,
+        starts_at: startsAtIso,
+        ends_at: endsAtIso,
+        duration_minutes: durationMinutes,
+        price_cents: priced.totalCents,
+        status: "confirmed",
+        payment_status: "not_required",
+        checked_in_at: startsAtIso,
+        customer_name: primary.customer_name.trim(),
+        customer_phone: primary.customer_phone.trim(),
+        customer_postcode: primary.customer_postcode,
+        customer_email: primary.customer_email,
+        notes: withPaymentMethodNote(paymentMethod, pairNote(primaryBookingId)),
+      })
+      .select(
+        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, status, checked_out_at, checked_in_at, customer_name, customer_phone, customer_postcode, customer_email, notes",
+      )
+      .single();
+
+    if (insertError || !created) {
+      return NextResponse.json(
+        { error: insertError?.message ?? "Failed to create second booking." },
+        { status: 503 },
+      );
+    }
+
+    try {
+      await ensurePrimaryBookingStaff(supabase, {
+        tenantId: tenant.id,
+        bookingId: created.id,
+        staffId: joinStaffId,
+      });
+    } catch {
+      // Non-fatal for schedule join table.
+    }
 
     return NextResponse.json({
       ok: true,
-      staff: staff.map((row) => ({
-        id: row.id,
-        name: row.name,
-        isPrimary: row.isPrimary,
-      })),
+      booking: {
+        id: created.id,
+        staffId: created.staff_id,
+        staffName: staffRow.name,
+        roomId: created.room_id,
+        startsAt: created.starts_at,
+        endsAt: created.ends_at,
+        durationMinutes: created.duration_minutes,
+        priceCents: created.price_cents,
+        status: created.status,
+        checkedInAt: created.checked_in_at,
+        checkedOutAt: created.checked_out_at,
+        customerName: created.customer_name,
+        customerPhone: created.customer_phone,
+        customerPostcode: created.customer_postcode,
+        customerEmail: created.customer_email,
+        paymentMethod,
+      },
       joined: { id: staffRow.id, name: staffRow.name },
     });
   } catch (error) {
@@ -205,6 +304,7 @@ export async function POST(
   }
 }
 
+/** List companion bookings created from this primary booking. */
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -214,14 +314,40 @@ export async function GET(
     await requireRoomSession(tenant.id, request);
     const { id } = await params;
     const supabase = createServiceSupabase();
-    const staff = await listBookingStaff(supabase, tenant.id, id);
-    return NextResponse.json({
-      staff: staff.map((row) => ({
-        id: row.id,
-        name: row.name,
-        isPrimary: row.isPrimary,
-      })),
-    });
+
+    const { data, error } = await supabase
+      .from("bookings")
+      .select(
+        "id, staff_id, starts_at, ends_at, duration_minutes, price_cents, status, checked_in_at, checked_out_at, notes, staff(name)",
+      )
+      .eq("tenant_id", tenant.id)
+      .neq("status", "cancelled")
+      .like("notes", `%${PAIR_PREFIX}${id}]%`)
+      .order("starts_at", { ascending: true });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 503 });
+    }
+
+    const companions = (data ?? [])
+      .filter((row) => parsePairBookingId(row.notes) === id)
+      .map((row) => {
+        const staff = Array.isArray(row.staff) ? row.staff[0] : row.staff;
+        return {
+          id: row.id,
+          staffId: row.staff_id,
+          staffName: staff?.name ?? "Staff",
+          startsAt: row.starts_at,
+          endsAt: row.ends_at,
+          durationMinutes: row.duration_minutes,
+          priceCents: row.price_cents,
+          status: row.status,
+          checkedInAt: row.checked_in_at,
+          checkedOutAt: row.checked_out_at,
+        };
+      });
+
+    return NextResponse.json({ companions });
   } catch (error) {
     if (error instanceof TenantContextError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
