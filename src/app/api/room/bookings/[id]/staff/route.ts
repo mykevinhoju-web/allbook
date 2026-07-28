@@ -7,6 +7,7 @@ import {
   withPaymentMethodNote,
 } from "@/features/booking/lib/internal-payment-method";
 import {
+  findRoomActiveService,
   hasRoomBookingConflict,
   hasStaffBookingConflict,
 } from "@/features/booking/lib/staff-conflict";
@@ -190,7 +191,37 @@ export async function POST(
       );
     }
 
-    // Same room as primary is allowed; still block other room bookings.
+    const { data: pairRows } = await supabase
+      .from("bookings")
+      .select("id, notes")
+      .eq("tenant_id", tenant.id)
+      .neq("status", "cancelled")
+      .like("notes", `%${PAIR_PREFIX}${primaryBookingId}]%`);
+
+    const pairExcludeIds = [
+      primaryBookingId,
+      ...((pairRows ?? [])
+        .filter((row) => parsePairBookingId(row.notes) === primaryBookingId)
+        .map((row) => row.id)),
+    ];
+
+    // Same visit may share the room; block any unrelated in-progress service.
+    const roomInService = await findRoomActiveService(
+      supabase,
+      tenant.id,
+      roomId,
+      pairExcludeIds,
+    );
+    if (roomInService) {
+      return NextResponse.json(
+        {
+          error:
+            "This room already has another service in progress. Finish that first.",
+        },
+        { status: 409 },
+      );
+    }
+
     if (
       await hasRoomBookingConflict(
         supabase,
@@ -198,7 +229,7 @@ export async function POST(
         roomId,
         startsAtIso,
         endsAtIso,
-        primaryBookingId,
+        pairExcludeIds,
       )
     ) {
       return NextResponse.json(

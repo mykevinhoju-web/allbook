@@ -2,10 +2,17 @@ import { NextResponse } from "next/server";
 
 import {
   canCheckInToBooking,
+  computeCheckInServiceWindow,
   isBookingCheckedIn,
 } from "@/features/booking/lib/booking-check-in";
 import { isRoomOverlapConstraintError } from "@/features/booking/lib/validate-booking-update";
-import { hasRoomBookingConflict } from "@/features/booking/lib/staff-conflict";
+import {
+  getCheckInBlockingStarts,
+  findRoomActiveService,
+  findStaffActiveService,
+  hasRoomBookingConflict,
+  hasStaffBookingConflict,
+} from "@/features/booking/lib/staff-conflict";
 import {
   createServiceSupabase,
   requireTenantFromRequest,
@@ -71,7 +78,7 @@ export async function POST(
 ) {
   try {
     const tenant = await requireTenantFromRequest(request);
-    const session = await requireStaffSession(tenant.id);
+    const session = await requireStaffSession(tenant.id, request);
     const { id } = await params;
     const body = (await request.json()) as { pin?: string; roomId?: string };
 
@@ -99,7 +106,7 @@ export async function POST(
     const { data: existing, error: fetchError } = await supabase
       .from("bookings")
       .select(
-        "id, staff_id, room_id, starts_at, ends_at, status, checked_out_at, checked_in_at",
+        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, status, checked_out_at, checked_in_at",
       )
       .eq("tenant_id", tenant.id)
       .eq("id", id)
@@ -156,27 +163,106 @@ export async function POST(
       return NextResponse.json({ error: "Room not available." }, { status: 400 });
     }
 
+    const checkedInAtDate = new Date();
+    const checkedInAt = checkedInAtDate.toISOString();
+    const desiredEndsAt = new Date(
+      checkedInAtDate.getTime() + existing.duration_minutes * 60_000,
+    ).toISOString();
+
+    const staffAlreadyInService = await findStaffActiveService(
+      supabase,
+      tenant.id,
+      existing.staff_id,
+      id,
+    );
+    if (staffAlreadyInService) {
+      return NextResponse.json(
+        {
+          error:
+            "You already have a service in progress. End that service before entering another booking.",
+        },
+        { status: 409 },
+      );
+    }
+
+    const roomInService = await findRoomActiveService(
+      supabase,
+      tenant.id,
+      body.roomId,
+      id,
+    );
+    if (roomInService) {
+      return NextResponse.json(
+        {
+          error:
+            "That room is already in service. Pick another room or wait until it ends.",
+        },
+        { status: 409 },
+      );
+    }
+
+    const blockingStarts = await getCheckInBlockingStarts(
+      supabase,
+      tenant.id,
+      {
+        roomId: body.roomId,
+        staffId: existing.staff_id,
+        fromIso: checkedInAt,
+        untilIso: desiredEndsAt,
+        excludeBookingId: id,
+      },
+    );
+
+    const window = computeCheckInServiceWindow(
+      checkedInAtDate,
+      existing.duration_minutes,
+      blockingStarts,
+    );
+    if (!window.ok) {
+      return NextResponse.json({ error: window.error }, { status: 409 });
+    }
+
+    if (
+      await hasStaffBookingConflict(
+        supabase,
+        tenant.id,
+        existing.staff_id,
+        window.startsAt,
+        window.endsAt,
+        id,
+      )
+    ) {
+      return NextResponse.json(
+        { error: "You already have another booking in this time window." },
+        { status: 409 },
+      );
+    }
+
     const roomBusy = await hasRoomBookingConflict(
       supabase,
       tenant.id,
       body.roomId,
-      existing.starts_at,
-      existing.ends_at,
+      window.startsAt,
+      window.endsAt,
       id,
     );
 
     if (roomBusy) {
       return NextResponse.json(
-        { error: "That room is already booked for this time." },
+        {
+          error:
+            "That room already has another booking for this time. Enter is not available.",
+        },
         { status: 409 },
       );
     }
 
-    const checkedInAt = new Date().toISOString();
     const { data, error } = await supabase
       .from("bookings")
       .update({
         room_id: body.roomId,
+        starts_at: window.startsAt,
+        ends_at: window.endsAt,
         checked_in_at: checkedInAt,
         updated_at: checkedInAt,
       })
@@ -198,7 +284,10 @@ export async function POST(
       );
     }
 
-    return NextResponse.json({ booking: mapBooking(data) });
+    return NextResponse.json({
+      booking: mapBooking(data),
+      serviceWindowCapped: window.wasCapped,
+    });
   } catch (error) {
     if (error instanceof TenantContextError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

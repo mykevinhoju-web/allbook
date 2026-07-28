@@ -936,8 +936,17 @@ export function RoomHomeContent() {
                   </li>
                 ) : (
                   staffDayBookings.map((booking) => {
-                    const ready = canCheckInToBooking(booking, now);
-                    const label = bookingStateLabel(booking, now);
+                    const canEnter =
+                      canCheckInToBooking(booking, now) &&
+                      !activeBooking &&
+                      !roomServiceInProgress;
+                    const label = !canEnter &&
+                      canCheckInToBooking(booking, now) &&
+                      (activeBooking || roomServiceInProgress)
+                      ? activeBooking
+                        ? "Finish current service first"
+                        : "Room in service"
+                      : bookingStateLabel(booking, now);
                     return (
                       <li
                         key={booking.id}
@@ -953,7 +962,7 @@ export function RoomHomeContent() {
                             {booking.roomName ? ` · ${booking.roomName}` : ""}
                           </p>
                         </div>
-                        {ready ? (
+                        {canEnter ? (
                           <AppButton
                             type="button"
                             className="h-12 shrink-0 rounded-2xl px-5 text-base md:h-14 md:px-6 md:text-lg"

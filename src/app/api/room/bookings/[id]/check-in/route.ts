@@ -9,7 +9,10 @@ import { ensurePrimaryBookingStaff } from "@/features/booking/lib/booking-staffs
 import { isRoomOverlapConstraintError } from "@/features/booking/lib/validate-booking-update";
 import {
   getCheckInBlockingStarts,
+  findRoomActiveService,
+  findStaffActiveService,
   hasRoomBookingConflict,
+  hasStaffBookingConflict,
 } from "@/features/booking/lib/staff-conflict";
 import {
   createServiceSupabase,
@@ -138,6 +141,38 @@ export async function POST(
       checkedInAtDate.getTime() + existing.duration_minutes * 60_000;
     const desiredEndsAt = new Date(desiredEndMs).toISOString();
 
+    const staffAlreadyInService = await findStaffActiveService(
+      supabase,
+      tenant.id,
+      existing.staff_id,
+      id,
+    );
+    if (staffAlreadyInService) {
+      return NextResponse.json(
+        {
+          error:
+            "You already have a service in progress. End that service before entering another booking.",
+        },
+        { status: 409 },
+      );
+    }
+
+    const roomInService = await findRoomActiveService(
+      supabase,
+      tenant.id,
+      roomId,
+      id,
+    );
+    if (roomInService) {
+      return NextResponse.json(
+        {
+          error:
+            "This room is already in service. You can only enter after that service ends.",
+        },
+        { status: 409 },
+      );
+    }
+
     const blockingStarts = await getCheckInBlockingStarts(
       supabase,
       tenant.id,
@@ -159,6 +194,22 @@ export async function POST(
       return NextResponse.json({ error: window.error }, { status: 409 });
     }
 
+    if (
+      await hasStaffBookingConflict(
+        supabase,
+        tenant.id,
+        existing.staff_id,
+        window.startsAt,
+        window.endsAt,
+        id,
+      )
+    ) {
+      return NextResponse.json(
+        { error: "You already have another booking in this time window." },
+        { status: 409 },
+      );
+    }
+
     const roomBusy = await hasRoomBookingConflict(
       supabase,
       tenant.id,
@@ -169,7 +220,10 @@ export async function POST(
     );
     if (roomBusy) {
       return NextResponse.json(
-        { error: "This room is already booked for this time." },
+        {
+          error:
+            "This room already has another booking for this time. Enter is not available.",
+        },
         { status: 409 },
       );
     }

@@ -51,15 +51,25 @@ export async function hasStaffBookingConflict(
   return (joinedHits?.length ?? 0) > 0;
 }
 
+function normalizeExcludeIds(
+  excludeBookingId?: string | string[],
+): string[] {
+  if (!excludeBookingId) return [];
+  return (Array.isArray(excludeBookingId) ? excludeBookingId : [excludeBookingId])
+    .filter(Boolean);
+}
+
 export async function hasRoomBookingConflict(
   supabase: SupabaseClient<Database>,
   tenantId: string,
   roomId: string,
   startsAt: string,
   endsAt: string,
-  excludeBookingId?: string,
+  excludeBookingId?: string | string[],
 ): Promise<boolean> {
-  let query = supabase
+  const excludeIds = new Set(normalizeExcludeIds(excludeBookingId));
+
+  const { data } = await supabase
     .from("bookings")
     .select("id")
     .eq("tenant_id", tenantId)
@@ -68,14 +78,61 @@ export async function hasRoomBookingConflict(
     .neq("status", "completed")
     .lt("starts_at", endsAt)
     .gt("ends_at", startsAt)
-    .limit(1);
+    .limit(20);
+
+  return (data ?? []).some((row) => !excludeIds.has(row.id));
+}
+
+/** Staff already checked in to another booking (any room). */
+export async function findStaffActiveService(
+  supabase: SupabaseClient<Database>,
+  tenantId: string,
+  staffId: string,
+  excludeBookingId?: string,
+): Promise<{ id: string } | null> {
+  let query = supabase
+    .from("bookings")
+    .select("id")
+    .eq("tenant_id", tenantId)
+    .eq("staff_id", staffId)
+    .not("checked_in_at", "is", null)
+    .is("checked_out_at", null)
+    .neq("status", "cancelled")
+    .neq("status", "completed")
+    .limit(5);
 
   if (excludeBookingId) {
     query = query.neq("id", excludeBookingId);
   }
 
   const { data } = await query;
-  return (data?.length ?? 0) > 0;
+  return data?.[0] ?? null;
+}
+
+/**
+ * Room already has a checked-in service. Pair/companion bookings for the
+ * same visit should pass their ids in excludeBookingIds.
+ */
+export async function findRoomActiveService(
+  supabase: SupabaseClient<Database>,
+  tenantId: string,
+  roomId: string,
+  excludeBookingId?: string | string[],
+): Promise<{ id: string; customer_name: string | null } | null> {
+  const excludeIds = new Set(normalizeExcludeIds(excludeBookingId));
+
+  const { data } = await supabase
+    .from("bookings")
+    .select("id, customer_name")
+    .eq("tenant_id", tenantId)
+    .eq("room_id", roomId)
+    .not("checked_in_at", "is", null)
+    .is("checked_out_at", null)
+    .neq("status", "cancelled")
+    .neq("status", "completed")
+    .limit(20);
+
+  return (data ?? []).find((row) => !excludeIds.has(row.id)) ?? null;
 }
 
 /**
