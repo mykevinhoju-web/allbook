@@ -616,7 +616,11 @@ export function RoomHomeContent() {
                       </AppButton>
                     )}
                   </div>
-                ) : null}
+                ) : (
+                  <p className="mt-5 rounded-2xl bg-card/70 px-4 py-3 text-sm text-muted-foreground">
+                    Two staff already on this service.
+                  </p>
+                )}
 
                 <div className="mt-6">
                   <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground md:text-sm">
@@ -661,7 +665,21 @@ export function RoomHomeContent() {
                   {actionId === activeBooking.id ? "Ending..." : "End service"}
                 </AppButton>
               </div>
-            ) : null}
+            ) : (
+              <div className="rounded-3xl border border-dashed border-border bg-muted/40 px-5 py-5 md:px-6">
+                <p className="text-base font-semibold text-foreground md:text-lg">
+                  Start service to add a second staff
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground md:text-base">
+                  Tap <span className="font-semibold text-foreground">Enter</span>{" "}
+                  on your booking below. After check-in,{" "}
+                  <span className="font-semibold text-foreground">
+                    Add second staff
+                  </span>{" "}
+                  appears on the active service card.
+                </p>
+              </div>
+            )}
 
             <div className="rounded-3xl border border-border bg-card p-5 md:p-6">
               <p className="text-base font-semibold md:text-lg">
@@ -714,10 +732,15 @@ export function RoomHomeContent() {
           </div>
 
           <RoomScheduleList
-            bookings={bookings}
+            bookings={bookings.filter(
+              (booking) =>
+                booking.staffId === staff.id ||
+                booking.additionalStaff?.some((member) => member.id === staff.id),
+            )}
             loading={loadingSchedule}
             now={now}
             roomLabel={roomLabel}
+            staffOnly
           />
         </div>
       </div>
@@ -763,20 +786,26 @@ function RoomScheduleList({
   loading,
   now,
   roomLabel,
+  staffOnly = false,
 }: {
   bookings: AdminBooking[];
   loading: boolean;
   now: Date;
   roomLabel: string;
+  staffOnly?: boolean;
 }) {
   return (
     <div className="rounded-3xl border border-border bg-card p-5 md:p-6">
-      <p className="text-base font-semibold md:text-lg">Today · {roomLabel}</p>
+      <p className="text-base font-semibold md:text-lg">
+        {staffOnly ? `Your bookings · ${roomLabel}` : `Today · ${roomLabel}`}
+      </p>
       {loading ? (
         <p className="mt-4 text-base text-muted-foreground">Loading...</p>
       ) : bookings.length === 0 ? (
         <p className="mt-4 text-base text-muted-foreground">
-          No bookings for this room today.
+          {staffOnly
+            ? "No bookings for you in this room today."
+            : "No bookings for this room today."}
         </p>
       ) : (
         <ul className="mt-4 max-h-[min(28rem,50vh)] space-y-2 overflow-y-auto md:max-h-[min(36rem,60vh)]">
@@ -787,10 +816,11 @@ function RoomScheduleList({
             >
               <div className="min-w-0">
                 <p className="truncate text-base font-medium text-foreground">
-                  {formatAmPmTime(booking.startsAt)} · {booking.staffName}
+                  {formatAmPmTime(booking.startsAt)} ·{" "}
+                  {booking.customerName || "Guest"}
                 </p>
                 <p className="truncate text-sm text-muted-foreground">
-                  {booking.customerName || "Guest"}
+                  {booking.staffName}
                 </p>
               </div>
               <span className="shrink-0 rounded-full bg-card px-2.5 py-1 text-xs font-semibold text-muted-foreground md:text-sm">
