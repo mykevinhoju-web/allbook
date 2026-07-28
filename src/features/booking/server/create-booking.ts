@@ -263,11 +263,14 @@ export async function createTenantBooking(
   try {
     await ensurePrimaryBookingStaff(supabase, {
       tenantId: tenant.id,
-      bookingId: data.id,
+      bookingId: (data as { id: string }).id,
       staffId: body.staffId,
     });
   } catch (staffError) {
-    await supabase.from("bookings").delete().eq("id", data.id);
+    await supabase
+      .from("bookings")
+      .delete()
+      .eq("id", (data as { id: string }).id);
     throw new CreateBookingError(
       staffError instanceof Error
         ? staffError.message
