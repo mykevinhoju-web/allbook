@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Input } from "@/components/ui/input";
 import {
@@ -30,6 +30,9 @@ import {
   isIsoDateTime,
 } from "../../lib/schedule-utils";
 import { BookingCompactTimePicker } from "./booking-compact-time-picker";
+
+/** Switch to searchable scroll list once the chip grid would get tall. */
+const STAFF_CHIP_MAX = 6;
 
 export interface BookingFormValues {
   staffId: string;
@@ -115,6 +118,97 @@ function FormField({
     <div className="block space-y-1">
       <FieldLabel required={required}>{label}</FieldLabel>
       {children}
+    </div>
+  );
+}
+
+function StaffPicker({
+  options,
+  value,
+  onSelect,
+}: {
+  options: { id: string; name: string }[];
+  value: string;
+  onSelect: (staffId: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const useSearch = options.length > STAFF_CHIP_MAX;
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter((member) => member.name.toLowerCase().includes(q));
+  }, [options, query]);
+
+  if (!useSearch) {
+    return (
+      <div className="grid grid-cols-2 gap-2">
+        {options.map((member) => {
+          const selected = value === member.id;
+          return (
+            <button
+              key={member.id}
+              type="button"
+              onClick={() => onSelect(member.id)}
+              className={cn(
+                "min-h-11 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition",
+                selected
+                  ? "border-[#8A6A3A] bg-[#8A6A3A]/10 text-stone-900 ring-2 ring-[#8A6A3A]/25"
+                  : "border-stone-200 bg-white text-stone-700 active:bg-stone-50",
+              )}
+            >
+              {member.name}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <Input
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        placeholder="Search staff…"
+        className="h-11 rounded-xl border-stone-200 bg-white"
+        autoComplete="off"
+      />
+      <div className="max-h-52 overflow-y-auto rounded-xl border border-stone-200 bg-white">
+        {filtered.length === 0 ? (
+          <p className="px-3 py-4 text-sm text-stone-500">No match.</p>
+        ) : (
+          <ul className="divide-y divide-stone-100">
+            {filtered.map((member) => {
+              const selected = value === member.id;
+              return (
+                <li key={member.id}>
+                  <button
+                    type="button"
+                    onClick={() => onSelect(member.id)}
+                    className={cn(
+                      "flex w-full items-center justify-between gap-2 px-3 py-3 text-left text-sm font-semibold transition",
+                      selected
+                        ? "bg-[#8A6A3A]/10 text-stone-900"
+                        : "text-stone-700 active:bg-stone-50",
+                    )}
+                  >
+                    <span className="truncate">{member.name}</span>
+                    {selected ? (
+                      <span className="shrink-0 text-xs font-medium text-[#8A6A3A]">
+                        Selected
+                      </span>
+                    ) : null}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+      <p className="text-xs text-stone-500">
+        {options.length} staff · scroll or search
+      </p>
     </div>
   );
 }
@@ -237,32 +331,17 @@ export function BookingFormSheet({
                   </p>
                 ) : (
                   <>
-                    <div className="grid grid-cols-2 gap-2">
-                      {staffOptions.map((member) => {
-                        const selected = values.staffId === member.id;
-                        return (
-                          <button
-                            key={member.id}
-                            type="button"
-                            onClick={() =>
-                              onChange({
-                                ...values,
-                                staffId: member.id,
-                                startsAt: "",
-                              })
-                            }
-                            className={cn(
-                              "min-h-11 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition",
-                              selected
-                                ? "border-[#8A6A3A] bg-[#8A6A3A]/10 text-stone-900 ring-2 ring-[#8A6A3A]/25"
-                                : "border-stone-200 bg-white text-stone-700 active:bg-stone-50",
-                            )}
-                          >
-                            {member.name}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <StaffPicker
+                      options={staffOptions}
+                      value={values.staffId}
+                      onSelect={(staffId) =>
+                        onChange({
+                          ...values,
+                          staffId,
+                          startsAt: "",
+                        })
+                      }
+                    />
                     <p className="mt-2 text-xs leading-relaxed text-stone-500">
                       Only staff with a shift on this day (and not yet finished)
                       are listed.
