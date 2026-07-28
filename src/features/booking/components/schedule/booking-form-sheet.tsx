@@ -1,6 +1,7 @@
 "use client";
 
-import { AppButton } from "@/components/common";
+import { useEffect, useRef } from "react";
+
 import { Input } from "@/components/ui/input";
 import {
   Sheet,
@@ -15,6 +16,13 @@ import {
 } from "@/features/services";
 import type { ServiceOption } from "@/features/services";
 
+import { bookingCustomerTheme as theme } from "../../lib/booking-customer-theme";
+import {
+  adminBookingSheetBodyClassName,
+  adminBookingSheetClassName,
+  adminBookingSheetHandleClassName,
+  adminBookingSheetScrollClassName,
+} from "../../lib/admin-booking-sheet";
 import type { RoomAvailabilityStatus } from "../../lib/room-availability";
 import {
   buildStartsAtIso,
@@ -79,7 +87,7 @@ interface BookingFormSheetProps {
   submitting?: boolean;
 }
 
-function IosFieldLabel({
+function FieldLabel({
   children,
   required,
 }: {
@@ -87,67 +95,27 @@ function IosFieldLabel({
   required?: boolean;
 }) {
   return (
-    <span className="text-[13px] text-muted-foreground">
+    <span className={theme.label}>
       {children}
-      {required ? <span className="text-destructive"> *</span> : null}
+      {required ? <span className="text-red-600"> *</span> : null}
     </span>
   );
 }
 
-function IosSelect({
-  value,
-  onChange,
-  children,
-  className,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <select
-      className={cn(
-        "h-11 w-full appearance-none rounded-xl border-0 bg-transparent px-0 text-[17px] font-medium text-foreground outline-none",
-        className,
-      )}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-    >
-      {children}
-    </select>
-  );
-}
-
-function IosGroupedCard({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="overflow-hidden rounded-2xl border border-border/40 bg-card shadow-soft">
-      {children}
-    </div>
-  );
-}
-
-function IosRow({
+function FormField({
   label,
   required,
   children,
-  border = true,
 }: {
   label: string;
   required?: boolean;
   children: React.ReactNode;
-  border?: boolean;
 }) {
   return (
-    <label
-      className={cn(
-        "flex flex-col gap-1 px-4 py-3",
-        border && "border-b border-border/50 last:border-b-0",
-      )}
-    >
-      <IosFieldLabel required={required}>{label}</IosFieldLabel>
+    <div className="block space-y-1">
+      <FieldLabel required={required}>{label}</FieldLabel>
       {children}
-    </label>
+    </div>
   );
 }
 
@@ -172,6 +140,26 @@ export function BookingFormSheet({
   onSubmit,
   submitting = false,
 }: BookingFormSheetProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    // Always start at the top so Staff / Service are reachable on mobile.
+    const id = window.requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ top: 0 });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [open]);
+
+  // Drop a staff selection that is no longer in the options (e.g. shift ended).
+  useEffect(() => {
+    if (!open || !values.staffId) return;
+    if (staffOptions.some((member) => member.id === values.staffId)) return;
+    onChange({ ...values, staffId: "", startsAt: "" });
+    // Only re-run when the selected id or option list changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- avoid loop on values object identity
+  }, [open, staffOptions, values.staffId]);
+
   const update = <K extends keyof BookingFormValues>(
     key: K,
     value: BookingFormValues[K],
@@ -201,125 +189,173 @@ export function BookingFormSheet({
   const durationMinutes = Number(values.durationMinutes) || 0;
   const timePickerDisabled = !values.staffId || !values.durationMinutes;
   const timePickerHint = !values.staffId
-    ? "Select staff first"
+    ? "Select staff above first"
     : !values.durationMinutes
-      ? "Select service first"
+      ? "Select service above first"
       : timeSlotsHint;
 
   const selectedRoomName = values.roomId
-    ? roomOptions.find((room) => room.id === values.roomId)?.name ?? null
+    ? (roomOptions.find((room) => room.id === values.roomId)?.name ?? null)
     : null;
+
+  const selectedStaffName =
+    staffOptions.find((member) => member.id === values.staffId)?.name ?? null;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="max-h-[92vh] overflow-y-auto rounded-t-[1.25rem] bg-muted/30 px-4 pb-8 pt-2"
+        showCloseButton
+        className={adminBookingSheetClassName}
       >
-        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border" />
+        <div className={adminBookingSheetBodyClassName}>
+          <div className={adminBookingSheetHandleClassName} />
 
-        <SheetHeader className="px-1 pb-4 text-left">
-          <SheetTitle className="text-xl font-semibold tracking-tight">
-            {title}
-          </SheetTitle>
-          {previewTime ? (
-            <p className="text-sm text-muted-foreground">{previewTime}</p>
-          ) : null}
-        </SheetHeader>
+          <SheetHeader className="shrink-0 border-b border-stone-100 px-4 py-3 pr-12 text-left">
+            <p className={theme.eyebrow}>Admin booking</p>
+            <SheetTitle className="text-lg font-semibold tracking-tight text-stone-900">
+              {title}
+            </SheetTitle>
+            {previewTime ? (
+              <p className="text-sm text-stone-500">{previewTime}</p>
+            ) : selectedStaffName ? (
+              <p className="text-sm text-stone-500">
+                {selectedStaffName} · {date}
+              </p>
+            ) : (
+              <p className="text-sm text-stone-500">{date}</p>
+            )}
+          </SheetHeader>
 
-        <div className="space-y-5">
-          <section>
-            <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Appointment
-            </p>
-            <IosGroupedCard>
-              <IosRow label="Staff" required>
-                <IosSelect
-                  value={values.staffId}
-                  onChange={(value) =>
-                    onChange({ ...values, staffId: value, startsAt: "" })
-                  }
-                >
-                  <option value="">Select staff</option>
-                  {staffOptions.map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {member.name}
-                    </option>
-                  ))}
-                </IosSelect>
-              </IosRow>
+          <div ref={scrollRef} className={adminBookingSheetScrollClassName}>
+            <div className={cn(theme.panel, "space-y-4")}>
+              <FormField label="Staff" required>
+                {staffOptions.length === 0 ? (
+                  <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    No staff have a shift on this day. Add shifts under Staff,
+                    then try again.
+                  </p>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-2">
+                      {staffOptions.map((member) => {
+                        const selected = values.staffId === member.id;
+                        return (
+                          <button
+                            key={member.id}
+                            type="button"
+                            onClick={() =>
+                              onChange({
+                                ...values,
+                                staffId: member.id,
+                                startsAt: "",
+                              })
+                            }
+                            className={cn(
+                              "min-h-11 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition",
+                              selected
+                                ? "border-[#8A6A3A] bg-[#8A6A3A]/10 text-stone-900 ring-2 ring-[#8A6A3A]/25"
+                                : "border-stone-200 bg-white text-stone-700 active:bg-stone-50",
+                            )}
+                          >
+                            {member.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="mt-2 text-xs leading-relaxed text-stone-500">
+                      Only staff with a shift on this day (and not yet finished)
+                      are listed.
+                    </p>
+                  </>
+                )}
+              </FormField>
 
-              <IosRow label="Service" required>
-                <IosSelect
-                  value={values.durationMinutes}
-                  onChange={(value) =>
+              <FormField label="Service" required>
+                <div className="space-y-2">
+                  {serviceOptions.map((option) => {
+                    const value = String(option.durationMinutes);
+                    const selected = values.durationMinutes === value;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() =>
+                          onChange({
+                            ...values,
+                            durationMinutes: value,
+                            startsAt: "",
+                          })
+                        }
+                        className={cn(
+                          "flex min-h-11 w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition",
+                          selected
+                            ? "border-[#8A6A3A] bg-[#8A6A3A]/10 text-stone-900 ring-2 ring-[#8A6A3A]/25"
+                            : "border-stone-200 bg-white text-stone-700 active:bg-stone-50",
+                        )}
+                      >
+                        <span>
+                          {formatServiceOptionLabel(
+                            option.durationMinutes,
+                            option.priceCents,
+                            currency,
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedOption ? (
+                  <div className={theme.priceBox}>
+                    <p className={theme.priceLabel}>Amount</p>
+                    <p className="mt-1 text-xl font-semibold text-stone-800">
+                      {formatPriceFromCents(selectedOption.priceCents, currency)}
+                    </p>
+                  </div>
+                ) : null}
+              </FormField>
+            </div>
+
+            <BookingCompactTimePicker
+              date={date}
+              timeZone={timeZone}
+              durationMinutes={durationMinutes || 30}
+              slotOptions={slotOptions}
+              selectedValue={values.startsAt}
+              onSelect={(value) => update("startsAt", value)}
+              loading={timeSlotsLoading}
+              hint={timePickerHint}
+              disabled={timePickerDisabled}
+              roomPreview={selectedRoomName ?? suggestedAutoRoomName}
+              variant="customer"
+            />
+
+            <div className={cn(theme.panel, "space-y-3")}>
+              <FormField label="Treatment room">
+                <select
+                  value={values.roomId}
+                  onChange={(event) =>
                     onChange({
                       ...values,
-                      durationMinutes: value,
+                      roomId: event.target.value,
                       startsAt: "",
                     })
                   }
-                >
-                  <option value="">Select service</option>
-                  {serviceOptions.map((option) => (
-                    <option
-                      key={option.id}
-                      value={String(option.durationMinutes)}
-                    >
-                      {formatServiceOptionLabel(
-                        option.durationMinutes,
-                        option.priceCents,
-                        currency,
-                      )}
-                    </option>
-                  ))}
-                </IosSelect>
-                {selectedOption ? (
-                  <p className="text-sm font-medium text-primary">
-                    {formatPriceFromCents(selectedOption.priceCents, currency)}
-                  </p>
-                ) : null}
-              </IosRow>
-
-            </IosGroupedCard>
-          </section>
-
-          <BookingCompactTimePicker
-            date={date}
-            timeZone={timeZone}
-            durationMinutes={durationMinutes || 30}
-            slotOptions={slotOptions}
-            selectedValue={values.startsAt}
-            onSelect={(value) => update("startsAt", value)}
-            loading={timeSlotsLoading}
-            hint={timePickerHint}
-            disabled={timePickerDisabled}
-            roomPreview={selectedRoomName ?? suggestedAutoRoomName}
-            variant="admin"
-          />
-
-          <section>
-            <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Room
-            </p>
-            <IosGroupedCard>
-              <IosRow label="Treatment room" border={false}>
-                <IosSelect
-                  value={values.roomId}
-                  onChange={(value) =>
-                    onChange({ ...values, roomId: value, startsAt: "" })
-                  }
+                  className={theme.field}
                 >
                   <option value="">
                     {suggestedAutoRoomName
                       ? `Auto-assign (${suggestedAutoRoomName})`
                       : "Auto-assign (first free room)"}
                   </option>
-                  {(roomStatuses ?? roomOptions.map((room) => ({
-                    id: room.id,
-                    name: room.name,
-                    available: true,
-                  }))).map((room) => (
+                  {(
+                    roomStatuses ??
+                    roomOptions.map((room) => ({
+                      id: room.id,
+                      name: room.name,
+                      available: true,
+                    }))
+                  ).map((room) => (
                     <option
                       key={room.id}
                       value={room.id}
@@ -330,69 +366,83 @@ export function BookingFormSheet({
                         : `${room.name} — booked${room.conflictLabel ? ` ${room.conflictLabel}` : ""}`}
                     </option>
                   ))}
-                </IosSelect>
-                <p className="text-xs text-muted-foreground">
+                </select>
+                <p className="text-xs text-stone-500">
                   {values.startsAt
                     ? "Unavailable rooms are disabled for the selected time."
-                    : "Pick a time to see which rooms are free. Auto-assign uses the first available room."}
+                    : "Pick a time to see which rooms are free."}
                 </p>
-              </IosRow>
-            </IosGroupedCard>
-          </section>
+              </FormField>
+            </div>
 
-          <section>
-            <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Customer
-            </p>
-            <IosGroupedCard>
-              <IosRow label="Name" required>
+            <div className={cn(theme.panel, "space-y-4")}>
+              <label className="block space-y-1">
+                <FieldLabel required>Customer name</FieldLabel>
                 <Input
                   value={values.customerName}
-                  onChange={(event) => update("customerName", event.target.value)}
-                  className="h-11 rounded-xl border-0 bg-transparent px-0 text-[17px] shadow-none focus-visible:ring-0"
+                  onChange={(event) =>
+                    update("customerName", event.target.value)
+                  }
+                  className={theme.field}
+                  placeholder="Full name"
                   required
                 />
-              </IosRow>
+              </label>
 
-              <IosRow label="Phone" required>
+              <label className="block space-y-1">
+                <FieldLabel required>Phone</FieldLabel>
                 <Input
                   type="tel"
                   value={values.customerPhone}
-                  onChange={(event) => update("customerPhone", event.target.value)}
-                  className="h-11 rounded-xl border-0 bg-transparent px-0 text-[17px] shadow-none focus-visible:ring-0"
+                  onChange={(event) =>
+                    update("customerPhone", event.target.value)
+                  }
+                  className={theme.field}
+                  placeholder="04xx xxx xxx"
                   required
                 />
-              </IosRow>
+              </label>
 
-              <IosRow label="Postcode">
+              <label className="block space-y-1">
+                <FieldLabel>Postcode</FieldLabel>
                 <Input
                   value={values.customerPostcode}
                   onChange={(event) =>
                     update("customerPostcode", event.target.value)
                   }
-                  className="h-11 rounded-xl border-0 bg-transparent px-0 text-[17px] shadow-none focus-visible:ring-0"
+                  className={theme.field}
+                  placeholder="2000"
                 />
-              </IosRow>
+              </label>
 
-              <IosRow label="Email" border={false}>
+              <label className="block space-y-1">
+                <FieldLabel>Email</FieldLabel>
                 <Input
                   type="email"
                   value={values.customerEmail}
-                  onChange={(event) => update("customerEmail", event.target.value)}
-                  className="h-11 rounded-xl border-0 bg-transparent px-0 text-[17px] shadow-none focus-visible:ring-0"
+                  onChange={(event) =>
+                    update("customerEmail", event.target.value)
+                  }
+                  className={theme.field}
+                  placeholder="optional"
                 />
-              </IosRow>
-            </IosGroupedCard>
-          </section>
+              </label>
+            </div>
+          </div>
 
-          <AppButton
-            type="button"
-            className="h-12 w-full rounded-2xl text-base font-semibold shadow-sm active:scale-[0.98]"
-            disabled={submitting || serviceOptions.length === 0}
-            onClick={onSubmit}
-          >
-            {submitting ? "Saving…" : "Create booking"}
-          </AppButton>
+          <div className="shrink-0 border-t border-stone-100 bg-white px-4 py-4">
+            <button
+              type="button"
+              disabled={submitting || serviceOptions.length === 0}
+              onClick={onSubmit}
+              className={theme.goldButton}
+            >
+              {submitting ? "Saving…" : "Create booking"}
+            </button>
+            <p className="mt-2 text-center text-xs text-stone-500">
+              Walk-in · no card payment on admin create
+            </p>
+          </div>
         </div>
       </SheetContent>
     </Sheet>
