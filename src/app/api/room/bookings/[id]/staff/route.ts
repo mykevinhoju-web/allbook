@@ -329,7 +329,21 @@ export async function GET(
       return NextResponse.json({ error: error.message }, { status: 503 });
     }
 
-    const companions = (data ?? [])
+    type CompanionRow = {
+      id: string;
+      staff_id: string;
+      starts_at: string;
+      ends_at: string;
+      duration_minutes: number;
+      price_cents: number;
+      status: string;
+      checked_in_at: string | null;
+      checked_out_at: string | null;
+      notes: string | null;
+      staff?: { name: string } | { name: string }[] | null;
+    };
+
+    const companions = ((data ?? []) as CompanionRow[])
       .filter((row) => parsePairBookingId(row.notes) === id)
       .map((row) => {
         const staff = Array.isArray(row.staff) ? row.staff[0] : row.staff;
