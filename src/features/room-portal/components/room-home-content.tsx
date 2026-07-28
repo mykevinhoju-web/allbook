@@ -465,6 +465,11 @@ export function RoomHomeContent() {
     ? new Date(activeBooking.endsAt).getTime() - now.getTime()
     : null;
 
+  const serviceStaffNames = useMemo(() => {
+    if (!staff) return [] as string[];
+    return [staff.name, ...companions.map((row) => row.staffName)];
+  }, [staff, companions]);
+
   const extendOptions = useMemo(() => {
     if (!activeBooking) return [] as number[];
     const blockingStarts = [
@@ -654,7 +659,9 @@ export function RoomHomeContent() {
               {roomLabel}
             </p>
             <p className="truncate text-2xl font-semibold tracking-tight md:text-3xl">
-              {staff.name}
+              {serviceStaffNames.length > 0
+                ? serviceStaffNames.join(" + ")
+                : staff.name}
             </p>
           </div>
           <AppButton
@@ -671,6 +678,7 @@ export function RoomHomeContent() {
         <div className="grid gap-5 md:grid-cols-2 md:gap-6 lg:grid-cols-[1.15fr_0.85fr]">
           <div className="space-y-5 md:space-y-6">
             {activeBooking ? (
+              <>
               <div
                 className={cn(
                   "rounded-3xl border p-5 md:p-7",
@@ -687,18 +695,11 @@ export function RoomHomeContent() {
                       : "text-emerald-700",
                   )}
                 >
-                  In room now
+                  In room now · {staff.name}
                 </p>
                 <p className="mt-2 text-lg font-semibold text-foreground md:text-xl">
                   {formatAmPmTime(activeBooking.startsAt)} ·{" "}
                   {activeBooking.customerName || "Guest"}
-                </p>
-                <p className="mt-2 text-sm font-medium text-muted-foreground md:text-base">
-                  Staff:{" "}
-                  {[
-                    staff.name,
-                    ...companions.map((row) => row.staffName),
-                  ].join(" + ")}
                 </p>
                 <p className="mt-4 text-6xl font-semibold tabular-nums tracking-tight text-foreground md:text-7xl">
                   {formatRemaining(remainingMs ?? 0)}
@@ -706,24 +707,6 @@ export function RoomHomeContent() {
                 <p className="mt-1 text-sm font-medium text-muted-foreground md:text-base">
                   left · ends {formatAmPmTime(activeBooking.endsAt)}
                 </p>
-
-                {companions.length > 0 ? (
-                  <ul className="mt-4 space-y-2">
-                    {companions.map((row) => (
-                      <li
-                        key={row.id}
-                        className="rounded-2xl bg-card/80 px-4 py-3 text-sm text-foreground"
-                      >
-                        <span className="font-semibold">{row.staffName}</span>
-                        {" · "}
-                        {row.durationMinutes} min ·{" "}
-                        {formatPriceFromCents(row.priceCents, currency)}
-                        {" · ends "}
-                        {formatAmPmTime(row.endsAt)}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
 
                 <div className="mt-5">
                   {addingStaff ? (
@@ -911,6 +894,51 @@ export function RoomHomeContent() {
                   Only this button ends the service. Lock keeps it running.
                 </p>
               </div>
+
+              {companions.map((row) => {
+                const companionRemainingMs =
+                  new Date(row.endsAt).getTime() - now.getTime();
+                const urgent =
+                  companionRemainingMs <= 60_000 && companionRemainingMs > 0;
+                return (
+                  <div
+                    key={row.id}
+                    className={cn(
+                      "rounded-3xl border p-5 md:p-7",
+                      urgent
+                        ? "border-red-300 bg-red-50"
+                        : "border-sky-200 bg-sky-50",
+                    )}
+                  >
+                    <p
+                      className={cn(
+                        "text-xs font-semibold uppercase tracking-[0.18em] md:text-sm",
+                        urgent ? "text-red-700" : "text-sky-700",
+                      )}
+                    >
+                      In room now · {row.staffName}
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+                      {row.staffName}
+                    </p>
+                    <p className="mt-2 text-lg font-semibold text-foreground md:text-xl">
+                      {formatAmPmTime(row.startsAt)} ·{" "}
+                      {activeBooking.customerName || "Guest"}
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-muted-foreground md:text-base">
+                      {row.durationMinutes} min ·{" "}
+                      {formatPriceFromCents(row.priceCents, currency)}
+                    </p>
+                    <p className="mt-4 text-6xl font-semibold tabular-nums tracking-tight text-foreground md:text-7xl">
+                      {formatRemaining(Math.max(0, companionRemainingMs))}
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-muted-foreground md:text-base">
+                      left · ends {formatAmPmTime(row.endsAt)}
+                    </p>
+                  </div>
+                );
+              })}
+              </>
             ) : (
               <div className="rounded-3xl border border-dashed border-border bg-muted/40 px-5 py-5 md:px-6">
                 <p className="text-base font-semibold text-foreground md:text-lg">
@@ -988,12 +1016,28 @@ export function RoomHomeContent() {
             bookings={bookings.filter(
               (booking) =>
                 booking.staffId === staff.id ||
-                booking.additionalStaff?.some((member) => member.id === staff.id),
+                booking.additionalStaff?.some((member) => member.id === staff.id) ||
+                (activeBooking != null &&
+                  booking.id === activeBooking.id) ||
+                companions.some((row) => row.id === booking.id),
             )}
             loading={loadingSchedule}
             now={now}
             roomLabel={roomLabel}
             staffOnly
+            staffLabelById={
+              activeBooking
+                ? {
+                    [activeBooking.id]: serviceStaffNames.join(" + "),
+                    ...Object.fromEntries(
+                      companions.map((row) => [
+                        row.id,
+                        serviceStaffNames.join(" + "),
+                      ]),
+                    ),
+                  }
+                : undefined
+            }
           />
         </div>
       </div>
@@ -1046,12 +1090,14 @@ function RoomScheduleList({
   now,
   roomLabel,
   staffOnly = false,
+  staffLabelById,
 }: {
   bookings: AdminBooking[];
   loading: boolean;
   now: Date;
   roomLabel: string;
   staffOnly?: boolean;
+  staffLabelById?: Record<string, string>;
 }) {
   return (
     <div className="rounded-3xl border border-border bg-card p-5 md:p-6">
@@ -1079,7 +1125,12 @@ function RoomScheduleList({
                   {booking.customerName || "Guest"}
                 </p>
                 <p className="truncate text-sm text-muted-foreground">
-                  {booking.staffName}
+                  {staffLabelById?.[booking.id] ??
+                    [
+                      booking.staffName,
+                      ...(booking.additionalStaff?.map((member) => member.name) ??
+                        []),
+                    ].join(" + ")}
                 </p>
               </div>
               <span className="shrink-0 rounded-full bg-card px-2.5 py-1 text-xs font-semibold text-muted-foreground md:text-sm">
