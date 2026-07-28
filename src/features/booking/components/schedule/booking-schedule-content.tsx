@@ -15,6 +15,10 @@ import {
 } from "@/components/ui/sheet";
 import { formatPriceFromCents } from "@/features/services";
 import type { ServiceOption } from "@/features/services";
+import {
+  DEFAULT_PRICING_ADJUSTMENTS,
+  type PricingAdjustments,
+} from "@/features/services/lib/pricing-adjustments";
 import { useTenant } from "@/features/tenants";
 import type { StaffRecord } from "@/features/staff/types";
 import {
@@ -77,6 +81,8 @@ export function BookingScheduleContent() {
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
   const [rooms, setRooms] = useState<{ id: string; name: string }[]>([]);
   const [serviceOptions, setServiceOptions] = useState<ServiceOption[]>([]);
+  const [pricingAdjustments, setPricingAdjustments] =
+    useState<PricingAdjustments>(DEFAULT_PRICING_ADJUSTMENTS);
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -128,6 +134,7 @@ export function BookingScheduleContent() {
       };
       const optionsData = (await optionsResponse.json()) as {
         options?: ServiceOption[];
+        pricingAdjustments?: PricingAdjustments;
       };
       const roomsData = (await roomsResponse.json()) as {
         rooms?: { id: string; name: string; isActive?: boolean }[];
@@ -135,6 +142,9 @@ export function BookingScheduleContent() {
 
       setBookings(bookingsData.bookings ?? []);
       setServiceOptions(optionsData.options ?? []);
+      if (optionsData.pricingAdjustments) {
+        setPricingAdjustments(optionsData.pricingAdjustments);
+      }
       setRooms(
         (roomsData.rooms ?? [])
           .filter((room) => room.isActive !== false)
@@ -659,6 +669,7 @@ export function BookingScheduleContent() {
         )}
         roomOptions={rooms}
         serviceOptions={serviceOptions}
+        pricingAdjustments={pricingAdjustments}
         currency={tenant.settings.currency}
         timeSlotOptions={timeSlotOptions}
         timeSlotsLoading={timeSlotsLoading}

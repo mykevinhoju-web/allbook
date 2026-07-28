@@ -6,6 +6,11 @@ import { Plus, Trash2 } from "lucide-react";
 import { AppButton, toast } from "@/components/common";
 import { Input } from "@/components/ui/input";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
+import { fetchAdminApi } from "@/features/admin/lib/admin-api-client";
+import {
+  DEFAULT_PRICING_ADJUSTMENTS,
+  type PricingAdjustments,
+} from "@/features/services/lib/pricing-adjustments";
 import { formatPriceFromCents } from "@/features/services/utils/format-price";
 
 interface PricingRow {
@@ -22,31 +27,57 @@ function emptyRow(): PricingRow {
   };
 }
 
+function dollarsInputFromCents(cents: number): string {
+  if (!cents) return "";
+  return String(cents / 100);
+}
+
+function centsFromDollarsInput(value: string): number {
+  const trimmed = value.trim();
+  if (!trimmed) return 0;
+  const amount = Number(trimmed);
+  if (!Number.isFinite(amount) || amount < 0) return 0;
+  return Math.round(amount * 100);
+}
+
 export function ServicePricingContent() {
   const [rows, setRows] = useState<PricingRow[]>([emptyRow()]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [currency, setCurrency] = useState("AUD");
+  const [nightSurcharge, setNightSurcharge] = useState("");
+  const [discount, setDiscount] = useState("");
+  const [discountApplyInternal, setDiscountApplyInternal] = useState(false);
+  const [discountApplyExternal, setDiscountApplyExternal] = useState(false);
 
   const loadOptions = useCallback(async () => {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/admin/service-options");
+      const response = await fetchAdminApi("/api/admin/service-options");
       const data = (await response.json()) as {
         options?: {
           durationMinutes: number;
           priceCents: number;
         }[];
         currency?: string;
+        pricingAdjustments?: PricingAdjustments;
         error?: string;
       };
 
       if (!response.ok) {
+        if (response.status === 401) return;
         throw new Error(data.error ?? "Failed to load service options.");
       }
 
       setCurrency(data.currency ?? "AUD");
+
+      const adjustments =
+        data.pricingAdjustments ?? DEFAULT_PRICING_ADJUSTMENTS;
+      setNightSurcharge(dollarsInputFromCents(adjustments.nightSurchargeCents));
+      setDiscount(dollarsInputFromCents(adjustments.discountCents));
+      setDiscountApplyInternal(adjustments.discountApplyInternal);
+      setDiscountApplyExternal(adjustments.discountApplyExternal);
 
       if (data.options?.length) {
         setRows(
@@ -97,18 +128,36 @@ export function ServicePricingContent() {
       return;
     }
 
+    if (nightSurcharge.trim() && Number(nightSurcharge) < 0) {
+      toast.error("Night surcharge cannot be negative.");
+      return;
+    }
+
+    if (discount.trim() && Number(discount) < 0) {
+      toast.error("Discount cannot be negative.");
+      return;
+    }
+
+    const pricingAdjustments: PricingAdjustments = {
+      nightSurchargeCents: centsFromDollarsInput(nightSurcharge),
+      discountCents: centsFromDollarsInput(discount),
+      discountApplyInternal,
+      discountApplyExternal,
+    };
+
     setSaving(true);
 
     try {
-      const response = await fetch("/api/admin/service-options", {
+      const response = await fetchAdminApi("/api/admin/service-options", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ options }),
+        body: JSON.stringify({ options, pricingAdjustments }),
       });
 
       const data = (await response.json()) as { error?: string };
 
       if (!response.ok) {
+        if (response.status === 401) return;
         throw new Error(data.error ?? "Failed to save pricing.");
       }
 
@@ -129,6 +178,8 @@ export function ServicePricingContent() {
       <div className="p-6 text-sm text-muted-foreground">Loading pricing...</div>
     );
   }
+
+  const nightLabel = "9:00 PM – 10:00 AM";
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-3 py-4 sm:px-4 lg:gap-6 lg:p-6">
@@ -209,16 +260,89 @@ export function ServicePricingContent() {
             <Plus className="size-4" />
             Add option
           </AppButton>
-
-          <AppButton
-            type="button"
-            className="h-11 rounded-xl"
-            disabled={saving}
-            onClick={() => void save()}
-          >
-            {saving ? "Saving..." : "Save pricing"}
-          </AppButton>
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft sm:p-6">
+        <h2 className="text-sm font-semibold text-foreground">Night surcharge</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Extra amount added when a booking starts between {nightLabel}. Applies
+          to every booking.
+        </p>
+        <div className="mt-4 max-w-xs space-y-1">
+          <label
+            htmlFor="night-surcharge"
+            className="text-xs font-medium text-muted-foreground"
+          >
+            Surcharge ({currency})
+          </label>
+          <Input
+            id="night-surcharge"
+            type="number"
+            min={0}
+            step="0.01"
+            placeholder="e.g. 20"
+            value={nightSurcharge}
+            onChange={(event) => setNightSurcharge(event.target.value)}
+            className="h-11 rounded-xl"
+          />
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft sm:p-6">
+        <h2 className="text-sm font-semibold text-foreground">Discount</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Flat amount subtracted from the booking total. Choose where it applies.
+        </p>
+        <div className="mt-4 max-w-xs space-y-1">
+          <label
+            htmlFor="discount-amount"
+            className="text-xs font-medium text-muted-foreground"
+          >
+            Discount ({currency})
+          </label>
+          <Input
+            id="discount-amount"
+            type="number"
+            min={0}
+            step="0.01"
+            placeholder="e.g. 10"
+            value={discount}
+            onChange={(event) => setDiscount(event.target.value)}
+            className="h-11 rounded-xl"
+          />
+        </div>
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:gap-6">
+          <label className="flex items-center gap-2 text-sm text-foreground">
+            <input
+              type="checkbox"
+              className="size-4 rounded border-border"
+              checked={discountApplyInternal}
+              onChange={(event) => setDiscountApplyInternal(event.target.checked)}
+            />
+            Internal (admin / walk-in)
+          </label>
+          <label className="flex items-center gap-2 text-sm text-foreground">
+            <input
+              type="checkbox"
+              className="size-4 rounded border-border"
+              checked={discountApplyExternal}
+              onChange={(event) => setDiscountApplyExternal(event.target.checked)}
+            />
+            External (customer online)
+          </label>
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <AppButton
+          type="button"
+          className="h-11 rounded-xl"
+          disabled={saving}
+          onClick={() => void save()}
+        >
+          {saving ? "Saving..." : "Save pricing"}
+        </AppButton>
       </div>
 
       <div className="rounded-xl border border-border/50 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
@@ -236,6 +360,38 @@ export function ServicePricingContent() {
               </li>
             ))}
         </ul>
+        {(nightSurcharge.trim() || discount.trim()) && (
+          <ul className="mt-3 space-y-1 border-t border-border/40 pt-3">
+            {nightSurcharge.trim() ? (
+              <li>
+                Night surcharge ({nightLabel}): +
+                {formatPriceFromCents(
+                  centsFromDollarsInput(nightSurcharge),
+                  currency,
+                )}
+              </li>
+            ) : null}
+            {discount.trim() ? (
+              <li>
+                Discount: −
+                {formatPriceFromCents(centsFromDollarsInput(discount), currency)}
+                {(discountApplyInternal || discountApplyExternal) && (
+                  <span>
+                    {" "}
+                    (
+                    {[
+                      discountApplyInternal ? "internal" : null,
+                      discountApplyExternal ? "external" : null,
+                    ]
+                      .filter(Boolean)
+                      .join(", ")}
+                    )
+                  </span>
+                )}
+              </li>
+            ) : null}
+          </ul>
+        )}
       </div>
     </div>
   );

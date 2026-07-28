@@ -9,7 +9,7 @@ import {
 import { isBookingOverlapConstraintError, isRoomOverlapConstraintError } from "@/features/booking/lib/validate-booking-update";
 import { isStartTimeOnFiveMinuteSlot } from "@/features/booking/lib/schedule-utils";
 import { autoCheckoutExpiredBookings } from "@/features/booking/server/auto-checkout-expired";
-import { getServicePriceCents } from "@/features/services/server/get-service-price";
+import { computeBookingPriceCents } from "@/features/services/server/get-service-price";
 import { sendBookingPushNotifications } from "@/lib/push/send-booking-push";
 import {
   createServiceSupabase,
@@ -219,19 +219,24 @@ export async function POST(request: Request) {
 
     const durationMinutes = body.durationMinutes;
     const supabase = createServiceSupabase();
+    const timeZone = tenant.settings.timezone || "Australia/Sydney";
 
-    const priceCents = await getServicePriceCents(
-      supabase,
-      tenant.id,
+    const priced = await computeBookingPriceCents(supabase, {
+      tenantId: tenant.id,
       durationMinutes,
-    );
+      startsAtIso: body.startsAt,
+      timeZone,
+      channel: "internal",
+      adjustments: tenant.settings.pricingAdjustments,
+    });
 
-    if (priceCents === null) {
+    if (priced === null) {
       return NextResponse.json(
         { error: "No price configured for this service duration." },
         { status: 400 },
       );
     }
+    const priceCents = priced.totalCents;
 
     const startsAt = new Date(body.startsAt);
 

@@ -2,10 +2,18 @@ import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 
 import {
+  mergePricingAdjustments,
+  parsePricingAdjustments,
+  type PricingAdjustments,
+} from "@/features/services/lib/pricing-adjustments";
+import { invalidateDevTenantCache } from "@/features/tenants/server/resolve-tenant";
+import {
   createServiceSupabase,
-  requireTenantFromRequest,
-  TenantContextError,
 } from "@/lib/admin/tenant-context";
+import {
+  handleAdminRouteError,
+  requireTenantAndAdminActor,
+} from "@/lib/admin/require-admin-api";
 
 function mapOption(row: {
   id: string;
@@ -23,9 +31,22 @@ function mapOption(row: {
   };
 }
 
+function normalizePricingAdjustments(raw: unknown): PricingAdjustments {
+  if (raw === undefined) {
+    return mergePricingAdjustments(undefined);
+  }
+
+  const parsed = parsePricingAdjustments(raw);
+  if (!parsed) {
+    throw new Error("Invalid pricing adjustments.");
+  }
+
+  return mergePricingAdjustments(parsed);
+}
+
 export async function GET(request: Request) {
   try {
-    const tenant = await requireTenantFromRequest(request);
+    const { tenant } = await requireTenantAndAdminActor(request);
     const supabase = createServiceSupabase();
 
     const { data, error } = await supabase
@@ -43,21 +64,23 @@ export async function GET(request: Request) {
     return NextResponse.json({
       options: (data ?? []).map(mapOption),
       currency: tenant.settings.currency,
+      pricingAdjustments: mergePricingAdjustments(
+        tenant.settings.pricingAdjustments,
+      ),
     });
   } catch (error) {
-    if (error instanceof TenantContextError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
-    }
-
+    const guard = handleAdminRouteError(error);
+    if (guard) return guard;
     throw error;
   }
 }
 
 export async function PUT(request: Request) {
   try {
-    const tenant = await requireTenantFromRequest(request);
+    const { tenant } = await requireTenantAndAdminActor(request);
     const body = (await request.json()) as {
       options?: { durationMinutes?: number; price?: number }[];
+      pricingAdjustments?: unknown;
     };
 
     if (!body.options?.length) {
@@ -94,7 +117,49 @@ export async function PUT(request: Request) {
       );
     }
 
+    const pricingAdjustments =
+      body.pricingAdjustments !== undefined
+        ? normalizePricingAdjustments(body.pricingAdjustments)
+        : mergePricingAdjustments(tenant.settings.pricingAdjustments);
+
     const supabase = createServiceSupabase();
+
+    const { data: settingsRow, error: settingsReadError } = await supabase
+      .from("tenants")
+      .select("settings")
+      .eq("id", tenant.id)
+      .maybeSingle();
+
+    if (settingsReadError) {
+      return NextResponse.json(
+        { error: settingsReadError.message },
+        { status: 503 },
+      );
+    }
+
+    const currentSettings =
+      settingsRow?.settings &&
+      typeof settingsRow.settings === "object" &&
+      !Array.isArray(settingsRow.settings)
+        ? (settingsRow.settings as Record<string, unknown>)
+        : {};
+
+    const { error: settingsWriteError } = await supabase
+      .from("tenants")
+      .update({
+        settings: {
+          ...currentSettings,
+          pricingAdjustments,
+        },
+      })
+      .eq("id", tenant.id);
+
+    if (settingsWriteError) {
+      return NextResponse.json(
+        { error: settingsWriteError.message },
+        { status: 503 },
+      );
+    }
 
     const { error: deleteError } = await supabase
       .from("service_options")
@@ -122,14 +187,17 @@ export async function PUT(request: Request) {
     }
 
     revalidateTag("service-options");
+    revalidateTag(`tenant:${tenant.slug}`);
+    revalidateTag("tenants");
+    invalidateDevTenantCache(tenant.slug);
 
     return NextResponse.json({
       options: (data ?? []).map(mapOption),
+      pricingAdjustments,
     });
   } catch (error) {
-    if (error instanceof TenantContextError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
-    }
+    const guard = handleAdminRouteError(error);
+    if (guard) return guard;
 
     if (error instanceof Error) {
       return NextResponse.json({ error: error.message }, { status: 400 });

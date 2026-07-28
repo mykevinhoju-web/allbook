@@ -12,6 +12,11 @@ import {
   formatServiceOptionLabel,
 } from "@/features/services";
 import type { ServiceOption } from "@/features/services";
+import {
+  applyPricingAdjustments,
+  DEFAULT_PRICING_ADJUSTMENTS,
+  type PricingAdjustments,
+} from "@/features/services/lib/pricing-adjustments";
 
 import {
   DEFAULT_BOOKING_TIMEZONE,
@@ -87,6 +92,8 @@ export function BookingCheckoutFlow({
   const [staff, setStaff] = useState<StaffInfo | null>(null);
   const [loadingStaff, setLoadingStaff] = useState(true);
   const [serviceOptions, setServiceOptions] = useState<ServiceOption[]>([]);
+  const [pricingAdjustments, setPricingAdjustments] =
+    useState<PricingAdjustments>(DEFAULT_PRICING_ADJUSTMENTS);
   const [currency, setCurrency] = useState("AUD");
   const [bookingDate, setBookingDate] = useState(() =>
     todayDateInZone(timeZone),
@@ -137,11 +144,15 @@ export function BookingCheckoutFlow({
           const servicesData = (await servicesRes.json()) as {
             options?: ServiceOption[];
             currency?: string;
+            pricingAdjustments?: PricingAdjustments;
           };
           if (!cancelled) {
             const options = servicesData.options ?? [];
             setServiceOptions(options);
             if (servicesData.currency) setCurrency(servicesData.currency);
+            if (servicesData.pricingAdjustments) {
+              setPricingAdjustments(servicesData.pricingAdjustments);
+            }
             if (options[0]) {
               setDurationMinutes(String(options[0].durationMinutes));
             }
@@ -240,9 +251,22 @@ export function BookingCheckoutFlow({
     [serviceOptions, durationMinutes],
   );
 
-  const priceLabel = selectedOption
-    ? formatPriceFromCents(selectedOption.priceCents, currency)
-    : null;
+  const priceBreakdown = useMemo(() => {
+    if (!selectedOption || !startsAt) return null;
+    return applyPricingAdjustments({
+      baseCents: selectedOption.priceCents,
+      startsAtIso: startsAt,
+      timeZone,
+      channel: "external",
+      adjustments: pricingAdjustments,
+    });
+  }, [selectedOption, startsAt, timeZone, pricingAdjustments]);
+
+  const priceLabel = priceBreakdown
+    ? formatPriceFromCents(priceBreakdown.totalCents, currency)
+    : selectedOption
+      ? formatPriceFromCents(selectedOption.priceCents, currency)
+      : null;
 
   const canBook =
     Boolean(startsAt) &&
@@ -605,6 +629,23 @@ export function BookingCheckoutFlow({
                   <p className={theme.priceValue}>
                     {priceLabel ?? "—"}
                   </p>
+                  {priceBreakdown &&
+                  (priceBreakdown.nightSurchargeCents > 0 ||
+                    priceBreakdown.discountCents > 0) ? (
+                    <p className={cn(theme.helperText, "mt-2 px-0.5")}>
+                      Includes
+                      {priceBreakdown.nightSurchargeCents > 0
+                        ? ` night surcharge ${formatPriceFromCents(priceBreakdown.nightSurchargeCents, currency)}`
+                        : ""}
+                      {priceBreakdown.nightSurchargeCents > 0 &&
+                      priceBreakdown.discountCents > 0
+                        ? ","
+                        : ""}
+                      {priceBreakdown.discountCents > 0
+                        ? ` discount −${formatPriceFromCents(priceBreakdown.discountCents, currency)}`
+                        : ""}
+                    </p>
+                  ) : null}
                 </div>
               </div>
 

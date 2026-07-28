@@ -15,6 +15,11 @@ import {
   formatServiceOptionLabel,
 } from "@/features/services";
 import type { ServiceOption } from "@/features/services";
+import {
+  applyPricingAdjustments,
+  DEFAULT_PRICING_ADJUSTMENTS,
+  type PricingAdjustments,
+} from "@/features/services/lib/pricing-adjustments";
 
 import { bookingCustomerTheme as theme } from "../../lib/booking-customer-theme";
 import {
@@ -75,6 +80,7 @@ interface BookingFormSheetProps {
   staffOptions: { id: string; name: string }[];
   roomOptions: { id: string; name: string }[];
   serviceOptions: ServiceOption[];
+  pricingAdjustments?: PricingAdjustments;
   currency?: string;
   /** @deprecated Prefer timeSlotOptions (staff availability slots). */
   timeOptions?: string[];
@@ -223,6 +229,7 @@ export function BookingFormSheet({
   staffOptions,
   roomOptions,
   serviceOptions,
+  pricingAdjustments = DEFAULT_PRICING_ADJUSTMENTS,
   currency = "AUD",
   timeOptions = [],
   timeSlotOptions,
@@ -281,6 +288,22 @@ export function BookingFormSheet({
   const selectedOption = serviceOptions.find(
     (option) => String(option.durationMinutes) === values.durationMinutes,
   );
+
+  const priceBreakdown =
+    selectedOption && values.startsAt
+      ? applyPricingAdjustments({
+          baseCents: selectedOption.priceCents,
+          startsAtIso: isIsoDateTime(values.startsAt)
+            ? values.startsAt
+            : buildStartsAtIso(date, values.startsAt),
+          timeZone,
+          channel: "internal",
+          adjustments: pricingAdjustments,
+        })
+      : null;
+
+  const displayPriceCents =
+    priceBreakdown?.totalCents ?? selectedOption?.priceCents ?? null;
 
   const durationMinutes = Number(values.durationMinutes) || 0;
   const timePickerDisabled = !values.staffId || !values.durationMinutes;
@@ -386,12 +409,28 @@ export function BookingFormSheet({
                     );
                   })}
                 </div>
-                {selectedOption ? (
+                {selectedOption && displayPriceCents != null ? (
                   <div className={theme.priceBox}>
                     <p className={theme.priceLabel}>Amount</p>
                     <p className="mt-1 text-xl font-semibold text-stone-800">
-                      {formatPriceFromCents(selectedOption.priceCents, currency)}
+                      {formatPriceFromCents(displayPriceCents, currency)}
                     </p>
+                    {priceBreakdown &&
+                    (priceBreakdown.nightSurchargeCents > 0 ||
+                      priceBreakdown.discountCents > 0) ? (
+                      <p className="mt-1 text-xs text-stone-500">
+                        {priceBreakdown.nightSurchargeCents > 0
+                          ? `+ night ${formatPriceFromCents(priceBreakdown.nightSurchargeCents, currency)}`
+                          : ""}
+                        {priceBreakdown.nightSurchargeCents > 0 &&
+                        priceBreakdown.discountCents > 0
+                          ? " · "
+                          : ""}
+                        {priceBreakdown.discountCents > 0
+                          ? `− discount ${formatPriceFromCents(priceBreakdown.discountCents, currency)}`
+                          : ""}
+                      </p>
+                    ) : null}
                   </div>
                 ) : null}
               </FormField>

@@ -10,7 +10,7 @@ import {
   hasStaffBookingConflict,
 } from "@/features/booking/lib/staff-conflict";
 import { isRoomOverlapConstraintError } from "@/features/booking/lib/validate-booking-update";
-import { getServicePriceCents } from "@/features/services/server/get-service-price";
+import { computeBookingPriceCents } from "@/features/services/server/get-service-price";
 import {
   createServiceSupabase,
   requireTenantFromRequest,
@@ -81,7 +81,7 @@ export async function POST(
     const { data: existing, error: fetchError } = await supabase
       .from("bookings")
       .select(
-        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, status, checked_out_at, checked_in_at, price_cents",
+        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, status, checked_out_at, checked_in_at, price_cents, payment_status",
       )
       .eq("tenant_id", tenant.id)
       .eq("id", id)
@@ -180,12 +180,16 @@ export async function POST(
 
     let priceCents = existing.price_cents;
     try {
-      const nextPrice = await getServicePriceCents(
-        supabase,
-        tenant.id,
+      const priced = await computeBookingPriceCents(supabase, {
+        tenantId: tenant.id,
         durationMinutes,
-      );
-      if (nextPrice && nextPrice > 0) priceCents = nextPrice;
+        startsAtIso: existing.starts_at,
+        timeZone: tenant.settings.timezone || "Australia/Sydney",
+        channel:
+          existing.payment_status === "not_required" ? "internal" : "external",
+        adjustments: tenant.settings.pricingAdjustments,
+      });
+      if (priced && priced.totalCents > 0) priceCents = priced.totalCents;
     } catch {
       // keep previous
     }

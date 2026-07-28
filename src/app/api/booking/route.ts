@@ -47,6 +47,7 @@ export async function POST(request: Request) {
       customerEmail: body.customerEmail,
       notes: body.notes,
       status: "confirmed",
+      pricingChannel: "external",
     });
 
     return NextResponse.json({ booking });

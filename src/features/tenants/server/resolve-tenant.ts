@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
 
 import { parsePortalTheme } from "@/features/portal-theme";
+import { parsePricingAdjustments } from "@/features/services/lib/pricing-adjustments";
 import { createServiceSupabase } from "@/lib/supabase/service";
 
 import { TENANT_ENV } from "../constants";
@@ -82,6 +83,15 @@ function parsePortalThemeFromSettings(
   );
 }
 
+function parsePricingAdjustmentsFromSettings(
+  settings: unknown,
+): TenantSettings["pricingAdjustments"] | undefined {
+  if (!settings || typeof settings !== "object") return undefined;
+  return parsePricingAdjustments(
+    (settings as { pricingAdjustments?: unknown }).pricingAdjustments,
+  );
+}
+
 function mapRowToTenant(row: {
   id: string;
   slug: string;
@@ -110,6 +120,7 @@ function mapRowToTenant(row: {
       currency: row.currency,
       locale: row.locale,
       portalTheme: parsePortalThemeFromSettings(row.settings),
+      pricingAdjustments: parsePricingAdjustmentsFromSettings(row.settings),
       adminModules: parseAdminModules(row.settings),
     },
     isActive: row.is_active,

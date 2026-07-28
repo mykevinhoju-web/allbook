@@ -78,6 +78,7 @@ export async function POST(request: Request) {
       status: "pending",
       paymentStatus: "unpaid",
       notify: false,
+      pricingChannel: "external",
     });
 
     const stripe = getStripe();

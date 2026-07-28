@@ -2,13 +2,21 @@ import { unstable_cache } from "next/cache";
 import { NextResponse } from "next/server";
 
 import {
+  mergePricingAdjustments,
+  type PricingAdjustments,
+} from "@/features/services/lib/pricing-adjustments";
+import {
   createServiceSupabase,
   requireTenantFromRequest,
   TenantContextError,
 } from "@/lib/admin/tenant-context";
 
 const getServiceOptionsForTenant = unstable_cache(
-  async (tenantId: string, currency: string) => {
+  async (
+    tenantId: string,
+    currency: string,
+    pricingAdjustments: PricingAdjustments,
+  ) => {
     const supabase = createServiceSupabase();
     const { data, error } = await supabase
       .from("service_options")
@@ -27,6 +35,7 @@ const getServiceOptionsForTenant = unstable_cache(
         priceCents: row.price_cents,
       })),
       currency,
+      pricingAdjustments,
     };
   },
   ["public-service-options"],
@@ -36,9 +45,13 @@ const getServiceOptionsForTenant = unstable_cache(
 export async function GET(request: Request) {
   try {
     const tenant = await requireTenantFromRequest(request);
+    const pricingAdjustments = mergePricingAdjustments(
+      tenant.settings.pricingAdjustments,
+    );
     const payload = await getServiceOptionsForTenant(
       tenant.id,
       tenant.settings.currency,
+      pricingAdjustments,
     );
 
     return NextResponse.json(payload, {

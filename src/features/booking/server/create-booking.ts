@@ -1,5 +1,3 @@
-import { after } from "next/server";
-
 import { assignAvailableRoom } from "@/features/booking/lib/assign-room";
 import {
   hasRoomBookingConflict,
@@ -10,8 +8,9 @@ import {
   assertStaffSlotIsBookable,
   BookingTimeValidationError,
 } from "@/features/booking/lib/validate-booking-time";
-import { getServicePriceCents } from "@/features/services/server/get-service-price";
-import { sendBookingPushNotifications } from "@/lib/push/send-booking-push";
+import { scheduleBookingAlert } from "@/features/booking/server/notify-booking-alert";
+import { computeBookingPriceCents } from "@/features/services/server/get-service-price";
+import type { BookingPriceChannel } from "@/features/services/lib/pricing-adjustments";
 import { createServiceSupabase } from "@/lib/admin/tenant-context";
 import type { Tenant } from "@/features/tenants/types";
 import type { BookingStatus } from "@/types";
@@ -116,23 +115,34 @@ export async function createTenantBooking(
     notes?: string;
     status?: BookingStatus;
     roomId?: string | null;
+    /** When false, skip push/alert (e.g. pending checkout). Default true. */
+    notify?: boolean;
+    paymentStatus?: "unpaid" | "paid" | "failed" | "refunded" | "not_required";
+    /** internal = admin/walk-in; external = customer checkout. Default external. */
+    pricingChannel?: BookingPriceChannel;
   },
 ): Promise<CreatedBooking> {
   const durationMinutes = body.durationMinutes;
   const supabase = createServiceSupabase();
+  const timeZone = tenant.settings.timezone || "Australia/Sydney";
+  const channel = body.pricingChannel ?? "external";
 
-  const priceCents = await getServicePriceCents(
-    supabase,
-    tenant.id,
+  const priced = await computeBookingPriceCents(supabase, {
+    tenantId: tenant.id,
     durationMinutes,
-  );
+    startsAtIso: body.startsAt,
+    timeZone,
+    channel,
+    adjustments: tenant.settings.pricingAdjustments,
+  });
 
-  if (priceCents === null) {
+  if (priced === null) {
     throw new CreateBookingError(
       "No price configured for this service duration.",
       400,
     );
   }
+  const priceCents = priced.totalCents;
 
   const startsAt = new Date(body.startsAt);
 
@@ -206,6 +216,12 @@ export async function createTenantBooking(
     );
   }
 
+  const status = body.status ?? "confirmed";
+  const paymentStatus =
+    body.paymentStatus ??
+    (status === "pending" ? "unpaid" : "not_required");
+  const shouldNotify = body.notify ?? status !== "pending";
+
   const { data, error } = await supabase
     .from("bookings")
     .insert({
@@ -216,7 +232,8 @@ export async function createTenantBooking(
       ends_at: endsAt.toISOString(),
       duration_minutes: durationMinutes,
       price_cents: priceCents,
-      status: body.status ?? "confirmed",
+      status,
+      payment_status: paymentStatus,
       customer_name: body.customerName.trim(),
       customer_phone: body.customerPhone.trim(),
       customer_postcode: body.customerPostcode?.trim() ?? null,
@@ -244,22 +261,17 @@ export async function createTenantBooking(
 
   const created = mapBooking(data);
 
-  // Notifications must not block the booking response under load.
-  after(async () => {
-    await supabase.from("booking_alert_events").insert({
-      tenant_slug: tenant.slug,
-      staff_id: created.staffId,
-      staff_name: created.staffName,
-    });
-
-    await sendBookingPushNotifications(tenant.slug, {
+  if (shouldNotify) {
+    // Notifications must not block the booking response under load.
+    scheduleBookingAlert({
+      tenantSlug: tenant.slug,
       staffId: created.staffId,
       staffName: created.staffName,
       roomName: created.roomName,
       startsAt: created.startsAt,
       endsAt: created.endsAt,
     });
-  });
+  }
 
   return created;
 }

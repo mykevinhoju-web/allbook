@@ -5,7 +5,7 @@ import {
   isRoomOverlapConstraintError,
   validateBookingUpdate,
 } from "@/features/booking/lib/validate-booking-update";
-import { getServicePriceCents } from "@/features/services/server/get-service-price";
+import { computeBookingPriceCents } from "@/features/services/server/get-service-price";
 import {
   createServiceSupabase,
   requireTenantFromRequest,
@@ -154,21 +154,24 @@ export async function PATCH(
       updates.duration_minutes = durationMinutes;
     }
 
-    if (body.durationMinutes !== undefined) {
-      const priceCents = await getServicePriceCents(
-        supabase,
-        tenant.id,
+    if (body.durationMinutes !== undefined || body.startsAt !== undefined) {
+      const priced = await computeBookingPriceCents(supabase, {
+        tenantId: tenant.id,
         durationMinutes,
-      );
+        startsAtIso,
+        timeZone: tenant.settings.timezone || "Australia/Sydney",
+        channel: "internal",
+        adjustments: tenant.settings.pricingAdjustments,
+      });
 
-      if (priceCents === null) {
+      if (priced === null) {
         return NextResponse.json(
           { error: "No price configured for this service duration." },
           { status: 400 },
         );
       }
 
-      updates.price_cents = priceCents;
+      updates.price_cents = priced.totalCents;
     }
 
     const { data, error } = await supabase
