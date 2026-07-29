@@ -1145,15 +1145,7 @@ function StaffDayBookingsCard({
               canCheckInToBooking(booking, now) &&
               !activeBooking &&
               !roomServiceInProgress;
-            const label =
-              allowEnter &&
-              !ready &&
-              canCheckInToBooking(booking, now) &&
-              (activeBooking || roomServiceInProgress)
-                ? activeBooking
-                  ? "Finish current service first"
-                  : "Room in service"
-                : bookingStateLabel(booking, now);
+            const label = bookingStateLabel(booking, now);
             return (
               <li
                 key={booking.id}
@@ -1161,8 +1153,13 @@ function StaffDayBookingsCard({
               >
                 <div className="min-w-0">
                   <p className="text-base font-medium md:text-lg">
-                    {formatAmPmTime(booking.startsAt)} ·{" "}
                     {booking.customerName || "Guest"}
+                  </p>
+                  <p className="mt-0.5 text-sm font-medium text-foreground/80 md:text-base">
+                    {formatAmPmTime(booking.startsAt)} –{" "}
+                    {formatAmPmTime(booking.endsAt)}
+                    {" · "}
+                    {booking.durationMinutes} min
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {label}
@@ -1232,8 +1229,13 @@ function RoomScheduleList({
             >
               <div className="min-w-0">
                 <p className="truncate text-base font-medium text-foreground">
-                  {formatAmPmTime(booking.startsAt)} ·{" "}
                   {booking.customerName || "Guest"}
+                </p>
+                <p className="truncate text-sm font-medium text-foreground/80">
+                  {formatAmPmTime(booking.startsAt)} –{" "}
+                  {formatAmPmTime(booking.endsAt)}
+                  {" · "}
+                  {booking.durationMinutes} min
                 </p>
                 <p className="truncate text-sm text-muted-foreground">
                   {staffLabelById?.[booking.id] ??
