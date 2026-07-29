@@ -19,6 +19,7 @@ import { broadcastServiceEnd } from "@/features/booking/lib/booking-realtime";
 import { useBookingRealtime } from "@/features/booking/lib/booking-schedule-realtime";
 import {
   formatAmPmTime,
+  formatDurationLabel,
   todayDateInZone,
 } from "@/features/booking/lib/schedule-utils";
 import type { AdminBooking } from "@/features/booking/types/admin-booking";
@@ -96,6 +97,15 @@ function formatRemaining(ms: number): string {
   const mins = Math.floor(totalSec / 60);
   const secs = totalSec % 60;
   return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+/** e.g. 11:25 AM~12:25 PM 1hr Service */
+function formatRoomServiceWindow(
+  startsAt: string,
+  endsAt: string,
+  durationMinutes: number,
+): string {
+  return `${formatAmPmTime(startsAt)}~${formatAmPmTime(endsAt)} ${formatDurationLabel(durationMinutes)} Service`;
 }
 
 function PinPad({
@@ -820,15 +830,24 @@ export function RoomHomeContent() {
                 >
                   In room now · {activeBooking.staffName}
                 </p>
-                <p className="mt-2 text-lg font-semibold text-foreground md:text-xl">
-                  {formatAmPmTime(activeBooking.startsAt)} ·{" "}
+                <p className="mt-2 text-lg font-semibold leading-snug text-foreground md:text-xl">
+                  {formatRoomServiceWindow(
+                    activeBooking.startsAt,
+                    activeBooking.endsAt,
+                    activeBooking.durationMinutes,
+                  )}
+                </p>
+                <p className="mt-1 text-sm font-medium text-muted-foreground md:text-base">
                   {activeBooking.customerName || "Guest"}
                 </p>
-                <p className="mt-4 text-6xl font-semibold tabular-nums tracking-tight text-foreground md:text-7xl">
+                <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground md:text-sm">
+                  Remaining
+                </p>
+                <p className="mt-1 text-6xl font-semibold tabular-nums tracking-tight text-foreground md:text-7xl">
                   {formatRemaining(remainingMs ?? 0)}
                 </p>
                 <p className="mt-1 text-sm font-medium text-muted-foreground md:text-base">
-                  left · ends {formatAmPmTime(activeBooking.endsAt)}
+                  ends {formatAmPmTime(activeBooking.endsAt)}
                 </p>
 
                 {isVisitPrimaryViewer ? (
@@ -1046,24 +1065,28 @@ export function RoomHomeContent() {
                     >
                       In room now · {row.staffName}
                     </p>
-                    <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-                      {row.staffName}
+                    <p className="mt-2 text-lg font-semibold leading-snug text-foreground md:text-xl">
+                      {formatRoomServiceWindow(
+                        row.startsAt,
+                        row.endsAt,
+                        row.durationMinutes,
+                      )}
                     </p>
-                    <p className="mt-2 text-lg font-semibold text-foreground md:text-xl">
-                      {formatAmPmTime(row.startsAt)} ·{" "}
+                    <p className="mt-1 text-sm font-medium text-muted-foreground md:text-base">
                       {row.customerName ||
                         activeBooking.customerName ||
                         "Guest"}
-                    </p>
-                    <p className="mt-1 text-sm font-medium text-muted-foreground md:text-base">
-                      {row.durationMinutes} min ·{" "}
+                      {" · "}
                       {formatPriceFromCents(row.priceCents, currency)}
                     </p>
-                    <p className="mt-4 text-6xl font-semibold tabular-nums tracking-tight text-foreground md:text-7xl">
+                    <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground md:text-sm">
+                      Remaining
+                    </p>
+                    <p className="mt-1 text-6xl font-semibold tabular-nums tracking-tight text-foreground md:text-7xl">
                       {formatRemaining(Math.max(0, companionRemainingMs))}
                     </p>
                     <p className="mt-1 text-sm font-medium text-muted-foreground md:text-base">
-                      left · ends {formatAmPmTime(row.endsAt)}
+                      ends {formatAmPmTime(row.endsAt)}
                     </p>
                     {isSelf ? (
                       <>
