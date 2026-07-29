@@ -15,7 +15,11 @@ import {
   playServiceEndAlarm,
   unlockBookingAudio,
 } from "@/features/booking/lib/booking-alert-sound";
-import { broadcastServiceEnd } from "@/features/booking/lib/booking-realtime";
+import {
+  broadcastExtendRequest,
+  broadcastServiceEnd,
+  subscribeToBookingAlerts,
+} from "@/features/booking/lib/booking-realtime";
 import { useBookingRealtime } from "@/features/booking/lib/booking-schedule-realtime";
 import {
   formatAmPmTime,
@@ -88,8 +92,6 @@ function visitToAdminBooking(row: CompanionBooking): AdminBooking {
     notes: null,
   };
 }
-
-const EXTEND_OPTIONS = [10, 15, 20] as const;
 
 function formatRemaining(ms: number): string {
   if (ms <= 0) return "0:00";
@@ -214,6 +216,10 @@ export function RoomHomeContent() {
     "",
   );
   const [joinLoading, setJoinLoading] = useState(false);
+  const [pendingExtend, setPendingExtend] = useState<{
+    requestId: string;
+    minutes: number;
+  } | null>(null);
   const [serviceOptions, setServiceOptions] = useState<RoomServiceOption[]>([]);
   const [pricingAdjustments, setPricingAdjustments] =
     useState<PricingAdjustments>(DEFAULT_PRICING_ADJUSTMENTS);
@@ -599,8 +605,15 @@ export function RoomHomeContent() {
     [visitMembers],
   );
 
+  const serviceDurationOptions = useMemo(
+    () => serviceOptions.map((option) => option.durationMinutes),
+    [serviceOptions],
+  );
+
   const extendOptions = useMemo(() => {
-    if (!activeBooking) return [] as number[];
+    if (!activeBooking || serviceDurationOptions.length === 0) {
+      return [] as number[];
+    }
     const blockingStarts = [
       ...bookings
         .filter(
@@ -622,10 +635,77 @@ export function RoomHomeContent() {
     return getAvailableExtendMinutes(
       activeBooking.endsAt,
       blockingStarts,
-      EXTEND_OPTIONS,
+      serviceDurationOptions,
       now,
     );
-  }, [activeBooking, bookings, staffBookings, now]);
+  }, [
+    activeBooking,
+    bookings,
+    staffBookings,
+    now,
+    serviceDurationOptions,
+  ]);
+
+  useEffect(() => {
+    if (!activeBooking || !isVisitPrimaryViewer) {
+      setPendingExtend(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const response = await fetch(
+        `/api/room/bookings/${activeBooking.id}/extend-request`,
+      );
+      if (!response.ok || cancelled) return;
+      const data = (await response.json()) as {
+        request?: { id: string; minutes: number } | null;
+      };
+      if (cancelled) return;
+      setPendingExtend(
+        data.request
+          ? { requestId: data.request.id, minutes: data.request.minutes }
+          : null,
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeBooking, isVisitPrimaryViewer]);
+
+  useEffect(() => {
+    if (!activeBooking) return;
+    return subscribeToBookingAlerts(
+      tenant.slug,
+      () => {},
+      undefined,
+      undefined,
+      undefined,
+      (payload) => {
+        if (payload.bookingId !== activeBooking.id) return;
+        setPendingExtend(null);
+        autoEndingRef.current = null;
+        if (payload.status === "approved") {
+          toast.success(
+            `Extended +${formatDurationLabel(payload.minutes)}`,
+          );
+        } else {
+          toast.message("Extend request declined");
+        }
+        void Promise.all([
+          loadStaffSchedule(),
+          loadRoomSchedule(),
+          myActiveBooking ? loadVisit(myActiveBooking.id) : Promise.resolve(),
+        ]);
+      },
+    );
+  }, [
+    activeBooking,
+    tenant.slug,
+    loadStaffSchedule,
+    loadRoomSchedule,
+    loadVisit,
+    myActiveBooking,
+  ]);
 
   const checkIn = async (bookingId: string) => {
     setActionId(bookingId);
@@ -726,28 +806,48 @@ export function RoomHomeContent() {
     void endService(myActiveBooking, "auto");
   }, [myActiveBooking, myRemainingMs, endService]);
 
-  const extendService = async (bookingId: string, minutes: number) => {
+  const requestExtend = async (bookingId: string, minutes: number) => {
     setActionId(`extend-${bookingId}-${minutes}`);
     try {
-      const response = await fetch(`/api/room/bookings/${bookingId}/extend`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ minutes }),
-      });
+      const response = await fetch(
+        `/api/room/bookings/${bookingId}/extend-request`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ minutes }),
+        },
+      );
       const data = (await response.json()) as {
         error?: string;
+        request?: {
+          id: string;
+          minutes: number;
+          staffName: string;
+          roomName: string;
+          customerName: string | null;
+          createdAt: string;
+        };
       };
-      if (!response.ok) {
-        toast.error("Could not extend", { description: data.error });
+      if (!response.ok || !data.request) {
+        toast.error("Could not request extend", { description: data.error });
         return;
       }
-      toast.success(`Extended +${minutes} min`);
-      autoEndingRef.current = null;
-      await Promise.all([
-        loadStaffSchedule(),
-        loadRoomSchedule(),
-        myActiveBooking ? loadVisit(myActiveBooking.id) : Promise.resolve(),
-      ]);
+      setPendingExtend({
+        requestId: data.request.id,
+        minutes: data.request.minutes,
+      });
+      toast.success("Sent to admin", {
+        description: "Waiting for cash/card approval…",
+      });
+      void broadcastExtendRequest(tenant.slug, {
+        requestId: data.request.id,
+        bookingId,
+        minutes: data.request.minutes,
+        staffName: data.request.staffName,
+        roomName: data.request.roomName,
+        customerName: data.request.customerName,
+        requestedAt: data.request.createdAt,
+      }).catch(() => {});
     } finally {
       setActionId(null);
     }
@@ -996,30 +1096,37 @@ export function RoomHomeContent() {
                   <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground md:text-sm">
                     Extend time
                   </p>
-                  {extendOptions.length === 0 ? (
+                  {pendingExtend ? (
+                    <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+                      Waiting for admin approval · +
+                      {formatDurationLabel(pendingExtend.minutes)}
+                    </p>
+                  ) : extendOptions.length === 0 ? (
                     <p className="rounded-2xl bg-muted px-4 py-3 text-sm text-muted-foreground">
-                      No extend available — next booking is too soon.
+                      No extend available — next booking is too soon, or no
+                      service lengths fit.
                     </p>
                   ) : (
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                       {extendOptions.map((minutes) => (
                         <AppButton
                           key={minutes}
                           type="button"
                           variant="outline"
-                          className="h-14 rounded-2xl bg-card text-lg md:h-16"
+                          className="h-14 rounded-2xl bg-card text-base md:h-16 md:text-lg"
                           disabled={Boolean(actionId)}
                           onClick={() =>
-                            void extendService(activeBooking.id, minutes)
+                            void requestExtend(activeBooking.id, minutes)
                           }
                         >
-                          +{minutes}m
+                          +{formatDurationLabel(minutes)}
                         </AppButton>
                       ))}
                     </div>
                   )}
-                  {extendOptions.length > 0 &&
-                  extendOptions.length < EXTEND_OPTIONS.length ? (
+                  {!pendingExtend &&
+                  extendOptions.length > 0 &&
+                  extendOptions.length < serviceDurationOptions.length ? (
                     <p className="mt-2 text-xs text-muted-foreground">
                       Limited by the next booking in this room.
                     </p>

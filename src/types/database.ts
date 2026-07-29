@@ -325,6 +325,48 @@ export type Database = {
         };
         Relationships: [];
       };
+      booking_extend_requests: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          booking_id: string;
+          requested_by_staff_id: string;
+          minutes: number;
+          status: string;
+          payment_method: string | null;
+          price_cents: number | null;
+          created_at: string;
+          resolved_at: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          booking_id: string;
+          requested_by_staff_id: string;
+          minutes: number;
+          status?: string;
+          payment_method?: string | null;
+          price_cents?: number | null;
+          created_at?: string;
+          resolved_at?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          booking_id?: string;
+          requested_by_staff_id?: string;
+          minutes?: number;
+          status?: string;
+          payment_method?: string | null;
+          price_cents?: number | null;
+          created_at?: string;
+          resolved_at?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       bookings: {
         Row: {
           id: string;

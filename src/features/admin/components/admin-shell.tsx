@@ -1,11 +1,20 @@
 "use client";
 
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { BookingAlertProvider } from "@/features/booking/context/booking-alert-provider";
-import { PwaInstallHint } from "@/features/pwa";
+import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import {
+  BookingAlertProvider,
+  useBookingAlerts,
+} from "@/features/booking/context/booking-alert-provider";
+
+import { AdminExtendRequestWatcher } from "./admin-extend-request-watcher";
 import { AdminHeader } from "./admin-header";
 import { AdminMobileNav } from "./admin-mobile-nav";
+import { AdminPwaInstallBubble } from "./admin-pwa-install-bubble";
+import { AdminServiceEndWatcher } from "./admin-service-end-watcher";
+import { AdminStaffPresenceWatcher } from "./admin-staff-presence-watcher";
 import { AdminSidebar } from "./admin-sidebar";
 
 interface AdminShellProps {
@@ -17,21 +26,38 @@ interface AdminShellProps {
   } | null;
 }
 
+function AdminNewBookingBadgeSync() {
+  const pathname = usePathname();
+  const { setNewBookingBadgeSuppressed } = useBookingAlerts();
+
+  useEffect(() => {
+    const onBookings = pathname.startsWith("/admin/bookings");
+    setNewBookingBadgeSuppressed(onBookings);
+    return () => setNewBookingBadgeSuppressed(false);
+  }, [pathname, setNewBookingBadgeSuppressed]);
+
+  return null;
+}
+
 export function AdminShell({ children, user }: AdminShellProps) {
   const isStaff = user?.role === "staff";
 
   return (
     <BookingAlertProvider>
+      <AdminNewBookingBadgeSync />
+      <AdminServiceEndWatcher />
+      <AdminExtendRequestWatcher />
+      <AdminStaffPresenceWatcher />
       <SidebarProvider defaultOpen>
         <AdminSidebar isStaff={isStaff} />
         <SidebarInset className="min-h-svh bg-muted/30">
           <AdminHeader user={user} />
-          <div className="flex flex-1 flex-col pb-[calc(3.75rem+env(safe-area-inset-bottom))] lg:pb-[env(safe-area-inset-bottom)]">
-            <PwaInstallHint />
+          <AdminPwaInstallBubble />
+          <div className="flex flex-1 flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-[env(safe-area-inset-bottom)]">
             {children}
           </div>
-          <AdminMobileNav isStaff={isStaff} />
         </SidebarInset>
+        <AdminMobileNav isStaff={isStaff} />
       </SidebarProvider>
     </BookingAlertProvider>
   );
