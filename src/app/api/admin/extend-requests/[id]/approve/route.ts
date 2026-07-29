@@ -103,6 +103,8 @@ export async function POST(
       resolvedAt,
     });
   } catch (error) {
-    return handleAdminRouteError(error);
+    const handled = handleAdminRouteError(error);
+    if (handled) return handled;
+    throw error;
   }
 }

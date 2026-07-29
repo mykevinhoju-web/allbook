@@ -100,6 +100,8 @@ export async function GET(request: Request) {
       requests: (data ?? []).map((row) => mapRequest(row)),
     });
   } catch (error) {
-    return handleAdminRouteError(error);
+    const handled = handleAdminRouteError(error);
+    if (handled) return handled;
+    throw error;
   }
 }
