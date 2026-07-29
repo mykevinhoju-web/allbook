@@ -45,7 +45,8 @@ export interface BookingFormValues {
   startsAt: string;
   durationMinutes: string;
   roomId: string;
-  customerName: string;
+  customerFirstName: string;
+  customerLastName: string;
   customerPhone: string;
   customerPostcode: string;
   customerEmail: string;
@@ -57,7 +58,8 @@ export const defaultBookingFormValues: BookingFormValues = {
   startsAt: "",
   durationMinutes: "",
   roomId: "",
-  customerName: "",
+  customerFirstName: "",
+  customerLastName: "",
   customerPhone: "",
   customerPostcode: "",
   customerEmail: "",
@@ -484,18 +486,35 @@ export function BookingFormSheet({
             </div>
 
             <div className={cn(theme.panel, "space-y-4")}>
-              <label className="block space-y-1">
+              <div className="space-y-1">
                 <FieldLabel required>Customer name</FieldLabel>
-                <Input
-                  value={values.customerName}
-                  onChange={(event) =>
-                    update("customerName", event.target.value)
-                  }
-                  className={theme.field}
-                  placeholder="Full name"
-                  required
-                />
-              </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    value={values.customerFirstName}
+                    onChange={(event) =>
+                      update("customerFirstName", event.target.value)
+                    }
+                    className={theme.field}
+                    placeholder="First name"
+                    autoCapitalize="words"
+                    autoComplete="given-name"
+                    aria-label="First name"
+                    required
+                  />
+                  <Input
+                    value={values.customerLastName}
+                    onChange={(event) =>
+                      update("customerLastName", event.target.value)
+                    }
+                    className={theme.field}
+                    placeholder="Last name"
+                    autoCapitalize="words"
+                    autoComplete="family-name"
+                    aria-label="Last name"
+                    required
+                  />
+                </div>
+              </div>
 
               <label className="block space-y-1">
                 <FieldLabel required>Phone</FieldLabel>

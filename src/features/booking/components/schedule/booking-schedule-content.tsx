@@ -63,6 +63,10 @@ import {
   defaultBookingFormValues,
   type BookingFormValues,
 } from "./booking-form-sheet";
+import {
+  formatCustomerBookingName,
+  isValidCustomerBookingNameParts,
+} from "../../lib/customer-booking-name";
 import { StaffScheduleColumn } from "./staff-schedule-column";
 import { StaffScheduleDetail } from "./staff-schedule-detail";
 import { StaffBookingTimeline } from "./staff-booking-timeline";
@@ -330,7 +334,8 @@ export function BookingScheduleContent() {
       startsAt: partial?.startsAt ?? "",
       durationMinutes: partial?.durationMinutes ?? defaultDuration,
       roomId: partial?.roomId ?? "",
-      customerName: "",
+      customerFirstName: "",
+      customerLastName: "",
       customerPhone: "",
       customerPostcode: "",
       customerEmail: "",
@@ -344,8 +349,14 @@ export function BookingScheduleContent() {
       return;
     }
 
-    if (!form.customerName.trim() || !form.customerPhone.trim()) {
-      toast.error("Customer name and phone are required");
+    if (
+      !isValidCustomerBookingNameParts(
+        form.customerFirstName,
+        form.customerLastName,
+      ) ||
+      !form.customerPhone.trim()
+    ) {
+      toast.error("First name, last name, and phone are required");
       return;
     }
 
@@ -376,7 +387,10 @@ export function BookingScheduleContent() {
           ),
           durationMinutes,
           roomId: form.roomId || undefined,
-          customerName: form.customerName.trim(),
+          customerName: formatCustomerBookingName(
+            form.customerFirstName,
+            form.customerLastName,
+          ),
           customerPhone: form.customerPhone.trim(),
           customerPostcode: form.customerPostcode.trim() || undefined,
           customerEmail: form.customerEmail.trim() || undefined,
