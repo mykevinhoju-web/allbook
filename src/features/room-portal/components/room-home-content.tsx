@@ -54,10 +54,38 @@ interface CompanionBooking {
   id: string;
   staffId: string;
   staffName: string;
+  roomId?: string | null;
+  roomName?: string | null;
   startsAt: string;
   endsAt: string;
   durationMinutes: number;
   priceCents: number;
+  customerName?: string | null;
+  status?: string;
+  checkedInAt?: string | null;
+  checkedOutAt?: string | null;
+}
+
+function visitToAdminBooking(row: CompanionBooking): AdminBooking {
+  return {
+    id: row.id,
+    staffId: row.staffId,
+    staffName: row.staffName,
+    roomId: row.roomId ?? null,
+    roomName: row.roomName ?? null,
+    startsAt: row.startsAt,
+    endsAt: row.endsAt,
+    durationMinutes: row.durationMinutes,
+    priceCents: row.priceCents,
+    status: row.status ?? "confirmed",
+    checkedOutAt: row.checkedOutAt ?? null,
+    checkedInAt: row.checkedInAt ?? null,
+    customerName: row.customerName ?? null,
+    customerPhone: null,
+    customerPostcode: null,
+    customerEmail: null,
+    notes: null,
+  };
 }
 
 const EXTEND_OPTIONS = [10, 15, 20] as const;
@@ -140,6 +168,12 @@ function staffBookingsTodayTitle(name: string): string {
   return `${possessive} bookings today`;
 }
 
+function parsePairBookingId(notes?: string | null): string | null {
+  if (!notes) return null;
+  const match = notes.match(/\[pair:([0-9a-f-]{36})\]/i);
+  return match?.[1] ?? null;
+}
+
 export function RoomHomeContent() {
   const router = useRouter();
   const tenant = useTenant();
@@ -157,7 +191,10 @@ export function RoomHomeContent() {
   const [loadingSchedule, setLoadingSchedule] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
   const [companions, setCompanions] = useState<CompanionBooking[]>([]);
-  const [companionSchedules, setCompanionSchedules] = useState<
+  const [visitPrimary, setVisitPrimary] = useState<CompanionBooking | null>(
+    null,
+  );
+  const [visitSchedules, setVisitSchedules] = useState<
     Record<string, AdminBooking[]>
   >({});
   const [addingStaff, setAddingStaff] = useState(false);
@@ -344,29 +381,31 @@ export function RoomHomeContent() {
     };
   }, []);
 
-  const activeBooking = useMemo(() => {
+  /** Logged-in staff's own checked-in booking (may be primary or companion). */
+  const myActiveBooking = useMemo(() => {
     if (!staff) return null;
     return getActiveCheckedInBooking(staffBookings);
   }, [staff, staffBookings]);
 
-  const loadCompanions = useCallback(async (bookingId: string) => {
+  const loadVisit = useCallback(async (bookingId: string) => {
     const response = await fetch(`/api/room/bookings/${bookingId}/staff`);
     const data = (await response.json()) as {
+      primary?: CompanionBooking;
       companions?: CompanionBooking[];
     };
-    if (response.ok) {
-      setCompanions(data.companions ?? []);
-    }
+    if (!response.ok) return;
+    setVisitPrimary(data.primary ?? null);
+    setCompanions(data.companions ?? []);
   }, []);
 
-  const loadCompanionSchedules = useCallback(
-    async (rows: CompanionBooking[]) => {
-      if (rows.length === 0) {
-        setCompanionSchedules({});
+  const loadVisitSchedules = useCallback(
+    async (members: CompanionBooking[]) => {
+      if (members.length === 0) {
+        setVisitSchedules({});
         return;
       }
       const entries = await Promise.all(
-        rows.map(async (row) => {
+        members.map(async (row) => {
           const response = await fetch(
             `/api/room/staff-schedule?staffId=${encodeURIComponent(row.staffId)}&date=${today}`,
           );
@@ -379,26 +418,45 @@ export function RoomHomeContent() {
           ] as const;
         }),
       );
-      setCompanionSchedules(Object.fromEntries(entries));
+      setVisitSchedules(Object.fromEntries(entries));
     },
     [today],
   );
 
   useEffect(() => {
-    if (!activeBooking) {
+    if (!myActiveBooking) {
       setCompanions([]);
-      setCompanionSchedules({});
+      setVisitPrimary(null);
+      setVisitSchedules({});
       setAddingStaff(false);
       setJoinPin("");
       setJoinPayment("");
       return;
     }
-    void loadCompanions(activeBooking.id);
-  }, [activeBooking, loadCompanions]);
+    void loadVisit(myActiveBooking.id);
+  }, [myActiveBooking, loadVisit]);
+
+  const visitMembers = useMemo(() => {
+    if (!visitPrimary) return [] as CompanionBooking[];
+    return [visitPrimary, ...companions];
+  }, [visitPrimary, companions]);
 
   useEffect(() => {
-    void loadCompanionSchedules(companions);
-  }, [companions, loadCompanionSchedules]);
+    void loadVisitSchedules(visitMembers);
+  }, [visitMembers, loadVisitSchedules]);
+
+  const isVisitPrimaryViewer = Boolean(
+    staff &&
+      myActiveBooking &&
+      !parsePairBookingId(myActiveBooking.notes) &&
+      (!visitPrimary || staff.id === visitPrimary.staffId),
+  );
+
+  /** Primary booking drives the shared visit layout (same for every joined staff). */
+  const activeBooking = useMemo(() => {
+    if (visitPrimary) return visitToAdminBooking(visitPrimary);
+    return myActiveBooking;
+  }, [visitPrimary, myActiveBooking]);
 
   const joinOption = useMemo(
     () =>
@@ -428,7 +486,7 @@ export function RoomHomeContent() {
   ]);
 
   const createCompanionBooking = async () => {
-    if (!activeBooking) return;
+    if (!activeBooking || !isVisitPrimaryViewer) return;
     if (joinPin.length !== 4) {
       toast.error("Enter the second staff PIN");
       return;
@@ -482,7 +540,7 @@ export function RoomHomeContent() {
       setJoinPin("");
       setJoinPayment("");
       await Promise.all([
-        loadCompanions(activeBooking.id),
+        loadVisit(activeBooking.id),
         loadStaffSchedule(),
         loadRoomSchedule(),
       ]);
@@ -491,34 +549,45 @@ export function RoomHomeContent() {
     }
   };
 
+  const visitBookingIds = useMemo(
+    () => new Set(visitMembers.map((row) => row.id)),
+    [visitMembers],
+  );
+
   const staffDayBookings = useMemo(() => {
     if (!staff) return [];
     return staffBookings.filter(
       (booking) =>
         booking.status !== "cancelled" &&
-        (!activeBooking || booking.id !== activeBooking.id),
+        !visitBookingIds.has(booking.id) &&
+        (!myActiveBooking || booking.id !== myActiveBooking.id),
     );
-  }, [staff, staffBookings, activeBooking]);
+  }, [staff, staffBookings, visitBookingIds, myActiveBooking]);
 
-  const companionDaySections = useMemo(() => {
-    return companions.map((companion) => ({
-      staffId: companion.staffId,
-      staffName: companion.staffName,
-      bookings: (companionSchedules[companion.staffId] ?? []).filter(
+  const visitDaySections = useMemo(() => {
+    return visitMembers.map((member) => ({
+      staffId: member.staffId,
+      staffName: member.staffName,
+      isSelf: staff?.id === member.staffId,
+      bookings: (visitSchedules[member.staffId] ?? []).filter(
         (booking) =>
-          booking.status !== "cancelled" && booking.id !== companion.id,
+          booking.status !== "cancelled" && !visitBookingIds.has(booking.id),
       ),
     }));
-  }, [companions, companionSchedules]);
+  }, [visitMembers, visitSchedules, visitBookingIds, staff]);
 
   const remainingMs = activeBooking
     ? new Date(activeBooking.endsAt).getTime() - now.getTime()
     : null;
 
-  const serviceStaffNames = useMemo(() => {
-    if (!staff) return [] as string[];
-    return [staff.name, ...companions.map((row) => row.staffName)];
-  }, [staff, companions]);
+  const myRemainingMs = myActiveBooking
+    ? new Date(myActiveBooking.endsAt).getTime() - now.getTime()
+    : null;
+
+  const serviceStaffNames = useMemo(
+    () => visitMembers.map((row) => row.staffName),
+    [visitMembers],
+  );
 
   const extendOptions = useMemo(() => {
     if (!activeBooking) return [] as number[];
@@ -637,15 +706,15 @@ export function RoomHomeContent() {
   );
 
   useEffect(() => {
-    if (!activeBooking || remainingMs === null) return;
-    if (remainingMs > 0) {
-      if (autoEndingRef.current === activeBooking.id) {
+    if (!myActiveBooking || myRemainingMs === null) return;
+    if (myRemainingMs > 0) {
+      if (autoEndingRef.current === myActiveBooking.id) {
         autoEndingRef.current = null;
       }
       return;
     }
-    void endService(activeBooking, "auto");
-  }, [activeBooking, remainingMs, endService]);
+    void endService(myActiveBooking, "auto");
+  }, [myActiveBooking, myRemainingMs, endService]);
 
   const extendService = async (bookingId: string, minutes: number) => {
     setActionId(`extend-${bookingId}-${minutes}`);
@@ -664,7 +733,11 @@ export function RoomHomeContent() {
       }
       toast.success(`Extended +${minutes} min`);
       autoEndingRef.current = null;
-      await Promise.all([loadStaffSchedule(), loadRoomSchedule()]);
+      await Promise.all([
+        loadStaffSchedule(),
+        loadRoomSchedule(),
+        myActiveBooking ? loadVisit(myActiveBooking.id) : Promise.resolve(),
+      ]);
     } finally {
       setActionId(null);
     }
@@ -672,7 +745,7 @@ export function RoomHomeContent() {
 
   const staffLogout = async () => {
     const current = staff;
-    const serviceStillRunning = Boolean(activeBooking);
+    const serviceStillRunning = Boolean(myActiveBooking);
     // Lock tablet only — never check out / end the in-progress booking.
     await fetch("/api/room/staff/logout", { method: "POST" });
     if (current) {
@@ -745,7 +818,7 @@ export function RoomHomeContent() {
                       : "text-emerald-700",
                   )}
                 >
-                  In room now · {staff.name}
+                  In room now · {activeBooking.staffName}
                 </p>
                 <p className="mt-2 text-lg font-semibold text-foreground md:text-xl">
                   {formatAmPmTime(activeBooking.startsAt)} ·{" "}
@@ -758,6 +831,8 @@ export function RoomHomeContent() {
                   left · ends {formatAmPmTime(activeBooking.endsAt)}
                 </p>
 
+                {isVisitPrimaryViewer ? (
+                <>
                 <div className="mt-5">
                   {addingStaff ? (
                     <div className="space-y-4 rounded-2xl border border-border bg-card p-4">
@@ -943,6 +1018,8 @@ export function RoomHomeContent() {
                 <p className="mt-2 text-center text-xs text-muted-foreground">
                   Only this button ends the service. Lock keeps it running.
                 </p>
+                </>
+                ) : null}
               </div>
 
               {companions.map((row) => {
@@ -950,6 +1027,7 @@ export function RoomHomeContent() {
                   new Date(row.endsAt).getTime() - now.getTime();
                 const urgent =
                   companionRemainingMs <= 60_000 && companionRemainingMs > 0;
+                const isSelf = staff.id === row.staffId;
                 return (
                   <div
                     key={row.id}
@@ -973,7 +1051,9 @@ export function RoomHomeContent() {
                     </p>
                     <p className="mt-2 text-lg font-semibold text-foreground md:text-xl">
                       {formatAmPmTime(row.startsAt)} ·{" "}
-                      {activeBooking.customerName || "Guest"}
+                      {row.customerName ||
+                        activeBooking.customerName ||
+                        "Guest"}
                     </p>
                     <p className="mt-1 text-sm font-medium text-muted-foreground md:text-base">
                       {row.durationMinutes} min ·{" "}
@@ -985,6 +1065,23 @@ export function RoomHomeContent() {
                     <p className="mt-1 text-sm font-medium text-muted-foreground md:text-base">
                       left · ends {formatAmPmTime(row.endsAt)}
                     </p>
+                    {isSelf ? (
+                      <>
+                        <AppButton
+                          type="button"
+                          className="mt-5 h-14 w-full rounded-2xl bg-red-700 text-lg text-white hover:bg-red-800 md:h-16 md:text-xl"
+                          disabled={actionId === row.id}
+                          onClick={() =>
+                            void endService(visitToAdminBooking(row), "manual")
+                          }
+                        >
+                          {actionId === row.id ? "Ending..." : "End service"}
+                        </AppButton>
+                        <p className="mt-2 text-center text-xs text-muted-foreground">
+                          Ends your booking only. Lock keeps it running.
+                        </p>
+                      </>
+                    ) : null}
                   </div>
                 );
               })}
@@ -1004,35 +1101,40 @@ export function RoomHomeContent() {
             )}
 
             <div className="space-y-5">
-              <StaffDayBookingsCard
-                title={staffBookingsTodayTitle(staff.name)}
-                bookings={staffDayBookings}
-                emptyLabel={
-                  activeBooking
-                    ? `No other bookings for ${staff.name} today.`
-                    : `No bookings for ${staff.name} today yet.`
-                }
-                now={now}
-                activeBooking={activeBooking}
-                roomServiceInProgress={roomServiceInProgress}
-                actionId={actionId}
-                onEnter={(bookingId) => void checkIn(bookingId)}
-                allowEnter
-              />
-
-              {companionDaySections.map((section) => (
+              {visitDaySections.length > 0 ? (
+                visitDaySections.map((section) => (
+                  <StaffDayBookingsCard
+                    key={section.staffId}
+                    title={staffBookingsTodayTitle(section.staffName)}
+                    bookings={
+                      section.isSelf ? staffDayBookings : section.bookings
+                    }
+                    emptyLabel={
+                      myActiveBooking || activeBooking
+                        ? `No other bookings for ${section.staffName} today.`
+                        : `No bookings for ${section.staffName} today yet.`
+                    }
+                    now={now}
+                    activeBooking={myActiveBooking}
+                    roomServiceInProgress={roomServiceInProgress}
+                    actionId={actionId}
+                    onEnter={(bookingId) => void checkIn(bookingId)}
+                    allowEnter={section.isSelf}
+                  />
+                ))
+              ) : (
                 <StaffDayBookingsCard
-                  key={section.staffId}
-                  title={staffBookingsTodayTitle(section.staffName)}
-                  bookings={section.bookings}
-                  emptyLabel={`No other bookings for ${section.staffName} today.`}
+                  title={staffBookingsTodayTitle(staff.name)}
+                  bookings={staffDayBookings}
+                  emptyLabel={`No bookings for ${staff.name} today yet.`}
                   now={now}
-                  activeBooking={activeBooking}
+                  activeBooking={myActiveBooking}
                   roomServiceInProgress={roomServiceInProgress}
                   actionId={actionId}
-                  allowEnter={false}
+                  onEnter={(bookingId) => void checkIn(bookingId)}
+                  allowEnter
                 />
-              ))}
+              )}
             </div>
           </div>
 
@@ -1040,10 +1142,10 @@ export function RoomHomeContent() {
             bookings={bookings.filter(
               (booking) =>
                 booking.staffId === staff.id ||
-                booking.additionalStaff?.some((member) => member.id === staff.id) ||
-                (activeBooking != null &&
-                  booking.id === activeBooking.id) ||
-                companions.some((row) => row.id === booking.id),
+                booking.additionalStaff?.some(
+                  (member) => member.id === staff.id,
+                ) ||
+                visitBookingIds.has(booking.id),
             )}
             loading={loadingSchedule}
             now={now}
@@ -1051,16 +1153,13 @@ export function RoomHomeContent() {
             staffOnly
             listTitle={`${roomLabel} today`}
             staffLabelById={
-              activeBooking
-                ? {
-                    [activeBooking.id]: serviceStaffNames.join(" + "),
-                    ...Object.fromEntries(
-                      companions.map((row) => [
-                        row.id,
-                        serviceStaffNames.join(" + "),
-                      ]),
-                    ),
-                  }
+              serviceStaffNames.length > 0
+                ? Object.fromEntries(
+                    [...visitBookingIds].map((id) => [
+                      id,
+                      serviceStaffNames.join(" + "),
+                    ]),
+                  )
                 : undefined
             }
           />

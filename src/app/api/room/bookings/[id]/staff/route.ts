@@ -335,7 +335,7 @@ export async function POST(
   }
 }
 
-/** List companion bookings created from this primary booking. */
+/** List the shared visit: primary + companions (works for either booking id). */
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -346,23 +346,13 @@ export async function GET(
     const { id } = await params;
     const supabase = createServiceSupabase();
 
-    const { data, error } = await supabase
-      .from("bookings")
-      .select(
-        "id, staff_id, starts_at, ends_at, duration_minutes, price_cents, status, checked_in_at, checked_out_at, notes, staff(name)",
-      )
-      .eq("tenant_id", tenant.id)
-      .neq("status", "cancelled")
-      .like("notes", `%${PAIR_PREFIX}${id}]%`)
-      .order("starts_at", { ascending: true });
+    const bookingSelect =
+      "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, status, checked_in_at, checked_out_at, customer_name, notes, staff(name), rooms(name)";
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 503 });
-    }
-
-    type CompanionRow = {
+    type VisitRow = {
       id: string;
       staff_id: string;
+      room_id: string | null;
       starts_at: string;
       ends_at: string;
       duration_minutes: number;
@@ -370,29 +360,94 @@ export async function GET(
       status: string;
       checked_in_at: string | null;
       checked_out_at: string | null;
+      customer_name: string | null;
       notes: string | null;
       staff?: { name: string } | { name: string }[] | null;
+      rooms?: { name: string } | { name: string }[] | null;
     };
 
-    const companions = ((data ?? []) as CompanionRow[])
-      .filter((row) => parsePairBookingId(row.notes) === id)
-      .map((row) => {
-        const staff = Array.isArray(row.staff) ? row.staff[0] : row.staff;
-        return {
-          id: row.id,
-          staffId: row.staff_id,
-          staffName: staff?.name ?? "Staff",
-          startsAt: row.starts_at,
-          endsAt: row.ends_at,
-          durationMinutes: row.duration_minutes,
-          priceCents: row.price_cents,
-          status: row.status,
-          checkedInAt: row.checked_in_at,
-          checkedOutAt: row.checked_out_at,
-        };
-      });
+    const { data: seed, error: seedError } = await supabase
+      .from("bookings")
+      .select(bookingSelect)
+      .eq("tenant_id", tenant.id)
+      .eq("id", id)
+      .maybeSingle();
 
-    return NextResponse.json({ companions });
+    if (seedError) {
+      return NextResponse.json({ error: seedError.message }, { status: 503 });
+    }
+    if (!seed) {
+      return NextResponse.json({ error: "Booking not found." }, { status: 404 });
+    }
+
+    const seedRow = seed as VisitRow;
+    const pairedPrimaryId = parsePairBookingId(seedRow.notes);
+    const primaryId = pairedPrimaryId ?? id;
+
+    let primaryRow = seedRow;
+    if (primaryId !== id) {
+      const { data, error: primaryError } = await supabase
+        .from("bookings")
+        .select(bookingSelect)
+        .eq("tenant_id", tenant.id)
+        .eq("id", primaryId)
+        .maybeSingle();
+      if (primaryError) {
+        return NextResponse.json(
+          { error: primaryError.message },
+          { status: 503 },
+        );
+      }
+      if (!data) {
+        return NextResponse.json(
+          { error: "Primary booking not found." },
+          { status: 404 },
+        );
+      }
+      primaryRow = data as VisitRow;
+    }
+
+    const { data, error } = await supabase
+      .from("bookings")
+      .select(bookingSelect)
+      .eq("tenant_id", tenant.id)
+      .neq("status", "cancelled")
+      .like("notes", `%${PAIR_PREFIX}${primaryId}]%`)
+      .order("starts_at", { ascending: true });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 503 });
+    }
+
+    const mapVisit = (row: VisitRow) => {
+      const staffMember = Array.isArray(row.staff) ? row.staff[0] : row.staff;
+      const room = Array.isArray(row.rooms) ? row.rooms[0] : row.rooms;
+      return {
+        id: row.id,
+        staffId: row.staff_id,
+        staffName: staffMember?.name ?? "Staff",
+        roomId: row.room_id,
+        roomName: room?.name ?? null,
+        startsAt: row.starts_at,
+        endsAt: row.ends_at,
+        durationMinutes: row.duration_minutes,
+        priceCents: row.price_cents,
+        status: row.status,
+        checkedInAt: row.checked_in_at,
+        checkedOutAt: row.checked_out_at,
+        customerName: row.customer_name,
+      };
+    };
+
+    const primary = mapVisit(primaryRow);
+    const companions = ((data ?? []) as VisitRow[])
+      .filter((row) => parsePairBookingId(row.notes) === primaryId)
+      .map(mapVisit);
+
+    return NextResponse.json({
+      primary,
+      companions,
+    });
   } catch (error) {
     if (error instanceof TenantContextError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
