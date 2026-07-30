@@ -14,7 +14,11 @@ import { parseShiftPlan } from "@/features/staff/utils/shift-plan";
 import { cn } from "@/lib/utils";
 import { useNowTick } from "@/hooks/use-now-tick";
 
-import { formatAmPmTime, todayDateInZone } from "../../lib/schedule-utils";
+import {
+  formatAmPmTime,
+  formatDurationLabel,
+  todayDateInZone,
+} from "../../lib/schedule-utils";
 import type { AdminBooking } from "../../types/admin-booking";
 import { isBookingCheckedIn } from "../../lib/booking-check-in";
 
@@ -557,7 +561,9 @@ export function StaffGuideTimeline({
                                 tone.muted,
                               )}
                             >
-                              {formatAmPmTime(booking.startsAt)}
+                              {formatAmPmTime(booking.startsAt)}~
+                              {formatAmPmTime(booking.endsAt)} ·{" "}
+                              {formatDurationLabel(booking.durationMinutes)}
                               {booking.roomName
                                 ? ` · ${booking.roomName}`
                                 : ""}
