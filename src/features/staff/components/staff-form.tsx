@@ -23,7 +23,7 @@ import { useOptionalTenant } from "@/features/tenants";
 import { fetchAdminApi } from "@/features/admin/lib/admin-api-client";
 import { useNowTick } from "@/hooks/use-now-tick";
 
-import { getDefaultStaffFormValues } from "../config";
+import { getDefaultStaffFormValues, nationalityOptions } from "../config";
 import type { StaffFormValues, StaffPhoto, StaffRecord } from "../types";
 import {
   applyWorkingToday,
@@ -587,16 +587,27 @@ export function StaffForm({ staffId }: StaffFormProps) {
             />
           </StaffFormField>
 
-          <StaffFormField label="Nationality" htmlFor="staff-nationality">
+          <StaffFormField
+            label="Nationality"
+            htmlFor="staff-nationality"
+            hint="Type any nationality — suggestions are optional."
+          >
             <Input
               id="staff-nationality"
+              list="staff-nationality-suggestions"
               value={form.nationality}
               onChange={(event) =>
                 updateField("nationality", event.target.value)
               }
-              placeholder="e.g. Australian, Korean"
+              placeholder="e.g. Australian, Korean, Brazilian"
+              autoComplete="off"
               className={inputClassName}
             />
+            <datalist id="staff-nationality-suggestions">
+              {nationalityOptions.map((option) => (
+                <option key={option} value={option} />
+              ))}
+            </datalist>
           </StaffFormField>
         </StaffFormSection>
 
