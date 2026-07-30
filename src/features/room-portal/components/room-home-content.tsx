@@ -916,16 +916,16 @@ export function RoomHomeContent() {
                 className={cn(
                   "rounded-3xl border p-5 md:p-7",
                   remainingMs !== null && remainingMs <= 60_000
-                    ? "border-red-300 bg-red-50"
-                    : "border-emerald-200 bg-emerald-50",
+                    ? "border-red-500/40 bg-red-950/55"
+                    : "border-emerald-400/25 bg-emerald-950/45",
                 )}
               >
                 <p
                   className={cn(
                     "text-xs font-semibold uppercase tracking-[0.18em] md:text-sm",
                     remainingMs !== null && remainingMs <= 60_000
-                      ? "text-red-700"
-                      : "text-emerald-700",
+                      ? "text-red-300"
+                      : "text-emerald-300",
                   )}
                 >
                   In room now · {activeBooking.staffName}
@@ -1097,7 +1097,7 @@ export function RoomHomeContent() {
                     Extend time
                   </p>
                   {pendingExtend ? (
-                    <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+                    <p className="rounded-2xl border border-amber-500/30 bg-amber-950/50 px-4 py-3 text-sm font-medium text-amber-100">
                       Waiting for admin approval · +
                       {formatDurationLabel(pendingExtend.minutes)}
                     </p>
@@ -1160,14 +1160,14 @@ export function RoomHomeContent() {
                     className={cn(
                       "rounded-3xl border p-5 md:p-7",
                       urgent
-                        ? "border-red-300 bg-red-50"
-                        : "border-sky-200 bg-sky-50",
+                        ? "border-red-500/40 bg-red-950/55"
+                        : "border-sky-400/25 bg-sky-950/45",
                     )}
                   >
                     <p
                       className={cn(
                         "text-xs font-semibold uppercase tracking-[0.18em] md:text-sm",
-                        urgent ? "text-red-700" : "text-sky-700",
+                        urgent ? "text-red-300" : "text-sky-300",
                       )}
                     >
                       In room now · {row.staffName}
@@ -1315,7 +1315,7 @@ export function RoomHomeContent() {
           {roomLabel}
         </h1>
         {roomServiceInProgress ? (
-          <p className="mt-6 rounded-2xl bg-emerald-50 px-4 py-3 text-center text-sm font-medium text-emerald-800 md:text-base">
+          <p className="mt-6 rounded-2xl border border-emerald-400/25 bg-emerald-950/45 px-4 py-3 text-center text-sm font-medium text-emerald-200 md:text-base">
             Service in progress — enter staff PIN to return. Lock does not end
             the service.
           </p>
