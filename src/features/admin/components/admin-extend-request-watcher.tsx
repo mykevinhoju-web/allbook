@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AppButton, toast } from "@/components/common";
 import {
@@ -11,6 +11,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { fetchAdminApi } from "@/features/admin/lib/admin-api-client";
+import {
+  playServiceEndAlarm,
+  vibrateForBooking,
+} from "@/features/booking/lib/booking-alert-sound";
 import {
   broadcastExtendResolved,
   subscribeToBookingAlerts,
@@ -49,8 +53,33 @@ export function AdminExtendRequestWatcher() {
   const [currency, setCurrency] = useState(
     () => tenant.settings.currency || "AUD",
   );
+  const knownIdsRef = useRef<Set<string>>(new Set());
+  const primedRef = useRef(false);
 
   const active = queue[0] ?? null;
+
+  const alertNewRequests = useCallback((requests: BookingExtendRequest[]) => {
+    const known = knownIdsRef.current;
+    const fresh = requests.filter((row) => !known.has(row.id));
+    for (const row of requests) known.add(row.id);
+    for (const id of [...known]) {
+      if (!requests.some((row) => row.id === id)) known.delete(id);
+    }
+    // Skip the first load so existing pending items don't re-alarm on refresh.
+    if (!primedRef.current) {
+      primedRef.current = true;
+      return;
+    }
+    if (fresh.length === 0) return;
+
+    const lead = fresh[0]!;
+    void playServiceEndAlarm(2);
+    vibrateForBooking();
+    toast.error("Extend request", {
+      description: `${lead.roomName ?? "Room"} · ${lead.staffName} · +${formatDurationLabel(lead.minutes)}`,
+      duration: 12_000,
+    });
+  }, []);
 
   const loadPending = useCallback(async () => {
     const response = await fetchAdminApi("/api/admin/extend-requests");
@@ -58,8 +87,10 @@ export function AdminExtendRequestWatcher() {
     const data = (await response.json()) as {
       requests?: BookingExtendRequest[];
     };
-    setQueue(data.requests ?? []);
-  }, []);
+    const next = data.requests ?? [];
+    alertNewRequests(next);
+    setQueue(next);
+  }, [alertNewRequests]);
 
   useEffect(() => {
     void loadPending();
@@ -100,7 +131,6 @@ export function AdminExtendRequestWatcher() {
       undefined,
       () => {
         void loadPending();
-        void playChime();
       },
       () => {
         void loadPending();
@@ -169,6 +199,7 @@ export function AdminExtendRequestWatcher() {
         newEndsAt: data.booking?.endsAt,
         resolvedAt: data.resolvedAt ?? new Date().toISOString(),
       }).catch(() => {});
+      knownIdsRef.current.delete(active.id);
       setQueue((prev) => prev.filter((row) => row.id !== active.id));
     } finally {
       setSubmitting(false);
@@ -198,6 +229,7 @@ export function AdminExtendRequestWatcher() {
         minutes: active.minutes,
         resolvedAt: data.resolvedAt ?? new Date().toISOString(),
       }).catch(() => {});
+      knownIdsRef.current.delete(active.id);
       setQueue((prev) => prev.filter((row) => row.id !== active.id));
       toast.message("Extend request declined");
     } finally {
@@ -338,27 +370,4 @@ export function AdminExtendRequestWatcher() {
       </DialogContent>
     </Dialog>
   );
-}
-
-function playChime() {
-  try {
-    const AudioCtx =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.value = 880;
-    gain.gain.value = 0.04;
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.15);
-    window.setTimeout(() => void ctx.close(), 300);
-  } catch {
-    // ignore
-  }
 }
