@@ -685,11 +685,19 @@ export function RoomHomeContent() {
         setPendingExtend(null);
         autoEndingRef.current = null;
         if (payload.status === "approved") {
+          void playServiceEndAlarm(2);
           toast.success(
             `Extended +${formatDurationLabel(payload.minutes)}`,
+            {
+              description: payload.newEndsAt
+                ? `New end ${formatAmPmTime(payload.newEndsAt)}`
+                : "Timer updated",
+              duration: 10_000,
+            },
           );
         } else {
-          toast.message("Extend request declined");
+          void playServiceEndAlarm(1);
+          toast.error("Extend declined by admin", { duration: 8_000 });
         }
         void Promise.all([
           loadStaffSchedule(),
@@ -809,6 +817,8 @@ export function RoomHomeContent() {
   const requestExtend = async (bookingId: string, minutes: number) => {
     setActionId(`extend-${bookingId}-${minutes}`);
     try {
+      // Unlock audio so the room can hear approve/decline later.
+      await unlockBookingAudio().catch(() => {});
       const response = await fetch(
         `/api/room/bookings/${bookingId}/extend-request`,
         {
