@@ -227,6 +227,8 @@ export function RoomHomeContent() {
     () => tenant.settings.currency || "AUD",
   );
   const autoEndingRef = useRef<string | null>(null);
+  /** Keep shared visit UI while the primary booking is still in service. */
+  const visitAnchorIdRef = useRef<string | null>(null);
 
   const loadRoomSchedule = useCallback(async (opts?: { soft?: boolean }) => {
     if (!opts?.soft) setLoadingSchedule(true);
@@ -276,14 +278,56 @@ export function RoomHomeContent() {
     }
   }, [today]);
 
+  const loadVisit = useCallback(async (bookingId: string) => {
+    const response = await fetch(`/api/room/bookings/${bookingId}/staff`);
+    const data = (await response.json()) as {
+      primary?: CompanionBooking;
+      companions?: CompanionBooking[];
+    };
+    if (!response.ok) return null;
+    const primary = data.primary ?? null;
+    const nextCompanions = data.companions ?? [];
+    setVisitPrimary(primary);
+    setCompanions(nextCompanions);
+    if (primary) {
+      visitAnchorIdRef.current = primary.id;
+    }
+    return { primary, companions: nextCompanions };
+  }, []);
+
+  const clearVisit = useCallback(() => {
+    visitAnchorIdRef.current = null;
+    setCompanions([]);
+    setVisitPrimary(null);
+    setVisitSchedules({});
+    setAddingStaff(false);
+    setJoinPin("");
+    setJoinPayment("");
+  }, []);
+
   const refreshAll = useCallback(
     async (opts?: { soft?: boolean }) => {
       await loadRoomSchedule(opts);
       const signedIn = await loadStaffMe();
       if (signedIn) await loadStaffSchedule();
       else setStaffBookings([]);
+      const anchor = visitAnchorIdRef.current;
+      if (anchor) {
+        const visit = await loadVisit(anchor);
+        if (visit?.primary) {
+          const primaryActive = isBookingCheckedIn(
+            visitToAdminBooking(visit.primary),
+          );
+          const companionActive = visit.companions.some((row) =>
+            isBookingCheckedIn(visitToAdminBooking(row)),
+          );
+          if (!primaryActive && !companionActive) {
+            clearVisit();
+          }
+        }
+      }
     },
-    [loadRoomSchedule, loadStaffMe, loadStaffSchedule],
+    [clearVisit, loadRoomSchedule, loadStaffMe, loadStaffSchedule, loadVisit],
   );
 
   useEffect(() => {
@@ -403,17 +447,6 @@ export function RoomHomeContent() {
     return getActiveCheckedInBooking(staffBookings);
   }, [staff, staffBookings]);
 
-  const loadVisit = useCallback(async (bookingId: string) => {
-    const response = await fetch(`/api/room/bookings/${bookingId}/staff`);
-    const data = (await response.json()) as {
-      primary?: CompanionBooking;
-      companions?: CompanionBooking[];
-    };
-    if (!response.ok) return;
-    setVisitPrimary(data.primary ?? null);
-    setCompanions(data.companions ?? []);
-  }, []);
-
   const loadVisitSchedules = useCallback(
     async (members: CompanionBooking[]) => {
       if (members.length === 0) {
@@ -440,17 +473,43 @@ export function RoomHomeContent() {
   );
 
   useEffect(() => {
-    if (!myActiveBooking) {
-      setCompanions([]);
-      setVisitPrimary(null);
-      setVisitSchedules({});
-      setAddingStaff(false);
-      setJoinPin("");
-      setJoinPayment("");
+    if (myActiveBooking) {
+      const anchor =
+        parsePairBookingId(myActiveBooking.notes) ?? myActiveBooking.id;
+      visitAnchorIdRef.current = anchor;
+      void loadVisit(myActiveBooking.id);
       return;
     }
-    void loadVisit(myActiveBooking.id);
-  }, [myActiveBooking, loadVisit]);
+
+    const anchor = visitAnchorIdRef.current;
+    if (!anchor) {
+      clearVisit();
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      const result = await loadVisit(anchor);
+      if (cancelled || !result?.primary) {
+        if (!cancelled) clearVisit();
+        return;
+      }
+      const primaryActive = isBookingCheckedIn(
+        visitToAdminBooking(result.primary),
+      );
+      const companionActive = result.companions.some((row) =>
+        isBookingCheckedIn(visitToAdminBooking(row)),
+      );
+      // Visit stays on screen while anyone in the pair is still in service.
+      if (!primaryActive && !companionActive) {
+        clearVisit();
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [myActiveBooking, loadVisit, clearVisit]);
 
   const visitMembers = useMemo(() => {
     if (!visitPrimary) return [] as CompanionBooking[];
@@ -752,6 +811,8 @@ export function RoomHomeContent() {
       if (autoEndingRef.current === booking.id && reason === "auto") return;
       if (reason === "auto") autoEndingRef.current = booking.id;
       setActionId(booking.id);
+      const pairPrimaryId = parsePairBookingId(booking.notes);
+      const endingCompanion = Boolean(pairPrimaryId);
       try {
         if (reason === "auto") {
           try {
@@ -784,6 +845,24 @@ export function RoomHomeContent() {
         toast.success(
           reason === "auto" ? "Time is up — service ended" : "Service ended",
         );
+
+        await loadRoomSchedule();
+        if (staff) await loadStaffSchedule();
+
+        // Companion finished while primary may still be in service — keep the
+        // shared visit on screen (Jessica stays visible as Ended).
+        if (endingCompanion && pairPrimaryId) {
+          visitAnchorIdRef.current = pairPrimaryId;
+          const visit = await loadVisit(pairPrimaryId);
+          const primaryActive = Boolean(
+            visit?.primary &&
+              isBookingCheckedIn(visitToAdminBooking(visit.primary)),
+          );
+          if (primaryActive) {
+            return;
+          }
+        }
+
         if (staff) {
           void broadcastStaffPresence(tenant.slug, {
             type: "offline",
@@ -792,15 +871,23 @@ export function RoomHomeContent() {
             roomName: roomLabel,
           }).catch(() => {});
         }
+        clearVisit();
         setStaff(null);
         setStaffBookings([]);
         setPin("");
-        await loadRoomSchedule();
       } finally {
         setActionId(null);
       }
     },
-    [loadRoomSchedule, roomLabel, staff, tenant.slug],
+    [
+      clearVisit,
+      loadRoomSchedule,
+      loadStaffSchedule,
+      loadVisit,
+      roomLabel,
+      staff,
+      tenant.slug,
+    ],
   );
 
   useEffect(() => {
@@ -1159,28 +1246,42 @@ export function RoomHomeContent() {
               </div>
 
               {companions.map((row) => {
+                const companionBooking = visitToAdminBooking(row);
+                const companionActive = isBookingCheckedIn(companionBooking);
                 const companionRemainingMs =
                   new Date(row.endsAt).getTime() - now.getTime();
+                const ended =
+                  !companionActive || companionRemainingMs <= 0;
                 const urgent =
-                  companionRemainingMs <= 60_000 && companionRemainingMs > 0;
+                  companionActive &&
+                  companionRemainingMs <= 60_000 &&
+                  companionRemainingMs > 0;
                 const isSelf = staff.id === row.staffId;
                 return (
                   <div
                     key={row.id}
                     className={cn(
                       "rounded-3xl border p-5 md:p-7",
-                      urgent
-                        ? "border-red-500/40 bg-red-950/55"
-                        : "border-sky-400/25 bg-sky-950/45",
+                      ended
+                        ? "border-border/60 bg-muted/30 opacity-90"
+                        : urgent
+                          ? "border-red-500/40 bg-red-950/55"
+                          : "border-sky-400/25 bg-sky-950/45",
                     )}
                   >
                     <p
                       className={cn(
                         "text-xs font-semibold uppercase tracking-[0.18em] md:text-sm",
-                        urgent ? "text-red-300" : "text-sky-300",
+                        ended
+                          ? "text-muted-foreground"
+                          : urgent
+                            ? "text-red-300"
+                            : "text-sky-300",
                       )}
                     >
-                      In room now · {row.staffName}
+                      {ended
+                        ? `Ended · ${row.staffName}`
+                        : `In room now · ${row.staffName}`}
                     </p>
                     <p className="mt-2 text-lg font-semibold leading-snug text-foreground md:text-xl">
                       {formatRoomServiceWindow(
@@ -1197,22 +1298,24 @@ export function RoomHomeContent() {
                       {formatPriceFromCents(row.priceCents, currency)}
                     </p>
                     <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground md:text-sm">
-                      Remaining
+                      {ended ? "Finished" : "Remaining"}
                     </p>
                     <p className="mt-1 text-6xl font-semibold tabular-nums tracking-tight text-foreground md:text-7xl">
-                      {formatRemaining(Math.max(0, companionRemainingMs))}
+                      {ended
+                        ? "0:00"
+                        : formatRemaining(Math.max(0, companionRemainingMs))}
                     </p>
                     <p className="mt-1 text-sm font-medium text-muted-foreground md:text-base">
                       ends {formatAmPmTime(row.endsAt)}
                     </p>
-                    {isSelf ? (
+                    {isSelf && companionActive ? (
                       <>
                         <AppButton
                           type="button"
                           className="mt-5 h-14 w-full rounded-2xl bg-red-700 text-lg text-white hover:bg-red-800 md:h-16 md:text-xl"
                           disabled={actionId === row.id}
                           onClick={() =>
-                            void endService(visitToAdminBooking(row), "manual")
+                            void endService(companionBooking, "manual")
                           }
                         >
                           {actionId === row.id ? "Ending..." : "End service"}
