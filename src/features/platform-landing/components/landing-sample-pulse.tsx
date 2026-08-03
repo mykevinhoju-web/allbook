@@ -142,21 +142,30 @@ export function LandingSamplePulse({
                 className="mt-4 text-base leading-relaxed text-neutral-600 sm:text-lg"
               >
                 Customisable booking software for Australian service businesses —
-                built with Korean-owned shops in mind, ready for any industry.
+                built for Korean, Chinese, and Japanese-owned shops, ready for any
+                industry.
               </p>
-              <p
+              <div
                 data-rise="2"
-                className="mt-2 text-sm leading-relaxed text-neutral-500"
+                className="mt-3 space-y-1.5 text-sm leading-relaxed text-neutral-500"
               >
-                호주에서 운영하는 한국 업체를 위한 예약·결제 시스템. 업종에 맞게
-                커스터마이징 가능합니다.
-              </p>
+                <p>
+                  호주에서 운영하는 한국 업체를 위한 예약·결제 시스템. 업종에 맞게
+                  커스터마이징 가능합니다.
+                </p>
+                <p>
+                  为在澳大利亚经营的中国商家提供的预约·支付系统。可按行业定制。
+                </p>
+                <p>
+                  オーストラリアで運営する日本の事業者向け予約・決済システム。業種に合わせてカスタマイズ可能です。
+                </p>
+              </div>
 
               <ul data-rise="2" className="mt-7 space-y-2.5">
                 {[
                   "Any business type — spa, salon, clinic, cleaning & more",
                   "Custom branding & workflows to match your shop",
-                  "Korean & English friendly · Stripe deposits in AUD",
+                  "KO · ZH · JA · EN friendly · Stripe deposits in AUD",
                 ].map((item) => (
                   <li
                     key={item}
@@ -233,7 +242,8 @@ export function LandingSamplePulse({
         <section className="border-y border-neutral-200 bg-white py-12">
           <div className="mx-auto max-w-5xl px-5 sm:px-8">
             <p className="text-center text-sm text-neutral-500">
-              Built for Australian service businesses — including Korean-owned shops
+              Built for Australian service businesses — including Korean, Chinese &
+              Japanese-owned shops
             </p>
             <div className="mt-8 grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
               {[
@@ -273,7 +283,7 @@ export function LandingSamplePulse({
             {[
               {
                 title: "Online Booking",
-                copy: "Customers book 24/7 in English or Korean-friendly flows.",
+                copy: "Customers book 24/7 — Korean, Chinese, Japanese & English friendly.",
                 icon: CalendarDays,
               },
               {
@@ -306,7 +316,7 @@ export function LandingSamplePulse({
           </div>
         </section>
 
-        {/* Korean AU + customisation */}
+        {/* Multilingual AU businesses + customisation */}
         <section
           id="pricing"
           className="border-y border-neutral-200 bg-white py-16 sm:py-20"
@@ -317,19 +327,28 @@ export function LandingSamplePulse({
                 className="text-xs font-bold uppercase tracking-[0.16em]"
                 style={{ color: ACCENT }}
               >
-                For Korean businesses in Australia
+                For Asian businesses in Australia
               </p>
               <h2 className="mt-3 text-2xl font-bold tracking-tight text-neutral-950 sm:text-3xl">
-                호주 한국 업체를 위한 예약 시스템
+                Made for Korean, Chinese & Japanese shops
               </h2>
               <p className="mt-4 text-base leading-relaxed text-neutral-600">
-                Sydney, Melbourne, Brisbane and beyond — AllBook helps Korean-owned
-                service businesses take online bookings without complex tools.
-                Support in Korean and English, with local Stripe payments.
+                Sydney, Melbourne, Brisbane and beyond — AllBook helps Korean,
+                Chinese, and Japanese-owned service businesses take online bookings
+                without complex overseas tools. Local Stripe payments in AUD.
               </p>
-              <p className="mt-3 text-sm leading-relaxed text-neutral-500">
-                복잡한 해외 툴 대신, 호주 환경에 맞춘 예약·보증금·스케줄 관리를 한곳에서.
-              </p>
+              <div className="mt-4 space-y-2 text-sm leading-relaxed text-neutral-500">
+                <p>
+                  호주에서 운영하는 한국 업체를 위한 예약·결제 시스템. 업종에 맞게
+                  커스터마이징 가능합니다.
+                </p>
+                <p>
+                  为在澳大利亚经营的中国商家提供的预约·支付系统。可按行业定制。
+                </p>
+                <p>
+                  オーストラリアで運営する日本の事業者向け予約・決済システム。業種に合わせてカスタマイズ可能です。
+                </p>
+              </div>
             </div>
             <div className="rounded-2xl border border-neutral-200 bg-[#FAFAF9] p-6 sm:p-8">
               <h3 className="text-lg font-bold text-neutral-950">
@@ -480,8 +499,8 @@ export function LandingSamplePulse({
             Ready to customise AllBook for your business?
           </h2>
           <p className="mx-auto mt-3 max-w-lg text-sm text-neutral-600 sm:text-base">
-            Free trial for Australian service businesses — Korean-owned shops
-            welcome. Any industry.
+            Free trial for Australian service businesses — Korean, Chinese &
+            Japanese-owned shops welcome. Any industry.
           </p>
           <Link
             href="/platform"
@@ -499,7 +518,8 @@ export function LandingSamplePulse({
             <AllBookLogo size="sm" variant="blue" />
             <p className="max-w-xs text-sm leading-relaxed text-neutral-500">
               Customisable booking software for Australian service businesses —
-              including Korean-owned shops. Any industry. Book. Get Paid. Grow.
+              including Korean, Chinese & Japanese-owned shops. Any industry.
+              Book. Get Paid. Grow.
             </p>
           </div>
           {[

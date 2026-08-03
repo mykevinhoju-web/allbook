@@ -6,7 +6,7 @@ export const platformConfig = {
   name: "AllBook",
   productName: "AllBook Platform",
   description:
-    "Customisable online booking software for Australian service businesses — including Korean-owned spas, salons, clinics, and any industry.",
+    "Customisable online booking software for Australian service businesses — including Korean, Chinese, and Japanese-owned spas, salons, clinics, and any industry.",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://allbook.com.au",
 } as const;
 

@@ -1,6 +1,6 @@
 /**
  * SEO + marketing copy for the AllBook platform apex (allbook.com.au).
- * Aimed at Australian service businesses, especially Korean-owned shops.
+ * Aimed at Australian service businesses, including Korean, Chinese, and Japanese-owned shops.
  */
 export const PLATFORM_SITE_URL = "https://allbook.com.au";
 
@@ -9,12 +9,16 @@ export const platformSeo = {
     "AllBook | Online Booking Software for Australian Service Businesses",
   titleTemplate: "%s | AllBook",
   description:
-    "AllBook is customisable online booking software for Australian service businesses — including Korean-owned spas, salons, clinics, and more. Take bookings, deposits, and grow with one simple platform built for any industry.",
+    "AllBook is customisable online booking software for Australian service businesses — including Korean, Chinese, and Japanese-owned spas, salons, clinics, and more. Take bookings, deposits, and grow with one simple platform built for any industry.",
   keywords: [
     "online booking software Australia",
     "booking system for Korean businesses Australia",
+    "booking system for Chinese businesses Australia",
+    "booking system for Japanese businesses Australia",
     "호주 예약 시스템",
     "호주 한국 미용실 예약",
+    "澳大利亚预约系统",
+    "オーストラリア予約システム",
     "day spa booking software",
     "salon booking Australia",
     "customisable booking platform",
@@ -24,7 +28,7 @@ export const platformSeo = {
   ],
   ogImage: `${PLATFORM_SITE_URL}/brand/allbook-logo-vertical.png`,
   locale: "en_AU",
-  alternateLocale: "ko_AU",
+  alternateLocale: ["ko_AU", "zh_AU", "ja_AU"],
 } as const;
 
 export function buildPlatformJsonLd() {
@@ -45,7 +49,7 @@ export function buildPlatformJsonLd() {
         contactPoint: {
           "@type": "ContactPoint",
           contactType: "sales",
-          availableLanguage: ["English", "Korean"],
+          availableLanguage: ["English", "Korean", "Chinese", "Japanese"],
           areaServed: "AU",
         },
       },
@@ -56,7 +60,7 @@ export function buildPlatformJsonLd() {
         name: "AllBook",
         description: platformSeo.description,
         publisher: { "@id": `${PLATFORM_SITE_URL}/#organization` },
-        inLanguage: ["en-AU", "ko"],
+        inLanguage: ["en-AU", "ko", "zh", "ja"],
       },
       {
         "@type": "SoftwareApplication",
@@ -78,12 +82,12 @@ export function buildPlatformJsonLd() {
           "Staff and room scheduling",
           "Custom branding",
           "Works for any service business",
-          "Korean and English friendly",
+          "Korean, Chinese, Japanese and English friendly",
         ],
         audience: {
           "@type": "BusinessAudience",
           audienceType:
-            "Australian service businesses including Korean-owned shops",
+            "Australian service businesses including Korean, Chinese, and Japanese-owned shops",
         },
       },
     ],

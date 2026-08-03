@@ -34,12 +34,14 @@ export async function generateMetadata(): Promise<Metadata> {
       languages: {
         "en-AU": PLATFORM_SITE_URL,
         ko: PLATFORM_SITE_URL,
+        zh: PLATFORM_SITE_URL,
+        ja: PLATFORM_SITE_URL,
       },
     },
     openGraph: {
       type: "website",
       locale: platformSeo.locale,
-      alternateLocale: [platformSeo.alternateLocale],
+      alternateLocale: [...platformSeo.alternateLocale],
       url: PLATFORM_SITE_URL,
       siteName: "AllBook",
       title: platformSeo.title,
