@@ -198,15 +198,33 @@ export function LandingSamplePulse({
             >
               <div className="absolute inset-x-4 inset-y-8 rounded-[2rem] bg-[#E8DFD4]/50 blur-2xl" />
               <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-b from-white/95 to-[#F3EDE6] p-3 shadow-[0_18px_40px_rgba(28,25,23,0.08)] ring-1 ring-[#E5DCD2]/90">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/landing/hero-phone-mockup.png"
-                  alt="AllBook booking app on a phone"
-                  width={768}
-                  height={1024}
-                  className="h-auto w-full rounded-[1.25rem] object-cover object-top"
-                  style={{ transform: "scale(1.04)" }}
-                />
+                <div className="relative overflow-hidden rounded-[1.25rem]">
+                  <div className="relative origin-center" style={{ transform: "scale(1.04)" }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/landing/hero-phone-mockup.png"
+                      alt="AllBook booking app on a phone"
+                      width={768}
+                      height={1024}
+                      className="h-auto w-full object-cover object-top"
+                    />
+                    {/* Cover old in-screen brand with crisp AllBook logo */}
+                    <div
+                      className="pointer-events-none absolute z-10 flex items-center rounded-md bg-white px-1.5 py-1 shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
+                      style={{
+                        left: "19.5%",
+                        top: "11.2%",
+                        width: "32%",
+                      }}
+                    >
+                      <AllBookLogo
+                        size="sm"
+                        variant="blue"
+                        className="origin-left scale-[0.92]"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
