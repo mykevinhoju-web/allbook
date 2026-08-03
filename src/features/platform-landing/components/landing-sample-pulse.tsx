@@ -136,7 +136,9 @@ export function LandingSamplePulse({
                 data-rise="1"
                 className="text-[clamp(2.25rem,5vw,3.25rem)] font-bold leading-[1.08] tracking-tight text-neutral-950"
               >
-                Book. Get Paid. Grow.
+                <span className="block">Book</span>
+                <span className="block">Get Paid</span>
+                <span className="block">Grow</span>
               </h1>
               <p
                 data-rise="2"
@@ -478,7 +480,9 @@ function HeroPhoneMockup() {
         <div className="mx-3 mb-3 flex flex-col items-center rounded-2xl bg-[#F4F0EA] px-4 py-10">
           <AllBookLogo size="xl" variant="blue" layout="vertical" />
           <p className="mt-4 text-center text-[11px] leading-relaxed text-neutral-500">
-            Book. Get Paid. Grow.
+            <span className="block">Book</span>
+            <span className="block">Get Paid</span>
+            <span className="block">Grow</span>
           </p>
         </div>
 
