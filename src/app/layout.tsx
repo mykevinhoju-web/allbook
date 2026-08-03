@@ -29,6 +29,15 @@ export async function generateMetadata(): Promise<Metadata> {
       },
       description: platformConfig.description,
       applicationName: platformConfig.name,
+      icons: {
+        icon: [
+          { url: "/favicon.png", sizes: "32x32", type: "image/png" },
+          { url: "/icon.png", sizes: "32x32", type: "image/png" },
+          { url: "/brand/allbook-mark.png", sizes: "512x512", type: "image/png" },
+        ],
+        shortcut: "/favicon.png",
+        apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+      },
     };
   }
 
@@ -39,6 +48,15 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     description: tenant.branding.tagline,
     applicationName: platformConfig.name,
+    icons: {
+      icon: [
+        { url: "/favicon.png", sizes: "32x32", type: "image/png" },
+        { url: "/icon.png", sizes: "32x32", type: "image/png" },
+        { url: "/brand/allbook-mark.png", sizes: "512x512", type: "image/png" },
+      ],
+      shortcut: "/favicon.png",
+      apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+    },
   };
 }
 
@@ -51,7 +69,7 @@ export default async function RootLayout({
 
   return (
     <html
-      lang={tenant?.settings.locale ?? "en-AU"}
+      lang="en-AU"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
