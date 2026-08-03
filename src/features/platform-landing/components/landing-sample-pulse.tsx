@@ -164,16 +164,9 @@ export function LandingSamplePulse({
                 data-rise="2"
                 className="mt-3 space-y-1.5 text-sm leading-relaxed text-neutral-500"
               >
-                <p>
-                  호주에서 운영하는 한국 업체를 위한 예약·결제 시스템. 업종에 맞게
-                  커스터마이징 가능합니다.
-                </p>
-                <p>
-                  为在澳大利亚经营的中国商家提供的预约·支付系统。可按行业定制。
-                </p>
-                <p>
-                  オーストラリアで運営する日本の事業者向け予約・決済システム。業種に合わせてカスタマイズ可能です。
-                </p>
+                <p>🇰🇷 호주의 한국인 사업자를 위한 예약·결제 시스템</p>
+                <p>🇨🇳 澳大利亚华人商家专用预约・支付系统</p>
+                <p>🇯🇵 オーストラリアの日本人事業者向け予約・決済システム</p>
               </div>
 
               <ul data-rise="2" className="mt-7 space-y-2.5">
@@ -354,16 +347,9 @@ export function LandingSamplePulse({
                 without complex overseas tools. Local Stripe payments in AUD.
               </p>
               <div className="mt-4 space-y-2 text-sm leading-relaxed text-neutral-500">
-                <p>
-                  호주에서 운영하는 한국 업체를 위한 예약·결제 시스템. 업종에 맞게
-                  커스터마이징 가능합니다.
-                </p>
-                <p>
-                  为在澳大利亚经营的中国商家提供的预约·支付系统。可按行业定制。
-                </p>
-                <p>
-                  オーストラリアで運営する日本の事業者向け予約・決済システム。業種に合わせてカスタマイズ可能です。
-                </p>
+                <p>🇰🇷 호주의 한국인 사업자를 위한 예약·결제 시스템</p>
+                <p>🇨🇳 澳大利亚华人商家专用预约・支付系统</p>
+                <p>🇯🇵 オーストラリアの日本人事業者向け予約・決済システム</p>
               </div>
             </div>
             <div className="rounded-2xl border border-neutral-200 bg-[#FAFAF9] p-6 sm:p-8">
