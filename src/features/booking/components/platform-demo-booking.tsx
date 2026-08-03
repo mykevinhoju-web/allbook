@@ -99,16 +99,25 @@ export function PlatformDemoBooking({
           </div>
         )}
 
-        <header className={theme.header}>
+        <header className={cn(theme.header, isPhone && "py-4")}>
           <p className={theme.eyebrow}>Book appointment</p>
-          <h1 className={isPhone ? "mt-1.5 text-xl font-bold tracking-tight text-stone-900" : theme.title}>
+          <h1
+            className={cn(
+              isPhone
+                ? "mt-1 text-[1.35rem] font-bold leading-snug tracking-tight text-stone-900"
+                : theme.title,
+            )}
+          >
             Choose your therapist
           </h1>
         </header>
 
-        <div className={theme.staffList}>
+        <div className={cn(theme.staffList, "relative z-0")}>
           {bookingStaffMock.map((member) => (
-            <article key={member.id} className={theme.staffCard}>
+            <article
+              key={member.id}
+              className={cn(theme.staffCard, "relative z-0 overflow-hidden")}
+            >
               <StaffPhoto staff={member} />
               <div className="flex min-w-0 flex-1 flex-col gap-3">
                 <div>
@@ -121,11 +130,12 @@ export function PlatformDemoBooking({
                   onClick={() => openStaff(member)}
                   className={cn(
                     member.available ? theme.therapistButton : theme.mutedButton,
+                    "max-w-full",
                   )}
                 >
                   {member.available ? (
                     <>
-                      <DevilHeartIcon className="size-8 shrink-0" />
+                      <DevilHeartIcon className="size-7 shrink-0 sm:size-8" />
                       <span className={theme.therapistButtonLabel}>Book Now</span>
                     </>
                   ) : (
