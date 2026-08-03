@@ -6,7 +6,10 @@ import { PlatformDemoBooking } from "@/features/booking/components/platform-demo
 import { isPlatformHost } from "@/features/tenants";
 
 export const metadata: Metadata = {
-  title: "Book appointment",
+  title: "Book appointment demo",
+  description:
+    "Try the AllBook booking demo — customisable online appointments for Australian service businesses.",
+  robots: { index: true, follow: true },
 };
 
 export default async function BookingPage() {
