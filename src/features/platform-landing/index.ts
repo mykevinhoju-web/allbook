@@ -1,4 +1,6 @@
 export {
+  AllBookLogo,
+  AllBookMark,
   LandingSampleInk,
   LandingSampleGrove,
   LandingSamplePulse,

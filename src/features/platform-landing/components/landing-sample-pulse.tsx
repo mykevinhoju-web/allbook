@@ -188,20 +188,7 @@ export function LandingSamplePulse({
               className="relative mx-auto flex w-full max-w-[260px] items-center justify-center sm:max-w-[280px] lg:ml-auto lg:mr-2 lg:max-w-[300px]"
             >
               <div className="absolute inset-x-4 inset-y-8 rounded-[2rem] bg-[#E8DFD4]/50 blur-2xl" />
-              <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-b from-white/95 to-[#F3EDE6] p-3 shadow-[0_18px_40px_rgba(28,25,23,0.08)] ring-1 ring-[#E5DCD2]/90">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/landing/hero-phone-mockup.png"
-                  alt="AllBook booking app on a phone"
-                  width={768}
-                  height={1024}
-                  className="h-auto w-full rounded-[1.25rem] object-cover object-top"
-                  style={{
-                    // Soften the harsh hand/phone edges by cropping in slightly
-                    transform: "scale(1.04)",
-                  }}
-                />
-              </div>
+              <HeroPhoneMockup />
             </div>
           </div>
         </section>
@@ -452,6 +439,81 @@ export function LandingSamplePulse({
       </footer>
 
       {isLive ? null : <LandingSampleSwitcher active={3} tone="light" />}
+    </div>
+  );
+}
+
+/** Hero phone — crisp AllBook logo on a clean booking splash UI. */
+function HeroPhoneMockup() {
+  return (
+    <div
+      className="relative w-full overflow-hidden rounded-[2rem] bg-neutral-950 p-[10px] shadow-[0_22px_50px_rgba(28,25,23,0.18)] ring-1 ring-black/10"
+      aria-label="AllBook booking app on a phone"
+    >
+      <div className="relative overflow-hidden rounded-[1.45rem] bg-white">
+        {/* Status bar */}
+        <div className="flex items-center justify-between px-5 pt-3 text-[10px] font-semibold text-neutral-800">
+          <span>9:41</span>
+          <span className="absolute left-1/2 top-2 h-5 w-20 -translate-x-1/2 rounded-full bg-neutral-950" />
+          <span className="flex items-center gap-1 text-neutral-500">
+            <span className="size-1.5 rounded-full bg-neutral-800" />
+            <span className="size-1.5 rounded-full bg-neutral-800" />
+            <span className="size-1.5 rounded-full bg-neutral-400" />
+          </span>
+        </div>
+
+        {/* App chrome */}
+        <div className="flex items-center justify-between px-4 pb-2 pt-4">
+          <AllBookLogo size="sm" variant="blue" />
+          <span className="flex size-8 items-center justify-center rounded-full bg-neutral-100 text-neutral-500">
+            <span className="flex flex-col gap-[3px]">
+              <span className="h-px w-3.5 bg-current" />
+              <span className="h-px w-3.5 bg-current" />
+              <span className="h-px w-3.5 bg-current" />
+            </span>
+          </span>
+        </div>
+
+        {/* Splash / logo focus */}
+        <div className="mx-3 mb-3 flex flex-col items-center rounded-2xl bg-[#F4F0EA] px-4 py-10">
+          <AllBookLogo size="xl" variant="blue" layout="vertical" />
+          <p className="mt-4 text-center text-[11px] leading-relaxed text-neutral-500">
+            Book. Get Paid. Grow.
+          </p>
+        </div>
+
+        {/* Mini booking list */}
+        <div className="space-y-2 px-4 pb-5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#C4A574]">
+            Book appointment
+          </p>
+          <p className="text-sm font-bold text-neutral-900">Choose your therapist</p>
+          {[
+            ["Emma", "Deep tissue"],
+            ["Mia", "Hot stone"],
+            ["Sophie", "Facial"],
+          ].map(([name, service]) => (
+            <div
+              key={name}
+              className="flex items-center gap-2.5 rounded-xl border border-neutral-100 bg-neutral-50/80 px-2.5 py-2"
+            >
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#2563FF]/10 text-[10px] font-bold text-[#2563FF]">
+                {name.slice(0, 1)}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[11px] font-semibold text-neutral-900">{name}</p>
+                <p className="truncate text-[10px] text-neutral-500">{service}</p>
+              </div>
+              <span
+                className="shrink-0 rounded-full px-2.5 py-1 text-[9px] font-semibold text-white"
+                style={{ backgroundColor: ACCENT }}
+              >
+                Book
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
