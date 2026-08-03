@@ -13,19 +13,19 @@ import {
   buildDemoTimeSlots,
   getDemoStaffById,
   type BookingStaffItem,
-} from "../../config/booking-staff-mock";
-import { bookingCustomerTheme as theme } from "../../lib/booking-customer-theme";
+} from "../config/booking-staff-mock";
+import { bookingCustomerTheme as theme } from "../lib/booking-customer-theme";
 import {
   formatCustomerBookingName,
   isValidCustomerBookingNameParts,
-} from "../../lib/customer-booking-name";
+} from "../lib/customer-booking-name";
 import {
   AU_MOBILE_PREFIX,
   formatAuMobileInput,
   isValidAuMobile,
   normalizeAuMobile,
-} from "../../lib/au-contact";
-import { todayDateInZone, DEFAULT_BOOKING_TIMEZONE } from "../../lib/schedule-utils";
+} from "../lib/au-contact";
+import { todayDateInZone, DEFAULT_BOOKING_TIMEZONE } from "../lib/schedule-utils";
 
 type Step = "form" | "done";
 
