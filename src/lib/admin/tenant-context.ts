@@ -7,8 +7,10 @@ import { resolveTenantBySlug } from "@/features/tenants/server/resolve-tenant";
 import type { Tenant } from "@/features/tenants/types";
 import { resolveDevTenantSlugFromEnv } from "@/features/tenants/utils/dev-tenant";
 import {
-  isPlatformHost,
-} from "@/features/tenants/utils/resolve-host";
+  isPlatformBookingPath,
+  resolvePlatformBookingTenantSlug,
+} from "@/features/tenants/utils/platform-booking-tenant";
+import { isPlatformHost } from "@/features/tenants/utils/resolve-host";
 import { resolveTenantSlugFromHost } from "@/features/tenants/utils/resolve-slug";
 import { createServiceSupabase } from "@/lib/supabase/service";
 
@@ -26,8 +28,18 @@ export function resolveTenantSlugFromApiRequest(
   request: Request,
 ): string | null {
   const host = request.headers.get("host") ?? "";
+  const pathname = new URL(request.url).pathname;
 
   if (isPlatformHost(host)) {
+    const headerSlug = request.headers.get(TENANT_SLUG_HEADER);
+    if (headerSlug) {
+      return headerSlug;
+    }
+
+    if (isPlatformBookingPath(pathname)) {
+      return resolvePlatformBookingTenantSlug();
+    }
+
     return resolveDevTenantSlugFromEnv();
   }
 
@@ -70,4 +82,3 @@ export class TenantContextError extends Error {
     this.name = "TenantContextError";
   }
 }
-

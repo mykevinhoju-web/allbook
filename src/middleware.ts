@@ -2,6 +2,10 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import { TENANT_SLUG_COOKIE, TENANT_SLUG_HEADER } from "@/features/tenants/constants";
 import { resolveDevTenantSlugFromEnv } from "@/features/tenants/utils/dev-tenant";
+import {
+  isPlatformBookingPath,
+  resolvePlatformBookingTenantSlug,
+} from "@/features/tenants/utils/platform-booking-tenant";
 import { isPlatformHost } from "@/features/tenants/utils/resolve-host";
 import { resolveTenantSlugFromRequest } from "@/features/tenants/utils/resolve-slug";
 import {
@@ -12,16 +16,43 @@ import { updateSession } from "@/lib/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
   const host = request.headers.get("host") ?? request.nextUrl.host;
-  const response = await updateSession(request);
   const { pathname } = request.nextUrl;
 
-  const tenantSlug = isPlatformHost(host)
+  let tenantSlug = isPlatformHost(host)
     ? resolveDevTenantSlugFromEnv()
     : resolveTenantSlugFromRequest(request);
 
+  // allbook.com.au/booking demo → configured tenant (default dayspa)
+  if (!tenantSlug && isPlatformHost(host) && isPlatformBookingPath(pathname)) {
+    tenantSlug = resolvePlatformBookingTenantSlug();
+  }
+
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", pathname);
+  if (tenantSlug) {
+    requestHeaders.set(TENANT_SLUG_HEADER, tenantSlug);
+  }
+
+  // Forward tenant + pathname into the RSC/API request.
+  // Keep Supabase session refresh when auth cookies are present.
+  const hasSupabaseAuth = request.cookies
+    .getAll()
+    .some(
+      (cookie) =>
+        cookie.name.startsWith("sb-") && cookie.name.includes("auth-token"),
+    );
+
+  const response = hasSupabaseAuth
+    ? await updateSession(request)
+    : NextResponse.next({
+        request: {
+          headers: requestHeaders,
+        },
+      });
+
+  // When updateSession ran, still expose tenant on the response for clients.
   if (tenantSlug) {
     response.headers.set(TENANT_SLUG_HEADER, tenantSlug);
-    // Only write the cookie when missing/changed — avoids Set-Cookie on every hit.
     const existingSlug = request.cookies.get(TENANT_SLUG_COOKIE)?.value;
     if (existingSlug !== tenantSlug) {
       response.cookies.set(TENANT_SLUG_COOKIE, tenantSlug, {

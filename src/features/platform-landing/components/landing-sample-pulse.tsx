@@ -174,7 +174,7 @@ export function LandingSamplePulse({
                   Start Free Trial
                 </Link>
                 <Link
-                  href="https://dayspa.allbook.com.au/booking"
+                  href="/booking"
                   className="inline-flex h-11 items-center rounded-full border border-neutral-300 bg-white px-6 text-sm font-semibold text-neutral-800 transition hover:border-neutral-400"
                 >
                   View Demo
