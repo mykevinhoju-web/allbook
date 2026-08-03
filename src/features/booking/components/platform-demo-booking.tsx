@@ -42,13 +42,25 @@ function StaffPhoto({ staff }: { staff: BookingStaffItem }) {
   );
 }
 
-export function PlatformDemoBooking() {
+export function PlatformDemoBooking({
+  variant = "page",
+}: {
+  /** `phone` = embedded in desktop phone popup (in-frame navigation). */
+  variant?: "page" | "phone";
+}) {
   const router = useRouter();
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
+  const isPhone = variant === "phone";
 
   const openStaff = (staff: BookingStaffItem) => {
     if (!staff.available) return;
-    // Decide at click time so hydration doesn't send mobile users to a new page.
+
+    if (isPhone) {
+      setSelectedStaffId(staff.id);
+      return;
+    }
+
+    // Page mode: mobile uses sheet; desktop navigates.
     const mobile =
       typeof window !== "undefined" &&
       window.matchMedia("(max-width: 767px)").matches;
@@ -59,24 +71,39 @@ export function PlatformDemoBooking() {
     router.push(`/booking/${staff.id}`);
   };
 
-  const sheetOpen = Boolean(selectedStaffId);
+  if (isPhone && selectedStaffId) {
+    return (
+      <PlatformDemoCheckout
+        key={selectedStaffId}
+        staffId={selectedStaffId}
+        embedded
+        onBack={() => setSelectedStaffId(null)}
+      />
+    );
+  }
+
+  const sheetOpen = !isPhone && Boolean(selectedStaffId);
 
   return (
-    <div className={theme.page}>
-      <div className={theme.shell}>
-        <div className="border-b border-stone-100 bg-stone-50 px-4 py-2.5 text-center text-[11px] text-stone-500">
-          AllBook demo ·{" "}
-          <Link
-            href="/"
-            className="font-medium text-stone-700 underline-offset-2 hover:underline"
-          >
-            Back to home
-          </Link>
-        </div>
+    <div className={isPhone ? "bg-white text-stone-900" : theme.page}>
+      <div className={isPhone ? undefined : theme.shell}>
+        {isPhone ? null : (
+          <div className="border-b border-stone-100 bg-stone-50 px-4 py-2.5 text-center text-[11px] text-stone-500">
+            AllBook demo ·{" "}
+            <Link
+              href="/"
+              className="font-medium text-stone-700 underline-offset-2 hover:underline"
+            >
+              Back to home
+            </Link>
+          </div>
+        )}
 
         <header className={theme.header}>
           <p className={theme.eyebrow}>Book appointment</p>
-          <h1 className={theme.title}>Choose your therapist</h1>
+          <h1 className={isPhone ? "mt-1.5 text-xl font-bold tracking-tight text-stone-900" : theme.title}>
+            Choose your therapist
+          </h1>
         </header>
 
         <div className={theme.staffList}>
@@ -111,30 +138,32 @@ export function PlatformDemoBooking() {
         </div>
       </div>
 
-      <Sheet
-        open={sheetOpen}
-        onOpenChange={(open) => {
-          if (!open) setSelectedStaffId(null);
-        }}
-      >
-        <SheetContent
-          side="bottom"
-          showCloseButton={false}
-          className="h-[min(94svh,720px)] max-h-[94svh] gap-0 overflow-hidden rounded-t-2xl p-0 sm:max-w-none"
+      {!isPhone ? (
+        <Sheet
+          open={sheetOpen}
+          onOpenChange={(open) => {
+            if (!open) setSelectedStaffId(null);
+          }}
         >
-          <SheetTitle className="sr-only">Book appointment</SheetTitle>
-          <div className="h-full overflow-y-auto overscroll-contain">
-            {selectedStaffId ? (
-              <PlatformDemoCheckout
-                key={selectedStaffId}
-                staffId={selectedStaffId}
-                embedded
-                onBack={() => setSelectedStaffId(null)}
-              />
-            ) : null}
-          </div>
-        </SheetContent>
-      </Sheet>
+          <SheetContent
+            side="bottom"
+            showCloseButton={false}
+            className="h-[min(94svh,720px)] max-h-[94svh] gap-0 overflow-hidden rounded-t-2xl p-0 sm:max-w-none"
+          >
+            <SheetTitle className="sr-only">Book appointment</SheetTitle>
+            <div className="h-full overflow-y-auto overscroll-contain">
+              {selectedStaffId ? (
+                <PlatformDemoCheckout
+                  key={selectedStaffId}
+                  staffId={selectedStaffId}
+                  embedded
+                  onBack={() => setSelectedStaffId(null)}
+                />
+              ) : null}
+            </div>
+          </SheetContent>
+        </Sheet>
+      ) : null}
     </div>
   );
 }

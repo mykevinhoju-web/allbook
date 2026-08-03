@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   Building2,
@@ -13,6 +14,7 @@ import {
   SprayCan,
 } from "lucide-react";
 
+import { PlatformDemoPhoneDialog } from "@/features/booking/components/platform-demo-phone-dialog";
 import { cn } from "@/lib/utils";
 
 import { AllBookLogo } from "./allbook-logo";
@@ -30,13 +32,26 @@ export function LandingSamplePulse({
 }: {
   mode?: "sample" | "live";
 }) {
+  const router = useRouter();
   const [ready, setReady] = useState(false);
+  const [demoOpen, setDemoOpen] = useState(false);
   const isLive = mode === "live";
 
   useEffect(() => {
     const id = window.requestAnimationFrame(() => setReady(true));
     return () => window.cancelAnimationFrame(id);
   }, []);
+
+  const openDemo = () => {
+    const mobile =
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches;
+    if (mobile) {
+      router.push("/booking");
+      return;
+    }
+    setDemoOpen(true);
+  };
 
   return (
     <div
@@ -189,12 +204,13 @@ export function LandingSamplePulse({
                 >
                   Start Free Trial
                 </Link>
-                <Link
-                  href="/booking"
+                <button
+                  type="button"
+                  onClick={openDemo}
                   className="inline-flex h-11 items-center rounded-full border border-neutral-300 bg-white px-6 text-sm font-semibold text-neutral-800 transition hover:border-neutral-400"
                 >
                   View Demo
-                </Link>
+                </button>
               </div>
               <p className="mt-4 text-xs text-neutral-500">
                 No lock-in · Stripe ready · Cancel anytime
@@ -570,6 +586,7 @@ export function LandingSamplePulse({
       </footer>
 
       {isLive ? null : <LandingSampleSwitcher active={3} tone="light" />}
+      <PlatformDemoPhoneDialog open={demoOpen} onOpenChange={setDemoOpen} />
     </div>
   );
 }
