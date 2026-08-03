@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
-  BarChart3,
-  Bell,
   Building2,
   CalendarDays,
   Check,
@@ -12,7 +10,6 @@ import {
   Scissors,
   Share2,
   Sparkles,
-  Stethoscope,
   SprayCan,
 } from "lucide-react";
 
@@ -144,26 +141,36 @@ export function LandingSamplePulse({
                 data-rise="2"
                 className="mt-4 text-base leading-relaxed text-neutral-600 sm:text-lg"
               >
-                Simple booking software for Australian service businesses.
+                Customisable booking software for Australian service businesses —
+                built with Korean-owned shops in mind, ready for any industry.
+              </p>
+              <p
+                data-rise="2"
+                className="mt-2 text-sm leading-relaxed text-neutral-500"
+              >
+                호주에서 운영하는 한국 업체를 위한 예약·결제 시스템. 업종에 맞게
+                커스터마이징 가능합니다.
               </p>
 
               <ul data-rise="2" className="mt-7 space-y-2.5">
-                {["Easy to set up", "Take deposits", "Reduce no-shows"].map(
-                  (item) => (
-                    <li
-                      key={item}
-                      className="flex items-center gap-2.5 text-sm text-neutral-700 sm:text-[15px]"
+                {[
+                  "Any business type — spa, salon, clinic, cleaning & more",
+                  "Custom branding & workflows to match your shop",
+                  "Korean & English friendly · Stripe deposits in AUD",
+                ].map((item) => (
+                  <li
+                    key={item}
+                    className="flex items-center gap-2.5 text-sm text-neutral-700 sm:text-[15px]"
+                  >
+                    <span
+                      className="flex size-5 shrink-0 items-center justify-center rounded-full text-white"
+                      style={{ backgroundColor: ACCENT }}
                     >
-                      <span
-                        className="flex size-5 shrink-0 items-center justify-center rounded-full text-white"
-                        style={{ backgroundColor: ACCENT }}
-                      >
-                        <Check className="size-3 stroke-[3]" />
-                      </span>
-                      {item}
-                    </li>
-                  ),
-                )}
+                      <Check className="size-3 stroke-[3]" />
+                    </span>
+                    {item}
+                  </li>
+                ))}
               </ul>
 
               <div data-rise="3" className="mt-8 flex flex-wrap gap-3">
@@ -198,16 +205,16 @@ export function LandingSamplePulse({
         <section className="border-y border-neutral-200 bg-white py-12">
           <div className="mx-auto max-w-5xl px-5 sm:px-8">
             <p className="text-center text-sm text-neutral-500">
-              Trusted by Australian service businesses
+              Built for Australian service businesses — including Korean-owned shops
             </p>
             <div className="mt-8 grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
               {[
                 { label: "Day Spas", icon: Sparkles },
                 { label: "Hair Salons", icon: Scissors },
                 { label: "Beauty Clinics", icon: Sparkles },
-                { label: "Barbershops", icon: Scissors },
-                { label: "Cleaning Services", icon: SprayCan },
-                { label: "Medical Practices", icon: Stethoscope },
+                { label: "Nail & Lash", icon: Sparkles },
+                { label: "Cleaning", icon: SprayCan },
+                { label: "Any industry", icon: Building2 },
               ].map(({ label, icon: Icon }) => (
                 <div
                   key={label}
@@ -225,27 +232,36 @@ export function LandingSamplePulse({
 
         {/* Features */}
         <section id="features" className="mx-auto max-w-5xl px-5 py-16 sm:px-8 sm:py-20">
-          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-2xl font-bold tracking-tight text-neutral-950 sm:text-3xl">
+              Everything your shop needs to take bookings
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-neutral-600 sm:text-base">
+              One platform for front-of-house and back-of-house — customise it to
+              your brand, services, and staff.
+            </p>
+          </div>
+          <div className="mt-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
             {[
               {
                 title: "Online Booking",
-                copy: "Let your customers book 24/7 from any device.",
+                copy: "Customers book 24/7 in English or Korean-friendly flows.",
                 icon: CalendarDays,
               },
               {
                 title: "Take Deposits",
-                copy: "Secure bookings with online deposits.",
+                copy: "Secure bookings with Stripe deposits in Australian dollars.",
                 icon: CreditCard,
               },
               {
-                title: "Automatic Reminders",
-                copy: "Reduce no-shows with SMS & email reminders.",
-                icon: Bell,
+                title: "Customisable",
+                copy: "Match your branding, services, rooms, and staff workflows.",
+                icon: Sparkles,
               },
               {
-                title: "Reports & Insights",
-                copy: "Track performance and grow your business.",
-                icon: BarChart3,
+                title: "Any Industry",
+                copy: "Spas, salons, clinics, cleaning — or your unique business.",
+                icon: Building2,
               },
             ].map(({ title, copy, icon: Icon }) => (
               <div key={title} className="space-y-3">
@@ -255,10 +271,70 @@ export function LandingSamplePulse({
                 >
                   <Icon className="size-4" />
                 </span>
-                <h2 className="text-[15px] font-bold text-neutral-950">{title}</h2>
+                <h3 className="text-[15px] font-bold text-neutral-950">{title}</h3>
                 <p className="text-sm leading-relaxed text-neutral-600">{copy}</p>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* Korean AU + customisation */}
+        <section
+          id="pricing"
+          className="border-y border-neutral-200 bg-white py-16 sm:py-20"
+        >
+          <div className="mx-auto grid max-w-5xl gap-10 px-5 sm:px-8 lg:grid-cols-2 lg:gap-16 lg:items-center">
+            <div>
+              <p
+                className="text-xs font-bold uppercase tracking-[0.16em]"
+                style={{ color: ACCENT }}
+              >
+                For Korean businesses in Australia
+              </p>
+              <h2 className="mt-3 text-2xl font-bold tracking-tight text-neutral-950 sm:text-3xl">
+                호주 한국 업체를 위한 예약 시스템
+              </h2>
+              <p className="mt-4 text-base leading-relaxed text-neutral-600">
+                Sydney, Melbourne, Brisbane and beyond — AllBook helps Korean-owned
+                service businesses take online bookings without complex tools.
+                Support in Korean and English, with local Stripe payments.
+              </p>
+              <p className="mt-3 text-sm leading-relaxed text-neutral-500">
+                복잡한 해외 툴 대신, 호주 환경에 맞춘 예약·보증금·스케줄 관리를 한곳에서.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-neutral-200 bg-[#FAFAF9] p-6 sm:p-8">
+              <h3 className="text-lg font-bold text-neutral-950">
+                Customisable for any business
+              </h3>
+              <ul className="mt-5 space-y-3">
+                {[
+                  "Your logo, colours, and booking page",
+                  "Services, durations, and deposit rules you choose",
+                  "Staff, rooms, and schedules that fit your shop",
+                  "Works for beauty, wellness, healthcare, cleaning — or something new",
+                  "Free trial · no lock-in · cancel anytime",
+                ].map((item) => (
+                  <li
+                    key={item}
+                    className="flex items-start gap-2.5 text-sm text-neutral-700"
+                  >
+                    <Check
+                      className="mt-0.5 size-4 shrink-0 stroke-[3]"
+                      style={{ color: ACCENT }}
+                    />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/platform"
+                className="mt-7 inline-flex h-11 w-full items-center justify-center rounded-full text-sm font-semibold text-white transition hover:opacity-90 sm:w-auto sm:px-7"
+                style={{ backgroundColor: ACCENT }}
+              >
+                Start free trial
+              </Link>
+            </div>
           </div>
         </section>
 
@@ -277,19 +353,20 @@ export function LandingSamplePulse({
                 All-in-one
               </p>
               <h2 className="mt-3 text-2xl font-bold tracking-tight text-neutral-950 sm:text-3xl">
-                Everything you need in one simple platform.
+                One platform — tailored to how you work.
               </h2>
               <p className="mt-4 text-base leading-relaxed text-neutral-600">
-                Run bookings, staff, rooms, and payments together — without
-                juggling separate tools.
+                Run bookings, staff, rooms, and payments together. We customise
+                AllBook for your industry so you are not stuck with a one-size
+                template.
               </p>
               <ul className="mt-6 space-y-3">
                 {[
-                  "Staff & resource management",
-                  "Flexible scheduling",
-                  "Payments with Stripe",
-                  "Detailed reports",
-                  "Customer management",
+                  "Staff & room management",
+                  "Flexible scheduling for any service length",
+                  "Stripe deposits in AUD",
+                  "Reports built for busy owners",
+                  "Customer list in one place",
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-2.5 text-sm text-neutral-700">
                     <Check
@@ -308,27 +385,27 @@ export function LandingSamplePulse({
         <section className="bg-[#F7F3FF] py-16 sm:py-20">
           <div className="mx-auto max-w-5xl px-5 sm:px-8">
             <h2 className="text-center text-2xl font-bold tracking-tight text-neutral-950 sm:text-3xl">
-              Loved by business owners
+              Trusted by service businesses across Australia
             </h2>
             <div className="mt-10 grid gap-5 md:grid-cols-3">
               {[
                 {
                   quote:
-                    "Deposits cut our no-shows almost overnight. The booking page is easy for customers too.",
-                  name: "Emma T.",
-                  role: "Day Spa Owner, Sydney",
+                    "한국어로도 설명 받을 수 있어서 좋았어요. 예약·보증금이 한곳에 정리됐습니다.",
+                  name: "Minji K.",
+                  role: "Korean Day Spa, Sydney",
                 },
                 {
                   quote:
-                    "Finally one place for staff, rooms, and payments. Setup took an afternoon, not a week.",
+                    "Finally one place for staff, rooms, and payments. They customised it for our salon workflow.",
                   name: "James K.",
                   role: "Salon Owner, Melbourne",
                 },
                 {
                   quote:
-                    "We went from paper diaries to live bookings. Clients love booking after hours.",
-                  name: "Priya S.",
-                  role: "Beauty Clinic, Brisbane",
+                    "We run beauty and wellness under one roof. AllBook adapted to both — not just a spa template.",
+                  name: "Sora P.",
+                  role: "Multi-service Studio, Brisbane",
                 },
               ].map((item) => (
                 <article
@@ -372,8 +449,12 @@ export function LandingSamplePulse({
         {/* Final CTA */}
         <section className="px-5 py-16 text-center sm:px-8 sm:py-20">
           <h2 className="text-2xl font-bold tracking-tight text-neutral-950 sm:text-3xl">
-            Ready to grow your business?
+            Ready to customise AllBook for your business?
           </h2>
+          <p className="mx-auto mt-3 max-w-lg text-sm text-neutral-600 sm:text-base">
+            Free trial for Australian service businesses — Korean-owned shops
+            welcome. Any industry.
+          </p>
           <Link
             href="/platform"
             className="mt-7 inline-flex h-11 items-center rounded-full px-7 text-sm font-semibold text-white transition hover:opacity-90"
@@ -389,18 +470,18 @@ export function LandingSamplePulse({
             <div className="space-y-3">
             <AllBookLogo size="sm" variant="blue" />
             <p className="max-w-xs text-sm leading-relaxed text-neutral-500">
-              Booking software for Australian service businesses. Book. Get
-              Paid. Grow.
+              Customisable booking software for Australian service businesses —
+              including Korean-owned shops. Any industry. Book. Get Paid. Grow.
             </p>
           </div>
           {[
             {
               title: "Product",
-              links: ["Features", "Pricing", "Demo", "Integrations"],
+              links: ["Features", "Pricing", "Demo", "Customisation"],
             },
             {
               title: "Industries",
-              links: ["Day Spas", "Salons", "Clinics", "Barbers"],
+              links: ["Day Spas", "Salons", "Clinics", "Any business"],
             },
             {
               title: "Resources",

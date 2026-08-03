@@ -5,8 +5,9 @@
 export const platformConfig = {
   name: "AllBook",
   productName: "AllBook Platform",
-  description: "Multi-tenant wellness and beauty booking platform.",
-  url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+  description:
+    "Customisable online booking software for Australian service businesses — including Korean-owned spas, salons, clinics, and any industry.",
+  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://allbook.com.au",
 } as const;
 
 /** @deprecated Use platformConfig or useTenant() for tenant branding. */

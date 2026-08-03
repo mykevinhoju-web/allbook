@@ -3,6 +3,10 @@ import { Geist, Geist_Mono } from "next/font/google";
 
 import { AppToaster } from "@/components/common";
 import { platformConfig } from "@/config/site";
+import {
+  PLATFORM_SITE_URL,
+  platformSeo,
+} from "@/features/platform-landing/lib/platform-seo";
 import { TenantProvider } from "@/features/tenants";
 import { getTenantOptional } from "@/features/tenants/server";
 
@@ -24,11 +28,12 @@ export async function generateMetadata(): Promise<Metadata> {
   if (!tenant) {
     return {
       title: {
-        default: platformConfig.name,
-        template: `%s | ${platformConfig.name}`,
+        default: platformSeo.title,
+        template: platformSeo.titleTemplate,
       },
-      description: platformConfig.description,
+      description: platformSeo.description,
       applicationName: platformConfig.name,
+      metadataBase: new URL(PLATFORM_SITE_URL),
       icons: {
         icon: [
           { url: "/favicon.png", sizes: "32x32", type: "image/png" },
