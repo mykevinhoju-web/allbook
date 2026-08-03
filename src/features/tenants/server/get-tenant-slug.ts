@@ -3,10 +3,6 @@ import { cookies, headers } from "next/headers";
 
 import { TENANT_SLUG_COOKIE, TENANT_SLUG_HEADER } from "../constants";
 import { resolveDevTenantSlugFromEnv } from "../utils/dev-tenant";
-import {
-  isPlatformBookingPath,
-  resolvePlatformBookingTenantSlug,
-} from "../utils/platform-booking-tenant";
 import { isPlatformHost } from "../utils/resolve-host";
 import { resolveTenantSlugFromHost } from "../utils/resolve-slug";
 
@@ -22,11 +18,6 @@ export const getTenantSlug = cache(async (): Promise<string | null> => {
     const headerSlug = headerStore.get(TENANT_SLUG_HEADER);
     if (headerSlug) {
       return headerSlug;
-    }
-
-    const pathname = headerStore.get("x-pathname") ?? "";
-    if (isPlatformBookingPath(pathname)) {
-      return resolvePlatformBookingTenantSlug();
     }
 
     return resolveDevTenantSlugFromEnv();

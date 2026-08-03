@@ -2,10 +2,6 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import { TENANT_SLUG_COOKIE, TENANT_SLUG_HEADER } from "@/features/tenants/constants";
 import { resolveDevTenantSlugFromEnv } from "@/features/tenants/utils/dev-tenant";
-import {
-  isPlatformBookingPath,
-  resolvePlatformBookingTenantSlug,
-} from "@/features/tenants/utils/platform-booking-tenant";
 import { isPlatformHost } from "@/features/tenants/utils/resolve-host";
 import { resolveTenantSlugFromRequest } from "@/features/tenants/utils/resolve-slug";
 import {
@@ -18,14 +14,9 @@ export async function middleware(request: NextRequest) {
   const host = request.headers.get("host") ?? request.nextUrl.host;
   const { pathname } = request.nextUrl;
 
-  let tenantSlug = isPlatformHost(host)
+  const tenantSlug = isPlatformHost(host)
     ? resolveDevTenantSlugFromEnv()
     : resolveTenantSlugFromRequest(request);
-
-  // allbook.com.au/booking demo → configured tenant (default dayspa)
-  if (!tenantSlug && isPlatformHost(host) && isPlatformBookingPath(pathname)) {
-    tenantSlug = resolvePlatformBookingTenantSlug();
-  }
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", pathname);
@@ -33,8 +24,6 @@ export async function middleware(request: NextRequest) {
     requestHeaders.set(TENANT_SLUG_HEADER, tenantSlug);
   }
 
-  // Forward tenant + pathname into the RSC/API request.
-  // Keep Supabase session refresh when auth cookies are present.
   const hasSupabaseAuth = request.cookies
     .getAll()
     .some(
@@ -50,7 +39,6 @@ export async function middleware(request: NextRequest) {
         },
       });
 
-  // When updateSession ran, still expose tenant on the response for clients.
   if (tenantSlug) {
     response.headers.set(TENANT_SLUG_HEADER, tenantSlug);
     const existingSlug = request.cookies.get(TENANT_SLUG_COOKIE)?.value;
@@ -94,10 +82,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Skip static assets and Next internals so middleware does not run on
-     * every image/font/manifest request.
-     */
     "/((?!_next/static|_next/image|favicon.ico|icons/|manifest\\.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
