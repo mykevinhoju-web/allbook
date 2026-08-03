@@ -127,7 +127,7 @@ export function LandingSamplePulse({
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_75%_40%,rgba(255,255,255,0.35),transparent_55%)]" />
           </div>
 
-          <div className="relative mx-auto grid max-w-5xl items-center gap-12 px-5 py-16 sm:px-8 lg:grid-cols-[1.15fr_0.85fr] lg:gap-16 lg:py-24">
+          <div className="relative mx-auto grid max-w-5xl items-center gap-12 px-5 py-16 sm:px-8 lg:grid-cols-[1fr_1.05fr] lg:gap-10 lg:py-24">
             <div className="max-w-xl">
               <h1
                 data-rise="1"
@@ -203,12 +203,12 @@ export function LandingSamplePulse({
 
             <div
               data-rise="3"
-              className="relative mx-auto flex w-full max-w-[260px] items-center justify-center sm:max-w-[280px] lg:ml-auto lg:mr-2 lg:max-w-[300px]"
+              className="relative mx-auto flex w-full max-w-[320px] items-center justify-center sm:max-w-[380px] lg:ml-auto lg:mr-0 lg:max-w-[440px]"
             >
-              <div className="absolute inset-x-4 inset-y-8 rounded-[2rem] bg-[#E8DFD4]/50 blur-2xl" />
-              <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-b from-white/95 to-[#F3EDE6] p-3 shadow-[0_18px_40px_rgba(28,25,23,0.08)] ring-1 ring-[#E5DCD2]/90">
+              <div className="absolute inset-x-2 inset-y-6 rounded-[2rem] bg-[#E8DFD4]/50 blur-2xl sm:inset-x-4 sm:inset-y-8" />
+              <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-b from-white/95 to-[#F3EDE6] p-2.5 shadow-[0_18px_40px_rgba(28,25,23,0.08)] ring-1 ring-[#E5DCD2]/90 sm:p-3">
                 <div className="relative overflow-hidden rounded-[1.25rem]">
-                  <div className="relative origin-center" style={{ transform: "scale(1.04)" }}>
+                  <div className="relative origin-center" style={{ transform: "scale(1.06)" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src="/landing/hero-phone-mockup.png"
