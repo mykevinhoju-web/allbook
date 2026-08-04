@@ -1,10 +1,20 @@
+import type { Metadata } from "next";
+
+import { PlatformLoginForm } from "@/features/platform-auth";
+
+export const metadata: Metadata = {
+  title: "Log in",
+  description: "Log in to your AllBook business account.",
+  robots: { index: false, follow: false },
+};
+
 export default function LoginPage() {
   return (
-    <div className="rounded-xl border bg-card p-8 text-card-foreground">
-      <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Authentication will be available in a future release.
-      </p>
+    <div className="relative min-h-svh overflow-hidden bg-[#F4F0EA]">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(255,255,255,0.9),_transparent_55%)]" />
+      <div className="relative mx-auto flex min-h-svh max-w-lg items-center px-6 py-12">
+        <PlatformLoginForm />
+      </div>
     </div>
   );
 }
