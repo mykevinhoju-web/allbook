@@ -173,7 +173,7 @@ export function LandingSamplePulse({
                 {[
                   "Any business type — spa, salon, clinic, cleaning & more",
                   "Custom branding & workflows to match your shop",
-                  "KO · ZH · JA · EN friendly · Stripe deposits in AUD",
+                  "Stripe deposits in AUD · cancel anytime",
                 ].map((item) => (
                   <li
                     key={item}
