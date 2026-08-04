@@ -35,14 +35,28 @@ function getSecret() {
   return new TextEncoder().encode(value);
 }
 
-export function getSessionCookieOptions() {
-  return {
+export function getSessionCookieOptions(host?: string | null) {
+  const options: {
+    httpOnly: boolean;
+    sameSite: "lax";
+    secure: boolean;
+    path: string;
+    maxAge: number;
+    domain?: string;
+  } = {
     httpOnly: true,
-    sameSite: "lax" as const,
+    sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: SESSION_COOKIE_MAX_AGE,
   };
+
+  const hostname = (host ?? "").split(":")[0]?.toLowerCase() ?? "";
+  if (hostname === "allbook.com.au" || hostname.endsWith(".allbook.com.au")) {
+    options.domain = ".allbook.com.au";
+  }
+
+  return options;
 }
 
 export async function signAppSession(payload: AppSessionPayload) {

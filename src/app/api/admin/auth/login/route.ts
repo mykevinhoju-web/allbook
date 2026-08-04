@@ -1,8 +1,6 @@
 import { compare, hash } from "bcryptjs";
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
-import type { Database } from "@/types/database";
 import {
   requireTenantFromRequest,
   TenantContextError,
@@ -12,17 +10,14 @@ import {
   getAdminSessionCookieOptions,
   signAdminSession,
 } from "@/lib/admin-session";
+import { createServiceSupabase } from "@/lib/supabase/service";
 
 async function verifyAdminPassword(
   tenantId: string,
   loginId: string,
   password: string,
 ): Promise<{ adminId: string; loginId: string } | null> {
-  const supabase = createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY ??
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
+  const supabase = createServiceSupabase();
 
   const { data: account } = await supabase
     .from("admin_accounts")
@@ -87,7 +82,7 @@ export async function POST(request: Request) {
     response.cookies.set(
       getAdminSessionCookieName(),
       token,
-      getAdminSessionCookieOptions(),
+      getAdminSessionCookieOptions(request.headers.get("host")),
     );
     return response;
   } catch (error) {
@@ -120,11 +115,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Invalid bootstrap credentials." }, { status: 401 });
     }
 
-    const supabase = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY ??
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    );
+    const supabase = createServiceSupabase();
 
     const passwordHash = await hash(envPassword, 10);
     const { error } = await supabase.from("admin_accounts").upsert(

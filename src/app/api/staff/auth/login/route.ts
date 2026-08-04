@@ -1,62 +1,79 @@
-import { compare } from "bcryptjs";
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
-import type { Database } from "@/types/database";
 import { requireTenantFromRequest, TenantContextError } from "@/lib/admin/tenant-context";
+import { getAdminSessionCookieName } from "@/lib/admin-session";
+import { findStaffAccountsByPin } from "@/lib/staff-pin-auth";
+import { validateStaffPin } from "@/lib/staff-pin";
 import {
   getStaffSessionCookieName,
   getStaffSessionCookieOptions,
   signStaffSession,
 } from "@/lib/staff-session";
+import { createServiceSupabase } from "@/lib/supabase/service";
+import { markStaffSessionOnline } from "@/features/staff/lib/staff-presence";
 
 export async function POST(request: Request) {
   try {
     const tenant = await requireTenantFromRequest(request);
-    const body = (await request.json()) as { loginId?: string; password?: string };
+    const body = (await request.json()) as { pin?: string; password?: string };
+    const pin = (body.pin ?? body.password ?? "").trim();
 
-    if (!body.loginId?.trim() || !body.password) {
+    const pinError = validateStaffPin(pin);
+    if (pinError) {
+      return NextResponse.json({ error: pinError }, { status: 400 });
+    }
+
+    const supabase = createServiceSupabase();
+
+    const matches = await findStaffAccountsByPin(supabase, tenant.id, pin);
+
+    if (matches.length === 0) {
+      return NextResponse.json({ error: "Invalid PIN." }, { status: 401 });
+    }
+
+    if (matches.length > 1) {
       return NextResponse.json(
-        { error: "loginId and password are required." },
-        { status: 400 },
+        {
+          error:
+            "This PIN matches more than one account. Ask your manager to assign a unique PIN.",
+        },
+        { status: 409 },
       );
     }
 
-    const supabase = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    );
+    const account = matches[0]!;
 
-    const { data: account, error } = await supabase
-      .from("staff_accounts")
-      .select("staff_id, password_hash")
+    const { data: staff } = await supabase
+      .from("staff")
+      .select("id, name")
       .eq("tenant_id", tenant.id)
-      .eq("login_id", body.loginId.trim())
+      .eq("id", account.staff_id)
       .maybeSingle();
 
-    if (error || !account) {
-      return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
-    }
-
-    const ok = await compare(body.password, account.password_hash);
-    if (!ok) {
-      return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
-    }
+    await markStaffSessionOnline(supabase, {
+      tenantId: tenant.id,
+      staffId: account.staff_id,
+    });
 
     const token = await signStaffSession({
       role: "staff",
       tenantSlug: tenant.slug,
       tenantId: tenant.id,
       staffId: account.staff_id,
-      loginId: body.loginId.trim(),
+      loginId: account.login_id,
     });
 
-    const response = NextResponse.json({ ok: true });
+    const response = NextResponse.json({
+      ok: true,
+      staff: { id: account.staff_id, name: staff?.name ?? "Staff" },
+    });
     response.cookies.set(
       getStaffSessionCookieName(),
       token,
-      getStaffSessionCookieOptions(),
+      getStaffSessionCookieOptions(request.headers.get("host")),
     );
+    // Drop admin session so staff portal auth is not overridden on shared devices.
+    response.cookies.delete(getAdminSessionCookieName());
     return response;
   } catch (error) {
     if (error instanceof TenantContextError) {
@@ -68,4 +85,3 @@ export async function POST(request: Request) {
     throw error;
   }
 }
-

@@ -105,13 +105,13 @@ export function LandingSamplePulse({
 
           <div className="flex items-center gap-3">
             <Link
-              href="/platform"
+              href="/login"
               className="hidden text-sm font-medium text-neutral-600 hover:text-neutral-900 sm:inline"
             >
               Log in
             </Link>
             <Link
-              href="/platform"
+              href="/signup"
               className="inline-flex h-9 items-center rounded-full bg-neutral-950 px-4 text-sm font-semibold text-white transition hover:bg-neutral-800"
             >
               Start Free Trial
@@ -192,7 +192,7 @@ export function LandingSamplePulse({
 
               <div data-rise="3" className="mt-8 flex flex-wrap gap-3">
                 <Link
-                  href="/platform"
+                  href="/signup"
                   className="inline-flex h-11 items-center rounded-full bg-neutral-950 px-6 text-sm font-semibold text-white transition hover:bg-neutral-800"
                 >
                   Start Free Trial
@@ -377,7 +377,7 @@ export function LandingSamplePulse({
                 ))}
               </ul>
               <Link
-                href="/platform"
+                href="/signup"
                 className="mt-7 inline-flex h-11 w-full items-center justify-center rounded-full text-sm font-semibold text-white transition hover:opacity-90 sm:w-auto sm:px-7"
                 style={{ backgroundColor: ACCENT }}
               >
@@ -505,7 +505,7 @@ export function LandingSamplePulse({
             Japanese-owned shops welcome. Any industry.
           </p>
           <Link
-            href="/platform"
+            href="/signup"
             className="mt-7 inline-flex h-11 items-center rounded-full px-7 text-sm font-semibold text-white transition hover:opacity-90"
             style={{ backgroundColor: ACCENT }}
           >

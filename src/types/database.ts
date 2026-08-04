@@ -13,6 +13,60 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      platform_owner_profiles: {
+        Row: {
+          id: string;
+          auth_user_id: string;
+          email: string;
+          full_name: string;
+          phone: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          auth_user_id: string;
+          email: string;
+          full_name: string;
+          phone?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          auth_user_id?: string;
+          email?: string;
+          full_name?: string;
+          phone?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      tenant_memberships: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          auth_user_id: string;
+          role: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          auth_user_id: string;
+          role?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          auth_user_id?: string;
+          role?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       tenants: {
         Row: {
           id: string;
