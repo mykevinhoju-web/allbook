@@ -25,6 +25,7 @@ import {
   isValidAuMobile,
   normalizeAuMobile,
 } from "../lib/au-contact";
+import type { DemoBooking } from "../types/platform-demo-booking";
 import { todayDateInZone, DEFAULT_BOOKING_TIMEZONE } from "../lib/schedule-utils";
 
 type Step = "form" | "done";
@@ -63,11 +64,14 @@ export function PlatformDemoCheckout({
   staffId,
   onBack,
   embedded = false,
+  onBooked,
 }: {
   staffId: string;
   onBack?: () => void;
   /** When true, render without full-page shell (for mobile sheet). */
   embedded?: boolean;
+  /** Called after a successful demo booking (then UI can move to admin). */
+  onBooked?: (booking: DemoBooking) => void;
 }) {
   const staff = getDemoStaffById(staffId) ?? null;
   const [step, setStep] = useState<Step>("form");
@@ -82,6 +86,9 @@ export function PlatformDemoCheckout({
   const [customerSecondName, setCustomerSecondName] = useState("");
   const [customerPhone, setCustomerPhone] = useState(AU_MOBILE_PREFIX);
   const [formHint, setFormHint] = useState<string | null>(null);
+  const [completedBooking, setCompletedBooking] = useState<DemoBooking | null>(
+    null,
+  );
 
   const timeSlots = useMemo(
     () => buildDemoTimeSlots(bookingDate),
@@ -105,12 +112,33 @@ export function PlatformDemoCheckout({
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    if (!canSubmit) {
+    if (!canSubmit || !staff) {
       setFormHint("Please complete all fields to continue.");
       return;
     }
     setFormHint(null);
+
+    const booking: DemoBooking = {
+      id: `demo-${Date.now()}`,
+      staffId: staff.id,
+      staffName: staff.name,
+      customerName: formatCustomerBookingName(
+        customerFirstName,
+        customerSecondName,
+      ),
+      customerPhone: normalizeAuMobile(customerPhone) || customerPhone,
+      date: bookingDate,
+      timeLabel: timeSlots.find((s) => s.value === startsAt)?.label ?? startsAt,
+      startsAt,
+      durationMinutes: selectedService.durationMinutes,
+      durationLabel: selectedService.label,
+      priceCents: selectedService.priceCents,
+      createdAt: new Date().toISOString(),
+    };
+
+    setCompletedBooking(booking);
     setStep("done");
+    onBooked?.(booking);
   };
 
   if (!staff) {
@@ -310,21 +338,32 @@ export function PlatformDemoCheckout({
             <div>
               <p className={theme.sectionTitle}>You&apos;re booked</p>
               <p className={cn(theme.bodyMuted, "mt-2")}>
-                {formatCustomerBookingName(customerFirstName, customerSecondName)} ·{" "}
-                {staff.name}
+                {completedBooking?.customerName ??
+                  formatCustomerBookingName(
+                    customerFirstName,
+                    customerSecondName,
+                  )}{" "}
+                · {staff.name}
               </p>
               <p className={cn(theme.bodyMuted, "mt-1")}>
-                {bookingDate} · {timeSlots.find((s) => s.value === startsAt)?.label} ·{" "}
+                {bookingDate} ·{" "}
+                {timeSlots.find((s) => s.value === startsAt)?.label} ·{" "}
                 {selectedService.label}
               </p>
               <p className={cn(theme.helperText, "mt-3")}>
-                Demo booking only — nothing was saved.
-                {normalizeAuMobile(customerPhone)
+                {onBooked
+                  ? "Opening admin to show the new booking…"
+                  : "Demo booking only — nothing was saved."}
+                {!onBooked && normalizeAuMobile(customerPhone)
                   ? ` (${normalizeAuMobile(customerPhone)})`
                   : ""}
               </p>
             </div>
-            {onBack ? (
+            {onBooked ? (
+              <div className="mx-auto h-1.5 w-28 overflow-hidden rounded-full bg-stone-100">
+                <div className="h-full w-1/2 animate-pulse rounded-full bg-[#8A6A3A]" />
+              </div>
+            ) : onBack ? (
               <button type="button" onClick={onBack} className={theme.goldButton}>
                 Done
               </button>

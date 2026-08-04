@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 
 import { BookingCheckoutFlow } from "@/features/booking/components/checkout/booking-checkout-flow";
-import { PlatformDemoCheckout } from "@/features/booking/components/platform-demo-checkout";
+import { PlatformDemoStaffPage } from "@/features/booking/components/platform-demo-staff-page";
 import { isPlatformHost } from "@/features/tenants";
 
 interface BookingStaffPageProps {
@@ -15,7 +15,7 @@ export default async function BookingStaffPage({
   const host = (await headers()).get("host") ?? "";
 
   if (isPlatformHost(host)) {
-    return <PlatformDemoCheckout staffId={staffId} />;
+    return <PlatformDemoStaffPage staffId={staffId} />;
   }
 
   return <BookingCheckoutFlow staffId={staffId} returnTo="/booking" />;
