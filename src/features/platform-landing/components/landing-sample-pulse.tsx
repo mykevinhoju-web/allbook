@@ -156,18 +156,19 @@ export function LandingSamplePulse({
                 data-rise="2"
                 className="mt-4 text-base leading-relaxed text-neutral-600 sm:text-lg"
               >
-                Customisable booking software for Australian service businesses —
-                built for Korean, Chinese, and Japanese-owned shops, ready for any
-                industry.
+                The all-in-one booking &amp; payment platform for Australian
+                service businesses.
+                <br className="hidden sm:block" />
+                {" "}
+                Accept bookings 24/7, reduce no-shows with automated reminders,
+                get paid faster, and grow your business.
               </p>
-              <div
+              <p
                 data-rise="2"
-                className="mt-3 space-y-1.5 text-sm leading-relaxed text-neutral-500"
+                className="mt-3 text-sm leading-relaxed text-neutral-500"
               >
-                <p>🇰🇷 호주의 한국인 사업자를 위한 예약·결제 시스템</p>
-                <p>🇨🇳 澳大利亚华人商家专用预约・支付系统</p>
-                <p>🇯🇵 オーストラリアの日本人事業者向け予約・決済システム</p>
-              </div>
+                Supports English, 한국어, 中文 and 日本語.
+              </p>
 
               <ul data-rise="2" className="mt-7 space-y-2.5">
                 {[
