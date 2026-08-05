@@ -5,5 +5,6 @@ export {
   LandingSampleGrove,
   LandingSamplePulse,
   LandingSampleLinen,
+  LandingSampleVista,
   LandingSampleSwitcher,
 } from "./components";
