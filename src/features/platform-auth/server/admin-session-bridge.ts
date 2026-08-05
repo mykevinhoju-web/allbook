@@ -1,9 +1,10 @@
+import { TENANT_SLUG_COOKIE } from "@/features/tenants/constants";
+import { getTenantAdminUrl } from "@/features/tenants/utils/resolve-host";
 import {
   getAdminSessionCookieName,
   getAdminSessionCookieOptions,
   signAdminSession,
 } from "@/lib/admin-session";
-import { getTenantPublicUrl } from "@/features/tenants/utils/resolve-host";
 import { NextResponse } from "next/server";
 
 type BridgeInput = {
@@ -23,8 +24,8 @@ export async function createAdminSessionResponse(input: BridgeInput) {
     loginId: input.loginId,
   });
 
-  const tenantOrigin = getTenantPublicUrl(input.tenantSlug);
-  const redirectTo = `${tenantOrigin}/api/platform/auth/accept-handoff?token=${encodeURIComponent(token)}`;
+  // Path-based tenant URLs live on the same apex host — no subdomain handoff.
+  const redirectTo = getTenantAdminUrl(input.tenantSlug);
 
   const response = NextResponse.json({
     ok: true,
@@ -32,12 +33,18 @@ export async function createAdminSessionResponse(input: BridgeInput) {
     tenantSlug: input.tenantSlug,
   });
 
-  // Also set on current host (helps when apex shares .allbook.com.au domain).
   response.cookies.set(
     getAdminSessionCookieName(),
     token,
     getAdminSessionCookieOptions(input.host),
   );
+
+  response.cookies.set(TENANT_SLUG_COOKIE, input.tenantSlug, {
+    path: "/",
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 60 * 60 * 24 * 365 * 10,
+  });
 
   return response;
 }

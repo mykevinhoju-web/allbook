@@ -20,6 +20,12 @@ export const getTenantSlug = cache(async (): Promise<string | null> => {
       return headerSlug;
     }
 
+    const cookieStore = await cookies();
+    const cookieSlug = cookieStore.get(TENANT_SLUG_COOKIE)?.value;
+    if (cookieSlug) {
+      return cookieSlug;
+    }
+
     return resolveDevTenantSlugFromEnv();
   }
 

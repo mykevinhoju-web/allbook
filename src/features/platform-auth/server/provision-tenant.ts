@@ -6,6 +6,7 @@ import {
   type PlatformBusinessType,
 } from "@/features/platform-auth/config/business-types";
 import { slugifyBusinessName } from "@/features/platform-auth/lib/slugify-business";
+import { isReservedPathSegment } from "@/features/tenants/utils/path-tenant";
 import { createServiceSupabase } from "@/lib/supabase/service";
 
 export type PlatformSignupInput = {
@@ -27,17 +28,23 @@ export type ProvisionedTenant = {
 
 async function allocateUniqueSlug(base: string): Promise<string> {
   const supabase = createServiceSupabase();
-  let candidate = base;
+  const start =
+    !base || isReservedPathSegment(base) ? `${base || "business"}-shop` : base;
+  let candidate = start;
   for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (isReservedPathSegment(candidate)) {
+      candidate = `${start}-${attempt + 2}`;
+      continue;
+    }
     const { data } = await supabase
       .from("tenants")
       .select("id")
       .eq("slug", candidate)
       .maybeSingle();
     if (!data) return candidate;
-    candidate = `${base}-${attempt + 2}`;
+    candidate = `${start}-${attempt + 2}`;
   }
-  return `${base}-${randomBytes(3).toString("hex")}`;
+  return `${start}-${randomBytes(3).toString("hex")}`;
 }
 
 export async function provisionPlatformTenant(

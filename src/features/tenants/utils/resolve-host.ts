@@ -33,18 +33,19 @@ export function isTenantSubdomainHost(host: string): boolean {
   );
 }
 
-export function getTenantAdminUrl(slug: string): string {
+function getPlatformOrigin(): string {
   if (process.env.NODE_ENV === "development") {
-    return `http://${slug}.localhost:3000/admin`;
+    return "http://localhost:3000";
   }
-
-  return `https://${slug}.allbook.com.au/admin`;
+  return "https://allbook.com.au";
 }
 
+/** Public URL for a tenant: allbook.com.au/{slug} (path-based). */
 export function getTenantPublicUrl(slug: string): string {
-  if (process.env.NODE_ENV === "development") {
-    return `http://${slug}.localhost:3000`;
-  }
+  return `${getPlatformOrigin()}/${slug}`;
+}
 
-  return `https://${slug}.allbook.com.au`;
+/** Admin URL for a tenant: allbook.com.au/{slug}/admin */
+export function getTenantAdminUrl(slug: string): string {
+  return `${getTenantPublicUrl(slug)}/admin`;
 }

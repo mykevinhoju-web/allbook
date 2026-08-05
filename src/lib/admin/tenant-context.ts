@@ -31,6 +31,14 @@ export function resolveTenantSlugFromApiRequest(
       return headerSlug;
     }
 
+    const cookieHeader = request.headers.get("cookie") ?? "";
+    const cookieMatch = cookieHeader.match(
+      new RegExp(`(?:^|;\\s*)${TENANT_SLUG_COOKIE}=([^;]+)`),
+    );
+    if (cookieMatch?.[1]) {
+      return decodeURIComponent(cookieMatch[1]);
+    }
+
     return resolveDevTenantSlugFromEnv();
   }
 

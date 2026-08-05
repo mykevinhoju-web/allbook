@@ -19,12 +19,12 @@ export function TenantAdminGateway() {
           Tenant Admin
         </p>
         <h1 className="text-2xl font-semibold tracking-tight">
-          Open your business admin on a tenant subdomain
+          Open your business admin
         </h1>
         <p className="text-sm text-muted-foreground">
           {platformConfig.name} platform pages live on{" "}
           <strong>allbook.com.au</strong>. Each business manages staff and
-          bookings from its own subdomain — for example{" "}
+          bookings from its own path — for example{" "}
           <strong>{tenantHost}/admin</strong>.
         </p>
       </div>
