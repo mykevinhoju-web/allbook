@@ -11,10 +11,8 @@ import {
   Check,
   CreditCard,
   Gift,
-  Scissors,
   Share2,
   Sparkles,
-  SprayCan,
   TrendingUp,
   Users,
 } from "lucide-react";
