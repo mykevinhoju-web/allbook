@@ -7,13 +7,14 @@ const SAMPLES = [
   { href: "/landing/samples/2", name: "Grove" },
   { href: "/landing/samples/3", name: "Pulse" },
   { href: "/landing/samples/4", name: "Linen" },
+  { href: "/landing/samples/5", name: "Vista" },
 ] as const;
 
 export function LandingSampleSwitcher({
   active,
   tone = "light",
 }: {
-  active: 1 | 2 | 3 | 4;
+  active: 1 | 2 | 3 | 4 | 5;
   tone?: "light" | "dark";
 }) {
   return (
@@ -29,7 +30,7 @@ export function LandingSampleSwitcher({
         Samples
       </span>
       {SAMPLES.map((sample, index) => {
-        const n = (index + 1) as 1 | 2 | 3 | 4;
+        const n = (index + 1) as 1 | 2 | 3 | 4 | 5;
         const isActive = active === n;
         return (
           <Link

@@ -15,7 +15,7 @@ export default function LandingSamplesIndexPage() {
             Book. Get Paid. Grow.
           </h1>
           <p className="max-w-xl text-base leading-relaxed text-stone-400">
-            Four direction samples for the platform homepage. Pick a tone — we
+            Five direction samples for the platform homepage. Pick a tone — we
             can refine the winner next.
           </p>
         </div>
@@ -66,6 +66,19 @@ export default function LandingSamplesIndexPage() {
             </p>
             <p className="mt-2 text-sm leading-relaxed text-stone-400">
               Soft beige SaaS — booking card + plant, no phone.
+            </p>
+          </Link>
+
+          <Link
+            href="/landing/samples/5"
+            className="group rounded-2xl border border-stone-800 bg-stone-900/80 p-6 transition hover:border-stone-600 hover:bg-stone-900 sm:col-span-2"
+          >
+            <p className="text-xs font-semibold uppercase tracking-wider text-sky-400/90">
+              Sample 5 · Vista
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-stone-400">
+              Premium split hero — CTA card + photo with phone overlay. AllBook
+              blue branding.
             </p>
           </Link>
         </div>
