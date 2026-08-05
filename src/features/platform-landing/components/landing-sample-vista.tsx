@@ -4,14 +4,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
+  Bell,
   Building2,
+  CalendarClock,
   CalendarDays,
   Check,
   CreditCard,
+  Gift,
   Scissors,
   Share2,
   Sparkles,
   SprayCan,
+  TrendingUp,
+  Users,
 } from "lucide-react";
 
 import { PlatformDemoPhoneDialog } from "@/features/booking/components/platform-demo-phone-dialog";
@@ -262,31 +267,69 @@ export function LandingSampleVista({
           </div>
           <div className="h-10 sm:h-14" aria-hidden />
         </section>
-        {/* Trusted by */}
-        <section className="border-y border-neutral-200 bg-white py-12">
-          <div className="mx-auto max-w-5xl px-5 sm:px-8">
-            <p className="text-center text-sm text-neutral-500">
-              Built for Australian service businesses — including Korean, Chinese &
-              Japanese-owned shops
-            </p>
-            <div className="mt-8 grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
+        {/* Why salon owners choose Allbook */}
+        <section className="border-y border-neutral-200/80 bg-[#FAFBFF] py-16 sm:py-20">
+          <div className="mx-auto max-w-6xl px-5 sm:px-8">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#7C3AED]">
+                Built for busy salons
+              </p>
+              <h2 className="mt-3 text-2xl font-bold tracking-tight text-neutral-950 sm:text-3xl">
+                Why salon owners choose Allbook
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-neutral-600 sm:text-base">
+                Everything you need to take bookings, get paid, and grow — without
+                the clutter.
+              </p>
+            </div>
+
+            <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
               {[
-                { label: "Day Spas", icon: Sparkles },
-                { label: "Hair Salons", icon: Scissors },
-                { label: "Beauty Clinics", icon: Sparkles },
-                { label: "Nail & Lash", icon: Sparkles },
-                { label: "Cleaning", icon: SprayCan },
-                { label: "Any industry", icon: Building2 },
-              ].map(({ label, icon: Icon }) => (
-                <div
-                  key={label}
-                  className="flex flex-col items-center gap-2 text-center"
+                {
+                  title: "Online Booking 24/7",
+                  copy: "Customers can book anytime.",
+                  icon: CalendarClock,
+                },
+                {
+                  title: "Reduce No-Shows",
+                  copy: "Automatic SMS & Email reminders.",
+                  icon: Bell,
+                },
+                {
+                  title: "Get Paid Faster",
+                  copy: "Secure online payments with Stripe.",
+                  icon: CreditCard,
+                },
+                {
+                  title: "Manage Clients",
+                  copy: "Simple CRM with customer history.",
+                  icon: Users,
+                },
+                {
+                  title: "Grow Your Business",
+                  copy: "Reports, analytics and marketing tools.",
+                  icon: TrendingUp,
+                },
+                {
+                  title: "Free Forever",
+                  copy: "No monthly fee. No lock-in contract.",
+                  icon: Gift,
+                },
+              ].map(({ title, copy, icon: Icon }) => (
+                <article
+                  key={title}
+                  className="rounded-2xl border border-neutral-200/80 bg-white p-6 shadow-[0_12px_40px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_48px_rgba(124,58,237,0.1)] sm:p-7"
                 >
-                  <Icon className="size-5" style={{ color: ACCENT }} />
-                  <span className="text-xs text-neutral-600 sm:text-sm">
-                    {label}
+                  <span className="inline-flex size-11 items-center justify-center rounded-2xl bg-[#7C3AED]/10 text-[#7C3AED]">
+                    <Icon className="size-5" strokeWidth={2} />
                   </span>
-                </div>
+                  <h3 className="mt-5 text-[15px] font-bold tracking-tight text-neutral-950 sm:text-base">
+                    {title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-neutral-600">
+                    {copy}
+                  </p>
+                </article>
               ))}
             </div>
           </div>
