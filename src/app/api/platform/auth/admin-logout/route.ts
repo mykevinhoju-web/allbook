@@ -1,15 +1,9 @@
 import { NextResponse } from "next/server";
 
-import {
-  getPlatformSessionCookieName,
-  getPlatformSessionCookieOptions,
-} from "@/lib/platform-session";
+import { createClient } from "@/lib/supabase/server";
 
-export async function POST(request: Request) {
-  const response = NextResponse.json({ ok: true });
-  response.cookies.set(getPlatformSessionCookieName(), "", {
-    ...getPlatformSessionCookieOptions(request.headers.get("host")),
-    maxAge: 0,
-  });
-  return response;
+export async function POST() {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  return NextResponse.json({ ok: true });
 }

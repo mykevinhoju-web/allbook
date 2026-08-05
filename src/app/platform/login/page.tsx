@@ -1,17 +1,22 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 
 import { AllBookLogo } from "@/features/platform-landing/components/allbook-logo";
 import { Input } from "@/components/ui/input";
 
-export default function PlatformAdminLoginPage() {
+function PlatformAdminLoginForm() {
   const router = useRouter();
-  const [loginId, setLoginId] = useState("");
+  const searchParams = useSearchParams();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    searchParams.get("error") === "not_admin"
+      ? "Access denied. Only AllBook Admin accounts can open /platform."
+      : null,
+  );
 
   const submit = async () => {
     setLoading(true);
@@ -20,7 +25,7 @@ export default function PlatformAdminLoginPage() {
       const response = await fetch("/api/platform/auth/admin-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ loginId, password }),
+        body: JSON.stringify({ email, password }),
       });
       const data = (await response.json()) as {
         error?: string;
@@ -45,17 +50,19 @@ export default function PlatformAdminLoginPage() {
           AllBook Admin
         </h1>
         <p className="mt-2 text-sm text-neutral-600">
-          Platform login for signup list and tenant oversight.
+          Sign in with your admin email and password (Supabase Auth).
         </p>
 
         <div className="mt-6 space-y-4">
           <label className="block space-y-1.5 text-sm">
-            <span className="font-medium text-neutral-800">Login ID</span>
+            <span className="font-medium text-neutral-800">Email</span>
             <Input
-              value={loginId}
-              onChange={(e) => setLoginId(e.target.value)}
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="h-11 rounded-xl"
-              autoComplete="username"
+              autoComplete="email"
+              placeholder="admin@allbook.com.au"
             />
           </label>
           <label className="block space-y-1.5 text-sm">
@@ -84,5 +91,19 @@ export default function PlatformAdminLoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PlatformAdminLoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-svh items-center justify-center bg-[#F4F0EA] text-sm text-neutral-600">
+          Loading…
+        </div>
+      }
+    >
+      <PlatformAdminLoginForm />
+    </Suspense>
   );
 }

@@ -12,7 +12,7 @@ import {
   ADMIN_SESSION_COOKIE,
   STAFF_SESSION_COOKIE,
 } from "@/lib/app-session";
-import { PLATFORM_SESSION_COOKIE } from "@/lib/platform-session";
+import { resolvePlatformAdminAccess } from "@/features/platform/server/platform-admin-middleware";
 import { updateSession } from "@/lib/supabase/middleware";
 
 function withTenantHeaders(
@@ -164,18 +164,27 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(login, request.url));
   }
 
-  // AllBook Admin (/platform) — separate from tenant admin sessions.
+  // AllBook Admin (/platform) — Supabase Auth + profiles.role = 'admin' only.
   if (pathname.startsWith("/platform")) {
-    const platformToken = request.cookies.get(PLATFORM_SESSION_COOKIE)?.value;
+    const access = await resolvePlatformAdminAccess(request, requestHeaders);
+    applyTenantCookie(access.response, request, tenantSlug, host);
+
     if (pathname === "/platform/login") {
-      if (platformToken) {
+      if (access.isAdmin) {
         return NextResponse.redirect(new URL("/platform", request.url));
       }
-      return response;
+      return access.response;
     }
-    if (!platformToken) {
+
+    if (!access.hasUser) {
       return NextResponse.redirect(new URL("/platform/login", request.url));
     }
+    if (!access.isAdmin) {
+      return NextResponse.redirect(
+        new URL("/platform/login?error=not_admin", request.url),
+      );
+    }
+    return access.response;
   }
 
   return response;
