@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { TENANT_SLUG_COOKIE, TENANT_SLUG_HEADER } from "@/features/tenants/constants";
 import { resolveDevTenantSlugFromEnv } from "@/features/tenants/utils/dev-tenant";
 import {
+  isPlatformApexPublicPath,
   parseTenantPathPrefix,
   shouldPrefixTenantPath,
 } from "@/features/tenants/utils/path-tenant";
@@ -48,14 +49,7 @@ function applyTenantCookie(
   } else if (isPlatformHost(host) && !request.nextUrl.pathname.startsWith("/api")) {
     // Keep cookie for API calls on the apex; clear on marketing pages without a tenant.
     const path = request.nextUrl.pathname;
-    if (
-      path === "/" ||
-      path === "/signup" ||
-      path.startsWith("/signup/") ||
-      path === "/login" ||
-      path.startsWith("/landing") ||
-      path.startsWith("/shops")
-    ) {
+    if (isPlatformApexPublicPath(path)) {
       response.cookies.delete(TENANT_SLUG_COOKIE);
     }
   }
@@ -87,8 +81,11 @@ export async function middleware(request: NextRequest) {
   if (platform && pathTenant) {
     tenantSlug = pathTenant.slug;
     rewritePath = pathTenant.restPath;
+  } else if (platform && isPlatformApexPublicPath(pathname)) {
+    // Landing / signup / platform admin — never inherit a leftover tenant cookie.
+    tenantSlug = null;
   } else if (platform) {
-    // APIs and other apex routes: prefer cookie, then local TENANT_SLUG.
+    // /api and bare /admin|/booking redirects: prefer cookie, then local TENANT_SLUG.
     tenantSlug = cookieSlug ?? resolveDevTenantSlugFromEnv();
   } else {
     tenantSlug = resolveTenantSlugFromRequest(request);

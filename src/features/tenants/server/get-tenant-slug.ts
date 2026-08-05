@@ -15,15 +15,11 @@ export const getTenantSlug = cache(async (): Promise<string | null> => {
     "";
 
   if (isPlatformHost(host)) {
+    // On the apex host, only trust middleware-set header (path prefix or API).
+    // Do not fall back to tenant_slug cookie here — that hid the landing page.
     const headerSlug = headerStore.get(TENANT_SLUG_HEADER);
     if (headerSlug) {
       return headerSlug;
-    }
-
-    const cookieStore = await cookies();
-    const cookieSlug = cookieStore.get(TENANT_SLUG_COOKIE)?.value;
-    if (cookieSlug) {
-      return cookieSlug;
     }
 
     return resolveDevTenantSlugFromEnv();

@@ -70,3 +70,20 @@ export function shouldPrefixTenantPath(pathname: string): boolean {
     pathname.startsWith("/room/")
   );
 }
+
+/**
+ * Apex marketing / auth surfaces — must not inherit tenant_slug cookie,
+ * otherwise allbook.com.au/ shows a tenant home instead of the landing page.
+ */
+export function isPlatformApexPublicPath(pathname: string): boolean {
+  return (
+    pathname === "/" ||
+    pathname === "/signup" ||
+    pathname.startsWith("/signup/") ||
+    pathname === "/login" ||
+    pathname.startsWith("/landing") ||
+    pathname.startsWith("/shops") ||
+    pathname.startsWith("/platform") ||
+    pathname.startsWith("/auth")
+  );
+}
