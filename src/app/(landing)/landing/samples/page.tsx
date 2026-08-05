@@ -73,12 +73,12 @@ export default function LandingSamplesIndexPage() {
             href="/landing/samples/5"
             className="group rounded-2xl border border-stone-800 bg-stone-900/80 p-6 transition hover:border-stone-600 hover:bg-stone-900 sm:col-span-2"
           >
-            <p className="text-xs font-semibold uppercase tracking-wider text-sky-400/90">
+            <p className="text-xs font-semibold uppercase tracking-wider text-violet-400/90">
               Sample 5 · Vista
             </p>
             <p className="mt-2 text-sm leading-relaxed text-stone-400">
-              Premium split hero — CTA card + photo with phone overlay. AllBook
-              blue branding.
+              Marketplace hero matched to the design mock — search card, popular
+              tags, salon photo + phone.
             </p>
           </Link>
         </div>
