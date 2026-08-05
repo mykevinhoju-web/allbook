@@ -10,7 +10,11 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const next = url.searchParams.get("next") ?? "/auth/continue";
-  const safeNext = next.startsWith("/") ? next : "/auth/continue";
+  let safeNext = next.startsWith("/") ? next : "/auth/continue";
+  // Old OAuth links pointed at /signup/complete; always bridge via continue first.
+  if (safeNext.startsWith("/signup/complete")) {
+    safeNext = "/auth/continue";
+  }
 
   if (code) {
     const supabase = await createClient();

@@ -38,7 +38,15 @@ export default function AuthContinuePage() {
         if (data.email) params.set("email", data.email);
         if (data.fullName) params.set("name", data.fullName);
         if (data.phone) params.set("phone", data.phone);
-        router.replace(`/signup/complete?${params.toString()}`);
+        // Avoid replace loops when already on a complete URL with the same params.
+        const target = `/signup/complete?${params.toString()}`;
+        if (window.location.pathname === "/signup/complete") {
+          setError(
+            "Add your contact number and business name, then create your account.",
+          );
+          return;
+        }
+        router.replace(target);
         return;
       }
 

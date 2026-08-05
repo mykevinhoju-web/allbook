@@ -52,7 +52,8 @@ export function PlatformSignupForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           provider,
-          next: mode === "complete" ? "/auth/continue" : "/signup/complete",
+          // Always bridge via continue — never bounce straight to /signup/complete.
+          next: "/auth/continue",
         }),
       });
       const data = (await response.json()) as { url?: string; error?: string };
@@ -70,6 +71,23 @@ export function PlatformSignupForm({
     setLoading(true);
     setError(null);
     try {
+      if (!form.fullName.trim()) {
+        setError("Enter your name.");
+        return;
+      }
+      if (!form.phone.trim()) {
+        setError("Enter a contact number.");
+        return;
+      }
+      if (!form.businessName.trim()) {
+        setError("Enter your business name.");
+        return;
+      }
+      if (mode !== "complete" && !form.email.trim()) {
+        setError("Enter your email.");
+        return;
+      }
+
       const endpoint =
         mode === "complete"
           ? "/api/platform/auth/continue"
@@ -84,6 +102,13 @@ export function PlatformSignupForm({
         redirectTo?: string;
         needsProfile?: boolean;
       };
+
+      if (response.status === 428 || data.needsProfile) {
+        setError(
+          "Please fill in contact number and business name to finish signup.",
+        );
+        return;
+      }
 
       if (!response.ok) {
         setError(data.error ?? "Could not create your account.");
@@ -110,36 +135,46 @@ export function PlatformSignupForm({
         {mode === "complete" ? "Finish your free trial" : "Start free trial"}
       </h1>
       <p className="mt-2 text-sm text-neutral-600">
-        No password needed — just your details. Each account keeps its own
-        bookings and staff.
+        {mode === "complete"
+          ? "Add your contact and business details to open your admin dashboard."
+          : "No password needed — just your details. Each account keeps its own bookings and staff."}
       </p>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2">
-        <button
-          type="button"
-          disabled={loading}
-          onClick={() => void startOAuth("google")}
-          className="inline-flex h-11 items-center justify-center rounded-xl border border-neutral-200 bg-white text-sm font-semibold text-neutral-800 transition hover:border-neutral-300"
-        >
-          Continue with Google
-        </button>
-        <button
-          type="button"
-          disabled={loading}
-          onClick={() => void startOAuth("facebook")}
-          className="inline-flex h-11 items-center justify-center rounded-xl border border-neutral-200 bg-white text-sm font-semibold text-neutral-800 transition hover:border-neutral-300"
-        >
-          Continue with Facebook
-        </button>
-      </div>
+      {mode === "signup" ? (
+        <>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => void startOAuth("google")}
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-neutral-200 bg-white text-sm font-semibold text-neutral-800 transition hover:border-neutral-300"
+            >
+              Continue with Google
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => void startOAuth("facebook")}
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-neutral-200 bg-white text-sm font-semibold text-neutral-800 transition hover:border-neutral-300"
+            >
+              Continue with Facebook
+            </button>
+          </div>
 
-      <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-wide text-neutral-400">
-        <span className="h-px flex-1 bg-neutral-200" />
-        or email
-        <span className="h-px flex-1 bg-neutral-200" />
-      </div>
+          <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-wide text-neutral-400">
+            <span className="h-px flex-1 bg-neutral-200" />
+            or email
+            <span className="h-px flex-1 bg-neutral-200" />
+          </div>
+        </>
+      ) : (
+        <p className="mt-6 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          Signed in as <strong>{form.email || "your Google account"}</strong>.
+          Complete the fields below.
+        </p>
+      )}
 
-      <div className="space-y-4">
+      <div className="mt-4 space-y-4">
         <label className="block space-y-1.5 text-sm">
           <span className="font-medium text-neutral-800">Name</span>
           <Input
