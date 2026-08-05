@@ -114,7 +114,7 @@ export function LandingSamplePulse({
               href="/signup"
               className="inline-flex h-9 items-center rounded-full bg-neutral-950 px-4 text-sm font-semibold text-white transition hover:bg-neutral-800"
             >
-              Start Free Trial
+              Start Free
             </Link>
           </div>
         </div>
@@ -172,9 +172,9 @@ export function LandingSamplePulse({
 
               <ul data-rise="2" className="mt-7 space-y-2.5">
                 {[
-                  "Any business type — spa, salon, clinic, cleaning & more",
-                  "Custom branding & workflows to match your shop",
-                  "Stripe deposits in AUD · cancel anytime",
+                  "Online booking 24/7",
+                  "SMS & Email reminders",
+                  "Secure online payments",
                 ].map((item) => (
                   <li
                     key={item}
@@ -196,7 +196,7 @@ export function LandingSamplePulse({
                   href="/signup"
                   className="inline-flex h-11 items-center rounded-full bg-neutral-950 px-6 text-sm font-semibold text-white transition hover:bg-neutral-800"
                 >
-                  Start Free Trial
+                  Start Free
                 </Link>
                 <button
                   type="button"
@@ -348,9 +348,7 @@ export function LandingSamplePulse({
                 without complex overseas tools. Local Stripe payments in AUD.
               </p>
               <div className="mt-4 space-y-2 text-sm leading-relaxed text-neutral-500">
-                <p>🇰🇷 호주의 한국인 사업자를 위한 예약·결제 시스템</p>
-                <p>🇨🇳 澳大利亚华人商家专用预约・支付系统</p>
-                <p>🇯🇵 オーストラリアの日本人事業者向け予約・決済システム</p>
+                <p>Supports English, 한국어, 中文 and 日本語.</p>
               </div>
             </div>
             <div className="rounded-2xl border border-neutral-200 bg-[#FAFAF9] p-6 sm:p-8">
