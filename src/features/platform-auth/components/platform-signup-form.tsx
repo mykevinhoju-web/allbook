@@ -20,7 +20,7 @@ const INITIAL: SignupFormState = {
   fullName: "",
   phone: "",
   businessName: "",
-  businessType: "day_spa",
+  businessType: "home_trade",
   email: "",
 };
 
@@ -182,6 +182,9 @@ export function PlatformSignupForm({
               </option>
             ))}
           </select>
+          <span className="text-xs text-neutral-500">
+            Pick the closest group — trades, beauty, coaching, and more all fit.
+          </span>
         </label>
         <label className="block space-y-1.5 text-sm">
           <span className="font-medium text-neutral-800">Email</span>

@@ -1,10 +1,17 @@
+/**
+ * Broad service categories for free-trial signup.
+ * Keep umbrella labels — do not list every trade (plumber, painter, lawn care, etc.).
+ */
 export const PLATFORM_BUSINESS_TYPES = [
-  { value: "day_spa", label: "Day spa / massage" },
-  { value: "salon", label: "Hair / beauty salon" },
-  { value: "nails", label: "Nails" },
-  { value: "clinic", label: "Clinic / wellness" },
-  { value: "barber", label: "Barber" },
-  { value: "other", label: "Other service" },
+  { value: "beauty_wellness", label: "Beauty & wellness" },
+  { value: "health_care", label: "Health & care" },
+  { value: "home_trade", label: "Home & trade services" },
+  { value: "auto_mobile", label: "Auto & mobile services" },
+  { value: "pets_animals", label: "Pets & animals" },
+  { value: "education_coaching", label: "Education & coaching" },
+  { value: "events_creative", label: "Events & creative" },
+  { value: "professional", label: "Professional services" },
+  { value: "other", label: "Other service business" },
 ] as const;
 
 export type PlatformBusinessType =
