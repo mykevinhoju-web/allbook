@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Bell, LogOut, Settings, User } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -23,6 +23,13 @@ import { PlatformBreadcrumb } from "./platform-breadcrumb";
 
 export function PlatformHeader() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const signOut = async () => {
+    await fetch("/api/platform/auth/admin-logout", { method: "POST" });
+    router.push("/platform/login");
+    router.refresh();
+  };
 
   return (
     <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-border/60 bg-background/90 px-4 backdrop-blur-md supports-backdrop-filter:bg-background/70">
@@ -36,7 +43,7 @@ export function PlatformHeader() {
         <span className="flex size-7 items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary/80 text-xs font-bold text-primary-foreground">
           AB
         </span>
-        <span>{platformConfig.productName}</span>
+        <span>AllBook Admin</span>
       </Link>
 
       <Separator orientation="vertical" className="hidden h-4 md:block" />
@@ -48,7 +55,6 @@ export function PlatformHeader() {
       <div className="flex items-center gap-1">
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="size-4" />
-          <span className="absolute top-2 right-2 size-1.5 rounded-full bg-primary" />
           <span className="sr-only">Notifications</span>
         </Button>
 
@@ -60,20 +66,20 @@ export function PlatformHeader() {
           >
             <Avatar className="size-7">
               <AvatarFallback className="bg-muted text-xs font-medium">
-                SA
+                AA
               </AvatarFallback>
             </Avatar>
             <span className="hidden text-sm font-medium sm:inline">
-              Super Admin
+              AllBook Admin
             </span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuGroup>
               <DropdownMenuLabel>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-sm font-medium">Super Admin</span>
+                  <span className="text-sm font-medium">AllBook Admin</span>
                   <span className="text-xs font-normal text-muted-foreground">
-                    admin@allbook.com.au
+                    {platformConfig.name} platform
                   </span>
                 </div>
               </DropdownMenuLabel>
@@ -90,7 +96,7 @@ export function PlatformHeader() {
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive">
+            <DropdownMenuItem variant="destructive" onClick={() => void signOut()}>
               <LogOut className="size-4" />
               Sign out
             </DropdownMenuItem>

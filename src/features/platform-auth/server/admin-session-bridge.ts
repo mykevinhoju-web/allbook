@@ -24,7 +24,7 @@ export async function createAdminSessionResponse(input: BridgeInput) {
     loginId: input.loginId,
   });
 
-  // Path-based tenant URLs live on the same apex host — no subdomain handoff.
+  // Land on the tenant admin dashboard: allbook.com.au/{slug}/admin
   const redirectTo = getTenantAdminUrl(input.tenantSlug);
 
   const response = NextResponse.json({

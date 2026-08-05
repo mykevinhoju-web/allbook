@@ -23,9 +23,10 @@ export function TenantAdminGateway() {
         </h1>
         <p className="text-sm text-muted-foreground">
           {platformConfig.name} platform pages live on{" "}
-          <strong>allbook.com.au</strong>. Each business manages staff and
-          bookings from its own path — for example{" "}
-          <strong>{tenantHost}/admin</strong>.
+          <strong>allbook.com.au</strong>. Each business lands on its admin
+          dashboard after signup — for example{" "}
+          <strong>{tenantHost}/admin</strong>. AllBook Admin reviews signups at{" "}
+          <strong>allbook.com.au/platform</strong>.
         </p>
       </div>
       <div className="flex flex-col gap-3 sm:flex-row">

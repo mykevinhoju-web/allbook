@@ -15,6 +15,10 @@ export interface PlatformTenantRow {
   status: PlatformTenantStatus;
   createdAt: string;
   subscription: string;
+  ownerName: string;
+  ownerEmail: string;
+  ownerPhone: string;
+  businessType: string;
 }
 
 export interface PlatformDashboardStats {

@@ -5,6 +5,8 @@ export { PlatformPageHeader } from "./platform-page-header";
 export { PlatformPlaceholderPage } from "./platform-placeholder-page";
 export { PlatformShell } from "./platform-shell";
 export { PlatformSidebar } from "./platform-sidebar";
+export { PlatformSignupsContent } from "./platform-signups-content";
 export { PlatformStatCard } from "./platform-stat-card";
 export { PlatformTenantStatusBadge } from "./platform-tenant-status-badge";
 export { RecentTenantsTable } from "./recent-tenants-table";
+export { SignupsTable } from "./signups-table";

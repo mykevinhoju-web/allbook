@@ -12,6 +12,7 @@ import {
   ADMIN_SESSION_COOKIE,
   STAFF_SESSION_COOKIE,
 } from "@/lib/app-session";
+import { PLATFORM_SESSION_COOKIE } from "@/lib/platform-session";
 import { updateSession } from "@/lib/supabase/middleware";
 
 function withTenantHeaders(
@@ -161,6 +162,20 @@ export async function middleware(request: NextRequest) {
     const login =
       tenantSlug && platform ? `/${tenantSlug}/admin/login` : "/admin/login";
     return NextResponse.redirect(new URL(login, request.url));
+  }
+
+  // AllBook Admin (/platform) — separate from tenant admin sessions.
+  if (pathname.startsWith("/platform")) {
+    const platformToken = request.cookies.get(PLATFORM_SESSION_COOKIE)?.value;
+    if (pathname === "/platform/login") {
+      if (platformToken) {
+        return NextResponse.redirect(new URL("/platform", request.url));
+      }
+      return response;
+    }
+    if (!platformToken) {
+      return NextResponse.redirect(new URL("/platform/login", request.url));
+    }
   }
 
   return response;

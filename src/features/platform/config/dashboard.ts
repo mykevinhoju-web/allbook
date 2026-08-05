@@ -53,5 +53,9 @@ export const recentTenantsMock: PlatformTenantRow[] = [
     status: "active",
     createdAt: "2026-07-01",
     subscription: "Professional",
+    ownerName: "—",
+    ownerEmail: "—",
+    ownerPhone: "—",
+    businessType: "Beauty & wellness",
   },
 ];

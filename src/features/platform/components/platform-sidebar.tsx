@@ -42,7 +42,7 @@ export function PlatformSidebar() {
                   {platformConfig.name}
                 </span>
                 <span className="truncate text-xs text-muted-foreground">
-                  Super Admin
+                  AllBook Admin
                 </span>
               </div>
             </SidebarMenuButton>

@@ -1,5 +1,7 @@
 "use client";
 
+import { usePathname } from "next/navigation";
+
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
 import { PlatformHeader } from "./platform-header";
@@ -10,6 +12,12 @@ interface PlatformShellProps {
 }
 
 export function PlatformShell({ children }: PlatformShellProps) {
+  const pathname = usePathname();
+
+  if (pathname === "/platform/login") {
+    return <>{children}</>;
+  }
+
   return (
     <SidebarProvider defaultOpen>
       <PlatformSidebar />

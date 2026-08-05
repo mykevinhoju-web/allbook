@@ -20,10 +20,22 @@ export function getPlatformBreadcrumbs(
   ];
 
   const pageSegment = segments[1];
-  const label = pageSegment
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+  const labelMap: Record<string, string> = {
+    tenants: "Signups",
+    subscription: "Subscription",
+    users: "Users",
+    reports: "Reports",
+    settings: "Settings",
+    login: "Login",
+  };
+  const label =
+    labelMap[pageSegment ?? ""] ??
+    (pageSegment
+      ? pageSegment
+          .split("-")
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(" ")
+      : "Page");
 
   crumbs.push({ label });
 

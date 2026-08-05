@@ -16,7 +16,7 @@ export const platformNavItems: PlatformNavItem[] = [
     icon: LayoutDashboard,
   },
   {
-    title: "Tenants",
+    title: "Signups",
     href: "/platform/tenants",
     icon: Building2,
   },

@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { PlatformShell } from "@/features/platform";
 
 export const metadata: Metadata = {
-  title: "Platform",
+  title: "AllBook Admin",
   robots: { index: false, follow: false },
 };
 
