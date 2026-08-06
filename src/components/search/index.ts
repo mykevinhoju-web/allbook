@@ -2,7 +2,8 @@ export { EmptyState } from "./EmptyState";
 export { FilterBar } from "./FilterBar";
 export { LoadingSkeleton } from "./LoadingSkeleton";
 export { MapPlaceholder } from "./MapPlaceholder";
-export { MOCK_SALONS, SEARCH_FILTER_CHIPS, SERVICE_OPTIONS } from "./mock-salons";
+export { MOCK_SALONS, SEARCH_FILTER_CHIPS } from "./mock-salons";
+
 export { Pagination } from "./Pagination";
 export { SalonCard } from "./SalonCard";
 export { SalonList } from "./SalonList";

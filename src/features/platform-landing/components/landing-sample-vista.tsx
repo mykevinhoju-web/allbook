@@ -10,10 +10,8 @@ import {
   Check,
   ContactRound,
   HandHeart,
-  MapPin,
   MessageSquare,
   Scissors,
-  Search,
   Share2,
   Sparkles,
   Star,
@@ -21,7 +19,9 @@ import {
   TrendingUp,
 } from "lucide-react";
 
+import { HeroSearch } from "@/components/HeroSearch";
 import { PlatformDemoPhoneDialog } from "@/features/booking/components/platform-demo-phone-dialog";
+import { buildSearchPath } from "@/lib/search";
 import { cn } from "@/lib/utils";
 
 import { AllBookLogo } from "./allbook-logo";
@@ -30,11 +30,11 @@ import { LandingSampleSwitcher } from "./landing-sample-switcher";
 const ACCENT = "#6B5CF6";
 
 const CATEGORIES = [
-  { id: "hair", label: "Hair Salon", icon: Scissors },
-  { id: "nail", label: "Nail", icon: Sparkles },
-  { id: "beauty", label: "Beauty", icon: Sparkles },
-  { id: "massage", label: "Massage", icon: HandHeart },
-  { id: "barber", label: "Barber", icon: Scissors },
+  { id: "Hair", label: "Hair Salon", icon: Scissors },
+  { id: "Nails", label: "Nail", icon: Sparkles },
+  { id: "Facial", label: "Beauty", icon: Sparkles },
+  { id: "Massage", label: "Massage", icon: HandHeart },
+  { id: "Barber", label: "Barber", icon: Scissors },
 ] as const;
 
 /**
@@ -49,7 +49,7 @@ export function LandingSampleVista({
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
-  const [category, setCategory] = useState<(typeof CATEGORIES)[number]["id"]>("hair");
+  const [category, setCategory] = useState<(typeof CATEGORIES)[number]["id"]>("Hair");
   const isLive = mode === "live";
 
   useEffect(() => {
@@ -66,6 +66,10 @@ export function LandingSampleVista({
       return;
     }
     setDemoOpen(true);
+  };
+
+  const goPopular = (service: string) => {
+    router.push(buildSearchPath({ location: "Aspley", service }));
   };
 
   return (
@@ -188,7 +192,12 @@ export function LandingSampleVista({
                       <button
                         key={id}
                         type="button"
-                        onClick={() => setCategory(id)}
+                        onClick={() => {
+                          setCategory(id);
+                          router.push(
+                            buildSearchPath({ location: "Aspley", service: id }),
+                          );
+                        }}
                         className={cn(
                           "inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition",
                           active
@@ -203,32 +212,8 @@ export function LandingSampleVista({
                   })}
                 </div>
 
-                <div className="mt-3 flex flex-col gap-2 rounded-xl border border-neutral-200 bg-[#FAFBFC] p-2 sm:flex-row sm:items-center sm:gap-0 sm:p-1.5">
-                  <label className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2">
-                    <MapPin className="size-4 shrink-0 text-[#6B5CF6]" />
-                    <input
-                      defaultValue="Brisbane, QLD"
-                      className="w-full bg-transparent text-sm font-medium text-[#1B1F3B] outline-none placeholder:text-[#9AA0B4]"
-                      aria-label="Location"
-                    />
-                  </label>
-                  <span className="hidden h-8 w-px bg-neutral-200 sm:block" />
-                  <label className="flex min-w-0 flex-[1.2] items-center gap-2 px-2.5 py-2">
-                    <Search className="size-4 shrink-0 text-[#9AA0B4]" />
-                    <input
-                      placeholder="Search salon or service"
-                      className="w-full bg-transparent text-sm text-[#1B1F3B] outline-none placeholder:text-[#9AA0B4]"
-                      aria-label="Search salon or service"
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    onClick={openDemo}
-                    className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl px-5 text-sm font-semibold text-white transition hover:opacity-90 sm:ml-1"
-                    style={{ backgroundColor: ACCENT }}
-                  >
-                    Search
-                  </button>
+                <div className="mt-3">
+                  <HeroSearch className="[&>form]:border-0 [&>form]:bg-transparent [&>form]:p-0 [&>form]:shadow-none" />
                 </div>
               </div>
 
@@ -238,18 +223,18 @@ export function LandingSampleVista({
               >
                 <span className="text-xs text-[#8B91A5]">Popular searches:</span>
                 {[
-                  "Korean Hair Salon",
-                  "Balayage",
-                  "Perm",
-                  "Hair Colour",
+                  { label: "Korean Hair Salon", service: "Hair" },
+                  { label: "Nails", service: "Nails" },
+                  { label: "Massage", service: "Massage" },
+                  { label: "Facial", service: "Facial" },
                 ].map((tag) => (
                   <button
-                    key={tag}
+                    key={tag.label}
                     type="button"
-                    onClick={openDemo}
+                    onClick={() => goPopular(tag.service)}
                     className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-xs font-medium text-[#5B6178] transition hover:border-[#6B5CF6]/40 hover:text-[#6B5CF6]"
                   >
-                    {tag}
+                    {tag.label}
                   </button>
                 ))}
               </div>

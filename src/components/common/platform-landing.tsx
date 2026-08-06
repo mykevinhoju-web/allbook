@@ -1,6 +1,6 @@
 import { Plus_Jakarta_Sans } from "next/font/google";
 
-import { LandingSamplePulse } from "@/features/platform-landing";
+import { LandingSampleVista } from "@/features/platform-landing";
 
 const pulse = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -8,11 +8,11 @@ const pulse = Plus_Jakarta_Sans({
   display: "swap",
 });
 
-/** Platform apex landing (allbook.com.au) — Pulse design. */
+/** Platform apex landing (allbook.com.au) — Vista marketplace with hero search. */
 export function PlatformLandingPage() {
   return (
     <div className={pulse.variable}>
-      <LandingSamplePulse mode="live" />
+      <LandingSampleVista mode="live" />
     </div>
   );
 }

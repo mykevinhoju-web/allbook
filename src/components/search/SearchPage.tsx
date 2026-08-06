@@ -1,10 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Map as MapIcon, List } from "lucide-react";
 
 import { AllBookLogo } from "@/features/platform-landing/components/allbook-logo";
+import {
+  DEFAULT_SEARCH_PLACEHOLDERS,
+  SERVICE_TO_TAGS,
+  buildSearchPath,
+  parseSearchParams,
+} from "@/lib/search";
 import { cn } from "@/lib/utils";
 
 import { EmptyState } from "./EmptyState";
@@ -21,30 +28,22 @@ const PAGE_SIZE = 4;
 const ACCENT = "#6B5CF6";
 
 function filterSalons(
-  query: string,
+  location: string,
   service: string,
   chips: SearchFilterChip[],
 ) {
-  const q = query.trim().toLowerCase();
+  const q = location.trim().toLowerCase();
 
   return MOCK_SALONS.filter((salon) => {
     if (q) {
-      const haystack = `${salon.name} ${salon.address} ${salon.suburb}`.toLowerCase();
+      const haystack =
+        `${salon.name} ${salon.address} ${salon.suburb}`.toLowerCase();
       if (!haystack.includes(q)) return false;
     }
 
-    if (service !== "all") {
-      const serviceMap: Record<string, string[]> = {
-        haircut: ["Hair"],
-        colour: ["Hair"],
-        nails: ["Nails"],
-        massage: ["Massage"],
-        facial: ["Facial"],
-        waxing: ["Waxing"],
-        brows: ["Brows"],
-      };
-      const needed = serviceMap[service] ?? [];
-      if (needed.length && !needed.some((t) => salon.tags.includes(t as never))) {
+    if (service) {
+      const tags = SERVICE_TO_TAGS[service] ?? [service];
+      if (!tags.some((tag) => salon.tags.includes(tag as never))) {
         return false;
       }
     }
@@ -70,24 +69,39 @@ function filterSalons(
 }
 
 export function SearchPage() {
-  const [location, setLocation] = useState("Sydney NSW");
-  const [service, setService] = useState("all");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromUrl = useMemo(
+    () => parseSearchParams(searchParams),
+    [searchParams],
+  );
+
+  const [location, setLocation] = useState(fromUrl.location);
+  const [service, setService] = useState(fromUrl.service);
   const [dateLabel] = useState("Any date");
   const [chips, setChips] = useState<SearchFilterChip[]>([]);
-  const [appliedLocation, setAppliedLocation] = useState("Sydney NSW");
-  const [appliedService, setAppliedService] = useState("all");
+  const [appliedLocation, setAppliedLocation] = useState(fromUrl.location);
+  const [appliedService, setAppliedService] = useState(fromUrl.service);
   const [appliedChips, setAppliedChips] = useState<SearchFilterChip[]>([]);
   const [page, setPage] = useState(1);
-  const [selectedId, setSelectedId] = useState<string | null>(MOCK_SALONS[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useState<string | null>(
+    MOCK_SALONS[0]?.id ?? null,
+  );
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [showMapMobile, setShowMapMobile] = useState(false);
   const [, startTransition] = useTransition();
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setLoading(false), 700);
+    setLocation(fromUrl.location);
+    setService(fromUrl.service);
+    setAppliedLocation(fromUrl.location);
+    setAppliedService(fromUrl.service);
+    setPage(1);
+    setLoading(true);
+    const timer = window.setTimeout(() => setLoading(false), 500);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [fromUrl.location, fromUrl.service]);
 
   const filtered = useMemo(
     () => filterSalons(appliedLocation, appliedService, appliedChips),
@@ -108,7 +122,8 @@ export function SearchPage() {
       setAppliedService(service);
       setAppliedChips(chips);
       setPage(1);
-      window.setTimeout(() => setLoading(false), 550);
+      router.push(buildSearchPath({ location, service }));
+      window.setTimeout(() => setLoading(false), 400);
     });
   };
 
@@ -124,13 +139,14 @@ export function SearchPage() {
   };
 
   const resetFilters = () => {
-    setLocation("Sydney NSW");
-    setService("all");
+    setLocation("");
+    setService("");
     setChips([]);
-    setAppliedLocation("Sydney NSW");
-    setAppliedService("all");
+    setAppliedLocation("");
+    setAppliedService("");
     setAppliedChips([]);
     setPage(1);
+    router.push("/search");
     setLoading(true);
     window.setTimeout(() => setLoading(false), 400);
   };
@@ -144,13 +160,20 @@ export function SearchPage() {
     });
   };
 
+  const resultLabel = appliedLocation
+    ? `near ${appliedLocation}`
+    : "near you";
+
   return (
     <div className="min-h-svh bg-white text-[#1B1F3B]">
-      {/* Sticky header */}
       <header className="sticky top-0 z-40 border-b border-[#EEEAF8]/80 bg-white/90 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between gap-4 px-4 sm:h-16 sm:px-6 lg:px-8">
           <Link href="/" className="shrink-0">
-            <AllBookLogo size="sm" variant="blue" className="[&_span]:!text-[#1B1F3B]" />
+            <AllBookLogo
+              size="sm"
+              variant="blue"
+              className="[&_span]:!text-[#1B1F3B]"
+            />
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
             <Link
@@ -170,17 +193,18 @@ export function SearchPage() {
         </div>
       </header>
 
-      {/* Toolbar + filters */}
       <div className="border-b border-[#F0EEF7] bg-gradient-to-b from-[#FAFAFE] to-white">
         <div className="mx-auto max-w-[1400px] space-y-3 px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
           <SearchToolbar
             location={location}
             service={service}
+            locationPlaceholder={DEFAULT_SEARCH_PLACEHOLDERS.location}
+            servicePlaceholder={DEFAULT_SEARCH_PLACEHOLDERS.service}
             dateLabel={dateLabel}
             onLocationChange={setLocation}
             onServiceChange={setService}
             onDateClick={() => {
-              /* placeholder — no date picker backend yet */
+              /* placeholder */
             }}
             onSearch={runSearch}
           />
@@ -211,7 +235,6 @@ export function SearchPage() {
         </div>
       </div>
 
-      {/* Main */}
       <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
           <div>
@@ -221,8 +244,18 @@ export function SearchPage() {
             <h1 className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">
               {loading
                 ? "Finding salons…"
-                : `${filtered.length} salon${filtered.length === 1 ? "" : "s"} near you`}
+                : `${filtered.length} salon${filtered.length === 1 ? "" : "s"} ${resultLabel}`}
             </h1>
+            {!loading && (appliedLocation || appliedService) ? (
+              <p className="mt-1 text-sm text-[#6B7289]">
+                {[
+                  appliedLocation || null,
+                  appliedService || null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            ) : null}
           </div>
           {!loading && filtered.length > 0 ? (
             <p className="text-sm text-[#6B7289]">
@@ -233,7 +266,6 @@ export function SearchPage() {
           ) : null}
         </div>
 
-        {/* Tablet: map on top */}
         <div className="mb-5 hidden md:block lg:hidden">
           <MapPlaceholder
             salons={filtered}
@@ -243,7 +275,6 @@ export function SearchPage() {
           />
         </div>
 
-        {/* Mobile map toggle */}
         {showMapMobile ? (
           <div className="mb-5 md:hidden">
             <MapPlaceholder
@@ -273,7 +304,7 @@ export function SearchPage() {
                   onSelect={setSelectedId}
                   onFavoriteToggle={toggleFavorite}
                   onBook={() => {
-                    /* sample — no booking wiring yet */
+                    /* sample */
                   }}
                 />
                 <Pagination
@@ -286,7 +317,6 @@ export function SearchPage() {
             )}
           </section>
 
-          {/* Desktop sticky map */}
           <aside className="hidden lg:block">
             <div className="sticky top-[5.5rem]">
               <MapPlaceholder

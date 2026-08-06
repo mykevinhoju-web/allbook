@@ -10,9 +10,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DEFAULT_SEARCH_PLACEHOLDERS,
+  SEARCH_SERVICES,
+} from "@/lib/search";
 import { cn } from "@/lib/utils";
-
-import { SERVICE_OPTIONS } from "./mock-salons";
 
 const ACCENT = "#6B5CF6";
 
@@ -20,6 +22,8 @@ type SearchToolbarProps = {
   location: string;
   service: string;
   dateLabel: string;
+  locationPlaceholder?: string;
+  servicePlaceholder?: string;
   onLocationChange: (value: string) => void;
   onServiceChange: (value: string) => void;
   onDateClick: () => void;
@@ -31,6 +35,8 @@ export function SearchToolbar({
   location,
   service,
   dateLabel,
+  locationPlaceholder = DEFAULT_SEARCH_PLACEHOLDERS.location,
+  servicePlaceholder = DEFAULT_SEARCH_PLACEHOLDERS.service,
   onLocationChange,
   onServiceChange,
   onDateClick,
@@ -54,7 +60,7 @@ export function SearchToolbar({
             <Input
               value={location}
               onChange={(e) => onLocationChange(e.target.value)}
-              placeholder="Suburb, city or postcode"
+              placeholder={locationPlaceholder}
               className="h-7 border-0 bg-transparent px-0 text-sm font-medium text-[#1B1F3B] shadow-none focus-visible:ring-0 md:text-sm"
               aria-label="Search location"
             />
@@ -68,18 +74,18 @@ export function SearchToolbar({
               Service
             </span>
             <Select
-              value={service}
+              value={service || undefined}
               onValueChange={(value) => {
                 if (value) onServiceChange(value);
               }}
             >
-              <SelectTrigger className="h-7 w-full border-0 bg-transparent px-0 text-sm font-medium text-[#1B1F3B] shadow-none focus-visible:ring-0 data-[size=default]:h-7">
-                <SelectValue placeholder="All services" />
+              <SelectTrigger className="h-7 w-full border-0 bg-transparent px-0 text-sm font-medium text-[#1B1F3B] shadow-none focus-visible:ring-0 data-[size=default]:h-7 data-placeholder:text-[#9AA0B4]">
+                <SelectValue placeholder={servicePlaceholder} />
               </SelectTrigger>
               <SelectContent align="start" className="rounded-2xl">
-                {SERVICE_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
+                {SEARCH_SERVICES.map((item) => (
+                  <SelectItem key={item} value={item}>
+                    {item}
                   </SelectItem>
                 ))}
               </SelectContent>

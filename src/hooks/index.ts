@@ -1,1 +1,3 @@
-// Shared hooks will be exported from this module.
+export { useSearch } from "./useSearch";
+export { useIsMobile } from "./use-mobile";
+export { useNowTick } from "./use-now-tick";
