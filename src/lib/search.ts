@@ -42,7 +42,12 @@ export const DEFAULT_SEARCH_PLACEHOLDERS = {
 } as const;
 
 export function normalizeSearchQuery(
-  query: Partial<SearchQuery> & { radiusKm?: number | string },
+  query: {
+    location?: string | null;
+    service?: string | null;
+    radiusKm?: SearchDistanceKm | number | string | null;
+    sort?: SearchSort | string | null;
+  } = {},
 ): SearchQuery {
   const radiusRaw = Number(query.radiusKm);
   const radiusKm = isSearchDistanceKm(radiusRaw)
