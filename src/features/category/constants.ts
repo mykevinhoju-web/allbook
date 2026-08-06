@@ -196,6 +196,9 @@ export function formatLocationDisplay(
     "Carindale",
     "New Farm",
     "Paddington",
+    "Fortitude Valley",
+    "Albany Creek",
+    "North Lakes",
   ].find((suburb) => suburb.toLowerCase() === raw.toLowerCase());
 
   if (known) return known;

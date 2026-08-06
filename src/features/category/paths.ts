@@ -90,16 +90,24 @@ export function buildCategoryMetadata(
   const title = buildCategoryResultsTitle(category, location);
   const place = formatLocationDisplay(location);
   const description = place
-    ? `Book ${category.resultsNoun.toLowerCase()} in ${place} on AllBook.`
+    ? `Book ${category.resultsNoun.toLowerCase()} in ${place} on AllBook. Compare ratings, hours, and book online.`
     : category.seoDescription;
+
+  const path = place
+    ? `/${category.slug}?location=${encodeURIComponent(place.toLowerCase())}`
+    : `/${category.slug}`;
 
   return {
     title,
     description,
+    alternates: {
+      canonical: path,
+    },
     openGraph: {
       title: `${title} | AllBook`,
       description,
       images: [{ url: category.heroImage }],
+      url: path,
     },
   };
 }

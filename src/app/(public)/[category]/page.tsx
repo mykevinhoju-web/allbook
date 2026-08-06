@@ -10,11 +10,20 @@ import {
   isMarketplaceCategorySlug,
   MARKETPLACE_CATEGORY_SLUGS,
 } from "@/features/category";
+import { searchSalons } from "@/features/search";
+import { createClient } from "@/lib/supabase/server";
 
 type PageProps = {
   params: Promise<{ category: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
+
+function first(
+  value: string | string[] | undefined,
+): string | undefined {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
 
 export async function generateStaticParams() {
   return MARKETPLACE_CATEGORY_SLUGS.map((category) => ({ category }));
@@ -31,10 +40,7 @@ export async function generateMetadata({
   }
 
   const sp = await searchParams;
-  const locationRaw = sp.location;
-  const location = Array.isArray(locationRaw)
-    ? locationRaw[0]
-    : locationRaw;
+  const location = first(sp.location) ?? first(sp.suburb);
 
   return buildCategoryMetadata(category, location);
 }
@@ -47,7 +53,10 @@ function CategoryFallback() {
   );
 }
 
-export default async function MarketplaceCategoryPage({ params }: PageProps) {
+export default async function MarketplaceCategoryPage({
+  params,
+  searchParams,
+}: PageProps) {
   const { category: raw } = await params;
   if (!isMarketplaceCategorySlug(raw)) {
     notFound();
@@ -58,9 +67,23 @@ export default async function MarketplaceCategoryPage({ params }: PageProps) {
     notFound();
   }
 
+  const sp = await searchParams;
+  const supabase = await createClient();
+  const initialResult = await searchSalons(supabase, {
+    location: first(sp.location),
+    service: category.service,
+    suburb: first(sp.suburb),
+    radiusKm: first(sp.radius),
+    sort: first(sp.sort),
+    minRating: first(sp.rating),
+    verifiedOnly: first(sp.verified),
+    openNow: first(sp.open),
+    page: first(sp.page),
+  });
+
   return (
     <Suspense fallback={<CategoryFallback />}>
-      <CategoryPage category={category} />
+      <CategoryPage category={category} initialResult={initialResult} />
     </Suspense>
   );
 }

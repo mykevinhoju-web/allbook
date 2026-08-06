@@ -66,6 +66,8 @@ export type Salon = {
   slug: string;
   /** Present when search used a geocoded origin */
   distanceKm?: number;
+  /** Derived from opening_hours at query time */
+  isOpen?: boolean;
 };
 
 export type DayOfWeek = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";

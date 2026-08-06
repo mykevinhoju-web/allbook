@@ -25,6 +25,9 @@ export const LOCATION_SUGGESTIONS = [
   "Carindale",
   "New Farm",
   "Paddington",
+  "Fortitude Valley",
+  "Albany Creek",
+  "North Lakes",
 ] as const;
 
 export type LocationSuggestion = (typeof LOCATION_SUGGESTIONS)[number];

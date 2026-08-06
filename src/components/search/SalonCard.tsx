@@ -5,14 +5,12 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { MapPin, Star } from "lucide-react";
 
-import { buildSalonPathFromService } from "@/features/category";
 import type { Salon } from "@/types/salon";
 import { cn } from "@/lib/utils";
 
-const ACCENT = "#6B5CF6";
-
 type SalonCardProps = {
   salon: Salon;
+  categorySlug?: string;
   selected?: boolean;
   onSelect?: (id: string) => void;
   onBook?: (id: string) => void;
@@ -20,11 +18,15 @@ type SalonCardProps = {
 
 export function SalonCard({
   salon,
+  categorySlug = "hair",
   selected = false,
   onSelect,
   onBook,
 }: SalonCardProps) {
   const ref = useRef<HTMLElement>(null);
+  const href = salon.slug
+    ? `/${categorySlug}/${encodeURIComponent(salon.slug)}`
+    : `/salon/${salon.id}`;
 
   useEffect(() => {
     if (!selected || !ref.current) return;
@@ -44,12 +46,11 @@ export function SalonCard({
           onSelect?.(salon.id);
         }
       }}
-      onDoubleClick={() => onBook?.(salon.id)}
       className={cn(
         "group grid overflow-hidden rounded-2xl border bg-white transition-all duration-300 sm:grid-cols-[148px_minmax(0,1fr)]",
-        "hover:shadow-[0_12px_32px_rgba(27,31,59,0.1)] hover:scale-[1.01]",
+        "hover:shadow-[0_12px_32px_rgba(27,31,59,0.1)]",
         selected
-          ? "border-[#6B5CF6] shadow-[0_12px_32px_rgba(107,92,246,0.18)] ring-2 ring-[#6B5CF6]/25 scale-[1.01]"
+          ? "border-neutral-950 shadow-[0_12px_32px_rgba(15,23,42,0.14)] ring-1 ring-neutral-950/10"
           : "border-neutral-200/80 shadow-[0_4px_16px_rgba(27,31,59,0.04)]",
       )}
     >
@@ -58,25 +59,43 @@ export function SalonCard({
           src={salon.coverImage}
           alt=""
           fill
+          loading="lazy"
           className="object-cover transition duration-500 group-hover:scale-105"
           sizes="(max-width: 640px) 100vw, 148px"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/35 to-transparent" />
-        <span className="absolute bottom-3 left-3 rounded-full bg-white/95 px-2 py-0.5 text-[11px] font-semibold text-neutral-800 backdrop-blur">
-          {salon.service}
-        </span>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+        {salon.logo ? (
+          <div className="absolute left-3 top-3 size-10 overflow-hidden rounded-xl border border-white/70 bg-white shadow">
+            <Image
+              src={salon.logo}
+              alt=""
+              width={40}
+              height={40}
+              loading="lazy"
+              className="size-full object-cover"
+            />
+          </div>
+        ) : null}
+        {typeof salon.isOpen === "boolean" ? (
+          <span
+            className={cn(
+              "absolute bottom-3 left-3 rounded-full px-2 py-0.5 text-[11px] font-semibold backdrop-blur",
+              salon.isOpen
+                ? "bg-emerald-500/95 text-white"
+                : "bg-neutral-900/80 text-white",
+            )}
+          >
+            {salon.isOpen ? "Open" : "Closed"}
+          </span>
+        ) : null}
       </div>
 
-      <div className="flex flex-col gap-2.5 p-4">
+      <div className="flex flex-col gap-2 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="truncate text-[15px] font-semibold tracking-tight text-neutral-950">
               <Link
-                href={
-                  salon.slug
-                    ? buildSalonPathFromService(salon.service, salon.slug)
-                    : `/salon/${salon.id}`
-                }
+                href={href}
                 onClick={(e) => e.stopPropagation()}
                 className="hover:underline"
               >
@@ -87,36 +106,45 @@ export function SalonCard({
               <span className="inline-flex items-center gap-1 font-medium text-neutral-900">
                 <Star className="size-3.5 fill-amber-400 text-amber-400" />
                 {salon.rating.toFixed(1)}
+                <span className="font-normal text-neutral-400">
+                  ({salon.reviewCount})
+                </span>
               </span>
               <span className="inline-flex items-center gap-1">
                 <MapPin className="size-3.5" />
                 {salon.suburb}
               </span>
-              {typeof salon.distanceKm === "number" ? (
-                <span>{salon.distanceKm.toFixed(1)} km</span>
+              {salon.verified ? (
+                <span className="rounded-full bg-sky-50 px-1.5 py-0.5 text-[11px] font-semibold text-sky-700">
+                  Verified
+                </span>
               ) : null}
             </div>
-          </div>
-          <div className="shrink-0 text-right">
-            <p className="text-[11px] text-neutral-400">From</p>
-            <p className="text-base font-semibold text-neutral-950">
-              ${salon.price}
-            </p>
+            {salon.address ? (
+              <p className="mt-1 truncate text-[12px] text-neutral-400">
+                {salon.address}
+              </p>
+            ) : null}
           </div>
         </div>
 
-        <div className="mt-auto pt-1">
+        <div className="mt-auto flex items-center gap-2 pt-1">
+          <Link
+            href={href}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex h-10 flex-1 items-center justify-center rounded-xl bg-neutral-950 text-sm font-semibold text-white transition hover:bg-neutral-800 sm:flex-none sm:px-5"
+          >
+            Book Now
+          </Link>
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               onBook?.(salon.id);
             }}
-            className="inline-flex h-10 w-full items-center justify-center rounded-xl text-sm font-semibold text-white transition hover:opacity-95 active:scale-[0.99] sm:w-auto sm:px-5"
-            style={{ backgroundColor: ACCENT }}
-          >
-            Book
-          </button>
+            className="hidden"
+            aria-hidden
+          />
         </div>
       </div>
     </article>

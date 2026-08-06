@@ -3,11 +3,13 @@
 import { Suspense } from "react";
 
 import { SearchResults } from "@/components/search";
-import type { MarketplaceCategory } from "@/features/category";
 import { LoadingSkeleton } from "@/components/search/LoadingSkeleton";
+import type { MarketplaceCategory } from "@/features/category";
+import type { SearchSalonsResult } from "@/features/search";
 
 type CategoryPageProps = {
   category: MarketplaceCategory;
+  initialResult?: SearchSalonsResult | null;
 };
 
 function CategorySearchFallback() {
@@ -19,10 +21,13 @@ function CategorySearchFallback() {
 }
 
 /** Generic category listing — one component for every category route. */
-export function CategoryPage({ category }: CategoryPageProps) {
+export function CategoryPage({
+  category,
+  initialResult = null,
+}: CategoryPageProps) {
   return (
     <Suspense fallback={<CategorySearchFallback />}>
-      <SearchResults category={category} />
+      <SearchResults category={category} initialResult={initialResult} />
     </Suspense>
   );
 }

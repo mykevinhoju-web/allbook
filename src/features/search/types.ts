@@ -2,6 +2,7 @@ import type { SearchDistanceKm, SearchSort } from "./constants";
 import {
   DEFAULT_SEARCH_DISTANCE_KM,
   DEFAULT_SEARCH_SORT,
+  SEARCH_PAGE_SIZE,
   isSearchDistanceKm,
   isSearchSort,
 } from "./constants";
@@ -9,10 +10,15 @@ import {
 export type SalonSearchFilters = {
   location: string;
   service: string;
+  /** Exact suburb filter (indexed text match via RPC p_suburb) */
+  suburb: string;
   radiusKm: SearchDistanceKm;
   sort: SearchSort;
-  page?: number;
-  pageSize?: number;
+  minRating: number | null;
+  verifiedOnly: boolean;
+  openNow: boolean;
+  page: number;
+  pageSize: number;
 };
 
 export type SalonSearchOrigin = {
@@ -25,11 +31,23 @@ export type SalonSearchOrigin = {
 export type SalonSearchFiltersInput = {
   location?: string | null;
   service?: string | null;
+  suburb?: string | null;
   radiusKm?: SearchDistanceKm | number | string | null;
   sort?: SearchSort | string | null;
+  minRating?: number | string | null;
+  verifiedOnly?: boolean | string | null;
+  openNow?: boolean | string | null;
   page?: number | string | null;
   pageSize?: number | string | null;
 };
+
+function asBool(value: boolean | string | null | undefined): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    return value === "1" || value.toLowerCase() === "true";
+  }
+  return false;
+}
 
 export function normalizeSalonSearchFilters(
   input: SalonSearchFiltersInput = {},
@@ -42,12 +60,22 @@ export function normalizeSalonSearchFilters(
   const sortRaw = String(input.sort ?? DEFAULT_SEARCH_SORT);
   const sort = isSearchSort(sortRaw) ? sortRaw : DEFAULT_SEARCH_SORT;
 
+  const minRatingRaw = Number(input.minRating);
+  const minRating =
+    Number.isFinite(minRatingRaw) && minRatingRaw > 0
+      ? Math.min(5, minRatingRaw)
+      : null;
+
   return {
     location: (input.location ?? "").trim(),
     service: (input.service ?? "").trim(),
+    suburb: (input.suburb ?? "").trim(),
     radiusKm,
     sort,
+    minRating,
+    verifiedOnly: asBool(input.verifiedOnly),
+    openNow: asBool(input.openNow),
     page: Math.max(1, Number(input.page) || 1),
-    pageSize: Math.max(1, Number(input.pageSize) || 100),
+    pageSize: Math.max(1, Number(input.pageSize) || SEARCH_PAGE_SIZE),
   };
 }

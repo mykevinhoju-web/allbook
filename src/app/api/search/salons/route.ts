@@ -10,8 +10,13 @@ export async function GET(request: Request) {
   const result = await searchSalons(supabase, {
     location: searchParams.get("location") ?? undefined,
     service: searchParams.get("service") ?? undefined,
+    suburb: searchParams.get("suburb") ?? undefined,
     radiusKm: searchParams.get("radius") ?? undefined,
     sort: searchParams.get("sort") ?? undefined,
+    minRating: searchParams.get("rating") ?? undefined,
+    verifiedOnly: searchParams.get("verified") ?? undefined,
+    openNow: searchParams.get("open") ?? undefined,
+    page: searchParams.get("page") ?? undefined,
   });
 
   if (result.error) {

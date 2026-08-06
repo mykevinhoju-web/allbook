@@ -1,7 +1,12 @@
 export { EmptyState } from "./EmptyState";
+export { FilterPanel } from "./FilterPanel";
+export type { FilterPanelValues } from "./FilterPanel";
+export { GoogleMap } from "./GoogleMap";
 export { LoadingSkeleton } from "./LoadingSkeleton";
 export { MapPlaceholder } from "./MapPlaceholder";
+export { Pagination } from "./Pagination";
 export { SalonCard } from "./SalonCard";
 export { SalonList } from "./SalonList";
+export { SearchBar } from "./SearchBar";
 export { SearchResults, SearchPage } from "./SearchResults";
 export { SearchToolbar } from "./SearchToolbar";

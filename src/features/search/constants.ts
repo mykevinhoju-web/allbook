@@ -13,13 +13,36 @@ export const SEARCH_SORT_OPTIONS = [
 export type SearchSort = (typeof SEARCH_SORT_OPTIONS)[number]["value"];
 export const DEFAULT_SEARCH_SORT: SearchSort = "distance";
 
-export const SEARCH_PAGE_SIZE = 100;
+/** Server-side page size for marketplace search */
+export const SEARCH_PAGE_SIZE = 20;
+
+export const SEARCH_MIN_RATING_OPTIONS = [
+  { value: 0, label: "Any rating" },
+  { value: 3, label: "3.0+" },
+  { value: 4, label: "4.0+" },
+  { value: 4.5, label: "4.5+" },
+] as const;
+
+/** Brisbane suburbs for filter panel (aligned with seed data). */
+export const SEARCH_SUBURB_OPTIONS = [
+  "Aspley",
+  "Chermside",
+  "Sunnybank",
+  "Indooroopilly",
+  "Carindale",
+  "New Farm",
+  "Paddington",
+  "Fortitude Valley",
+  "Albany Creek",
+  "North Lakes",
+] as const;
 
 export const SEARCH_SERVICE_FILTERS = [
   "Hair",
   "Barber",
   "Nails",
   "Spa",
+  "Day Spa",
   "Massage",
   "Facial",
   "Waxing",
@@ -49,6 +72,7 @@ export function resolveServiceFilterValues(service: string): string[] | null {
     Hair: ["Hair", "Barber"],
     Barber: ["Barber", "Hair"],
     Spa: ["Spa", "Massage"],
+    "Day Spa": ["Spa", "Massage"],
     Massage: ["Massage", "Spa"],
     Facial: ["Facial"],
     Waxing: ["Waxing"],

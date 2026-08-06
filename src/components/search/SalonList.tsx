@@ -6,6 +6,7 @@ import { SalonCard } from "./SalonCard";
 
 type SalonListProps = {
   salons: Salon[];
+  categorySlug?: string;
   selectedId?: string | null;
   onSelect?: (id: string) => void;
   onBook?: (id: string) => void;
@@ -14,6 +15,7 @@ type SalonListProps = {
 
 export function SalonList({
   salons,
+  categorySlug = "hair",
   selectedId,
   onSelect,
   onBook,
@@ -26,6 +28,7 @@ export function SalonList({
           <SalonCard
             key={salon.id}
             salon={salon}
+            categorySlug={categorySlug}
             selected={selectedId === salon.id}
             onSelect={onSelect}
             onBook={onBook}
