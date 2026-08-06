@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { MapPin, Star } from "lucide-react";
 
@@ -42,6 +43,7 @@ export function SalonCard({
           onSelect?.(salon.id);
         }
       }}
+      onDoubleClick={() => onBook?.(salon.id)}
       className={cn(
         "group grid overflow-hidden rounded-2xl border bg-white transition-all duration-300 sm:grid-cols-[148px_minmax(0,1fr)]",
         "hover:shadow-[0_12px_32px_rgba(27,31,59,0.1)] hover:scale-[1.01]",
@@ -68,7 +70,13 @@ export function SalonCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="truncate text-[15px] font-semibold tracking-tight text-neutral-950">
-              {salon.name}
+              <Link
+                href={`/salon/${salon.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="hover:underline"
+              >
+                {salon.name}
+              </Link>
             </h3>
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-neutral-500">
               <span className="inline-flex items-center gap-1 font-medium text-neutral-900">

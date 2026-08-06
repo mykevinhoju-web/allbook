@@ -20,6 +20,9 @@ export type SalonRow = {
   verified: boolean;
   primary_service: string | null;
   starting_price: number;
+  amenities?: string[] | null;
+  service_tags?: string[] | null;
+  opening_hours?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 };
@@ -52,6 +55,85 @@ export type Salon = {
   price: number;
   /** Present when search used a geocoded origin */
   distanceKm?: number;
+};
+
+export type DayOfWeek = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+
+export type OpeningHoursDay = {
+  open: string;
+  close: string;
+  closed: boolean;
+};
+
+export type OpeningHours = Partial<Record<DayOfWeek, OpeningHoursDay>>;
+
+export type AmenityId =
+  | "wifi"
+  | "parking"
+  | "wheelchair"
+  | "coffee"
+  | "air_conditioning";
+
+export type SalonGalleryImage = {
+  id: string;
+  url: string;
+  alt: string;
+  sortOrder: number;
+};
+
+export type SalonServiceItem = {
+  id: string;
+  category: string;
+  name: string;
+  description: string | null;
+  durationMinutes: number;
+  price: number;
+};
+
+export type SalonServiceGroup = {
+  category: string;
+  services: SalonServiceItem[];
+};
+
+export type SalonStaffMember = {
+  id: string;
+  name: string;
+  position: string;
+  photoUrl: string | null;
+  yearsExperience: number;
+  languages: string[];
+  specialties: string[];
+};
+
+export type SalonReview = {
+  id: string;
+  rating: number;
+  comment: string | null;
+  authorName: string;
+  authorAvatar: string | null;
+  images: string[];
+  likeCount: number;
+  createdAt: string;
+};
+
+export type RatingDistribution = {
+  stars: 1 | 2 | 3 | 4 | 5;
+  count: number;
+  percent: number;
+};
+
+export type SalonReviewsSummary = {
+  average: number;
+  total: number;
+  distribution: RatingDistribution[];
+  reviews: SalonReview[];
+};
+
+export type SalonDetail = Salon & {
+  amenities: AmenityId[];
+  serviceTags: string[];
+  openingHours: OpeningHours;
+  gallery: SalonGalleryImage[];
 };
 
 export type GetSalonsParams = {

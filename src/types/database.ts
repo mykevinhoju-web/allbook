@@ -648,6 +648,9 @@ export type Database = {
           verified: boolean;
           primary_service: string | null;
           starting_price: number;
+          amenities: string[];
+          service_tags: string[];
+          opening_hours: Record<string, unknown>;
           created_at: string;
           updated_at: string;
         };
@@ -673,6 +676,9 @@ export type Database = {
           verified?: boolean;
           primary_service?: string | null;
           starting_price?: number;
+          amenities?: string[];
+          service_tags?: string[];
+          opening_hours?: Record<string, unknown>;
           created_at?: string;
           updated_at?: string;
         };
@@ -698,10 +704,151 @@ export type Database = {
           verified?: boolean;
           primary_service?: string | null;
           starting_price?: number;
+          amenities?: string[];
+          service_tags?: string[];
+          opening_hours?: Record<string, unknown>;
           created_at?: string;
           updated_at?: string;
         };
         Relationships: [];
+      };
+      salon_images: {
+        Row: {
+          id: string;
+          salon_id: string;
+          url: string;
+          alt: string | null;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          salon_id: string;
+          url: string;
+          alt?: string | null;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          salon_id?: string;
+          url?: string;
+          alt?: string | null;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "salon_images_salon_id_fkey";
+            columns: ["salon_id"];
+            isOneToOne: false;
+            referencedRelation: "salons";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      salon_services: {
+        Row: {
+          id: string;
+          salon_id: string;
+          category: string;
+          name: string;
+          description: string | null;
+          duration_minutes: number;
+          price: number;
+          sort_order: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          salon_id: string;
+          category: string;
+          name: string;
+          description?: string | null;
+          duration_minutes: number;
+          price: number;
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          salon_id?: string;
+          category?: string;
+          name?: string;
+          description?: string | null;
+          duration_minutes?: number;
+          price?: number;
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "salon_services_salon_id_fkey";
+            columns: ["salon_id"];
+            isOneToOne: false;
+            referencedRelation: "salons";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      salon_staff: {
+        Row: {
+          id: string;
+          salon_id: string;
+          name: string;
+          position: string;
+          photo_url: string | null;
+          years_experience: number;
+          languages: string[];
+          specialties: string[];
+          sort_order: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          salon_id: string;
+          name: string;
+          position: string;
+          photo_url?: string | null;
+          years_experience?: number;
+          languages?: string[];
+          specialties?: string[];
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          salon_id?: string;
+          name?: string;
+          position?: string;
+          photo_url?: string | null;
+          years_experience?: number;
+          languages?: string[];
+          specialties?: string[];
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "salon_staff_salon_id_fkey";
+            columns: ["salon_id"];
+            isOneToOne: false;
+            referencedRelation: "salons";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       favorites: {
         Row: {
@@ -722,7 +869,15 @@ export type Database = {
           salon_id?: string;
           created_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "favorites_salon_id_fkey";
+            columns: ["salon_id"];
+            isOneToOne: false;
+            referencedRelation: "salons";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       reviews: {
         Row: {
@@ -731,6 +886,10 @@ export type Database = {
           user_id: string | null;
           rating: number;
           comment: string | null;
+          author_name: string | null;
+          author_avatar: string | null;
+          images: string[];
+          like_count: number;
           created_at: string;
           updated_at: string;
         };
@@ -740,6 +899,10 @@ export type Database = {
           user_id?: string | null;
           rating: number;
           comment?: string | null;
+          author_name?: string | null;
+          author_avatar?: string | null;
+          images?: string[];
+          like_count?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -749,10 +912,22 @@ export type Database = {
           user_id?: string | null;
           rating?: number;
           comment?: string | null;
+          author_name?: string | null;
+          author_avatar?: string | null;
+          images?: string[];
+          like_count?: number;
           created_at?: string;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "reviews_salon_id_fkey";
+            columns: ["salon_id"];
+            isOneToOne: false;
+            referencedRelation: "salons";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
     Views: Record<string, never>;

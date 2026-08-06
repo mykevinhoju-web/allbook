@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { List, Map as MapIcon } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { GoogleMap } from "@/components/maps";
 import { AllBookLogo } from "@/features/platform-landing/components/allbook-logo";
@@ -19,6 +20,7 @@ import { SearchToolbar } from "./SearchToolbar";
 const ACCENT = "#6B5CF6";
 
 export function SearchPage() {
+  const router = useRouter();
   const [showMapMobile, setShowMapMobile] = useState(false);
   const {
     query,
@@ -61,6 +63,9 @@ export function SearchPage() {
     .filter(Boolean)
     .join(" · ");
 
+  function openSalon(id: string) {
+    router.push(`/salon/${id}`);
+  }
   return (
     <div className="flex h-svh flex-col overflow-hidden bg-white text-neutral-950">
       <header className="z-40 shrink-0 border-b border-neutral-200/80 bg-white">
@@ -176,9 +181,7 @@ export function SearchPage() {
                 salons={salons}
                 selectedId={selectedId}
                 onSelect={selectSalonFromCard}
-                onBook={() => {
-                  /* booking wiring later */
-                }}
+                onBook={openSalon}
               />
             )}
           </div>
