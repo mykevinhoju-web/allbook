@@ -14,7 +14,13 @@ interface PlatformShellProps {
 export function PlatformShell({ children }: PlatformShellProps) {
   const pathname = usePathname();
 
-  if (pathname === "/platform/login") {
+  if (
+    pathname === "/platform/login" ||
+    pathname === "/platform/salon" ||
+    pathname.startsWith("/platform/salon/") ||
+    pathname === "/platform/customer" ||
+    pathname.startsWith("/platform/customer/")
+  ) {
     return <>{children}</>;
   }
 
