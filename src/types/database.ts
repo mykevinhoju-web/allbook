@@ -726,7 +726,47 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      search_marketplace_salons: {
+        Args: {
+          p_lat?: number | null;
+          p_lng?: number | null;
+          p_radius_km?: number | null;
+          p_service?: string | null;
+          p_services?: string[] | null;
+          p_suburb?: string | null;
+          p_sort?: string | null;
+          p_limit?: number | null;
+          p_offset?: number | null;
+        };
+        Returns: Array<{
+          id: string;
+          name: string;
+          description: string | null;
+          phone: string | null;
+          email: string | null;
+          website: string | null;
+          cover_image: string | null;
+          logo: string | null;
+          address: string | null;
+          suburb: string | null;
+          city: string;
+          state: string;
+          postcode: string | null;
+          country: string;
+          latitude: number;
+          longitude: number;
+          rating: number;
+          review_count: number;
+          verified: boolean;
+          primary_service: string | null;
+          starting_price: number;
+          created_at: string;
+          updated_at: string;
+          distance_km: number | null;
+        }>;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

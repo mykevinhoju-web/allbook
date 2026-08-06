@@ -50,6 +50,8 @@ export type Salon = {
   verified: boolean;
   service: string;
   price: number;
+  /** Present when search used a geocoded origin */
+  distanceKm?: number;
 };
 
 export type GetSalonsParams = {

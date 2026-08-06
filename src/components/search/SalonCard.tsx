@@ -79,6 +79,9 @@ export function SalonCard({
                 <MapPin className="size-3.5" />
                 {salon.suburb}
               </span>
+              {typeof salon.distanceKm === "number" ? (
+                <span>{salon.distanceKm.toFixed(1)} km</span>
+              ) : null}
             </div>
           </div>
           <div className="shrink-0 text-right">

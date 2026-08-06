@@ -3,9 +3,9 @@ import { NextResponse } from "next/server";
 import { searchSalons } from "@/features/search/searchSalons";
 import { createClient } from "@/lib/supabase/server";
 
-/** @deprecated Prefer `/api/search/salons` — kept for compatibility. */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
+
   const supabase = await createClient();
   const result = await searchSalons(supabase, {
     location: searchParams.get("location") ?? undefined,
@@ -15,14 +15,8 @@ export async function GET(request: Request) {
   });
 
   if (result.error) {
-    return NextResponse.json(
-      { salons: [], error: result.error },
-      { status: 500 },
-    );
+    return NextResponse.json(result, { status: 500 });
   }
 
-  return NextResponse.json({
-    salons: result.salons,
-    error: null,
-  });
+  return NextResponse.json(result);
 }

@@ -8,6 +8,7 @@ import {
   buildSearchPath,
   filterLocationSuggestions,
   isSearchLocationValid,
+  normalizeSearchQuery,
   type SearchQuery,
 } from "@/lib/search";
 
@@ -34,8 +35,12 @@ export function useSearch(options: UseSearchOptions = {}) {
     [location],
   );
 
-  const query = useMemo<SearchQuery>(
-    () => ({ location: location.trim(), service: service.trim() }),
+  const query = useMemo(
+    () =>
+      normalizeSearchQuery({
+        location,
+        service,
+      }),
     [location, service],
   );
 

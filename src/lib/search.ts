@@ -1,7 +1,16 @@
 /**
  * Shared search query model for landing → /search.
- * Ready to extend later with Maps / Supabase without changing call sites.
  */
+
+import {
+  DEFAULT_SEARCH_DISTANCE_KM,
+  DEFAULT_SEARCH_SORT,
+  SEARCH_SERVICE_FILTERS,
+  isSearchDistanceKm,
+  isSearchSort,
+  type SearchDistanceKm,
+  type SearchSort,
+} from "@/features/search/constants";
 
 export const LOCATION_SUGGESTIONS = [
   "Aspley",
@@ -15,23 +24,14 @@ export const LOCATION_SUGGESTIONS = [
 
 export type LocationSuggestion = (typeof LOCATION_SUGGESTIONS)[number];
 
-export const SEARCH_SERVICES = [
-  "Hair",
-  "Barber",
-  "Nails",
-  "Spa",
-  "Massage",
-  "Facial",
-  "Waxing",
-  "Brows",
-  "Lashes",
-] as const;
-
+export const SEARCH_SERVICES = SEARCH_SERVICE_FILTERS;
 export type SearchService = (typeof SEARCH_SERVICES)[number];
 
 export type SearchQuery = {
   location: string;
   service: string;
+  radiusKm: SearchDistanceKm;
+  sort: SearchSort;
 };
 
 export const SEARCH_LOCATION_EMPTY_MESSAGE = "Please select a suburb";
@@ -41,23 +41,21 @@ export const DEFAULT_SEARCH_PLACEHOLDERS = {
   service: "All services",
 } as const;
 
-/** Maps URL/service labels onto salon mock tags (temporary). */
-export const SERVICE_TO_TAGS: Record<string, string[]> = {
-  Hair: ["Hair"],
-  Barber: ["Hair"],
-  Nails: ["Nails"],
-  Spa: ["Spa"],
-  Massage: ["Massage"],
-  Facial: ["Facial"],
-  Waxing: ["Waxing"],
-  Brows: ["Brows"],
-  Lashes: ["Brows"],
-};
+export function normalizeSearchQuery(
+  query: Partial<SearchQuery> & { radiusKm?: number | string },
+): SearchQuery {
+  const radiusRaw = Number(query.radiusKm);
+  const radiusKm = isSearchDistanceKm(radiusRaw)
+    ? radiusRaw
+    : DEFAULT_SEARCH_DISTANCE_KM;
+  const sortRaw = String(query.sort ?? DEFAULT_SEARCH_SORT);
+  const sort = isSearchSort(sortRaw) ? sortRaw : DEFAULT_SEARCH_SORT;
 
-export function normalizeSearchQuery(query: Partial<SearchQuery>): SearchQuery {
   return {
     location: (query.location ?? "").trim(),
     service: (query.service ?? "").trim(),
+    radiusKm,
+    sort,
   };
 }
 
@@ -78,10 +76,16 @@ export function filterLocationSuggestions(
 }
 
 export function buildSearchPath(query: Partial<SearchQuery>): string {
-  const { location, service } = normalizeSearchQuery(query);
+  const normalized = normalizeSearchQuery(query);
   const params = new URLSearchParams();
-  if (location) params.set("location", location);
-  if (service) params.set("service", service);
+  if (normalized.location) params.set("location", normalized.location);
+  if (normalized.service) params.set("service", normalized.service);
+  if (normalized.radiusKm !== DEFAULT_SEARCH_DISTANCE_KM) {
+    params.set("radius", String(normalized.radiusKm));
+  }
+  if (normalized.sort !== DEFAULT_SEARCH_SORT) {
+    params.set("sort", normalized.sort);
+  }
   const qs = params.toString();
   return qs ? `/search?${qs}` : "/search";
 }
@@ -92,6 +96,8 @@ export function parseSearchParams(
   return normalizeSearchQuery({
     location: params.get("location") ?? "",
     service: params.get("service") ?? "",
+    radiusKm: params.get("radius") ?? undefined,
+    sort: (params.get("sort") as SearchSort | null) ?? undefined,
   });
 }
 
