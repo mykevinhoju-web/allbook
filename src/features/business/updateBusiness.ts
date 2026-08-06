@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 
 import { getBusiness } from "./getBusiness";
-import { mergeOpeningHoursPayload } from "./opening-hours-settings";
+import { serializeBusinessOpeningHours } from "./opening-hours-settings";
 import type { BusinessProfile, BusinessProfileInput } from "./types";
 
 type AnySupabase = SupabaseClient<Database>;
@@ -26,13 +26,13 @@ export function validateBusinessInput(input: BusinessProfileInput): string | nul
 }
 
 /**
- * Persist business profile fields onto existing `salons` columns only.
+ * Persist business profile onto `salons` columns.
+ * Hours → opening_hours jsonb only. Settings → booking_enabled / accept_new_customers.
  */
 export async function updateBusiness(
   supabase: AnySupabase,
   salonId: string,
   input: BusinessProfileInput,
-  options: { allowFeatured?: boolean } = {},
 ): Promise<{ business: BusinessProfile | null; error: string | null }> {
   const validationError = validateBusinessInput(input);
   if (validationError) {
@@ -44,16 +44,6 @@ export async function updateBusiness(
   if (!existing.business) {
     return { business: null, error: "Salon not found." };
   }
-
-  const featured = options.allowFeatured
-    ? input.settings.featured
-    : existing.business.settings.featured;
-
-  const openingHours = mergeOpeningHoursPayload(input.openingHours, {
-    bookingEnabled: input.settings.bookingEnabled,
-    acceptNewCustomers: input.settings.acceptNewCustomers,
-    featured,
-  });
 
   const { error } = await supabase
     .from("salons")
@@ -69,10 +59,12 @@ export async function updateBusiness(
       suburb: input.suburb.trim() || null,
       latitude: input.latitude,
       longitude: input.longitude,
-      opening_hours: openingHours,
+      opening_hours: serializeBusinessOpeningHours(input.openingHours),
       social_instagram: input.social.instagram.trim() || null,
       social_facebook: input.social.facebook.trim() || null,
       social_tiktok: input.social.tiktok.trim() || null,
+      booking_enabled: input.settings.bookingEnabled,
+      accept_new_customers: input.settings.acceptNewCustomers,
       updated_at: new Date().toISOString(),
     })
     .eq("id", salonId);

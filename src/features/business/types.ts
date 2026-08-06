@@ -11,7 +11,10 @@ export type BusinessSettings = {
   acceptNewCustomers: boolean;
   /** Read-only from salons.verified */
   verified: boolean;
-  /** Admin-only; stored in opening_hours.settings until a column exists */
+  /**
+   * Featured is not a salons column yet — UI placeholder only (admin).
+   * Do not persist until a dedicated column exists.
+   */
   featured: boolean;
 };
 
@@ -55,10 +58,7 @@ export type BusinessProfileInput = {
   longitude: number;
   openingHours: OpeningHours;
   social: BusinessSocialLinks;
-  settings: Pick<
-    BusinessSettings,
-    "bookingEnabled" | "acceptNewCustomers" | "featured"
-  >;
+  settings: Pick<BusinessSettings, "bookingEnabled" | "acceptNewCustomers">;
 };
 
 export const BUSINESS_DAY_ORDER: DayOfWeek[] = [

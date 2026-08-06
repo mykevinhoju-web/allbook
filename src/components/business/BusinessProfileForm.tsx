@@ -226,18 +226,10 @@ export function BusinessProfileForm({
           </div>
           <ToggleRow
             label="Featured"
-            description={
-              allowFeaturedEdit
-                ? "Highlight this salon in marketplace results."
-                : "Admin only — contact AllBook to feature your salon."
-            }
-            checked={value.settings.featured}
-            disabled={!allowFeaturedEdit}
-            onChange={(featured) =>
-              patch({
-                settings: { ...value.settings, featured },
-              })
-            }
+            description="Admin only — featured is not stored on salons yet."
+            checked={false}
+            disabled
+            onChange={() => undefined}
           />
         </div>
       </Section>

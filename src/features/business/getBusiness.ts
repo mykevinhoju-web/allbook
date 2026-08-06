@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveCategoryFromService } from "@/features/category";
 import type { Database } from "@/types/database";
 
-import { splitOpeningHoursPayload } from "./opening-hours-settings";
+import { parseBusinessOpeningHours } from "./opening-hours-settings";
 import {
   PLATFORM_DEMO_SALON_SLUG,
   type BusinessProfile,
@@ -14,7 +14,6 @@ type AnySupabase = SupabaseClient<Database>;
 type SalonRow = Database["public"]["Tables"]["salons"]["Row"];
 
 function mapBusiness(row: SalonRow): BusinessProfile {
-  const { hours, settings } = splitOpeningHoursPayload(row.opening_hours);
   const category =
     resolveCategoryFromService(row.primary_service) ??
     resolveCategoryFromService("Hair");
@@ -38,17 +37,18 @@ function mapBusiness(row: SalonRow): BusinessProfile {
     country: row.country,
     latitude: Number(row.latitude),
     longitude: Number(row.longitude),
-    openingHours: hours,
+    openingHours: parseBusinessOpeningHours(row.opening_hours),
     social: {
       instagram: row.social_instagram ?? "",
       facebook: row.social_facebook ?? "",
       tiktok: row.social_tiktok ?? "",
     },
     settings: {
-      bookingEnabled: settings.bookingEnabled ?? true,
-      acceptNewCustomers: settings.acceptNewCustomers ?? true,
+      bookingEnabled: row.booking_enabled ?? true,
+      acceptNewCustomers: row.accept_new_customers ?? true,
       verified: row.verified,
-      featured: settings.featured ?? false,
+      // featured column does not exist on salons — UI-only placeholder
+      featured: false,
     },
     categorySlug,
     publicPath: `/${categorySlug}/${row.slug}`,

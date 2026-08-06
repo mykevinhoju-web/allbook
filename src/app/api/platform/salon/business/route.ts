@@ -13,7 +13,6 @@ export async function PATCH(request: Request) {
     const body = (await request.json()) as {
       salonId?: string;
       input?: BusinessProfileInput;
-      allowFeatured?: boolean;
     };
 
     if (!body.salonId || !body.input) {
@@ -24,9 +23,7 @@ export async function PATCH(request: Request) {
     }
 
     const supabase = createServiceSupabase();
-    const result = await updateBusiness(supabase, body.salonId, body.input, {
-      allowFeatured: Boolean(body.allowFeatured),
-    });
+    const result = await updateBusiness(supabase, body.salonId, body.input);
 
     if (result.error || !result.business) {
       return NextResponse.json(

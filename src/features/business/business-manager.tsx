@@ -52,8 +52,13 @@ export function BusinessProfileManager({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           salonId: business.id,
-          input: form,
-          allowFeatured: allowFeaturedEdit,
+          input: {
+            ...form,
+            settings: {
+              bookingEnabled: form.settings.bookingEnabled,
+              acceptNewCustomers: form.settings.acceptNewCustomers,
+            },
+          },
         }),
       });
       const data = (await res.json()) as {

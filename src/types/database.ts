@@ -662,6 +662,8 @@ export type Database = {
           social_facebook: string | null;
           social_tiktok: string | null;
           languages: string[];
+          booking_enabled: boolean;
+          accept_new_customers: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -701,6 +703,8 @@ export type Database = {
           social_facebook?: string | null;
           social_tiktok?: string | null;
           languages?: string[];
+          booking_enabled?: boolean;
+          accept_new_customers?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -740,6 +744,8 @@ export type Database = {
           social_facebook?: string | null;
           social_tiktok?: string | null;
           languages?: string[];
+          booking_enabled?: boolean;
+          accept_new_customers?: boolean;
           created_at?: string;
           updated_at?: string;
         };
