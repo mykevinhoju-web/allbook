@@ -61,6 +61,16 @@ export function BookingTable({
       </div>
 
       <div className="overflow-x-auto">
+        {bookings.length === 0 ? (
+          <div className="px-5 py-12 text-center sm:px-6">
+            <p className="text-[14px] font-medium text-neutral-800">
+              No bookings yet
+            </p>
+            <p className="mt-1 text-[13px] text-neutral-500">
+              New appointments will show up here.
+            </p>
+          </div>
+        ) : (
         <table className="min-w-full text-left text-[13px]">
           <thead className="bg-[#FAFBFC] text-[11px] uppercase tracking-[0.08em] text-neutral-500">
             <tr>
@@ -111,6 +121,7 @@ export function BookingTable({
             ))}
           </tbody>
         </table>
+        )}
       </div>
     </section>
   );

@@ -1,30 +1,161 @@
-import { getBookings } from "./getBookings";
-import { getStats } from "./getStats";
-import {
-  MOCK_CALENDAR_SLOTS,
-  MOCK_PERFORMANCE,
-  MOCK_QUICK_ACTIONS,
-  MOCK_REVIEW_SUMMARY,
-  MOCK_SALON_SESSION,
-} from "./mock-data";
-import type { SalonDashboardData } from "./types";
+import { createClient } from "@/lib/supabase/server";
 
-/** Aggregates salon owner home dashboard data (mock-backed). */
-export async function getDashboard(): Promise<SalonDashboardData> {
-  const [stats, recentBookings, upcoming] = await Promise.all([
-    getStats(),
-    getBookings({ scope: "recent", limit: 6 }),
-    getBookings({ scope: "upcoming", limit: 3 }),
-  ]);
+import { getBookings } from "./getBookings";
+import {
+  getOwnerSalonContext,
+  todayIsoSydney,
+  type OwnerSalonContext,
+} from "./getOwnerSalon";
+import { getStats } from "./getStats";
+import type {
+  DashboardCalendarSlot,
+  DashboardPerformanceMetric,
+  DashboardQuickAction,
+  DashboardReviewSummary,
+  SalonDashboardData,
+} from "./types";
+
+export const DASHBOARD_QUICK_ACTIONS: DashboardQuickAction[] = [
+  {
+    id: "add-service",
+    label: "Add Service",
+    description: "Grow your menu",
+    href: "/platform/salon/services",
+  },
+  {
+    id: "add-staff",
+    label: "Add Staff",
+    description: "Invite your team",
+    href: "/platform/salon/staff",
+  },
+  {
+    id: "edit-business",
+    label: "Business Profile",
+    description: "Hours & details",
+    href: "/platform/salon/business",
+  },
+  {
+    id: "bookings",
+    label: "Bookings",
+    description: "Manage appointments",
+    href: "/platform/salon/bookings",
+  },
+  {
+    id: "open-calendar",
+    label: "Calendar",
+    description: "Today’s schedule",
+    href: "/platform/salon/calendar",
+  },
+];
+
+async function buildCalendar(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  salonId: string,
+): Promise<DashboardCalendarSlot[]> {
+  const bookings = await getBookings({
+    supabase,
+    salonId,
+    scope: "today",
+    limit: 24,
+  });
+
+  if (bookings.length === 0) return [];
+
+  return bookings.map((b) => ({
+    time: b.time.includes("·") ? b.time.split("·")[1]!.trim() : b.time,
+    booking: {
+      id: b.id,
+      customerName: b.customerName,
+      service: b.service,
+      staff: b.staff,
+    },
+  }));
+}
+
+async function buildReviews(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  salonId: string,
+  salonRating: number,
+  salonReviewCount: number,
+): Promise<DashboardReviewSummary> {
+  const { data: latest } = await supabase
+    .from("reviews")
+    .select("rating, comment, author_name")
+    .eq("salon_id", salonId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const highlight =
+    latest?.comment?.trim() ||
+    (salonReviewCount > 0
+      ? "Latest review has no written comment."
+      : "");
 
   return {
-    session: MOCK_SALON_SESSION,
-    stats,
-    performance: MOCK_PERFORMANCE,
-    recentBookings,
-    upcoming,
-    calendar: MOCK_CALENDAR_SLOTS,
-    reviews: MOCK_REVIEW_SUMMARY,
-    quickActions: MOCK_QUICK_ACTIONS,
+    averageRating: Number(salonRating) || Number(latest?.rating) || 0,
+    pendingCount: 0,
+    totalReviews: salonReviewCount,
+    recentHighlight: highlight,
   };
 }
+
+/**
+ * Live salon owner home dashboard.
+ * auth.uid() → salon_owners.auth_user_id → salon → live aggregates.
+ */
+export async function getDashboard(
+  existing?: OwnerSalonContext,
+): Promise<
+  | { status: "unauthenticated" }
+  | { status: "error"; error: string }
+  | { status: "no_salon" }
+  | { status: "ok"; data: SalonDashboardData }
+> {
+  const context = existing ?? (await getOwnerSalonContext());
+
+  if (context.status === "unauthenticated") {
+    return { status: "unauthenticated" };
+  }
+  if (context.status === "error") {
+    return { status: "error", error: context.error };
+  }
+  if (context.status === "no_salon") {
+    return { status: "no_salon" };
+  }
+
+  const supabase = await createClient();
+  const salonId = context.salon.id;
+
+  const [stats, recentBookings, upcoming, calendar, reviews] =
+    await Promise.all([
+      getStats({ supabase, salonId, includeMonthlyRevenue: false }),
+      getBookings({ supabase, salonId, scope: "recent", limit: 8 }),
+      getBookings({ supabase, salonId, scope: "upcoming", limit: 5 }),
+      buildCalendar(supabase, salonId),
+      buildReviews(
+        supabase,
+        salonId,
+        context.salon.rating,
+        context.salon.review_count,
+      ),
+    ]);
+
+  const performance: DashboardPerformanceMetric[] = [];
+
+  return {
+    status: "ok",
+    data: {
+      session: context.session,
+      stats,
+      performance,
+      recentBookings,
+      upcoming,
+      calendar,
+      reviews,
+      quickActions: DASHBOARD_QUICK_ACTIONS,
+    },
+  };
+}
+
+export { todayIsoSydney };

@@ -36,8 +36,9 @@ export function ReviewCard({ reviews, className }: ReviewCardProps) {
 
       <div className="mt-5 flex items-end gap-3">
         <p className="text-[40px] font-semibold tracking-tight text-neutral-950 tabular-nums">
-          {reviews.averageRating.toFixed(1)}
+          {reviews.totalReviews > 0 ? reviews.averageRating.toFixed(1) : "—"}
         </p>
+        {reviews.totalReviews > 0 ? (
         <div className="mb-2 flex items-center gap-0.5">
           {Array.from({ length: 5 }, (_, index) => (
             <Star
@@ -51,15 +52,24 @@ export function ReviewCard({ reviews, className }: ReviewCardProps) {
             />
           ))}
         </div>
+        ) : null}
       </div>
 
       <p className="mt-1 text-[12px] text-neutral-500">
-        {reviews.totalReviews} reviews · {reviews.pendingCount} pending replies
+        {reviews.totalReviews === 0
+          ? "No reviews yet"
+          : `${reviews.totalReviews} reviews · ${reviews.pendingCount} pending replies`}
       </p>
 
+      {reviews.recentHighlight ? (
       <blockquote className="mt-5 rounded-2xl border border-neutral-200 bg-[#FAFBFC] px-4 py-3 text-[13px] leading-relaxed text-neutral-700">
         {reviews.recentHighlight}
       </blockquote>
+      ) : (
+        <div className="mt-5 rounded-2xl border border-dashed border-neutral-200 bg-[#FAFBFC] px-4 py-6 text-center text-[13px] text-neutral-500">
+          Customer reviews will appear here.
+        </div>
+      )}
     </section>
   );
 }

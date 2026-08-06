@@ -21,10 +21,20 @@ export function RevenueCard({ metrics, className }: RevenueCardProps) {
           Performance
         </h2>
         <p className="mt-1 text-[13px] text-neutral-500">
-          Revenue, bookings, occupancy, and growth.
+          Revenue appears when salon payments are enabled.
         </p>
       </div>
 
+      {metrics.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-neutral-200 bg-[#FAFBFC] px-4 py-10 text-center">
+          <p className="text-[14px] font-medium text-neutral-800">
+            No payment data yet
+          </p>
+          <p className="mt-1 text-[13px] text-neutral-500">
+            Monthly revenue will show here once payments are connected.
+          </p>
+        </div>
+      ) : (
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
           <article
@@ -55,6 +65,7 @@ export function RevenueCard({ metrics, className }: RevenueCardProps) {
           </article>
         ))}
       </div>
+      )}
     </section>
   );
 }

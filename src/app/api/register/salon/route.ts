@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { createSalonRegistration } from "@/features/salon-registration";
 import type { CreateSalonRegistrationInput } from "@/features/salon-registration";
+import { createClient } from "@/lib/supabase/server";
 import { createServiceSupabase } from "@/lib/supabase/service";
 
 export const runtime = "nodejs";
@@ -17,8 +18,16 @@ export async function POST(request: Request) {
       );
     }
 
+    const sessionClient = await createClient();
+    const {
+      data: { user },
+    } = await sessionClient.auth.getUser();
+
     const supabase = createServiceSupabase();
-    const result = await createSalonRegistration(supabase, body);
+    const result = await createSalonRegistration(supabase, {
+      ...body,
+      authUserId: body.authUserId ?? user?.id,
+    });
     return NextResponse.json(result);
   } catch (error) {
     const message =

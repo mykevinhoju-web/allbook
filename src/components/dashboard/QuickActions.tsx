@@ -2,7 +2,7 @@ import Link from "next/link";
 import {
   Briefcase,
   CalendarDays,
-  Camera,
+  CalendarRange,
   Store,
   Users,
   type LucideIcon,
@@ -15,8 +15,8 @@ const ACTION_ICONS: Record<string, LucideIcon> = {
   "add-service": Briefcase,
   "add-staff": Users,
   "open-calendar": CalendarDays,
-  "upload-photos": Camera,
   "edit-business": Store,
+  bookings: CalendarRange,
 };
 
 type QuickActionsProps = {

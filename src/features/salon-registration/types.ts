@@ -53,6 +53,8 @@ export type CreateSalonRegistrationInput = {
   owner: Omit<RegistrationOwnerAccount, "confirmPassword"> & {
     acceptedTerms: boolean;
   };
+  /** When the registrant is already signed in */
+  authUserId?: string;
 };
 
 export type CreateSalonRegistrationResult = {

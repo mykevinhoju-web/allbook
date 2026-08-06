@@ -33,10 +33,22 @@ export function CalendarWidget({ slots, className }: CalendarWidgetProps) {
         </Link>
       </div>
 
+      {slots.length === 0 ? (
+        <div className="flex flex-1 items-center justify-center px-5 py-12 text-center">
+          <div>
+            <p className="text-[14px] font-medium text-neutral-800">
+              Nothing scheduled today
+            </p>
+            <p className="mt-1 text-[13px] text-neutral-500">
+              Today’s bookings will appear here.
+            </p>
+          </div>
+        </div>
+      ) : (
       <div className="max-h-[420px] flex-1 space-y-1.5 overflow-y-auto px-3 py-3 sm:px-4">
         {slots.map((slot) => (
           <div
-            key={slot.time}
+            key={`${slot.time}-${slot.booking?.id ?? "empty"}`}
             className={cn(
               "grid grid-cols-[56px_1fr] items-stretch gap-2 rounded-2xl px-2 py-1.5 transition",
               slot.booking ? "hover:bg-[#F7F8FA]" : "opacity-70",
@@ -62,6 +74,7 @@ export function CalendarWidget({ slots, className }: CalendarWidgetProps) {
           </div>
         ))}
       </div>
+      )}
     </section>
   );
 }

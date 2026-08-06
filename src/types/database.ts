@@ -773,6 +773,7 @@ export type Database = {
           full_name: string;
           email: string;
           password_hash: string;
+          auth_user_id: string | null;
           accepted_terms_at: string;
           created_at: string;
           updated_at: string;
@@ -783,6 +784,7 @@ export type Database = {
           full_name: string;
           email: string;
           password_hash: string;
+          auth_user_id?: string | null;
           accepted_terms_at?: string;
           created_at?: string;
           updated_at?: string;
@@ -793,6 +795,7 @@ export type Database = {
           full_name?: string;
           email?: string;
           password_hash?: string;
+          auth_user_id?: string | null;
           accepted_terms_at?: string;
           created_at?: string;
           updated_at?: string;

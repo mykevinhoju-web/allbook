@@ -160,11 +160,38 @@ export async function createSalonRegistration(
   if (salonError) throw new Error(salonError.message);
 
   const passwordHash = await hash(input.owner.password, 10);
+
+  let authUserId: string | null = input.authUserId ?? null;
+  if (!authUserId) {
+    const { data: created, error: createAuthError } =
+      await supabase.auth.admin.createUser({
+        email: input.owner.ownerEmail.trim().toLowerCase(),
+        password: input.owner.password,
+        email_confirm: true,
+        user_metadata: {
+          full_name: input.owner.ownerName.trim(),
+        },
+      });
+
+    if (createAuthError || !created.user) {
+      await supabase.from("salons").delete().eq("id", salon.id);
+      const message = createAuthError?.message ?? "Could not create owner login.";
+      if (/already|registered|exists/i.test(message)) {
+        throw new Error(
+          "An account with this email already exists. Please log in, then register.",
+        );
+      }
+      throw new Error(message);
+    }
+    authUserId = created.user.id;
+  }
+
   const { error: ownerErrorInsert } = await supabase.from("salon_owners").insert({
     salon_id: salon.id,
     full_name: input.owner.ownerName.trim(),
     email: input.owner.ownerEmail.trim().toLowerCase(),
     password_hash: passwordHash,
+    auth_user_id: authUserId,
     accepted_terms_at: new Date().toISOString(),
   });
 

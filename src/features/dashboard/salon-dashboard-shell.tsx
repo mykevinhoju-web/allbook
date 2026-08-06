@@ -29,13 +29,31 @@ export function SalonDashboardShell({
         publicPath={session.publicPath}
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Header session={session} />
+        <Header session={session} notificationCount={0} />
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           {children}
         </main>
       </div>
     </div>
   );
+}
+
+function greetingName(fullName: string) {
+  const first = fullName.trim().split(/\s+/)[0];
+  return first || "there";
+}
+
+function timeGreeting() {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-AU", {
+      timeZone: "Australia/Sydney",
+      hour: "numeric",
+      hour12: false,
+    }).format(new Date()),
+  );
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
 }
 
 type SalonDashboardHomeProps = {
@@ -50,14 +68,14 @@ export function SalonDashboardHome({ data }: SalonDashboardHomeProps) {
           Overview
         </p>
         <h1 className="text-[28px] font-semibold tracking-tight text-neutral-950 sm:text-[32px]">
-          Good afternoon, {data.session.ownerName.split(" ")[0]}
+          {timeGreeting()}, {greetingName(data.session.ownerName)}
         </h1>
         <p className="text-[14px] text-neutral-500">
           Here&apos;s how {data.session.salonName} is performing today.
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         {data.stats.map((stat) => (
           <StatCard key={stat.id} stat={stat} />
         ))}
