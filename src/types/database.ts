@@ -515,7 +515,22 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "bookings_staff_id_fkey",
+            columns: ["staff_id"],
+            isOneToOne: false,
+            referencedRelation: "staff",
+            referencedColumns: ["id"],
+          },
+          {
+            foreignKeyName: "bookings_room_id_fkey",
+            columns: ["room_id"],
+            isOneToOne: false,
+            referencedRelation: "rooms",
+            referencedColumns: ["id"],
+          },
+        ];
       };
       payments: {
         Row: {
