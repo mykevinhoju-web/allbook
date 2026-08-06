@@ -90,6 +90,9 @@ export function createSupabaseSalonBookingsRepository(
           .insert({
             salon_id: input.salonId,
             full_name: input.customerName,
+            first_name: input.customerName.split(/\s+/)[0] ?? input.customerName,
+            last_name:
+              input.customerName.split(/\s+/).slice(1).join(" ") || "",
             email: input.customerEmail || null,
             phone: input.customerPhone || null,
           })

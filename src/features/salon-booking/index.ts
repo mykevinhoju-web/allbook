@@ -1,4 +1,11 @@
 export { generateTimeSlots, getSlotEndTime } from "./generateTimeSlots";
+export {
+  generateAvailableSlots,
+  buildAvailabilityInput,
+  pickStaffForSlot,
+  isBookingDateDisabled,
+  resolveStaffCandidates,
+} from "./generateAvailableSlots";
 export { checkAvailability } from "./checkAvailability";
 export {
   createBooking,
@@ -7,6 +14,7 @@ export {
 } from "./createBooking";
 export { cancelBooking } from "./cancelBooking";
 export { updateBooking } from "./updateBooking";
+export { getBookingSalonContext } from "./getBookingSalonContext";
 export {
   createMemorySalonBookingsRepository,
 } from "./repositories/memory";
@@ -19,6 +27,15 @@ export {
   openingHoursForDate,
 } from "./mock-context";
 export { BookingWizard } from "./booking-wizard";
+export {
+  NO_PREFERENCE_STAFF_ID,
+  formatAud,
+} from "./catalog-types";
+export type {
+  BookingCatalogService,
+  BookingCatalogStaff,
+  BookingSalonContext,
+} from "./catalog-types";
 export {
   SLOT_INTERVAL_MINUTES,
   parseTimeToMinutes,

@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import type { BookingCatalogService } from "@/features/salon-booking/mock-context";
+import type { BookingCatalogService } from "@/features/salon-booking/catalog-types";
 
 type ServiceSelectorProps = {
   services: BookingCatalogService[];
@@ -14,6 +14,14 @@ export function ServiceSelector({
   value,
   onChange,
 }: ServiceSelectorProps) {
+  if (services.length === 0) {
+    return (
+      <p className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-8 text-center text-sm text-neutral-500">
+        No bookable services yet.
+      </p>
+    );
+  }
+
   return (
     <div className="grid gap-3">
       {services.map((service) => {
@@ -35,22 +43,12 @@ export function ServiceSelector({
                 <p className="text-[15px] font-semibold">{service.name}</p>
                 <p
                   className={cn(
-                    "mt-1 text-[12px]",
-                    active ? "text-white/65" : "text-neutral-500",
+                    "mt-1 text-[13px]",
+                    active ? "text-white/70" : "text-neutral-500",
                   )}
                 >
-                  {service.category} · {service.duration} min
+                  {service.duration} min
                 </p>
-                {service.description ? (
-                  <p
-                    className={cn(
-                      "mt-2 text-[13px] leading-relaxed",
-                      active ? "text-white/80" : "text-neutral-600",
-                    )}
-                  >
-                    {service.description}
-                  </p>
-                ) : null}
               </div>
               <p className="shrink-0 text-[15px] font-semibold tabular-nums">
                 {service.priceLabel}

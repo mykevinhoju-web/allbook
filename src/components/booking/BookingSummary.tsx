@@ -8,7 +8,7 @@ type BookingSummaryProps = {
   staffName: string;
   date: string;
   startTime: string;
-  endTime: string;
+  endTime?: string;
   duration: number;
   priceLabel: string;
   customerName?: string;
@@ -58,7 +58,10 @@ export function BookingSummary({
         <Row label="Service" value={serviceName} />
         <Row label="Staff" value={staffName} />
         <Row label="Date" value={formatDate(date)} />
-        <Row label="Time" value={`${startTime} – ${endTime}`} />
+        <Row
+          label="Time"
+          value={endTime ? `${startTime} – ${endTime}` : startTime}
+        />
         <Row label="Duration" value={`${duration} min`} />
         <Row label="Price" value={priceLabel} />
         {customerName ? <Row label="Name" value={customerName} /> : null}
@@ -67,8 +70,7 @@ export function BookingSummary({
       </dl>
 
       <p className="mt-5 rounded-2xl bg-[#FAFBFC] px-4 py-3 text-[12px] text-neutral-500">
-        Payment will be added later. Your booking is held as pending once
-        confirmed.
+        Your booking is held as pending until the salon confirms.
       </p>
     </div>
   );

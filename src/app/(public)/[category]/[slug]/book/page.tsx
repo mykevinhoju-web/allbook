@@ -6,12 +6,9 @@ import {
   getMarketplaceCategory,
   isMarketplaceCategorySlug,
 } from "@/features/category";
-import {
-  BookingWizard,
-  getMockBookingSalonContext,
-} from "@/features/salon-booking";
-import { getSalonPageDataBySlug } from "@/features/salon";
-import { createClient } from "@/lib/supabase/server";
+import { BookingWizard } from "@/features/salon-booking";
+import { getBookingSalonContext } from "@/features/salon-booking/getBookingSalonContext";
+import { createServiceSupabase } from "@/lib/supabase/service";
 
 type PageProps = {
   params: Promise<{ category: string; slug: string }>;
@@ -24,8 +21,14 @@ export async function generateMetadata({
   const category = getMarketplaceCategory(raw);
   if (!category) return { title: "Book" };
 
+  // Service role so staff leave blocks calendar (no public leave RLS).
+  const supabase = createServiceSupabase();
+  const { context } = await getBookingSalonContext(supabase, slug);
+  const name = context?.salonName ?? slug.replace(/-/g, " ");
+
   return {
-    title: `Book · ${slug.replace(/-/g, " ")}`,
+    title: `Book · ${name}`,
+    description: `Book an appointment at ${name} on AllBook.`,
     robots: { index: false, follow: false },
   };
 }
@@ -37,21 +40,23 @@ export default async function MarketplaceSalonBookPage({ params }: PageProps) {
   const category = getMarketplaceCategory(raw);
   if (!category) notFound();
 
-  const context = getMockBookingSalonContext();
-  const supabase = await createClient();
-  const live = await getSalonPageDataBySlug(supabase, slug);
+  const supabase = createServiceSupabase();
+  const { context, error } = await getBookingSalonContext(supabase, slug);
 
-  const salonName =
-    live.status === "ok" ? live.data.salon.name : context.salonName;
+  if (error) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-16 text-center">
+        <p className="text-sm text-rose-700">Could not load booking: {error}</p>
+      </div>
+    );
+  }
+
+  if (!context) notFound();
 
   return (
     <div className="min-h-svh bg-[#F7F4EF]">
       <BookingWizard
-        context={{
-          ...context,
-          salonName,
-          slug,
-        }}
+        context={context}
         backHref={buildSalonPath(category.slug, slug)}
       />
     </div>

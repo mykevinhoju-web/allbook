@@ -1,39 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
+  BookingStepper,
+  BookingSuccess,
   BookingSummary,
-  DateSelector,
+  CalendarSelector,
+  CustomerForm,
   ServiceSelector,
   StaffSelector,
-  TimeSlotGrid,
+  TimeSlotSelector,
+  type BookingStepId,
+  type CustomerFormValue,
 } from "@/components/booking";
-import { syncCustomersFromBookingEvent } from "@/features/customers";
-import { MOCK_CUSTOMERS } from "@/features/customers/mock-data";
 import {
-  createBooking,
-  BookingConflictError,
-  BookingValidationError,
-} from "@/features/salon-booking/createBooking";
-import { generateTimeSlots } from "@/features/salon-booking/generateTimeSlots";
-import {
-  buildStaffAvailabilityInput,
+  NO_PREFERENCE_STAFF_ID,
   type BookingSalonContext,
-} from "@/features/salon-booking/mock-context";
-import { createMemorySalonBookingsRepository } from "@/features/salon-booking/repositories/memory";
-import type { SalonBooking } from "@/features/salon-booking/types";
-import { getDayOfWeekMondayFirst } from "@/features/salon-booking/time-utils";
-import { cn } from "@/lib/utils";
+} from "@/features/salon-booking/catalog-types";
+import {
+  generateAvailableSlots,
+  isBookingDateDisabled,
+} from "@/features/salon-booking/generateAvailableSlots";
+import type {
+  ExistingBookingBlock,
+  SalonBooking,
+  TimeSlot,
+} from "@/features/salon-booking/types";
 
-type Step =
-  | "service"
-  | "staff"
-  | "datetime"
-  | "customer"
-  | "summary"
-  | "done";
+type Step = Exclude<BookingStepId, "done"> | "done";
 
 type BookingWizardProps = {
   context: BookingSalonContext;
@@ -44,20 +40,35 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
+const STEPS: { id: Exclude<BookingStepId, "done">; label: string }[] = [
+  { id: "service", label: "Service" },
+  { id: "staff", label: "Staff" },
+  { id: "date", label: "Date" },
+  { id: "time", label: "Time" },
+  { id: "customer", label: "Details" },
+  { id: "summary", label: "Confirm" },
+];
+
 export function BookingWizard({ context, backHref }: BookingWizardProps) {
-  const [repo] = useState(() => createMemorySalonBookingsRepository());
   const [step, setStep] = useState<Step>("service");
   const [serviceId, setServiceId] = useState<string | null>(null);
-  const [staffId, setStaffId] = useState<string | null>(null);
+  const [staffId, setStaffId] = useState<string | null>(NO_PREFERENCE_STAFF_ID);
   const [date, setDate] = useState(todayIso());
   const [startTime, setStartTime] = useState<string | null>(null);
-  const [customerName, setCustomerName] = useState("");
-  const [customerEmail, setCustomerEmail] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
-  const [notes, setNotes] = useState("");
+  const [customer, setCustomer] = useState<CustomerFormValue>({
+    firstName: "",
+    lastName: "",
+    phone: "",
+    email: "",
+    notes: "",
+  });
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState<SalonBooking | null>(null);
+  const [assignedStaffName, setAssignedStaffName] = useState<string>("");
+  const [bookingsByStaff, setBookingsByStaff] = useState<
+    Record<string, ExistingBookingBlock[]>
+  >({});
 
   const service = context.services.find((s) => s.id === serviceId) ?? null;
 
@@ -68,55 +79,101 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
     );
   }, [context.staff, serviceId]);
 
-  const staff = context.staff.find((s) => s.id === staffId) ?? null;
+  const loadBookings = useCallback(async () => {
+    if (!serviceId || !date) return;
+    try {
+      const params = new URLSearchParams({
+        salonId: context.salonId,
+        date,
+        serviceId,
+      });
+      if (staffId && staffId !== NO_PREFERENCE_STAFF_ID) {
+        params.set("staffId", staffId);
+      }
+      const res = await fetch(`/api/salon-booking/slots?${params}`);
+      const data = (await res.json()) as {
+        existingBookingsByStaff?: Record<string, ExistingBookingBlock[]>;
+        slots?: TimeSlot[];
+        error?: string;
+      };
+      if (data.existingBookingsByStaff) {
+        setBookingsByStaff(data.existingBookingsByStaff);
+      }
+    } catch {
+      // slots still work from empty bookings
+    }
+  }, [context.salonId, date, serviceId, staffId]);
 
-  const availabilityInput = useMemo(() => {
-    if (!staffId || !service) return null;
-    return buildStaffAvailabilityInput({
-      context,
-      staffId,
-      serviceDuration: service.duration,
-      date,
-    });
-  }, [context, staffId, service, date]);
+  useEffect(() => {
+    void loadBookings();
+  }, [loadBookings]);
 
   const slots = useMemo(() => {
-    if (!availabilityInput) return [];
-    return generateTimeSlots(availabilityInput);
-  }, [availabilityInput]);
+    if (!service) return [];
+    return generateAvailableSlots({
+      context,
+      staffId,
+      serviceId: service.id,
+      serviceDuration: service.duration,
+      date,
+      existingBookingsByStaff: bookingsByStaff,
+    });
+  }, [bookingsByStaff, context, date, service, serviceId, staffId]);
 
   const selectedSlot = slots.find((s) => s.startTime === startTime) ?? null;
 
-  const steps: { id: Step; label: string }[] = [
-    { id: "service", label: "Service" },
-    { id: "staff", label: "Staff" },
-    { id: "datetime", label: "Date & time" },
-    { id: "customer", label: "Details" },
-    { id: "summary", label: "Confirm" },
-  ];
+  const staffLabel = useMemo(() => {
+    if (assignedStaffName) return assignedStaffName;
+    if (!staffId || staffId === NO_PREFERENCE_STAFF_ID) return "No preference";
+    return (
+      context.staff.find((s) => s.id === staffId)?.displayName ?? "Staff"
+    );
+  }, [assignedStaffName, context.staff, staffId]);
 
   function goNext() {
     setError(null);
     if (step === "service") {
       if (!serviceId) return setError("Choose a service.");
-      setStaffId(null);
+      setStaffId(NO_PREFERENCE_STAFF_ID);
       setStartTime(null);
       setStep("staff");
       return;
     }
     if (step === "staff") {
-      if (!staffId) return setError("Choose a staff member.");
+      if (!staffId) return setError("Choose staff.");
       setStartTime(null);
-      setStep("datetime");
+      setStep("date");
       return;
     }
-    if (step === "datetime") {
-      if (!date || !startTime) return setError("Choose a date and time.");
+    if (step === "date") {
+      if (!date) return setError("Choose a date.");
+      if (
+        serviceId &&
+        isBookingDateDisabled({
+          context,
+          staffId,
+          serviceId,
+          date,
+          todayIso: todayIso(),
+        })
+      ) {
+        return setError("That date is not available.");
+      }
+      setStartTime(null);
+      setStep("time");
+      return;
+    }
+    if (step === "time") {
+      if (!startTime) return setError("Choose a time.");
       setStep("customer");
       return;
     }
     if (step === "customer") {
-      if (!customerName.trim()) return setError("Name is required.");
+      if (!customer.firstName.trim() || !customer.lastName.trim()) {
+        return setError("First and last name are required.");
+      }
+      if (!customer.phone.trim()) return setError("Phone is required.");
+      if (!customer.email.trim()) return setError("Email is required.");
       setStep("summary");
     }
   }
@@ -124,75 +181,55 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
   function goBack() {
     setError(null);
     if (step === "staff") setStep("service");
-    else if (step === "datetime") setStep("staff");
-    else if (step === "customer") setStep("datetime");
+    else if (step === "date") setStep("staff");
+    else if (step === "time") setStep("date");
+    else if (step === "customer") setStep("time");
     else if (step === "summary") setStep("customer");
   }
 
   async function confirmBooking() {
-    if (!service || !staff || !startTime || !availabilityInput) return;
+    if (!service || !startTime || !selectedSlot) return;
     setSubmitting(true);
     setError(null);
     try {
-      const booking = await createBooking(repo, {
-        salonId: context.salonId,
-        staffId: staff.id,
-        serviceId: service.id,
-        bookingDate: date,
-        startTime,
-        duration: service.duration,
-        bufferMinutes: staff.bufferMinutes,
-        customerName,
-        customerEmail,
-        customerPhone,
-        notes,
-        status: "pending",
-        availability: availabilityInput,
-      });
-
-      // CRM upsert (business layer) — booking created updates customer profile.
-      let crmStore = [...MOCK_CUSTOMERS];
-      syncCustomersFromBookingEvent(
-        {
-          getAll: () => crmStore,
-          setAll: (next) => {
-            crmStore = next;
-          },
-        },
-        {
+      const res = await fetch("/api/salon-booking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           salonId: context.salonId,
-          customerId: booking.customerId,
-          customerName: booking.customerName,
-          customerEmail: booking.customerEmail,
-          customerPhone: booking.customerPhone,
-          bookingId: booking.id,
-          bookingDate: booking.bookingDate,
-          status: booking.status,
-          amount: service.price,
-          staffId: staff.id,
-          staffName: staff.displayName,
+          slug: context.slug,
           serviceId: service.id,
-          serviceName: service.name,
-        },
-      );
-
-      setCreated(booking);
+          staffId,
+          bookingDate: date,
+          startTime,
+          customer: {
+            firstName: customer.firstName.trim(),
+            lastName: customer.lastName.trim(),
+            phone: customer.phone.trim(),
+            email: customer.email.trim(),
+            notes: customer.notes.trim(),
+          },
+        }),
+      });
+      const data = (await res.json()) as {
+        booking?: SalonBooking;
+        staffName?: string;
+        error?: string;
+      };
+      if (!res.ok || !data.booking) {
+        throw new Error(data.error || "Could not create booking.");
+      }
+      setCreated(data.booking);
+      setAssignedStaffName(data.staffName ?? staffLabel);
       setStep("done");
     } catch (err) {
-      if (
-        err instanceof BookingConflictError ||
-        err instanceof BookingValidationError
-      ) {
-        setError(err.message);
-      } else {
-        setError(err instanceof Error ? err.message : "Could not book.");
-      }
+      setError(err instanceof Error ? err.message : "Could not book.");
     } finally {
       setSubmitting(false);
     }
   }
 
-  const stepIndex = steps.findIndex((s) => s.id === step);
+  const customerName = `${customer.firstName} ${customer.lastName}`.trim();
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-10">
@@ -209,30 +246,17 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
       </div>
 
       <header className="mb-8 space-y-2">
-        <h1 className="font-serif text-3xl tracking-tight text-neutral-950 sm:text-4xl">
+        <h1 className="text-3xl font-semibold tracking-tight text-neutral-950 sm:text-4xl">
           {context.salonName}
         </h1>
         <p className="text-[15px] text-neutral-600">
-          Choose your service, stylist, and time — slots respect hours, breaks,
-          leave, and buffers.
+          Book a service — available times respect hours, leave, and buffers.
         </p>
       </header>
 
       {step !== "done" ? (
-        <div className="mb-8 flex gap-2 overflow-x-auto">
-          {steps.map((item, index) => (
-            <div
-              key={item.id}
-              className={cn(
-                "rounded-full px-3 py-1.5 text-[12px] font-semibold",
-                index <= stepIndex
-                  ? "bg-neutral-950 text-white"
-                  : "bg-neutral-100 text-neutral-500",
-              )}
-            >
-              {index + 1}. {item.label}
-            </div>
-          ))}
+        <div className="mb-8">
+          <BookingStepper steps={STEPS} current={step} />
         </div>
       ) : null}
 
@@ -240,7 +264,7 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
         {step === "service" ? (
           <section className="space-y-4">
             <h2 className="text-[18px] font-semibold text-neutral-950">
-              Choose a service
+              Select service
             </h2>
             <ServiceSelector
               services={context.services}
@@ -253,11 +277,11 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
         {step === "staff" ? (
           <section className="space-y-4">
             <h2 className="text-[18px] font-semibold text-neutral-950">
-              Choose staff
+              Select staff
             </h2>
             {staffForService.length === 0 ? (
               <p className="text-[14px] text-neutral-500">
-                No bookable staff for this service yet.
+                No available staff for this service.
               </p>
             ) : (
               <StaffSelector
@@ -269,42 +293,43 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
           </section>
         ) : null}
 
-        {step === "datetime" ? (
-          <section className="space-y-6">
-            <div>
-              <h2 className="text-[18px] font-semibold text-neutral-950">
-                Choose a date
-              </h2>
-              <div className="mt-4">
-                <DateSelector
-                  value={date}
-                  onChange={(next) => {
-                    setDate(next);
-                    setStartTime(null);
-                  }}
-                />
-              </div>
-            </div>
-            <div>
-              <h2 className="text-[18px] font-semibold text-neutral-950">
-                Available times
-              </h2>
-              <p className="mt-1 text-[13px] text-neutral-500">
-                {staff?.displayName} · {service?.duration} min · buffer{" "}
-                {staff?.bufferMinutes ?? 0} min
-                {getDayOfWeekMondayFirst(date) === 0 &&
-                staffId === "staff_emma"
-                  ? " · demo booking 09:30–10:30 on Mondays"
-                  : ""}
-              </p>
-              <div className="mt-4">
-                <TimeSlotGrid
-                  slots={slots}
-                  value={startTime}
-                  onChange={setStartTime}
-                />
-              </div>
-            </div>
+        {step === "date" && serviceId ? (
+          <section className="space-y-4">
+            <h2 className="text-[18px] font-semibold text-neutral-950">
+              Select date
+            </h2>
+            <CalendarSelector
+              value={date}
+              onChange={(next) => {
+                setDate(next);
+                setStartTime(null);
+              }}
+              isDisabled={(iso) =>
+                isBookingDateDisabled({
+                  context,
+                  staffId,
+                  serviceId,
+                  date: iso,
+                  todayIso: todayIso(),
+                })
+              }
+            />
+          </section>
+        ) : null}
+
+        {step === "time" ? (
+          <section className="space-y-4">
+            <h2 className="text-[18px] font-semibold text-neutral-950">
+              Select time
+            </h2>
+            <p className="text-[13px] text-neutral-500">
+              {staffLabel} · {service?.duration} min
+            </p>
+            <TimeSlotSelector
+              slots={slots}
+              value={startTime}
+              onChange={setStartTime}
+            />
           </section>
         ) : null}
 
@@ -313,101 +338,48 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
             <h2 className="text-[18px] font-semibold text-neutral-950">
               Your details
             </h2>
-            <label className="block">
-              <span className="mb-1.5 block text-[13px] font-medium text-neutral-700">
-                Full name *
-              </span>
-              <input
-                className="h-11 w-full rounded-xl border border-neutral-200 px-3.5 text-[14px] outline-none focus:border-neutral-400 focus:ring-4 focus:ring-neutral-950/5"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1.5 block text-[13px] font-medium text-neutral-700">
-                Email
-              </span>
-              <input
-                type="email"
-                className="h-11 w-full rounded-xl border border-neutral-200 px-3.5 text-[14px] outline-none focus:border-neutral-400 focus:ring-4 focus:ring-neutral-950/5"
-                value={customerEmail}
-                onChange={(e) => setCustomerEmail(e.target.value)}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1.5 block text-[13px] font-medium text-neutral-700">
-                Phone
-              </span>
-              <input
-                className="h-11 w-full rounded-xl border border-neutral-200 px-3.5 text-[14px] outline-none focus:border-neutral-400 focus:ring-4 focus:ring-neutral-950/5"
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1.5 block text-[13px] font-medium text-neutral-700">
-                Notes
-              </span>
-              <textarea
-                rows={3}
-                className="w-full rounded-xl border border-neutral-200 px-3.5 py-2.5 text-[14px] outline-none focus:border-neutral-400 focus:ring-4 focus:ring-neutral-950/5"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
-            </label>
+            <CustomerForm value={customer} onChange={setCustomer} />
           </section>
         ) : null}
 
-        {step === "summary" && service && staff && selectedSlot ? (
+        {step === "summary" && service && selectedSlot ? (
           <section className="space-y-5">
+            <h2 className="text-[18px] font-semibold text-neutral-950">
+              Booking summary
+            </h2>
             <BookingSummary
               salonName={context.salonName}
               serviceName={service.name}
-              staffName={staff.displayName}
+              staffName={staffLabel}
               date={date}
               startTime={selectedSlot.startTime}
               endTime={selectedSlot.endTime}
               duration={service.duration}
               priceLabel={service.priceLabel}
               customerName={customerName}
-              customerEmail={customerEmail}
-              customerPhone={customerPhone}
+              customerEmail={customer.email}
+              customerPhone={customer.phone}
             />
           </section>
         ) : null}
 
-        {step === "done" && created && service && staff ? (
-          <section className="space-y-5 text-center">
-            <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
-              ✓
-            </div>
-            <h2 className="text-[22px] font-semibold text-neutral-950">
-              Booking requested
-            </h2>
-            <p className="text-[14px] text-neutral-600">
-              Status: <strong>{created.status}</strong> · Ref{" "}
-              <span className="font-mono text-[13px]">{created.id}</span>
-            </p>
-            <BookingSummary
-              salonName={context.salonName}
-              serviceName={service.name}
-              staffName={staff.displayName}
-              date={created.bookingDate}
-              startTime={created.startTime}
-              endTime={created.endTime}
-              duration={created.duration}
-              priceLabel={service.priceLabel}
-              customerName={created.customerName}
-              customerEmail={created.customerEmail}
-              customerPhone={created.customerPhone}
-            />
-            <Link
-              href={backHref}
-              className="inline-flex h-11 items-center justify-center rounded-full bg-neutral-950 px-5 text-[13px] font-semibold text-white"
-            >
-              Done
-            </Link>
-          </section>
+        {step === "done" && created && service ? (
+          <BookingSuccess
+            salonName={context.salonName}
+            serviceName={service.name}
+            staffName={assignedStaffName || staffLabel}
+            date={created.bookingDate}
+            startTime={created.startTime}
+            endTime={created.endTime}
+            duration={created.duration}
+            priceLabel={service.priceLabel}
+            customerName={created.customerName}
+            customerEmail={created.customerEmail}
+            customerPhone={created.customerPhone}
+            status={created.status}
+            bookingId={created.id}
+            backHref={backHref}
+          />
         ) : null}
 
         {error ? (
@@ -438,7 +410,7 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
             ) : (
               <button
                 type="button"
-                onClick={confirmBooking}
+                onClick={() => void confirmBooking()}
                 disabled={submitting}
                 className="inline-flex h-11 items-center justify-center rounded-full bg-neutral-950 px-5 text-[13px] font-semibold text-white disabled:opacity-50"
               >
