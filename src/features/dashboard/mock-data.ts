@@ -9,7 +9,7 @@ import type {
 } from "./types";
 
 export const MOCK_SALON_SESSION: SalonOwnerSession = {
-  salonId: "3c5e87b8-299e-486c-a357-f46ed20ff541",
+  salonId: "salon_glow_hair",
   salonName: "Glow Hair Studio",
   ownerName: "Sarah Chen",
   ownerEmail: "sarah@glowhair.studio",
