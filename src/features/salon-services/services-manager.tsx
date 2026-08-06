@@ -16,6 +16,7 @@ import {
   deleteService,
   deleteServices,
   duplicateService,
+  restoreService,
   updateService,
   type SalonService,
   type ServiceCategory,
@@ -43,14 +44,21 @@ export function ServicesManager({
   const [services, setServices] = useState(initialServices);
   const [category, setCategory] = useState<ServiceCategory | "all">("all");
   const [search, setSearch] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [dialog, setDialog] = useState<DialogMode>({ type: "closed" });
   const [bulkCategory, setBulkCategory] = useState<ServiceCategory>("Hair Cut");
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const activeCount = useMemo(
+    () => services.filter((s) => s.status !== "archived").length,
+    [services],
+  );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return services
-      .filter((s) => s.status !== "archived")
+      .filter((s) => (showArchived ? true : s.status !== "archived"))
       .filter((s) => (category === "all" ? true : s.category === category))
       .filter((s) => {
         if (!q) return true;
@@ -62,10 +70,12 @@ export function ServicesManager({
         );
       })
       .sort((a, b) => a.displayOrder - b.displayOrder);
-  }, [services, category, search]);
+  }, [services, category, search, showArchived]);
 
   const counts = useMemo(() => {
-    const visible = services.filter((s) => s.status !== "archived");
+    const visible = services.filter((s) =>
+      showArchived ? true : s.status !== "archived",
+    );
     const map: Partial<Record<ServiceCategory | "all", number>> = {
       all: visible.length,
     };
@@ -73,7 +83,7 @@ export function ServicesManager({
       map[cat] = visible.filter((s) => s.category === cat).length;
     }
     return map;
-  }, [services]);
+  }, [services, showArchived]);
 
   function toggleSelect(id: string) {
     setSelectedIds((prev) =>
@@ -86,81 +96,148 @@ export function ServicesManager({
   }
 
   async function handleCreate(input: ServiceInput) {
-    const created = await createService({
-      salonId,
-      input,
-      existing: services,
-    });
-    setServices((prev) => [...prev, created]);
-    setDialog({ type: "closed" });
+    setActionError(null);
+    try {
+      const created = await createService({
+        salonId,
+        input,
+        existing: services,
+      });
+      setServices((prev) => [...prev, created]);
+      setDialog({ type: "closed" });
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not create.");
+    }
   }
 
   async function handleEdit(input: ServiceInput) {
     if (dialog.type !== "edit") return;
-    const updated = await updateService(dialog.service, input);
-    setServices((prev) =>
-      prev.map((s) => (s.id === updated.id ? updated : s)),
-    );
-    setDialog({ type: "closed" });
+    setActionError(null);
+    try {
+      const updated = await updateService(dialog.service, input);
+      setServices((prev) =>
+        prev.map((s) => (s.id === updated.id ? updated : s)),
+      );
+      setDialog({ type: "closed" });
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not update.");
+    }
   }
 
   async function handleDuplicate(service: SalonService) {
-    const copy = await duplicateService(service);
-    setServices((prev) => [...prev, copy]);
+    setActionError(null);
+    try {
+      const copy = await duplicateService(service);
+      setServices((prev) => [...prev, copy]);
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : "Could not duplicate.",
+      );
+    }
   }
 
   async function handleArchive(service: SalonService) {
-    const archived = await archiveService(service);
-    setServices((prev) =>
-      prev.map((s) => (s.id === archived.id ? archived : s)),
-    );
-    setSelectedIds((prev) => prev.filter((id) => id !== service.id));
+    setActionError(null);
+    try {
+      const archived = await archiveService(service);
+      setServices((prev) =>
+        prev.map((s) => (s.id === archived.id ? archived : s)),
+      );
+      setSelectedIds((prev) => prev.filter((id) => id !== service.id));
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : "Could not archive.",
+      );
+    }
+  }
+
+  async function handleRestore(service: SalonService) {
+    setActionError(null);
+    try {
+      const restored = await restoreService(service);
+      setServices((prev) =>
+        prev.map((s) => (s.id === restored.id ? restored : s)),
+      );
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : "Could not restore.",
+      );
+    }
   }
 
   async function handleDelete(service: SalonService) {
-    if (!window.confirm(`Delete “${service.name}”? This cannot be undone.`)) {
+    if (
+      !window.confirm(
+        `Archive “${service.name}”? You can restore it later from archived services.`,
+      )
+    ) {
       return;
     }
-    const next = await deleteService(services, service.id);
-    setServices(next);
-    setSelectedIds((prev) => prev.filter((id) => id !== service.id));
+    setActionError(null);
+    try {
+      const next = await deleteService(services, service.id);
+      setServices(next);
+      setSelectedIds((prev) => prev.filter((id) => id !== service.id));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not delete.");
+    }
   }
 
   async function bulkEnable(enabled: boolean) {
-    const next = await Promise.all(
-      services.map(async (service) => {
-        if (!selectedIds.includes(service.id)) return service;
-        return updateService(service, {
-          status: enabled ? "active" : "inactive",
-          bookingEnabled: enabled ? service.bookingEnabled : false,
-        });
-      }),
-    );
-    setServices(next);
+    setActionError(null);
+    try {
+      const next = await Promise.all(
+        services.map(async (service) => {
+          if (!selectedIds.includes(service.id)) return service;
+          if (service.status === "archived") return service;
+          return updateService(service, {
+            status: enabled ? "active" : "inactive",
+            bookingEnabled: enabled ? service.bookingEnabled : false,
+          });
+        }),
+      );
+      setServices(next);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Bulk update failed.");
+    }
   }
 
   async function bulkDelete() {
     if (
       !window.confirm(
-        `Delete ${selectedIds.length} service${selectedIds.length === 1 ? "" : "s"}?`,
+        `Archive ${selectedIds.length} service${selectedIds.length === 1 ? "" : "s"}?`,
       )
     ) {
       return;
     }
-    const next = await deleteServices(services, selectedIds);
-    setServices(next);
-    setSelectedIds([]);
+    setActionError(null);
+    try {
+      const next = await deleteServices(services, selectedIds);
+      setServices(next);
+      setSelectedIds([]);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Bulk archive failed.");
+    }
   }
 
   async function bulkChangeCategory() {
-    const next = await Promise.all(
-      services.map(async (service) => {
-        if (!selectedIds.includes(service.id)) return service;
-        return updateService(service, { category: bulkCategory });
-      }),
-    );
-    setServices(next);
+    setActionError(null);
+    try {
+      const next = await Promise.all(
+        services.map(async (service) => {
+          if (!selectedIds.includes(service.id)) return service;
+          return updateService(service, { category: bulkCategory });
+        }),
+      );
+      setServices(next);
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : "Could not change category.",
+      );
+    }
   }
+
+  const isEmptyCatalogue = activeCount === 0 && !showArchived;
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-6">
@@ -202,7 +279,21 @@ export function ServicesManager({
           <p className="text-[13px] text-neutral-500 lg:shrink-0">
             {filtered.length} service{filtered.length === 1 ? "" : "s"}
           </p>
+          <label className="inline-flex items-center gap-2 text-[13px] text-neutral-600">
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={(e) => setShowArchived(e.target.checked)}
+            />
+            Show archived
+          </label>
         </div>
+
+        {actionError ? (
+          <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-800">
+            {actionError}
+          </p>
+        ) : null}
 
         <CategoryFilter
           value={category}
@@ -219,7 +310,7 @@ export function ServicesManager({
               <BulkButton onClick={() => bulkEnable(true)}>Enable</BulkButton>
               <BulkButton onClick={() => bulkEnable(false)}>Disable</BulkButton>
               <BulkButton danger onClick={bulkDelete}>
-                Delete
+                Archive
               </BulkButton>
               <div className="flex items-center gap-2">
                 <select
@@ -252,6 +343,26 @@ export function ServicesManager({
         ) : null}
       </div>
 
+      {isEmptyCatalogue ? (
+        <div className="rounded-[24px] border border-dashed border-neutral-300 bg-white px-6 py-16 text-center shadow-sm">
+          <h2 className="text-[18px] font-semibold text-neutral-950">
+            Create your first service
+          </h2>
+          <p className="mx-auto mt-2 max-w-md text-[14px] text-neutral-500">
+            Add a service with a name, duration, and price so customers can book
+            online.
+          </p>
+          <button
+            type="button"
+            onClick={() => setDialog({ type: "create" })}
+            className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-neutral-950 px-5 text-[13px] font-semibold text-white"
+          >
+            <Plus className="size-4" />
+            Create your first service
+          </button>
+        </div>
+      ) : (
+        <>
       <div className="hidden md:block">
         <ServiceTable
           services={filtered}
@@ -261,7 +372,13 @@ export function ServicesManager({
           onEdit={(service) => setDialog({ type: "edit", service })}
           onDuplicate={handleDuplicate}
           onArchive={handleArchive}
+          onRestore={handleRestore}
           onDelete={handleDelete}
+          emptyLabel={
+            search || category !== "all"
+              ? "No services match your filters."
+              : "No services to show."
+          }
         />
       </div>
 
@@ -281,6 +398,7 @@ export function ServicesManager({
             onEdit={(s) => setDialog({ type: "edit", service: s })}
             onDuplicate={handleDuplicate}
             onArchive={handleArchive}
+            onRestore={handleRestore}
             onDelete={handleDelete}
           />
         ))}
@@ -290,6 +408,8 @@ export function ServicesManager({
           </div>
         ) : null}
       </div>
+        </>
+      )}
 
       {dialog.type !== "closed" ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-6">

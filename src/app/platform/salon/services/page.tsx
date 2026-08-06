@@ -4,8 +4,9 @@ import { requireOwnerSalon } from "@/features/dashboard/getOwnerSalon";
 import {
   getServiceStaffOptions,
   getServices,
-} from "@/features/salon-services";
+} from "@/features/salon-services/getServices";
 import { ServicesManager } from "@/features/salon-services/services-manager";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "Services",
@@ -15,9 +16,11 @@ export const metadata: Metadata = {
 export default async function SalonServicesPage() {
   const owner = await requireOwnerSalon("/platform/salon/services");
   const salonId = owner.salon.id;
+  const supabase = await createClient();
+
   const [services, staffOptions] = await Promise.all([
-    getServices({ salonId, includeArchived: true }),
-    getServiceStaffOptions(),
+    getServices(supabase, { salonId, includeArchived: true }),
+    getServiceStaffOptions(supabase, salonId),
   ]);
 
   return (

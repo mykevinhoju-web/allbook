@@ -25,7 +25,9 @@ type ServiceTableProps = {
   onEdit: (service: SalonService) => void;
   onDuplicate: (service: SalonService) => void;
   onArchive: (service: SalonService) => void;
+  onRestore?: (service: SalonService) => void;
   onDelete: (service: SalonService) => void;
+  emptyLabel?: string;
   className?: string;
 };
 
@@ -37,7 +39,9 @@ export function ServiceTable({
   onEdit,
   onDuplicate,
   onArchive,
+  onRestore,
   onDelete,
+  emptyLabel = "No services match your filters.",
   className,
 }: ServiceTableProps) {
   const allSelected =
@@ -83,6 +87,7 @@ export function ServiceTable({
                 onEdit={onEdit}
                 onDuplicate={onDuplicate}
                 onArchive={onArchive}
+                onRestore={onRestore}
                 onDelete={onDelete}
               />
             ))}
@@ -92,7 +97,7 @@ export function ServiceTable({
                   colSpan={8}
                   className="px-5 py-16 text-center text-[14px] text-neutral-500"
                 >
-                  No services match your filters.
+                  {emptyLabel}
                 </td>
               </tr>
             ) : null}
@@ -110,6 +115,7 @@ function ServiceRow({
   onEdit,
   onDuplicate,
   onArchive,
+  onRestore,
   onDelete,
 }: {
   service: SalonService;
@@ -118,6 +124,7 @@ function ServiceRow({
   onEdit: (service: SalonService) => void;
   onDuplicate: (service: SalonService) => void;
   onArchive: (service: SalonService) => void;
+  onRestore?: (service: SalonService) => void;
   onDelete: (service: SalonService) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -173,13 +180,17 @@ function ServiceRow({
       <td className="px-3 py-3.5">
         <span
           className={cn(
-            "inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold",
-            service.status === "active"
-              ? "bg-emerald-50 text-emerald-700"
-              : "bg-neutral-100 text-neutral-600",
+            "inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize",
+            service.status === "active" && "bg-emerald-50 text-emerald-700",
+            service.status === "inactive" && "bg-neutral-100 text-neutral-600",
+            service.status === "archived" && "bg-amber-50 text-amber-800",
           )}
         >
-          {service.status === "active" ? "Active" : "Inactive"}
+          {service.status === "active"
+            ? "Active"
+            : service.status === "archived"
+              ? "Archived"
+              : "Inactive"}
         </span>
       </td>
       <td className="px-4 py-3.5 text-right sm:px-5">
@@ -214,16 +225,30 @@ function ServiceRow({
               >
                 <Copy className="size-3.5" /> Duplicate
               </button>
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 px-3 py-2 text-[13px] text-neutral-700 hover:bg-neutral-50"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onArchive(service);
-                }}
-              >
-                <Archive className="size-3.5" /> Archive
-              </button>
+              {service.status === "archived" ? (
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-[13px] text-neutral-700 hover:bg-neutral-50"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onRestore?.(service);
+                  }}
+                >
+                  <Archive className="size-3.5" /> Restore
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-[13px] text-neutral-700 hover:bg-neutral-50"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onArchive(service);
+                  }}
+                >
+                  <Archive className="size-3.5" /> Archive
+                </button>
+              )}
+              {service.status !== "archived" ? (
               <button
                 type="button"
                 className="flex w-full items-center gap-2 px-3 py-2 text-[13px] text-rose-600 hover:bg-rose-50"
@@ -232,8 +257,9 @@ function ServiceRow({
                   onDelete(service);
                 }}
               >
-                <Trash2 className="size-3.5" /> Delete
+                <Trash2 className="size-3.5" /> Archive
               </button>
+              ) : null}
             </div>
           ) : null}
         </div>

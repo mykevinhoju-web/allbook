@@ -1,5 +1,4 @@
 import { MOCK_SALON_SESSION } from "@/features/dashboard/mock-data";
-import { MOCK_SERVICES } from "@/features/salon-services/mock-data";
 
 import { defaultWorkingHours } from "./constants";
 import type { SalonStaffMember, StaffAssignedService } from "./types";
@@ -7,12 +6,16 @@ import type { SalonStaffMember, StaffAssignedService } from "./types";
 const salonId = MOCK_SALON_SESSION.salonId;
 const now = "2026-08-06T08:00:00.000Z";
 
+/** Temporary stubs for Staff mock module until Staff goes live. */
+const STUB_SERVICES: StaffAssignedService[] = [
+  { id: "svc_cut", name: "Ladies Cut", category: "Hair Cut" },
+  { id: "svc_colour", name: "Full Colour", category: "Hair Colour" },
+  { id: "svc_balayage", name: "Balayage", category: "Hair Colour" },
+  { id: "svc_blow", name: "Blow Dry", category: "Styling" },
+];
+
 function servicesFor(ids: string[]): StaffAssignedService[] {
-  return MOCK_SERVICES.filter((s) => ids.includes(s.id)).map((s) => ({
-    id: s.id,
-    name: s.name,
-    category: s.category,
-  }));
+  return STUB_SERVICES.filter((s) => ids.includes(s.id));
 }
 
 export const MOCK_SALON_STAFF: SalonStaffMember[] = [
@@ -235,9 +238,5 @@ export const MOCK_SALON_STAFF: SalonStaffMember[] = [
 ];
 
 export function getAssignableServices(): StaffAssignedService[] {
-  return MOCK_SERVICES.filter((s) => s.status !== "archived").map((s) => ({
-    id: s.id,
-    name: s.name,
-    category: s.category,
-  }));
+  return STUB_SERVICES;
 }

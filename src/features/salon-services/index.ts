@@ -6,20 +6,17 @@ export {
   formatServicePrice,
   isValidServiceDuration,
 } from "./constants";
+export { validateServiceInput } from "./validate";
+export { ServicesManager } from "./services-manager";
 export {
-  getServices,
-  getServiceStaffOptions,
-  getServiceDurationMinutes,
-} from "./getServices";
-export { createService } from "./createService";
-export {
+  createService,
   updateService,
   duplicateService,
   archiveService,
-} from "./updateService";
-export { deleteService, deleteServices } from "./deleteService";
-export { validateServiceInput } from "./validate";
-export { ServicesManager } from "./services-manager";
+  restoreService,
+  deleteService,
+  deleteServices,
+} from "./services-client";
 export type {
   SalonService,
   ServiceCategory,

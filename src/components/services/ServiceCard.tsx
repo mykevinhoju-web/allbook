@@ -24,6 +24,7 @@ type ServiceCardProps = {
   onEdit: (service: SalonService) => void;
   onDuplicate: (service: SalonService) => void;
   onArchive: (service: SalonService) => void;
+  onRestore?: (service: SalonService) => void;
   onDelete: (service: SalonService) => void;
 };
 
@@ -34,6 +35,7 @@ export function ServiceCard({
   onEdit,
   onDuplicate,
   onArchive,
+  onRestore,
   onDelete,
 }: ServiceCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -113,23 +115,36 @@ export function ServiceCard({
                       onDuplicate(service);
                     }}
                   />
-                  <ActionItem
-                    icon={Archive}
-                    label="Archive"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      onArchive(service);
-                    }}
-                  />
-                  <ActionItem
-                    icon={Trash2}
-                    label="Delete"
-                    danger
-                    onClick={() => {
-                      setMenuOpen(false);
-                      onDelete(service);
-                    }}
-                  />
+                  {service.status === "archived" ? (
+                    <ActionItem
+                      icon={Archive}
+                      label="Restore"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onRestore?.(service);
+                      }}
+                    />
+                  ) : (
+                    <ActionItem
+                      icon={Archive}
+                      label="Archive"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onArchive(service);
+                      }}
+                    />
+                  )}
+                  {service.status !== "archived" ? (
+                    <ActionItem
+                      icon={Trash2}
+                      label="Archive"
+                      danger
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onDelete(service);
+                      }}
+                    />
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -144,8 +159,20 @@ export function ServiceCard({
                 priceType: service.priceType,
               })}
             </Chip>
-            <Chip tone={service.status === "active" ? "good" : "muted"}>
-              {service.status === "active" ? "Active" : "Inactive"}
+            <Chip
+              tone={
+                service.status === "active"
+                  ? "good"
+                  : service.status === "archived"
+                    ? "muted"
+                    : "muted"
+              }
+            >
+              {service.status === "active"
+                ? "Active"
+                : service.status === "archived"
+                  ? "Archived"
+                  : "Inactive"}
             </Chip>
             {service.bookingEnabled ? (
               <Chip tone="good">Online booking</Chip>
