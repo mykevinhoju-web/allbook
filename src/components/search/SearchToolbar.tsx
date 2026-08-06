@@ -67,7 +67,12 @@ export function SearchToolbar({
             <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9AA0B4]">
               Service
             </span>
-            <Select value={service} onValueChange={onServiceChange}>
+            <Select
+              value={service}
+              onValueChange={(value) => {
+                if (value) onServiceChange(value);
+              }}
+            >
               <SelectTrigger className="h-7 w-full border-0 bg-transparent px-0 text-sm font-medium text-[#1B1F3B] shadow-none focus-visible:ring-0 data-[size=default]:h-7">
                 <SelectValue placeholder="All services" />
               </SelectTrigger>
