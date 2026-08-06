@@ -1,10 +1,7 @@
-import { AdminPlaceholderPage } from "@/features/admin";
+import { AdminCustomersContent } from "@/features/admin";
+import { ensureAdminModule } from "@/features/admin/server/ensure-admin-module";
 
-export default function AdminCustomersPage() {
-  return (
-    <AdminPlaceholderPage
-      title="Customers"
-      description="View and manage customer accounts."
-    />
-  );
+export default async function AdminCustomersPage() {
+  await ensureAdminModule("customers");
+  return <AdminCustomersContent />;
 }

@@ -57,6 +57,70 @@ export function resolveShiftEndDate(
   return startDate;
 }
 
+function padClock(value: number): string {
+  return String(value).padStart(2, "0");
+}
+
+export function parseClockToMinutes(time: string): number {
+  const [hoursRaw, minutesRaw] = time.split(":");
+  const hours = Number(hoursRaw);
+  const minutes = Number(minutesRaw);
+  if (
+    !Number.isFinite(hours) ||
+    !Number.isFinite(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    return 9 * 60;
+  }
+  return hours * 60 + minutes;
+}
+
+export function minutesToClock(totalMinutes: number): string {
+  const normalized = ((totalMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  const hours = Math.floor(normalized / 60);
+  const minutes = normalized % 60;
+  return `${padClock(hours)}:${padClock(minutes)}`;
+}
+
+/**
+ * Build a DayShiftEntry from start clock + duration hours.
+ * Exact 24h → same clock next day (overnight via endTime <= startTime).
+ */
+export function entryFromStartAndDurationHours(
+  startTime: string,
+  durationHours: number,
+): { startTime: string; endTime: string } {
+  const safeHours = Math.max(0.5, durationHours);
+  const startMinutes = parseClockToMinutes(startTime);
+  const endMinutes = startMinutes + Math.round(safeHours * 60);
+  const endTime = minutesToClock(endMinutes);
+  return { startTime: minutesToClock(startMinutes), endTime };
+}
+
+/** Duration in hours for a shift entry (overnight spans midnight). */
+export function durationHoursForEntry(entry: {
+  startTime: string;
+  endTime: string;
+}): number {
+  const start = parseClockToMinutes(entry.startTime);
+  const end = parseClockToMinutes(entry.endTime);
+  if (end <= start) {
+    return (end + 24 * 60 - start) / 60;
+  }
+  return (end - start) / 60;
+}
+
+/** Round "now" clock up to the next 30 minutes (admin quick-start). */
+export function roundUpClockToHalfHour(time: string): string {
+  const minutes = parseClockToMinutes(time);
+  const rounded = Math.ceil(minutes / 30) * 30;
+  if (rounded >= 24 * 60) return "23:30";
+  return minutesToClock(rounded);
+}
+
 export function buildShiftWindow(
   startDate: string,
   startTime: string,

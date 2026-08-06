@@ -16,7 +16,7 @@ export function StaffFormSection({
   return (
     <section
       className={cn(
-        "rounded-2xl border border-border/50 bg-card p-6 shadow-sm sm:p-8",
+        "rounded-2xl border border-border/50 bg-card p-4 shadow-sm sm:p-6 lg:p-8",
         className,
       )}
     >

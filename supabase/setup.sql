@@ -103,8 +103,9 @@ create table if not exists public.push_subscriptions (
   p256dh text not null,
   auth text not null,
   audience text not null default 'admin'
-    check (audience in ('admin', 'staff')),
+    check (audience in ('admin', 'staff', 'room')),
   staff_id uuid references public.staff (id) on delete cascade,
+  room_id uuid references public.rooms (id) on delete set null,
   user_agent text,
   created_at timestamptz not null default now()
 );

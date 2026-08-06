@@ -105,6 +105,33 @@ export async function GET(request: Request) {
       });
     }
 
+    const shiftStartMs = new Date(shiftStartsAt).getTime();
+    const shiftEndMs = new Date(shiftEndsAt).getTime();
+    const isToday = date === todayDateInZone(timeZone, now);
+
+    if (!(shiftEndMs > shiftStartMs)) {
+      return NextResponse.json({
+        slots: [],
+        booked: [],
+        shiftStartsAt,
+        shiftEndsAt,
+        date,
+        reason: "No shift hours configured for this day.",
+      });
+    }
+
+    if (isToday && shiftEndMs <= now.getTime()) {
+      return NextResponse.json({
+        slots: [],
+        booked: [],
+        shiftStartsAt,
+        shiftEndsAt,
+        date,
+        reason:
+          "This staff member's shift has already ended for today. Choose another staff or date.",
+      });
+    }
+
     const { data: bookings, error: bookingsError } = await supabase
       .from("bookings")
       .select("id, starts_at, ends_at, customer_name, status")
@@ -131,7 +158,7 @@ export async function GET(request: Request) {
       })),
       {
         timeZone,
-        now: date === todayDateInZone(timeZone, now) ? now : undefined,
+        now: isToday ? now : undefined,
         anchorDate: shiftContext?.anchorDate,
       },
     );
@@ -149,6 +176,19 @@ export async function GET(request: Request) {
         : `${formatShiftDateTime(shiftContext.shiftStartsAt, timeZone)} → ${formatShiftDateTime(shiftContext.shiftEndsAt, timeZone)}`
       : `${formatShiftDateTime(shiftStartsAt, timeZone)} → ${formatShiftDateTime(shiftEndsAt, timeZone)}`;
 
+    let reason: string | null = null;
+    if (slots.length === 0) {
+      const remainingMs = shiftEndMs - Math.max(shiftStartMs, now.getTime());
+      if (isToday && remainingMs < durationMinutes * 60_000) {
+        reason =
+          "Not enough time left in this shift for the selected service. Choose a shorter service, another staff, or another date.";
+      } else if (bookingRows.length > 0) {
+        reason = "All remaining times in this shift are already booked.";
+      } else {
+        reason = "No open times left in this availability window.";
+      }
+    }
+
     return NextResponse.json({
       slots,
       booked,
@@ -157,10 +197,7 @@ export async function GET(request: Request) {
       date,
       timeZone,
       shiftLabel,
-      reason:
-        slots.length === 0
-          ? "No open times left in this availability window."
-          : null,
+      reason,
     });
   } catch (error) {
     if (error instanceof TenantContextError) {

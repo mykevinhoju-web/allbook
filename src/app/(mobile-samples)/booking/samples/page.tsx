@@ -36,6 +36,33 @@ const lightSamples = [
   },
 ] as const;
 
+const buttonColorSamples = [
+  {
+    number: 8,
+    title: "Sample 8 — Black + Burgundy",
+    description: "Background #111111 · Book Now #8B1E3F · white text.",
+    style: "Burgundy on black",
+  },
+  {
+    number: 9,
+    title: "Sample 9 — Wine Red",
+    description: "Book Now gradient #A1122F → #8B1E2D · white text.",
+    style: "Wine CTA",
+  },
+  {
+    number: 10,
+    title: "Sample 10 — Hot Pink",
+    description: "Deep hot-pink Book Now (#D81B60) · white text.",
+    style: "Hot pink CTA",
+  },
+  {
+    number: 11,
+    title: "Sample 11 — Devil Heart",
+    description: "Live layout · purple devil-heart icon Book Now button.",
+    style: "Devil heart CTA",
+  },
+] as const;
+
 const liveBooking = {
   href: "/booking",
   title: "Live booking",
@@ -64,7 +91,8 @@ function SampleLink({
 }: {
   sample:
     | (typeof lightSamples)[number]
-    | (typeof darkSamples)[number];
+    | (typeof darkSamples)[number]
+    | (typeof buttonColorSamples)[number];
   dark?: boolean;
 }) {
   const isPink = "pink" in sample && sample.pink;
@@ -168,6 +196,15 @@ export default function BookingSamplesIndexPage() {
             Light & clean
           </p>
           {lightSamples.map((sample) => (
+            <SampleLink key={sample.number} sample={sample} />
+          ))}
+        </div>
+
+        <div className="mt-8 space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Book Now color options
+          </p>
+          {buttonColorSamples.map((sample) => (
             <SampleLink key={sample.number} sample={sample} />
           ))}
         </div>

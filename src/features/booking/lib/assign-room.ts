@@ -11,10 +11,14 @@ export async function assignAvailableRoom(
 ): Promise<string | null> {
   const { data: rooms } = await supabase
     .from("rooms")
-    .select("id")
+    .select("id, sort_order, name")
     .eq("tenant_id", tenantId)
     .eq("is_active", true)
-    .order("sort_order", { ascending: true });
+    // sort_order is the room priority (lower = higher priority).
+    // Secondary ordering makes selection deterministic if sort_order is duplicated.
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true })
+    .order("id", { ascending: true });
 
   if (!rooms?.length) {
     return null;

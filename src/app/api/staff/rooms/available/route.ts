@@ -11,7 +11,7 @@ import { StaffAuthError, requireStaffSession } from "@/lib/server/require-staff-
 export async function GET(request: Request) {
   try {
     const tenant = await requireTenantFromRequest(request);
-    const session = await requireStaffSession(tenant.id);
+    const session = await requireStaffSession(tenant.id, request);
     const { searchParams } = new URL(request.url);
     const bookingId = searchParams.get("bookingId");
 

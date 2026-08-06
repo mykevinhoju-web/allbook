@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Zap } from "lucide-react";
 
-import { AppButton } from "@/components/common";
 import { cn } from "@/lib/utils";
 
 import {
@@ -16,7 +14,10 @@ import {
   slotToIso,
 } from "../../lib/compact-time-picker-utils";
 import { bookingCustomerTheme as customerTheme } from "../../lib/booking-customer-theme";
-import { formatAmPmTime, isoToDatetimeLocal } from "../../lib/schedule-utils";
+import {
+  formatScheduleDate,
+  isoToDatetimeLocal,
+} from "../../lib/schedule-utils";
 import type { BookingTimeSlotOption } from "./booking-form-sheet";
 
 interface BookingCompactTimePickerProps {
@@ -30,41 +31,54 @@ interface BookingCompactTimePickerProps {
   hint?: string | null;
   disabled?: boolean;
   emptyMessage?: string;
-  /** Pick time immediately on minute select (staff quick-add). */
+  /** @deprecated Kept for callers; minute tap always commits the time. */
   instantSelect?: boolean;
   roomPreview?: string | null;
   variant?: "admin" | "customer";
 }
 
-function IosSectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-      {children}
-    </p>
-  );
-}
+const adminTimeTheme = {
+  label:
+    "block text-xs font-semibold uppercase tracking-wider text-muted-foreground",
+  emptyState:
+    "rounded-2xl border border-border/40 bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground",
+} as const;
 
-function SelectField({
+function TimeSelect({
   value,
   onChange,
   disabled,
+  "aria-label": ariaLabel,
   children,
   className,
+  accent,
 }: {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  "aria-label": string;
   children: React.ReactNode;
   className?: string;
+  accent?: "admin" | "customer";
 }) {
+  const filled = Boolean(value);
+
   return (
     <select
+      aria-label={ariaLabel}
       value={value}
       disabled={disabled}
       onChange={(event) => onChange(event.target.value)}
       className={cn(
-        "h-11 min-w-0 flex-1 appearance-none rounded-xl border border-border/60 bg-background px-3 text-sm font-semibold tabular-nums shadow-sm",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30",
+        "h-12 min-w-0 flex-1 appearance-none rounded-xl border bg-background px-3 text-sm font-semibold tabular-nums shadow-sm",
+        "focus-visible:outline-none focus-visible:ring-2",
+        accent === "customer" && "h-[3.25rem] text-[15px]",
+        filled
+          ? accent === "customer"
+            ? "border-[#8A6A3A] font-semibold text-stone-900 focus-visible:ring-[#8A6A3A]/30"
+            : "border-primary text-foreground focus-visible:ring-ring/30"
+          : "border-border/60 text-muted-foreground focus-visible:ring-ring/30",
+        accent === "customer" && filled && "bg-[#8A6A3A]/5",
         className,
       )}
     >
@@ -84,17 +98,16 @@ export function BookingCompactTimePicker({
   hint = null,
   disabled = false,
   emptyMessage = "No open slots available.",
-  instantSelect = false,
   roomPreview = null,
   variant = "admin",
 }: BookingCompactTimePickerProps) {
-  const [showMoreTimes, setShowMoreTimes] = useState(false);
+  const theme = variant === "customer" ? customerTheme : adminTimeTheme;
   const hourGroups = useMemo(
     () => buildCompactHourGroups(slotOptions, timeZone, date),
     [slotOptions, timeZone, date],
   );
 
-  const [hourKey, setHourKey] = useState<string>("");
+  const [hourKey, setHourKey] = useState("");
 
   useEffect(() => {
     if (!selectedValue) return;
@@ -103,12 +116,11 @@ export function BookingCompactTimePicker({
   }, [selectedValue, slotOptions, timeZone, date]);
 
   useEffect(() => {
-    if (hourKey || hourGroups.length === 0) return;
-    const fromSelection = selectedValue
-      ? findHourKeyForValue(slotOptions, selectedValue, timeZone, date)
-      : null;
-    setHourKey(fromSelection ?? hourGroups[0]?.key ?? "");
-  }, [hourGroups, hourKey, selectedValue, slotOptions, timeZone, date]);
+    if (!selectedValue && hourKey) {
+      const stillValid = hourGroups.some((group) => group.key === hourKey);
+      if (!stillValid) setHourKey("");
+    }
+  }, [hourGroups, hourKey, selectedValue]);
 
   const activeHour = hourGroups.find((group) => group.key === hourKey);
   const minuteOptions = useMemo(
@@ -116,16 +128,10 @@ export function BookingCompactTimePicker({
     [activeHour, date, timeZone],
   );
 
-  const selectedIso = selectedValue
-    ? slotToIso(date, selectedValue)
-    : minuteOptions.find((option) => option.value)?.value ?? "";
-
+  const selectedIso = selectedValue ? slotToIso(date, selectedValue) : "";
   const selectedMinute = selectedIso
     ? isoToDatetimeLocalSlice(selectedIso, timeZone).minute
     : "";
-
-  const nextSlot = slotOptions[0];
-  const chipSlots = slotOptions.slice(0, 8);
 
   const endPreview = selectedIso
     ? formatCompactEndTime(selectedIso, durationMinutes, timeZone)
@@ -135,35 +141,56 @@ export function BookingCompactTimePicker({
     : null;
   const activeRoom =
     roomPreview ??
-    minuteOptions.find((option) => option.minute === selectedMinute)
-      ?.suggestedRoomName ??
-    slotOptions.find((slot) => slotToIso(date, slot.value) === selectedIso)
-      ?.suggestedRoomName ??
+    (selectedIso
+      ? minuteOptions.find((option) => option.minute === selectedMinute)
+          ?.suggestedRoomName ??
+        slotOptions.find((slot) => slotToIso(date, slot.value) === selectedIso)
+          ?.suggestedRoomName
+      : null) ??
     null;
 
   const handleHourChange = (nextHourKey: string) => {
     setHourKey(nextHourKey);
-    if (instantSelect) return;
-    const group = hourGroups.find((item) => item.key === nextHourKey);
-    const firstMinute = minutesForHourGroup(group, date, timeZone)[0];
-    if (firstMinute) {
-      onSelect(firstMinute.value);
-    } else {
+
+    if (!nextHourKey) {
       onSelect("");
+      return;
     }
+
+    const group = hourGroups.find((item) => item.key === nextHourKey);
+    const minutes = minutesForHourGroup(group, date, timeZone);
+
+    // On-the-hour (:00) — or a single available minute — confirms immediately.
+    const autoPick =
+      minutes.find((option) => option.minute === "00") ??
+      (minutes.length === 1 ? minutes[0] : undefined);
+
+    onSelect(autoPick?.value ?? "");
   };
 
   const handleMinuteChange = (minute: string) => {
+    if (!minute || !hourKey) {
+      onSelect("");
+      return;
+    }
+
     const option = minuteOptions.find((item) => item.minute === minute);
-    if (option) onSelect(option.value);
+    if (option) {
+      onSelect(option.value);
+      return;
+    }
+
+    onSelect("");
   };
 
   if (disabled) {
     return (
       <section>
-        <IosSectionLabel>Time · {formatDurationSummary(durationMinutes)}</IosSectionLabel>
-        <div className="rounded-2xl border border-border/40 bg-card px-4 py-6 text-center shadow-soft">
-          <p className="text-sm text-muted-foreground">{hint ?? emptyMessage}</p>
+        <p className={cn(theme.label, "mb-2 px-0.5")}>
+          Time · {formatDurationSummary(durationMinutes)}
+        </p>
+        <div className={cn(theme.emptyState, "py-4")}>
+          <p>{hint ?? emptyMessage}</p>
         </div>
       </section>
     );
@@ -172,10 +199,10 @@ export function BookingCompactTimePicker({
   if (loading) {
     return (
       <section>
-        <IosSectionLabel>Time · {formatDurationSummary(durationMinutes)}</IosSectionLabel>
-        <div className="rounded-2xl border border-border/40 bg-card px-4 py-6 text-center shadow-soft">
-          <p className="text-sm text-muted-foreground">Loading times…</p>
-        </div>
+        <p className={cn(theme.label, "mb-2 px-0.5")}>
+          Time · {formatDurationSummary(durationMinutes)}
+        </p>
+        <div className={cn(theme.emptyState, "py-4")}>Loading times…</div>
       </section>
     );
   }
@@ -183,143 +210,150 @@ export function BookingCompactTimePicker({
   if (slotOptions.length === 0) {
     return (
       <section>
-        <IosSectionLabel>Time · {formatDurationSummary(durationMinutes)}</IosSectionLabel>
-        <div className="rounded-2xl border border-border/40 bg-card px-4 py-6 text-center shadow-soft">
-          <p className="text-sm text-muted-foreground">{hint ?? emptyMessage}</p>
+        <p className={cn(theme.label, "mb-2 px-0.5")}>
+          Time · {formatDurationSummary(durationMinutes)}
+        </p>
+        <div
+          className={cn(
+            theme.emptyState,
+            "border-amber-200 bg-amber-50 py-4 text-amber-900",
+          )}
+        >
+          <p>{hint ?? emptyMessage}</p>
         </div>
       </section>
     );
   }
 
   return (
-    <section className="space-y-3">
-      <IosSectionLabel>Time · {formatDurationSummary(durationMinutes)}</IosSectionLabel>
+    <section className="space-y-3.5">
+      <p className={cn(theme.label, "px-0.5")}>
+        Time · {formatDurationSummary(durationMinutes)}
+      </p>
 
-      {nextSlot ? (
-        <AppButton
-          type="button"
-          variant="outline"
-          className={cn(
-            "h-11 w-full justify-start gap-2 rounded-2xl text-left text-sm font-medium",
-            variant === "customer"
-              ? customerTheme.goldNextSlot
-              : "border-primary/30 bg-primary/5",
-          )}
-          onClick={() => onSelect(slotToIso(date, nextSlot.value))}
-        >
-          <Zap
+      <div
+        className={cn(
+          "rounded-2xl border border-border/40 bg-card px-4 py-4 shadow-soft",
+          variant === "customer" && "border-stone-200/80 px-4 py-4.5",
+        )}
+      >
+        <div className="mb-3 flex items-baseline justify-between gap-2">
+          <p
             className={cn(
-              "size-4 shrink-0",
-              variant === "customer" ? customerTheme.goldAccent : "text-primary",
+              "text-xs font-medium text-muted-foreground",
+              variant === "customer" && "font-normal text-stone-500",
             )}
-          />
-          <span className="truncate">
-            Next available: {formatAmPmTime(slotToIso(date, nextSlot.value))}
-            {nextSlot.suggestedRoomName ? ` · ${nextSlot.suggestedRoomName}` : ""}
+          >
+            Service start
+          </p>
+          <p
+            className={cn(
+              "text-[11px] tabular-nums text-muted-foreground",
+              variant === "customer" && "font-normal text-stone-500",
+            )}
+          >
+            {formatScheduleDate(`${date}T12:00:00`)}
+          </p>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <TimeSelect
+            aria-label="Hour"
+            value={hourKey}
+            onChange={handleHourChange}
+            accent={variant}
+          >
+            <option value="">Hour</option>
+            {hourGroups.map((group) => (
+              <option key={group.key} value={group.key}>
+                {group.hourLabel}
+              </option>
+            ))}
+          </TimeSelect>
+          <span
+            className={cn(
+              "text-lg font-semibold text-muted-foreground",
+              variant === "customer" && "text-stone-400",
+            )}
+          >
+            :
           </span>
-        </AppButton>
-      ) : null}
+          <TimeSelect
+            aria-label="Minute"
+            value={selectedMinute}
+            onChange={handleMinuteChange}
+            disabled={!hourKey}
+            accent={variant}
+            className="max-w-[6.5rem]"
+          >
+            <option value="">{hourKey ? "Min" : "—"}</option>
+            {minuteOptions.map((option) => (
+              <option key={option.value} value={option.minute}>
+                {option.minute}
+              </option>
+            ))}
+          </TimeSelect>
+        </div>
 
-      {variant === "customer" && !showMoreTimes ? (
-        <div className="overflow-hidden rounded-2xl border border-border/40 bg-card shadow-soft">
-          <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-4">
-            {chipSlots.map((slot) => {
-              const iso = slotToIso(date, slot.value);
-              const selected = selectedIso === iso;
-              return (
-                <button
-                  key={slot.value}
-                  type="button"
-                  onClick={() => onSelect(iso)}
-                  className={cn(
-                    "rounded-xl px-2 py-2.5 text-sm font-semibold tabular-nums transition",
-                    selected
-                      ? variant === "customer"
-                        ? customerTheme.goldChipSelected
-                        : "bg-primary text-primary-foreground"
-                      : variant === "customer"
-                        ? customerTheme.goldChipIdle
-                        : "bg-muted/50 hover:bg-muted",
-                  )}
-                >
-                  {formatAmPmTime(iso)}
-                </button>
-              );
-            })}
-          </div>
-          {slotOptions.length > chipSlots.length ? (
-            <button
-              type="button"
+        <div
+          className={cn(
+            "mt-4 rounded-xl px-4 py-3.5 text-center transition",
+            selectedIso && endPreview
+              ? variant === "customer"
+                ? "bg-[#8A6A3A]/10 ring-1 ring-[#8A6A3A]/20"
+                : "bg-primary/10"
+              : "bg-muted/40",
+          )}
+        >
+          {selectedIso && startPreview && endPreview ? (
+            <>
+              <p
+                className={cn(
+                  "text-lg font-semibold tabular-nums tracking-tight",
+                  variant === "customer"
+                    ? "text-xl font-bold text-stone-900"
+                    : "text-foreground",
+                )}
+              >
+                {startPreview} – {endPreview}
+              </p>
+              <p
+                className={cn(
+                  "mt-1 text-xs text-muted-foreground",
+                  variant === "customer" &&
+                    "font-normal leading-relaxed text-stone-500",
+                )}
+              >
+                {formatScheduleDate(selectedIso)} ·{" "}
+                {formatDurationSummary(durationMinutes)}
+                {activeRoom ? ` · ${activeRoom}` : ""}
+              </p>
+            </>
+          ) : (
+            <p
               className={cn(
-                "w-full border-t border-border/40 py-3 text-sm font-medium",
-                variant === "customer" ? customerTheme.goldAccent : "text-primary",
+                "text-sm text-muted-foreground",
+                variant === "customer" &&
+                  "font-normal leading-relaxed text-stone-500",
               )}
-              onClick={() => setShowMoreTimes(true)}
             >
-              More times
-            </button>
-          ) : null}
+              {hourKey
+                ? "Select a minute (or keep :00)"
+                : "Select hour — on the hour confirms automatically"}
+            </p>
+          )}
         </div>
-      ) : null}
-
-      {variant === "admin" || showMoreTimes ? (
-        <div className="overflow-hidden rounded-2xl border border-border/40 bg-card shadow-soft">
-          <div className="space-y-4 px-4 py-4">
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">Service start</p>
-              <div className="flex items-center gap-2">
-                <SelectField
-                  value={hourKey}
-                  onChange={handleHourChange}
-                  className="min-w-[8.5rem]"
-                >
-                  {hourGroups.map((group) => (
-                    <option key={group.key} value={group.key}>
-                      {group.hourLabel}
-                    </option>
-                  ))}
-                </SelectField>
-                <span className="text-lg font-semibold text-muted-foreground">:</span>
-                <SelectField
-                  value={selectedMinute || minuteOptions[0]?.minute || ""}
-                  onChange={handleMinuteChange}
-                  className="min-w-[6.5rem]"
-                >
-                  {minuteOptions.map((option) => (
-                    <option key={option.value} value={option.minute}>
-                      {option.minute}
-                    </option>
-                  ))}
-                </SelectField>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 border-t border-border/40 pt-4 sm:grid-cols-2">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Service end</p>
-                <p className="mt-1 text-base font-semibold tabular-nums text-foreground">
-                  {endPreview ?? "—"}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Room</p>
-                <p className="mt-1 text-base font-semibold text-foreground">
-                  {activeRoom ?? "Auto-assign"}
-                </p>
-              </div>
-            </div>
-
-            {startPreview && endPreview ? (
-              <div className="rounded-xl bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                {startPreview} → {endPreview} ({formatDurationSummary(durationMinutes)})
-              </div>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
+      </div>
 
       {hint ? (
-        <p className="px-1 text-xs text-muted-foreground">{hint}</p>
+        <p
+          className={cn(
+            "px-1 text-xs text-muted-foreground",
+            variant === "customer" &&
+              "font-normal leading-relaxed text-stone-500",
+          )}
+        >
+          {hint}
+        </p>
       ) : null}
     </section>
   );

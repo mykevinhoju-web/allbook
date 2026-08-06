@@ -32,7 +32,6 @@ assert.ok(
   "after-midnight hour label includes next calendar day",
 );
 
-const eveningKey = groups[0]?.key ?? "";
 const eveningMinutes = minutesForHourGroup(groups[0], date, timeZone);
 assert.equal(eveningMinutes.length, 2, "two evening minute options");
 assert.equal(eveningMinutes[0]?.minute, "00");

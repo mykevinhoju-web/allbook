@@ -36,7 +36,7 @@ const getBookingStaffForTenant = unstable_cache(
     }
 
     const staffIds = staffRows?.map((row) => row.id) ?? [];
-    const photoByStaffId = new Map<string, string>();
+    const photosByStaffId = new Map<string, string[]>();
 
     if (staffIds.length > 0) {
       const { data: photoRows } = await supabase
@@ -46,9 +46,9 @@ const getBookingStaffForTenant = unstable_cache(
         .order("sort_order", { ascending: true });
 
       for (const photo of photoRows ?? []) {
-        if (!photoByStaffId.has(photo.staff_id)) {
-          photoByStaffId.set(photo.staff_id, photo.url);
-        }
+        const list = photosByStaffId.get(photo.staff_id) ?? [];
+        list.push(photo.url);
+        photosByStaffId.set(photo.staff_id, list);
       }
     }
 
@@ -60,6 +60,7 @@ const getBookingStaffForTenant = unstable_cache(
         .join("")
         .slice(0, 2)
         .toUpperCase();
+      const photos = photosByStaffId.get(row.id) ?? [];
 
       return {
         id: row.id,
@@ -70,7 +71,8 @@ const getBookingStaffForTenant = unstable_cache(
             ? attributes.introduction.trim().slice(0, 48)
             : null) ?? "Therapist",
         initials,
-        photoUrl: photoByStaffId.get(row.id) ?? "",
+        photoUrl: photos[0] ?? "",
+        photos,
         available: row.status === "active",
         daySchedule: parseDaySchedule(attributes.daySchedule),
         shiftPlan: parseShiftPlan(attributes.shiftPlan),
@@ -82,7 +84,7 @@ const getBookingStaffForTenant = unstable_cache(
 
     return { staff, currency };
   },
-  ["booking-staff-list"],
+  ["booking-staff-list-v2"],
   { revalidate: 30, tags: ["booking-staff"] },
 );
 

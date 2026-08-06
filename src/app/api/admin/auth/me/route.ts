@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createClient } from "@supabase/supabase-js";
 
-import type { Database } from "@/types/database";
+import { readCookieFromRequest } from "@/lib/cookies/read-request-cookie";
+import { createServiceSupabase } from "@/lib/supabase/service";
 import { requireTenantFromRequest, TenantContextError } from "@/lib/admin/tenant-context";
 import {
   getAdminSessionCookieName,
@@ -16,9 +15,8 @@ import {
 export async function GET(request: Request) {
   try {
     const tenant = await requireTenantFromRequest(request);
-    const cookieStore = await cookies();
 
-    const adminToken = cookieStore.get(getAdminSessionCookieName())?.value;
+    const adminToken = readCookieFromRequest(request, getAdminSessionCookieName());
     if (adminToken) {
       const admin = await verifyAdminSession(adminToken);
       if (admin && admin.tenantId === tenant.id) {
@@ -32,15 +30,11 @@ export async function GET(request: Request) {
       }
     }
 
-    const staffToken = cookieStore.get(getStaffSessionCookieName())?.value;
+    const staffToken = readCookieFromRequest(request, getStaffSessionCookieName());
     if (staffToken) {
       const staff = await verifyStaffSession(staffToken);
       if (staff && staff.tenantId === tenant.id) {
-        const supabase = createClient<Database>(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY ??
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        );
+        const supabase = createServiceSupabase();
 
         const { data } = await supabase
           .from("staff")

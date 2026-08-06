@@ -3,9 +3,11 @@ import { NextResponse } from "next/server";
 
 import {
   createServiceSupabase,
-  requireTenantFromRequest,
-  TenantContextError,
 } from "@/lib/admin/tenant-context";
+import {
+  handleAdminRouteError,
+  requireTenantAndAdminActor,
+} from "@/lib/admin/require-admin-api";
 
 const MAX_PHOTOS = 5;
 
@@ -14,7 +16,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const tenant = await requireTenantFromRequest(request);
+    const { tenant } = await requireTenantAndAdminActor(request);
     const { id: staffId } = await params;
     const supabase = createServiceSupabase();
 
@@ -108,10 +110,8 @@ export async function POST(
 
     return NextResponse.json({ photos: uploaded });
   } catch (error) {
-    if (error instanceof TenantContextError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
-    }
-
+    const guard = handleAdminRouteError(error);
+    if (guard) return guard;
     throw error;
   }
 }
@@ -121,7 +121,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const tenant = await requireTenantFromRequest(request);
+    const { tenant } = await requireTenantAndAdminActor(request);
     const { id: staffId } = await params;
     const { searchParams } = new URL(request.url);
     const photoId = searchParams.get("photoId");
@@ -157,14 +157,137 @@ export async function DELETE(
       return NextResponse.json({ error: error.message }, { status: 503 });
     }
 
+    const { data: remaining } = await supabase
+      .from("staff_photos")
+      .select("id")
+      .eq("tenant_id", tenant.id)
+      .eq("staff_id", staffId)
+      .order("sort_order", { ascending: true });
+
+    for (let index = 0; index < (remaining ?? []).length; index += 1) {
+      const row = remaining![index]!;
+      await supabase
+        .from("staff_photos")
+        .update({ sort_order: index })
+        .eq("id", row.id)
+        .eq("staff_id", staffId)
+        .eq("tenant_id", tenant.id);
+    }
+
     revalidateTag("booking-staff");
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    if (error instanceof TenantContextError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+    const guard = handleAdminRouteError(error);
+    if (guard) return guard;
+    throw error;
+  }
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { tenant } = await requireTenantAndAdminActor(request);
+    const { id: staffId } = await params;
+    const body = (await request.json()) as { photoIds?: unknown };
+
+    if (
+      !Array.isArray(body.photoIds) ||
+      body.photoIds.length === 0 ||
+      body.photoIds.some((id) => typeof id !== "string" || !id)
+    ) {
+      return NextResponse.json(
+        { error: "photoIds must be a non-empty string array." },
+        { status: 400 },
+      );
     }
 
+    const photoIds = body.photoIds as string[];
+    if (photoIds.length > MAX_PHOTOS) {
+      return NextResponse.json(
+        { error: `Maximum ${MAX_PHOTOS} photos per staff member.` },
+        { status: 400 },
+      );
+    }
+
+    if (new Set(photoIds).size !== photoIds.length) {
+      return NextResponse.json(
+        { error: "photoIds must be unique." },
+        { status: 400 },
+      );
+    }
+
+    const supabase = createServiceSupabase();
+
+    const { data: staff } = await supabase
+      .from("staff")
+      .select("id")
+      .eq("tenant_id", tenant.id)
+      .eq("id", staffId)
+      .maybeSingle();
+
+    if (!staff) {
+      return NextResponse.json({ error: "Staff not found." }, { status: 404 });
+    }
+
+    const { data: existingPhotos, error: listError } = await supabase
+      .from("staff_photos")
+      .select("id")
+      .eq("tenant_id", tenant.id)
+      .eq("staff_id", staffId);
+
+    if (listError) {
+      return NextResponse.json({ error: listError.message }, { status: 503 });
+    }
+
+    const existingIds = new Set((existingPhotos ?? []).map((photo) => photo.id));
+    if (
+      existingIds.size !== photoIds.length ||
+      photoIds.some((id) => !existingIds.has(id))
+    ) {
+      return NextResponse.json(
+        { error: "photoIds must match the staff member's photos." },
+        { status: 400 },
+      );
+    }
+
+    // Two-phase update avoids unique (staff_id, sort_order) collisions mid-swap.
+    for (let index = 0; index < photoIds.length; index += 1) {
+      const { error } = await supabase
+        .from("staff_photos")
+        .update({ sort_order: index + 1000 })
+        .eq("id", photoIds[index]!)
+        .eq("staff_id", staffId)
+        .eq("tenant_id", tenant.id);
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 503 });
+      }
+    }
+
+    for (let index = 0; index < photoIds.length; index += 1) {
+      const { error } = await supabase
+        .from("staff_photos")
+        .update({ sort_order: index })
+        .eq("id", photoIds[index]!)
+        .eq("staff_id", staffId)
+        .eq("tenant_id", tenant.id);
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 503 });
+      }
+    }
+
+    revalidateTag("booking-staff");
+
+    return NextResponse.json({
+      photos: photoIds.map((id, sortOrder) => ({ id, sortOrder })),
+    });
+  } catch (error) {
+    const guard = handleAdminRouteError(error);
+    if (guard) return guard;
     throw error;
   }
 }

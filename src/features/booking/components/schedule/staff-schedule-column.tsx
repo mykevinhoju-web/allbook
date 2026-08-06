@@ -14,6 +14,7 @@ interface StaffScheduleColumnProps {
   photoUrl?: string;
   bookings: AdminBooking[];
   currency?: string;
+  shiftLabel?: string | null;
   selected?: boolean;
   onSelect?: () => void;
 }
@@ -23,6 +24,7 @@ export function StaffScheduleColumn({
   photoUrl,
   bookings,
   currency = "AUD",
+  shiftLabel,
   selected,
   onSelect,
 }: StaffScheduleColumnProps) {
@@ -54,6 +56,12 @@ export function StaffScheduleColumn({
             {upcomingCount} today
           </span>
         </div>
+
+        {shiftLabel ? (
+          <p className="mt-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+            {shiftLabel}
+          </p>
+        ) : null}
 
         {nextBooking ? (
           <p className="mt-1 truncate text-sm text-muted-foreground">

@@ -11,7 +11,10 @@ export interface StaffMember {
 
 export type StaffStatus = "active" | "inactive" | "on_leave";
 
-export type StaffFilterStatus = "all" | StaffStatus;
+/** Live presence on the staff list (login / in-room), not employment status. */
+export type StaffPresence = "offline" | "online" | "in_service";
+
+export type StaffFilterStatus = "all" | StaffPresence;
 
 export interface StaffPhoto {
   id: string;
@@ -47,6 +50,10 @@ export interface StaffRecord {
   id: string;
   name: string;
   status: StaffStatus;
+  /** Login / in-service presence for admin list. */
+  presence?: StaffPresence;
+  currentRoomName?: string | null;
+  lastSeenAt?: string | null;
   attributes: StaffAttributes;
   workingDays: string[];
   workingHoursStart: string;
@@ -65,8 +72,13 @@ export interface AdminStaffRow {
   id: string;
   name: string;
   photoUrl?: string;
+  /** Employment status (form / schedule). */
   status: StaffStatus;
+  presence: StaffPresence;
+  currentRoomName: string | null;
   workingToday: boolean;
+  /** e.g. "9:00 AM – 9:00 PM" when working today */
+  shiftLabel: string | null;
   nextBooking: string | null;
 }
 
@@ -80,7 +92,6 @@ export interface StaffFormValues {
   languages: string[];
   experience: string;
   introduction: string;
-  loginId: string;
   password: string;
   shiftStartsAt: string;
   shiftEndsAt: string;

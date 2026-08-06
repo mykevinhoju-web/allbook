@@ -113,7 +113,10 @@ export function StaffCheckInSheet({
           body: JSON.stringify({ pin, roomId: selectedRoomId }),
         },
       );
-      const data = (await response.json()) as { error?: string };
+      const data = (await response.json()) as {
+        error?: string;
+        serviceWindowCapped?: boolean;
+      };
 
       if (!response.ok) {
         toast.error("Could not check in", { description: data.error });
@@ -121,7 +124,9 @@ export function StaffCheckInSheet({
       }
 
       toast.success("Checked in", {
-        description: rooms.find((room) => room.id === selectedRoomId)?.name,
+        description: data.serviceWindowCapped
+          ? `${rooms.find((room) => room.id === selectedRoomId)?.name ?? "Room"} · ends before next booking`
+          : rooms.find((room) => room.id === selectedRoomId)?.name,
       });
       onOpenChange(false);
       onCheckedIn?.();

@@ -1,6 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
+import { enAU } from "date-fns/locale";
 import { CalendarIcon } from "lucide-react";
 import { useState } from "react";
 
@@ -51,11 +52,12 @@ export function DatePicker({
         }
       >
         <CalendarIcon className="size-4" />
-        {value ? format(value, "PPP") : placeholder}
+        {value ? format(value, "PPP", { locale: enAU }) : placeholder}
       </PopoverTrigger>
       <PopoverContent className="w-auto rounded-xl p-0 shadow-soft-lg" align="start">
         <Calendar
           mode="single"
+          locale={enAU}
           selected={value}
           onSelect={(date) => {
             onChange?.(date);

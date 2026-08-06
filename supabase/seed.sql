@@ -10,7 +10,8 @@ insert into public.tenants (
   timezone,
   currency,
   locale,
-  is_active
+  is_active,
+  settings
 )
 values (
   'dayspa',
@@ -21,11 +22,19 @@ values (
   'Australia/Sydney',
   'AUD',
   'en-AU',
-  true
+  true,
+  jsonb_build_object(
+    'adminModules', jsonb_build_object(
+      'customers', false,
+      'gallery', false,
+      'settings', false
+    )
+  )
 )
 on conflict (slug) do update set
   name = excluded.name,
   display_name = excluded.display_name,
   tagline = excluded.tagline,
   primary_domain = excluded.primary_domain,
+  settings = coalesce(public.tenants.settings, '{}'::jsonb) || excluded.settings,
   updated_at = now();

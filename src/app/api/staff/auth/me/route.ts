@@ -1,29 +1,24 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createClient } from "@supabase/supabase-js";
 
-import type { Database } from "@/types/database";
+import { readCookieFromRequest } from "@/lib/cookies/read-request-cookie";
 import { requireTenantFromRequest, TenantContextError } from "@/lib/admin/tenant-context";
 import { getStaffSessionCookieName, verifyStaffSession } from "@/lib/staff-session";
+import { createServiceSupabase } from "@/lib/supabase/service";
 
 export async function GET(request: Request) {
   try {
     const tenant = await requireTenantFromRequest(request);
-    const cookieStore = await cookies();
-    const token = cookieStore.get(getStaffSessionCookieName())?.value;
+    const token = readCookieFromRequest(request, getStaffSessionCookieName());
     if (!token) {
-      return NextResponse.json({ staff: null });
+      return NextResponse.json({ user: null });
     }
 
     const payload = await verifyStaffSession(token);
     if (!payload || payload.role !== "staff" || payload.tenantId !== tenant.id) {
-      return NextResponse.json({ staff: null });
+      return NextResponse.json({ user: null });
     }
 
-    const supabase = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    );
+    const supabase = createServiceSupabase();
 
     const { data } = await supabase
       .from("staff")
@@ -32,14 +27,22 @@ export async function GET(request: Request) {
       .eq("id", payload.staffId)
       .maybeSingle();
 
+    if (!data) {
+      return NextResponse.json({ user: null });
+    }
+
     return NextResponse.json({
-      staff: data ? { id: data.id, name: data.name } : null,
+      user: {
+        role: "staff" as const,
+        loginId: payload.loginId,
+        name: data.name,
+        staffId: data.id,
+      },
     });
   } catch (error) {
     if (error instanceof TenantContextError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
-    return NextResponse.json({ staff: null });
+    return NextResponse.json({ user: null });
   }
 }
-

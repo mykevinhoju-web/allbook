@@ -2,28 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarPlus } from "lucide-react";
 
 import { AppButton, toast } from "@/components/common";
 import { Input } from "@/components/ui/input";
-import {
-  BookingFormSheet,
-  defaultBookingFormValues,
-  type BookingFormValues,
-} from "@/features/booking/components/schedule/booking-form-sheet";
 import { BookingCheckoutButton } from "@/features/booking/components/schedule/booking-checkout-button";
 import type { AdminBooking, AdminRoom } from "@/features/booking/types/admin-booking";
-import { useAdminAvailabilitySlots } from "@/features/booking/hooks/use-admin-availability-slots";
+import type { StaffRecord } from "@/features/staff/types";
 import {
-  getRoomAvailabilityAtTime,
-  toRoomSlotBookings,
-} from "@/features/booking/lib/room-availability";
-import {
-  resolveBookingStartsAt,
   formatAmPmTime,
-  isValidServiceDuration,
-  todayDateInputValue,
+  todayDateInZone,
 } from "@/features/booking/lib/schedule-utils";
+import { computeScheduleGridWindow } from "@/features/booking/lib/schedule-grid-utils";
 import {
   filterActiveRoomBookings,
   getCurrentRoomBooking,
@@ -31,10 +20,7 @@ import {
   isBookingUpcoming,
 } from "@/features/booking/lib/room-occupancy";
 import { useBookingRealtime } from "@/features/booking/lib/booking-schedule-realtime";
-import { useBookingAlerts } from "@/features/booking/context/booking-alert-provider";
-import { formatPriceFromCents } from "@/features/services";
-import type { ServiceOption } from "@/features/services";
-import type { StaffRecord } from "@/features/staff/types";
+import { fetchAdminApi } from "@/features/admin/lib/admin-api-client";
 import { useTenant } from "@/features/tenants";
 import { useNowTick } from "@/hooks/use-now-tick";
 import { cn } from "@/lib/utils";
@@ -46,41 +32,51 @@ function formatRange(startsAt: string, endsAt: string) {
 export function RoomsScheduleContent() {
   const tenant = useTenant();
   const now = useNowTick();
-  const { alertsEnabled, notifyBooking } = useBookingAlerts();
-  const [date, setDate] = useState(todayDateInputValue());
+  const today = todayDateInZone(tenant.settings.timezone, now);
+  const [date, setDate] = useState(() =>
+    todayDateInZone(tenant.settings.timezone),
+  );
   const [rooms, setRooms] = useState<AdminRoom[]>([]);
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
-  const [staff, setStaff] = useState<StaffRecord[]>([]);
-  const [serviceOptions, setServiceOptions] = useState<ServiceOption[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState<BookingFormValues>(defaultBookingFormValues);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [roomsResponse, bookingsResponse, staffResponse, optionsResponse] =
-        await Promise.all([
-          fetch("/api/admin/rooms"),
-          fetch(`/api/admin/bookings?date=${date}`),
-          fetch("/api/admin/staff"),
-          fetch("/api/admin/service-options"),
-        ]);
+      const timeZone = tenant.settings.timezone;
+      const now = new Date();
+
+      const [roomsResponse, staffResponse] = await Promise.all([
+        fetchAdminApi("/api/admin/rooms"),
+        fetchAdminApi("/api/admin/staff"),
+      ]);
 
       const roomsData = (await roomsResponse.json()) as {
         rooms?: AdminRoom[];
         error?: string;
       };
+
+      const staffData = (await staffResponse.json()) as { staff?: StaffRecord[] };
+      const staffMembers = staffData.staff ?? [];
+      const gridWindow = computeScheduleGridWindow(
+        staffMembers,
+        date,
+        timeZone,
+        now,
+      );
+
+      const bookingsUrl = gridWindow
+        ? `/api/admin/bookings?from=${encodeURIComponent(
+            new Date(gridWindow.startMs).toISOString(),
+          )}&to=${encodeURIComponent(
+            new Date(gridWindow.endMs).toISOString(),
+          )}`
+        : `/api/admin/bookings?date=${date}`;
+
+      const bookingsResponse = await fetchAdminApi(bookingsUrl);
       const bookingsData = (await bookingsResponse.json()) as {
         bookings?: AdminBooking[];
         error?: string;
-      };
-      const staffData = (await staffResponse.json()) as {
-        staff?: StaffRecord[];
-      };
-      const optionsData = (await optionsResponse.json()) as {
-        options?: ServiceOption[];
       };
 
       if (!roomsResponse.ok) {
@@ -92,8 +88,6 @@ export function RoomsScheduleContent() {
 
       setRooms((roomsData.rooms ?? []).filter((room) => room.isActive));
       setBookings(bookingsData.bookings ?? []);
-      setStaff((staffData.staff ?? []).filter((member) => member.status === "active"));
-      setServiceOptions(optionsData.options ?? []);
     } catch (error) {
       toast.error("Could not load room schedule", {
         description: error instanceof Error ? error.message : "Please try again.",
@@ -101,7 +95,7 @@ export function RoomsScheduleContent() {
     } finally {
       setLoading(false);
     }
-  }, [date]);
+  }, [date, tenant.settings.timezone]);
 
   useEffect(() => {
     void load();
@@ -133,163 +127,17 @@ export function RoomsScheduleContent() {
     return map;
   }, [activeBookings]);
 
-  const defaultDuration =
-    serviceOptions[0]?.durationMinutes != null
-      ? String(serviceOptions[0].durationMinutes)
-      : "";
-
-  const allRoomBookings = useMemo(
-    () => toRoomSlotBookings(activeBookings),
-    [activeBookings],
-  );
-
-  const selectedRoomBookings = useMemo(
-    () =>
-      allRoomBookings
-        .filter((booking) => booking.roomId === form.roomId)
-        .map((booking) => ({
-          startsAt: booking.startsAt,
-          endsAt: booking.endsAt,
-        })),
-    [allRoomBookings, form.roomId],
-  );
-
-  const { timeSlotOptions, timeSlotsLoading, timeSlotsHint } =
-    useAdminAvailabilitySlots({
-      staffId: form.staffId,
-      durationMinutes: form.durationMinutes,
-      date,
-      timeZone: tenant.settings.timezone,
-      roomId: form.roomId,
-      roomBookings: selectedRoomBookings,
-      rooms: rooms.map((room) => ({ id: room.id, name: room.name })),
-      allRoomBookings,
-    });
-
-  const resolvedStartsAt = useMemo(() => {
-    if (!form.startsAt) return null;
-    try {
-      return resolveBookingStartsAt(
-        date,
-        form.startsAt,
-        tenant.settings.timezone,
-      );
-    } catch {
-      return null;
-    }
-  }, [date, form.startsAt, tenant.settings.timezone]);
-
-  const roomStatuses = useMemo(() => {
-    if (!resolvedStartsAt || !form.durationMinutes || !form.roomId) {
-      return undefined;
-    }
-
-    return getRoomAvailabilityAtTime(
-      rooms.map((room) => ({ id: room.id, name: room.name })),
-      resolvedStartsAt,
-      Number(form.durationMinutes),
-      allRoomBookings,
-    );
-  }, [resolvedStartsAt, form.durationMinutes, form.roomId, rooms, allRoomBookings]);
-
-  const openCreateForm = (roomId: string) => {
-    setForm({
-      ...defaultBookingFormValues,
-      roomId,
-      durationMinutes: defaultDuration,
-    });
-    setShowCreate(true);
-  };
-
-  const createBooking = async () => {
-    if (!form.staffId || !form.startsAt || !form.durationMinutes) {
-      toast.error("Staff, start time, and service are required");
-      return;
-    }
-
-    if (!form.customerName.trim() || !form.customerPhone.trim()) {
-      toast.error("Customer name and phone are required");
-      return;
-    }
-
-    if (!form.roomId) {
-      toast.error("Room is required");
-      return;
-    }
-
-    setSubmitting(true);
-
-    try {
-      const durationMinutes = Number(form.durationMinutes);
-      const allowed = serviceOptions.map((option) => option.durationMinutes);
-
-      if (!isValidServiceDuration(durationMinutes, allowed)) {
-        toast.error("Select a valid service duration");
-        return;
-      }
-
-      const response = await fetch("/api/admin/bookings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          staffId: form.staffId,
-          startsAt: resolveBookingStartsAt(
-            date,
-            form.startsAt,
-            tenant.settings.timezone,
-          ),
-          durationMinutes,
-          roomId: form.roomId,
-          customerName: form.customerName.trim(),
-          customerPhone: form.customerPhone.trim(),
-          customerPostcode: form.customerPostcode.trim() || undefined,
-          customerEmail: form.customerEmail.trim() || undefined,
-        }),
-      });
-
-      const data = (await response.json()) as {
-        booking?: AdminBooking;
-        error?: string;
-      };
-
-      if (!response.ok) {
-        toast.error("Could not create booking", { description: data.error });
-        return;
-      }
-
-      const priceLabel = data.booking?.priceCents
-        ? formatPriceFromCents(
-            data.booking.priceCents,
-            tenant.settings.currency,
-          )
-        : null;
-
-      toast.success("Booking created", {
-        description: [priceLabel, data.booking?.roomName]
-          .filter(Boolean)
-          .join(" · "),
-      });
-
-      if (alertsEnabled && data.booking?.staffName) {
-        notifyBooking(data.booking.staffName);
-      }
-
-      setShowCreate(false);
-      setForm(defaultBookingFormValues);
-      void load();
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Room schedule</h1>
           <p className="text-sm text-muted-foreground">
-            Past bookings clear automatically. Staff check out when they leave a
-            room.{" "}
+            View-only room occupancy. Create bookings from{" "}
+            <Link href="/admin/bookings" className="text-primary underline">
+              Bookings
+            </Link>
+            .{" "}
             <Link href="/admin/rooms" className="text-primary underline">
               Manage rooms
             </Link>
@@ -300,10 +148,18 @@ export function RoomsScheduleContent() {
           <Input
             type="date"
             value={date}
-            onChange={(event) => setDate(event.target.value)}
-            className="h-10 rounded-xl"
+            min={today}
+            onChange={(event) => {
+              const next = event.target.value;
+              setDate(next < today ? today : next);
+            }}
+            className="h-11 rounded-xl"
           />
-          <AppButton type="button" className="rounded-xl" onClick={() => void load()}>
+          <AppButton
+            type="button"
+            className="h-11 rounded-xl"
+            onClick={() => void load()}
+          >
             Refresh
           </AppButton>
         </div>
@@ -336,29 +192,18 @@ export function RoomsScheduleContent() {
                   : "border-border/60",
               )}
             >
-              <div className="mb-3 flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-semibold">{room.name}</p>
-                  <p
-                    className={cn(
-                      "text-xs font-medium",
-                      currentBooking
-                        ? "text-amber-700 dark:text-amber-400"
-                        : "text-emerald-700 dark:text-emerald-400",
-                    )}
-                  >
-                    {currentBooking ? "In use now" : "Available"}
-                  </p>
-                </div>
-                <AppButton
-                  type="button"
-                  size="sm"
-                  className="rounded-xl"
-                  onClick={() => openCreateForm(room.id)}
+              <div className="mb-3">
+                <p className="font-semibold">{room.name}</p>
+                <p
+                  className={cn(
+                    "text-xs font-medium",
+                    currentBooking
+                      ? "text-amber-700 dark:text-amber-400"
+                      : "text-emerald-700 dark:text-emerald-400",
+                  )}
                 >
-                  <CalendarPlus className="size-4" />
-                  Book
-                </AppButton>
+                  {currentBooking ? "In use now" : "Available"}
+                </p>
               </div>
 
               {isEmpty ? (
@@ -408,32 +253,6 @@ export function RoomsScheduleContent() {
           );
         })}
       </div>
-
-      <BookingFormSheet
-        open={showCreate}
-        onOpenChange={setShowCreate}
-        title="Book room"
-        date={date}
-        timeZone={tenant.settings.timezone}
-        staffOptions={staff.map((member) => ({
-          id: member.id,
-          name: member.name,
-        }))}
-        roomOptions={rooms.map((room) => ({
-          id: room.id,
-          name: room.name,
-        }))}
-        serviceOptions={serviceOptions}
-        currency={tenant.settings.currency}
-        timeSlotOptions={timeSlotOptions}
-        timeSlotsLoading={timeSlotsLoading}
-        timeSlotsHint={timeSlotsHint}
-        roomStatuses={roomStatuses}
-        values={form}
-        onChange={setForm}
-        onSubmit={() => void createBooking()}
-        submitting={submitting}
-      />
     </div>
   );
 }

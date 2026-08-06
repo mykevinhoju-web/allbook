@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { enAU } from "date-fns/locale"
 import {
   DayPicker,
   getDefaultClassNames,
@@ -8,6 +9,7 @@ import {
   type Locale,
 } from "react-day-picker"
 
+import { DISPLAY_LOCALE } from "@/lib/display-locale"
 import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from "lucide-react"
@@ -18,7 +20,7 @@ function Calendar({
   showOutsideDays = true,
   captionLayout = "label",
   buttonVariant = "ghost",
-  locale,
+  locale = enAU,
   formatters,
   components,
   ...props
@@ -40,7 +42,7 @@ function Calendar({
       locale={locale}
       formatters={{
         formatMonthDropdown: (date) =>
-          date.toLocaleString(locale?.code, { month: "short" }),
+          date.toLocaleString(locale?.code ?? DISPLAY_LOCALE, { month: "short" }),
         ...formatters,
       }}
       classNames={{
@@ -198,7 +200,7 @@ function CalendarDayButton({
     <Button
       variant="ghost"
       size="icon"
-      data-day={day.date.toLocaleDateString(locale?.code)}
+      data-day={day.date.toLocaleDateString(locale?.code ?? DISPLAY_LOCALE)}
       data-selected-single={
         modifiers.selected &&
         !modifiers.range_start &&

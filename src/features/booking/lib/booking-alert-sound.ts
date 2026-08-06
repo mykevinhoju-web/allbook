@@ -113,9 +113,21 @@ export async function playBookingChime() {
   await playAlertOnce(context);
 }
 
+/** Longer alarm for service time ending (room tablet + admin). */
+export async function playServiceEndAlarm(repeats = 3) {
+  const context = await getAudioContext();
+  for (let i = 0; i < repeats; i += 1) {
+    await playAlertOnce(context);
+    if (i < repeats - 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 450));
+    }
+  }
+  vibrateForBooking();
+}
+
 export function vibrateForBooking() {
   if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-    navigator.vibrate(200);
+    navigator.vibrate([200, 100, 200, 100, 400]);
   }
 }
 

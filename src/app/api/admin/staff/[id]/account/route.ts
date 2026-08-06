@@ -3,19 +3,23 @@ import { NextResponse } from "next/server";
 
 import {
   createServiceSupabase,
-  requireTenantFromRequest,
-  TenantContextError,
 } from "@/lib/admin/tenant-context";
+import {
+  handleAdminRouteError,
+  requireTenantAndAdminActor,
+} from "@/lib/admin/require-admin-api";
+import {
+  internalStaffLoginId,
+  isPinUsedByOtherStaff,
+} from "@/lib/staff-pin-auth";
 import { validateStaffPin } from "@/lib/staff-pin";
-
-const LOGIN_ID_PATTERN = /^[a-zA-Z0-9._-]{3,32}$/;
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const tenant = await requireTenantFromRequest(request);
+    const { tenant } = await requireTenantAndAdminActor(request);
     const { id: staffId } = await params;
     const supabase = createServiceSupabase();
 
@@ -32,7 +36,7 @@ export async function GET(
 
     const { data: account, error } = await supabase
       .from("staff_accounts")
-      .select("login_id")
+      .select("id, pin")
       .eq("tenant_id", tenant.id)
       .eq("staff_id", staffId)
       .maybeSingle();
@@ -42,14 +46,12 @@ export async function GET(
     }
 
     return NextResponse.json({
-      loginId: account?.login_id ?? null,
       hasAccount: Boolean(account),
+      pin: account?.pin ?? null,
     });
   } catch (error) {
-    if (error instanceof TenantContextError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
-    }
-
+    const guard = handleAdminRouteError(error);
+    if (guard) return guard;
     throw error;
   }
 }
@@ -59,28 +61,14 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const tenant = await requireTenantFromRequest(request);
+    const { tenant } = await requireTenantAndAdminActor(request);
     const { id: staffId } = await params;
     const body = (await request.json()) as {
-      loginId?: string;
+      pin?: string;
       password?: string;
     };
 
-    const loginId = body.loginId?.trim();
-    if (!loginId) {
-      return NextResponse.json({ error: "Login ID is required." }, { status: 400 });
-    }
-
-    if (!LOGIN_ID_PATTERN.test(loginId)) {
-      return NextResponse.json(
-        {
-          error:
-            "Login ID must be 3–32 characters (letters, numbers, . _ - only).",
-        },
-        { status: 400 },
-      );
-    }
-
+    const pin = (body.pin ?? body.password ?? "").trim();
     const supabase = createServiceSupabase();
 
     const { data: staff } = await supabase
@@ -96,34 +84,48 @@ export async function PUT(
 
     const { data: existing } = await supabase
       .from("staff_accounts")
-      .select("id, password_hash")
+      .select("id, password_hash, pin")
       .eq("tenant_id", tenant.id)
       .eq("staff_id", staffId)
       .maybeSingle();
 
-    const password = body.password?.trim() ?? "";
-    if (!existing && !password) {
+    if (!existing && !pin) {
       return NextResponse.json(
-        { error: "Password is required when creating a new login." },
+        { error: "PIN is required when creating staff login." },
         { status: 400 },
       );
     }
 
-    if (password) {
-      const pinError = validateStaffPin(password);
+    if (pin) {
+      const pinError = validateStaffPin(pin);
       if (pinError) {
         return NextResponse.json({ error: pinError }, { status: 400 });
       }
+
+      const duplicate = await isPinUsedByOtherStaff(
+        supabase,
+        tenant.id,
+        pin,
+        staffId,
+      );
+      if (duplicate) {
+        return NextResponse.json(
+          { error: "This PIN is already assigned to another staff member." },
+          { status: 409 },
+        );
+      }
     }
 
-    const passwordHash = password
-      ? await hash(password, 10)
+    const passwordHash = pin
+      ? await hash(pin, 10)
       : (existing?.password_hash ?? null);
+    const pinValue = pin || existing?.pin || null;
 
     if (!passwordHash) {
-      return NextResponse.json({ error: "Password is required." }, { status: 400 });
+      return NextResponse.json({ error: "PIN is required." }, { status: 400 });
     }
 
+    const loginId = internalStaffLoginId(staffId);
     const now = new Date().toISOString();
 
     if (existing) {
@@ -132,21 +134,14 @@ export async function PUT(
         .update({
           login_id: loginId,
           password_hash: passwordHash,
+          pin: pinValue,
           updated_at: now,
         })
         .eq("id", existing.id)
         .eq("tenant_id", tenant.id);
 
       if (error) {
-        const isDuplicate = error.message.includes("staff_accounts_tenant_id_login_id_key");
-        return NextResponse.json(
-          {
-            error: isDuplicate
-              ? "This login ID is already in use."
-              : error.message,
-          },
-          { status: isDuplicate ? 409 : 503 },
-        );
+        return NextResponse.json({ error: error.message }, { status: 503 });
       }
     } else {
       const { error } = await supabase.from("staff_accounts").insert({
@@ -154,27 +149,22 @@ export async function PUT(
         staff_id: staffId,
         login_id: loginId,
         password_hash: passwordHash,
+        pin: pinValue,
       });
 
       if (error) {
-        const isDuplicate = error.message.includes("staff_accounts_tenant_id_login_id_key");
-        return NextResponse.json(
-          {
-            error: isDuplicate
-              ? "This login ID is already in use."
-              : error.message,
-          },
-          { status: isDuplicate ? 409 : 503 },
-        );
+        return NextResponse.json({ error: error.message }, { status: 503 });
       }
     }
 
-    return NextResponse.json({ ok: true, loginId });
+    return NextResponse.json({
+      ok: true,
+      hasAccount: true,
+      pin: pinValue,
+    });
   } catch (error) {
-    if (error instanceof TenantContextError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
-    }
-
+    const guard = handleAdminRouteError(error);
+    if (guard) return guard;
     throw error;
   }
 }

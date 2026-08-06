@@ -12,9 +12,11 @@ import {
 } from "@/features/booking/lib/schedule-utils";
 import {
   createServiceSupabase,
-  requireTenantFromRequest,
-  TenantContextError,
 } from "@/lib/admin/tenant-context";
+import {
+  handleAdminRouteError,
+  requireTenantAndAdminActor,
+} from "@/lib/admin/require-admin-api";
 import {
   getShiftWindowFromAttributes,
   parseStaffAttributes,
@@ -129,7 +131,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const tenant = await requireTenantFromRequest(request);
+    const { tenant } = await requireTenantAndAdminActor(request);
     const { id } = await params;
     const supabase = createServiceSupabase();
 
@@ -161,10 +163,8 @@ export async function GET(
       timeZone,
     });
   } catch (error) {
-    if (error instanceof TenantContextError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
-    }
-
+    const guard = handleAdminRouteError(error);
+    if (guard) return guard;
     throw error;
   }
 }
@@ -174,7 +174,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const tenant = await requireTenantFromRequest(request);
+    const { tenant } = await requireTenantAndAdminActor(request);
     const { id } = await params;
     const body = (await request.json()) as {
       name?: string;
@@ -299,10 +299,8 @@ export async function PATCH(
       timeZone,
     });
   } catch (error) {
-    if (error instanceof TenantContextError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
-    }
-
+    const guard = handleAdminRouteError(error);
+    if (guard) return guard;
     throw error;
   }
 }
@@ -312,7 +310,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const tenant = await requireTenantFromRequest(request);
+    const { tenant } = await requireTenantAndAdminActor(request);
     const { id } = await params;
     const supabase = createServiceSupabase();
 
@@ -330,10 +328,8 @@ export async function DELETE(
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    if (error instanceof TenantContextError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
-    }
-
+    const guard = handleAdminRouteError(error);
+    if (guard) return guard;
     throw error;
   }
 }

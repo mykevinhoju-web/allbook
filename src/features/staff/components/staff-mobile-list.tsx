@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import {
-  CalendarPlus,
   ChevronRight,
   MoreHorizontal,
   Pencil,
@@ -19,7 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import type { AdminStaffRow } from "../types";
-import { StaffStatusBadge } from "./staff-status-badge";
+import { StaffPresenceBadge } from "./staff-presence-badge";
 
 interface StaffMobileListProps {
   staff: AdminStaffRow[];
@@ -49,7 +48,10 @@ export function StaffMobileList({ staff, onDelete }: StaffMobileListProps) {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="truncate font-semibold">{member.name}</p>
-                  <StaffStatusBadge status={member.status} />
+                  <StaffPresenceBadge
+                    presence={member.presence}
+                    roomName={member.currentRoomName}
+                  />
                 </div>
                 <p
                   className={cn(
@@ -59,7 +61,9 @@ export function StaffMobileList({ staff, onDelete }: StaffMobileListProps) {
                       : "text-muted-foreground",
                   )}
                 >
-                  {member.workingToday ? "Working today" : "Off today"}
+                  {member.workingToday
+                    ? (member.shiftLabel ?? "Working today")
+                    : "Off today"}
                 </p>
                 {member.nextBooking ? (
                   <p className="mt-0.5 truncate text-xs text-muted-foreground">
@@ -84,17 +88,6 @@ export function StaffMobileList({ staff, onDelete }: StaffMobileListProps) {
                 <MoreHorizontal className="size-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  render={
-                    <Link
-                      href={`/admin/bookings?staffId=${member.id}`}
-                      className="flex items-center gap-2"
-                    />
-                  }
-                >
-                  <CalendarPlus className="size-4" />
-                  Book
-                </DropdownMenuItem>
                 <DropdownMenuItem
                   render={
                     <Link

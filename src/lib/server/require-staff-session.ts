@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { readCookieFromRequest } from "@/lib/cookies/read-request-cookie";
 import {
   getStaffSessionCookieName,
   verifyStaffSession,
@@ -17,9 +18,12 @@ export class StaffAuthError extends Error {
 
 export async function requireStaffSession(
   tenantId: string,
+  request?: Request,
 ): Promise<StaffSessionPayload> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(getStaffSessionCookieName())?.value;
+  const cookieName = getStaffSessionCookieName();
+  const token = request
+    ? readCookieFromRequest(request, cookieName)
+    : (await cookies()).get(cookieName)?.value;
 
   if (!token) {
     throw new StaffAuthError("Unauthorized.");

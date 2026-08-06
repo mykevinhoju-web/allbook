@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { CalendarPlus, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 
 import { AppAvatar, AppButton, ConfirmDialog, toast } from "@/components/common";
 import { DataTable, type DataTableColumn } from "@/components/common/data-table";
@@ -13,9 +13,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { fetchAdminApi } from "@/features/admin/lib/admin-api-client";
 
 import type { AdminStaffRow } from "../types";
-import { StaffStatusBadge } from "./staff-status-badge";
+import { StaffPresenceBadge } from "./staff-presence-badge";
 
 interface StaffTableProps {
   staff: AdminStaffRow[];
@@ -32,7 +33,7 @@ export function StaffTable({ staff, onChanged }: StaffTableProps) {
     setDeleting(true);
 
     try {
-      const response = await fetch(`/api/admin/staff/${deleteId}`, {
+      const response = await fetchAdminApi(`/api/admin/staff/${deleteId}`, {
         method: "DELETE",
       });
 
@@ -83,7 +84,12 @@ export function StaffTable({ staff, onChanged }: StaffTableProps) {
     {
       key: "status",
       header: "Status",
-      cell: (row) => <StaffStatusBadge status={row.status} />,
+      cell: (row) => (
+        <StaffPresenceBadge
+          presence={row.presence}
+          roomName={row.currentRoomName}
+        />
+      ),
     },
     {
       key: "workingToday",
@@ -98,7 +104,7 @@ export function StaffTable({ staff, onChanged }: StaffTableProps) {
               : "text-muted-foreground",
           )}
         >
-          {row.workingToday ? "Yes" : "No"}
+          {row.workingToday ? (row.shiftLabel ?? "Working") : "Off"}
         </span>
       ),
     },
@@ -126,17 +132,6 @@ export function StaffTable({ staff, onChanged }: StaffTableProps) {
             <MoreHorizontal className="size-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              render={
-                <Link
-                  href={`/admin/bookings?staffId=${row.id}`}
-                  className="flex items-center gap-2"
-                />
-              }
-            >
-              <CalendarPlus className="size-4" />
-              Book
-            </DropdownMenuItem>
             <DropdownMenuItem
               render={
                 <Link href={`/admin/staff/${row.id}`} className="flex items-center gap-2" />

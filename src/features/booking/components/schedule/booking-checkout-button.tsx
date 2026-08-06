@@ -4,6 +4,12 @@ import { useState } from "react";
 import { DoorOpen } from "lucide-react";
 
 import { AppButton, toast } from "@/components/common";
+import { fetchAdminApi } from "@/features/admin/lib/admin-api-client";
+
+type BookingFetch = (
+  input: RequestInfo | URL,
+  init?: RequestInit,
+) => Promise<Response>;
 
 interface BookingCheckoutButtonProps {
   bookingId: string;
@@ -11,6 +17,7 @@ interface BookingCheckoutButtonProps {
   onCheckedOut?: () => void;
   size?: "sm" | "default";
   className?: string;
+  fetchApi?: BookingFetch;
 }
 
 export function BookingCheckoutButton({
@@ -19,6 +26,7 @@ export function BookingCheckoutButton({
   onCheckedOut,
   size = "sm",
   className,
+  fetchApi = fetchAdminApi,
 }: BookingCheckoutButtonProps) {
   const [loading, setLoading] = useState(false);
 
@@ -26,7 +34,7 @@ export function BookingCheckoutButton({
     setLoading(true);
 
     try {
-      const response = await fetch(`/api/admin/bookings/${bookingId}/checkout`, {
+      const response = await fetchApi(`/api/admin/bookings/${bookingId}/checkout`, {
         method: "POST",
       });
       const data = (await response.json()) as {

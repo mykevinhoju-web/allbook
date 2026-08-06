@@ -1,10 +1,5 @@
-import { AdminPlaceholderPage } from "@/features/admin";
+import { AdminReportsContent } from "@/features/admin";
 
 export default function AdminReportsPage() {
-  return (
-    <AdminPlaceholderPage
-      title="Reports"
-      description="Platform analytics and performance reports."
-    />
-  );
+  return <AdminReportsContent />;
 }

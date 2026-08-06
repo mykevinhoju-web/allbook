@@ -2,18 +2,22 @@ import { NextResponse } from "next/server";
 
 import {
   createServiceSupabase,
-  requireTenantFromRequest,
-  TenantContextError,
 } from "@/lib/admin/tenant-context";
+import {
+  handleAdminRouteError,
+  requireTenantAndAdminActor,
+} from "@/lib/admin/require-admin-api";
 
 export async function GET(request: Request) {
   try {
-    const tenant = await requireTenantFromRequest(request);
+    const { tenant } = await requireTenantAndAdminActor(request);
     const supabase = createServiceSupabase();
 
     const { data, error } = await supabase
       .from("rooms")
-      .select("id, name, sort_order, is_active, created_at, updated_at")
+      .select(
+        "id, name, sort_order, is_active, claimed_device_id, claimed_at, created_at, updated_at",
+      )
       .eq("tenant_id", tenant.id)
       .order("sort_order", { ascending: true });
 
@@ -27,22 +31,22 @@ export async function GET(request: Request) {
         name: room.name,
         sortOrder: room.sort_order,
         isActive: room.is_active,
+        tabletClaimed: Boolean(room.claimed_device_id),
+        claimedAt: room.claimed_at,
         createdAt: room.created_at,
         updatedAt: room.updated_at,
       })),
     });
   } catch (error) {
-    if (error instanceof TenantContextError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
-    }
-
+    const guard = handleAdminRouteError(error);
+    if (guard) return guard;
     throw error;
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const tenant = await requireTenantFromRequest(request);
+    const { tenant } = await requireTenantAndAdminActor(request);
     const body = (await request.json()) as { name?: string };
 
     if (!body.name?.trim()) {
@@ -83,10 +87,8 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    if (error instanceof TenantContextError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
-    }
-
+    const guard = handleAdminRouteError(error);
+    if (guard) return guard;
     throw error;
   }
 }

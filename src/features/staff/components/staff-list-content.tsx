@@ -19,16 +19,15 @@ import {
   formatScheduleTime,
   todayDateInZone,
 } from "@/features/booking/lib/schedule-utils";
-import {
-  isStaffWorkingOnDate,
-  parseDaySchedule,
-} from "../utils/day-schedule";
-import { parseShiftPlan } from "../utils/shift-plan";
+import { getStaffWorkingTodayLabel } from "../utils/shift-label";
 import { useOptionalTenant } from "@/features/tenants";
-import { mockStaffList, staffFilterOptions } from "../config";
+import { mockStaffList, staffPresenceFilterOptions } from "../config";
 import type { AdminStaffRow, StaffFilterStatus, StaffRecord } from "../types";
 import { StaffTable } from "./staff-table";
 import { StaffMobileList } from "./staff-mobile-list";
+import { fetchAdminApi } from "@/features/admin/lib/admin-api-client";
+import { useBookingRealtime } from "@/features/booking/lib/booking-schedule-realtime";
+import { useStaffPresenceRealtime } from "../lib/staff-presence-realtime";
 
 interface BookingSummary {
   staffId: string;
@@ -53,7 +52,7 @@ export function StaffListContent() {
     setDeleting(true);
 
     try {
-      const response = await fetch(`/api/admin/staff/${deleteId}`, {
+      const response = await fetchAdminApi(`/api/admin/staff/${deleteId}`, {
         method: "DELETE",
       });
 
@@ -79,8 +78,8 @@ export function StaffListContent() {
     try {
       const today = new Date().toISOString().slice(0, 10);
       const [staffResponse, bookingsResponse] = await Promise.all([
-        fetch("/api/admin/staff"),
-        fetch(`/api/admin/bookings?date=${today}`),
+        fetchAdminApi("/api/admin/staff"),
+        fetchAdminApi(`/api/admin/bookings?date=${today}`),
       ]);
 
       const staffData = (await staffResponse.json()) as {
@@ -89,6 +88,7 @@ export function StaffListContent() {
       };
 
       if (!staffResponse.ok || !staffData.staff) {
+        if (staffResponse.status === 401) return;
         setUseMock(true);
         setStaff([]);
         return;
@@ -114,7 +114,18 @@ export function StaffListContent() {
 
   useEffect(() => {
     void loadData();
+    const intervalId = window.setInterval(() => {
+      void loadData();
+    }, 30_000);
+    return () => window.clearInterval(intervalId);
   }, [loadData]);
+
+  const onPresence = useCallback(() => {
+    void loadData();
+  }, [loadData]);
+
+  useStaffPresenceRealtime(tenant?.slug, onPresence);
+  useBookingRealtime(tenant?.id, loadData);
 
   const rows: AdminStaffRow[] = useMemo(() => {
     if (useMock) {
@@ -135,18 +146,24 @@ export function StaffListContent() {
             new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
         )[0];
 
+      const { workingToday, shiftLabel } = getStaffWorkingTodayLabel({
+        status: member.status,
+        attributes: member.attributes,
+        date: today,
+        timeZone,
+        workingHoursStart: member.workingHoursStart,
+        workingHoursEnd: member.workingHoursEnd,
+      });
+
       return {
         id: member.id,
         name: member.name,
         photoUrl: member.photoUrl,
         status: member.status,
-        workingToday: isStaffWorkingOnDate(
-          member.status,
-          parseDaySchedule(member.attributes.daySchedule),
-          today,
-          parseShiftPlan(member.attributes.shiftPlan),
-          timeZone,
-        ),
+        presence: member.presence ?? "offline",
+        currentRoomName: member.currentRoomName ?? null,
+        workingToday,
+        shiftLabel,
         nextBooking: upcoming
           ? `Today, ${formatScheduleTime(upcoming.startsAt)}`
           : null,
@@ -161,7 +178,7 @@ export function StaffListContent() {
       const matchesSearch =
         query.length === 0 || member.name.toLowerCase().includes(query);
       const matchesStatus =
-        statusFilter === "all" || member.status === statusFilter;
+        statusFilter === "all" || member.presence === statusFilter;
 
       return matchesSearch && matchesStatus;
     });
@@ -171,7 +188,7 @@ export function StaffListContent() {
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-3 py-4 sm:px-4 lg:gap-6 lg:p-6">
       <AdminPageHeader
         title="Staff"
-        description="Register, edit, and remove team members."
+        description="See who is online or in a room. Edit profiles for employment status and schedules."
         action={
           <Link
             href="/admin/staff/new"
@@ -208,7 +225,7 @@ export function StaffListContent() {
             <SelectValue placeholder="Filter" />
           </SelectTrigger>
           <SelectContent align="start">
-            {staffFilterOptions.map((option) => (
+            {staffPresenceFilterOptions.map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}
               </SelectItem>

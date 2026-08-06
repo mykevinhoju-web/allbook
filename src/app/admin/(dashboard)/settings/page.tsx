@@ -1,6 +1,8 @@
 import { AdminPlaceholderPage } from "@/features/admin";
+import { ensureAdminModule } from "@/features/admin/server/ensure-admin-module";
 
-export default function AdminSettingsPage() {
+export default async function AdminSettingsPage() {
+  await ensureAdminModule("settings");
   return (
     <AdminPlaceholderPage
       title="Settings"

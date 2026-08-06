@@ -11,6 +11,11 @@ import {
 } from "react";
 
 import { toast } from "@/components/common";
+import { fetchAdminApi } from "@/features/admin/lib/admin-api-client";
+import {
+  readNewBookingsSeenAt,
+  writeNewBookingsSeenAt,
+} from "@/features/admin/lib/new-bookings-seen";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTenant } from "@/features/tenants";
 import { subscribeToWebPush, isPushSupported } from "@/features/pwa";
@@ -20,21 +25,28 @@ import { subscribeToBookingAlerts } from "../lib/booking-realtime";
 import {
   isBookingAlertsEnabled,
   playBookingChime,
+  playServiceEndAlarm,
   setBookingAlertsEnabled,
   triggerBookingAlert,
   unlockBookingAudio,
   vibrateForBooking,
 } from "../lib/booking-alert-sound";
 import type { BookingAlertPayload } from "../types/booking-alert";
+import type { ServiceEndAlertPayload } from "../types/service-end-alert";
 
 interface BookingAlertContextValue {
   alertsEnabled: boolean;
   isListening: boolean;
   connectionStatus: string;
   bellActive: boolean;
+  /** Unread new bookings since last visit to Bookings. */
+  newBookingCount: number;
   enableAlerts: () => Promise<void>;
   testSound: () => Promise<void>;
   notifyBooking: (staffName: string) => void;
+  markNewBookingsSeen: () => void;
+  /** While true (e.g. on Bookings page), new alerts do not bump the badge. */
+  setNewBookingBadgeSuppressed: (suppressed: boolean) => void;
 }
 
 const BookingAlertContext = createContext<BookingAlertContextValue | null>(
@@ -52,14 +64,97 @@ export function BookingAlertProvider({
   const isMobile = useIsMobile();
   const audioRef = useRef<AudioContext | null>(null);
   const lastAlertRef = useRef<{ staffName: string; at: number } | null>(null);
+  const suppressBadgeRef = useRef(false);
   const [alertsEnabled, setAlertsEnabled] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState("IDLE");
   const [bellActive, setBellActive] = useState(false);
+  const [newBookingCount, setNewBookingCount] = useState(0);
 
   useEffect(() => {
     setAlertsEnabled(isBookingAlertsEnabled());
   }, []);
+
+  const markNewBookingsSeen = useCallback(() => {
+    writeNewBookingsSeenAt(tenant.slug);
+    setNewBookingCount(0);
+  }, [tenant.slug]);
+
+  const setNewBookingBadgeSuppressed = useCallback(
+    (suppressed: boolean) => {
+      suppressBadgeRef.current = suppressed;
+      if (suppressed) {
+        markNewBookingsSeen();
+      }
+    },
+    [markNewBookingsSeen],
+  );
+
+  useEffect(() => {
+    if (filterStaffId) return;
+
+    let cancelled = false;
+
+    const refreshCount = async () => {
+      if (suppressBadgeRef.current) return;
+      const existing = readNewBookingsSeenAt(tenant.slug);
+      if (!existing) {
+        writeNewBookingsSeenAt(tenant.slug);
+        return;
+      }
+
+      try {
+        const response = await fetchAdminApi(
+          `/api/admin/bookings/new-count?since=${encodeURIComponent(existing)}`,
+        );
+        if (!response.ok || cancelled) return;
+        const data = (await response.json()) as { count?: number };
+        if (!cancelled && typeof data.count === "number") {
+          setNewBookingCount(Math.max(0, data.count));
+        }
+      } catch {
+        // Badge is best-effort; realtime still increments while listening.
+      }
+    };
+
+    void refreshCount();
+    const intervalId = window.setInterval(refreshCount, 30_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refreshCount();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [tenant.slug, filterStaffId]);
+
+  const handleServiceEnd = useCallback(
+    (payload: ServiceEndAlertPayload) => {
+      const now = Date.now();
+      const last = lastAlertRef.current;
+      const key = `end:${payload.bookingId}`;
+      if (last && last.staffName === key && now - last.at < 8000) {
+        return;
+      }
+      lastAlertRef.current = { staffName: key, at: now };
+
+      if (alertsEnabled) {
+        void playServiceEndAlarm(3);
+      }
+      setBellActive(true);
+      window.setTimeout(() => setBellActive(false), 4000);
+
+      toast.error("Service time ended", {
+        description: `${payload.roomName} · ${payload.staffName}`,
+        position: isMobile ? "top-center" : "top-right",
+        duration: 10_000,
+      });
+    },
+    [alertsEnabled, isMobile],
+  );
 
   const handleBooking = useCallback(
     (payload: BookingAlertPayload) => {
@@ -78,9 +173,18 @@ export function BookingAlertProvider({
       }
       lastAlertRef.current = { staffName: payload.staffName, at: now };
 
-      void triggerBookingAlert(payload.staffName);
+      // Toast on every admin page; sound/vibrate only after "Turn on alerts".
+      if (alertsEnabled) {
+        void triggerBookingAlert(payload.staffName);
+      }
       setBellActive(true);
       window.setTimeout(() => setBellActive(false), 2500);
+
+      if (suppressBadgeRef.current) {
+        writeNewBookingsSeenAt(tenant.slug);
+      } else if (!filterStaffId) {
+        setNewBookingCount((count) => count + 1);
+      }
 
       toast.success(filterStaffId ? "New booking for you" : "New booking", {
         description: payload.staffName,
@@ -88,16 +192,10 @@ export function BookingAlertProvider({
         duration: 6000,
       });
     },
-    [filterStaffId, isMobile],
+    [alertsEnabled, filterStaffId, isMobile, tenant.slug],
   );
 
   useEffect(() => {
-    if (!alertsEnabled) {
-      setIsListening(false);
-      setConnectionStatus("IDLE");
-      return;
-    }
-
     let unsubscribe: (() => void) | null = null;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
@@ -118,6 +216,7 @@ export function BookingAlertProvider({
             retryTimer = setTimeout(connect, 3000);
           }
         },
+        handleServiceEnd,
       );
     };
 
@@ -130,7 +229,7 @@ export function BookingAlertProvider({
       setIsListening(false);
       setConnectionStatus("CLOSED");
     };
-  }, [alertsEnabled, tenant.slug, handleBooking]);
+  }, [tenant.slug, handleBooking, handleServiceEnd]);
 
   const enableAlerts = useCallback(async () => {
     try {
@@ -199,18 +298,24 @@ export function BookingAlertProvider({
       isListening,
       connectionStatus,
       bellActive,
+      newBookingCount,
       enableAlerts,
       testSound,
       notifyBooking,
+      markNewBookingsSeen,
+      setNewBookingBadgeSuppressed,
     }),
     [
       alertsEnabled,
       isListening,
       connectionStatus,
       bellActive,
+      newBookingCount,
       enableAlerts,
       testSound,
       notifyBooking,
+      markNewBookingsSeen,
+      setNewBookingBadgeSuppressed,
     ],
   );
 

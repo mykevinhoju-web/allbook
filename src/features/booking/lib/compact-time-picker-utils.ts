@@ -6,6 +6,7 @@ import {
   isoToDatetimeLocal,
   isIsoDateTime,
 } from "./schedule-utils";
+import { formatDisplayDate } from "@/lib/display-locale";
 
 export interface CompactHourGroup {
   key: string;
@@ -135,7 +136,7 @@ export function formatCompactStartTime(
 }
 
 function formatShortWeekday(dateKey: string): string {
-  return new Date(`${dateKey}T12:00:00`).toLocaleDateString(undefined, {
+  return formatDisplayDate(`${dateKey}T12:00:00`, {
     weekday: "short",
     month: "short",
     day: "numeric",

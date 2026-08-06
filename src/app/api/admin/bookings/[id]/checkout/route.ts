@@ -1,21 +1,17 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import {
   createServiceSupabase,
-  requireTenantFromRequest,
-  TenantContextError,
 } from "@/lib/admin/tenant-context";
 import {
-  getAdminSessionCookieName,
-  verifyAdminSession,
-} from "@/lib/admin-session";
+  handleAdminRouteError,
+  requireTenantAndAdminActor,
+} from "@/lib/admin/require-admin-api";
 import { isBookingOccupyingRoom } from "@/features/booking/lib/room-occupancy";
-import { sendRoomVacatedPushNotifications } from "@/lib/push/send-booking-push";
 import {
-  getStaffSessionCookieName,
-  verifyStaffSession,
-} from "@/lib/staff-session";
+  sendRoomTabletServiceEndPush,
+  sendRoomVacatedPushNotifications,
+} from "@/lib/push/send-booking-push";
 import type { BookingStatus } from "@/types";
 
 function mapBooking(row: {
@@ -71,33 +67,13 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const tenant = await requireTenantFromRequest(request);
+    const { tenant, actor } = await requireTenantAndAdminActor(request, {
+      allowStaff: true,
+    });
     const { id } = await params;
-    const cookieStore = await cookies();
 
-    const adminToken = cookieStore.get(getAdminSessionCookieName())?.value;
-    const staffToken = cookieStore.get(getStaffSessionCookieName())?.value;
-
-    let isAdmin = false;
-    let staffId: string | null = null;
-
-    if (adminToken) {
-      const admin = await verifyAdminSession(adminToken);
-      if (admin?.tenantId === tenant.id) {
-        isAdmin = true;
-      }
-    }
-
-    if (!isAdmin && staffToken) {
-      const staff = await verifyStaffSession(staffToken);
-      if (staff?.tenantId === tenant.id) {
-        staffId = staff.staffId;
-      }
-    }
-
-    if (!isAdmin && !staffId) {
-      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-    }
+    const isAdmin = actor.role === "admin";
+    const staffId = actor.role === "staff" ? actor.staffId : null;
 
     const supabase = createServiceSupabase();
     const { data: existing, error: fetchError } = await supabase
@@ -201,12 +177,19 @@ export async function POST(
       roomName: roomRow?.name ?? booking.roomName,
     });
 
-    return NextResponse.json({ booking, roomVacated: true });
-  } catch (error) {
-    if (error instanceof TenantContextError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+    if (existing.room_id) {
+      void sendRoomTabletServiceEndPush(tenant.slug, {
+        roomId: existing.room_id,
+        roomName: roomRow?.name ?? booking.roomName,
+        staffName: staffRow?.name ?? booking.staffName,
+        customerName: booking.customerName,
+      });
     }
 
+    return NextResponse.json({ booking, roomVacated: true });
+  } catch (error) {
+    const guard = handleAdminRouteError(error);
+    if (guard) return guard;
     throw error;
   }
 }

@@ -4,7 +4,7 @@ import {
   todayDateInZone,
 } from "@/features/booking/lib/schedule-utils";
 
-import type { StaffFilterStatus, StaffStatus } from "../types";
+import type { StaffFilterStatus, StaffPresence, StaffStatus } from "../types";
 
 export const staffStatusOptions: { value: StaffStatus; label: string }[] = [
   { value: "active", label: "Active" },
@@ -12,11 +12,20 @@ export const staffStatusOptions: { value: StaffStatus; label: string }[] = [
   { value: "on_leave", label: "On Leave" },
 ];
 
-export const staffFilterOptions: { value: StaffFilterStatus; label: string }[] =
-  [
-    { value: "all", label: "All Status" },
-    ...staffStatusOptions,
-  ];
+export const staffPresenceFilterOptions: {
+  value: StaffFilterStatus;
+  label: string;
+}[] = [
+  { value: "all", label: "All presence" },
+  { value: "online", label: "Online" },
+  { value: "in_service", label: "In service" },
+  { value: "offline", label: "Offline" },
+];
+
+/** @deprecated Prefer staffPresenceFilterOptions for the staff list. */
+export const staffFilterOptions = staffPresenceFilterOptions;
+
+export type { StaffPresence };
 
 /** Common suggestions for the free-text nationality field (not a closed list). */
 export const nationalityOptions = [
@@ -58,7 +67,6 @@ export function getDefaultStaffFormValues(
     languages: [] as string[],
     experience: "",
     introduction: "",
-    loginId: "",
     password: "",
     shiftStartsAt: shift.shiftStartsAt,
     shiftEndsAt: shift.shiftEndsAt,

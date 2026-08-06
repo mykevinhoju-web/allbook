@@ -12,23 +12,28 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useBookingAlerts } from "@/features/booking/context/booking-alert-provider";
 import { useTenant } from "@/features/tenants";
 
-import { adminNavItems } from "../config/navigation";
+import { getAdminNavItemsForTenant } from "../lib/admin-modules";
 import { isAdminNavActive } from "../utils/navigation";
+import {
+  AdminNavBadge,
+  formatAdminNavBadgeCount,
+} from "./admin-nav-badge";
 
 export function AdminSidebar({ isStaff = false }: { isStaff?: boolean }) {
   const pathname = usePathname();
   const tenant = useTenant();
   const { setOpenMobile } = useSidebar();
-  const navItems = isStaff
-    ? adminNavItems.filter((item) => item.href === "/admin/bookings")
-    : adminNavItems;
+  const { newBookingCount } = useBookingAlerts();
+  const navItems = getAdminNavItemsForTenant(tenant, { isStaff });
 
   const closeMobile = () => setOpenMobile(false);
 
@@ -63,18 +68,38 @@ export function AdminSidebar({ isStaff = false }: { isStaff?: boolean }) {
           <SidebarGroupLabel>Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    isActive={isAdminNavActive(item.href, pathname)}
-                    tooltip={item.title}
-                    render={<Link href={item.href} onClick={closeMobile} />}
-                  >
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {navItems.map((item) => {
+                const showBadge =
+                  item.href === "/admin/bookings" && newBookingCount > 0;
+                const badgeLabel = formatAdminNavBadgeCount(newBookingCount);
+
+                return (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
+                      isActive={isAdminNavActive(item.href, pathname)}
+                      tooltip={
+                        showBadge
+                          ? `${item.title} (${badgeLabel} new)`
+                          : item.title
+                      }
+                      render={<Link href={item.href} onClick={closeMobile} />}
+                    >
+                      <span className="relative">
+                        <item.icon />
+                        {showBadge ? (
+                          <span className="absolute -right-1.5 -top-1.5 hidden size-2 rounded-full bg-red-500 group-data-[collapsible=icon]:block" />
+                        ) : null}
+                      </span>
+                      <span>{item.title}</span>
+                    </SidebarMenuButton>
+                    {showBadge ? (
+                      <SidebarMenuBadge className="!bg-transparent p-0">
+                        <AdminNavBadge count={newBookingCount} />
+                      </SidebarMenuBadge>
+                    ) : null}
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

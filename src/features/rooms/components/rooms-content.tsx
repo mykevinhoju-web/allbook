@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowDown, ArrowUp, DoorOpen, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, DoorOpen, Plus, Sparkles, Trash2 } from "lucide-react";
 
 import { AppButton, ConfirmDialog, toast } from "@/components/common";
 import { appButtonVariants } from "@/components/common/app-button";
@@ -10,17 +10,20 @@ import { Input } from "@/components/ui/input";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { cn } from "@/lib/utils";
 import type { AdminRoom } from "@/features/booking/types/admin-booking";
+import { fetchAdminApi } from "@/features/admin/lib/admin-api-client";
 
 export function RoomsContent() {
   const [rooms, setRooms] = useState<AdminRoom[]>([]);
   const [newRoomName, setNewRoomName] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [applyingPreset, setApplyingPreset] = useState(false);
 
   const loadRooms = useCallback(async () => {
-    const response = await fetch("/api/admin/rooms");
+    const response = await fetchAdminApi("/api/admin/rooms");
     const data = (await response.json()) as { rooms?: AdminRoom[]; error?: string };
 
     if (!response.ok) {
+      if (response.status === 401) return;
       toast.error("Could not load rooms", { description: data.error });
       return;
     }
@@ -35,7 +38,7 @@ export function RoomsContent() {
   const addRoom = async () => {
     if (!newRoomName.trim()) return;
 
-    const response = await fetch("/api/admin/rooms", {
+    const response = await fetchAdminApi("/api/admin/rooms", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: newRoomName.trim() }),
@@ -44,6 +47,7 @@ export function RoomsContent() {
     const data = (await response.json()) as { error?: string };
 
     if (!response.ok) {
+      if (response.status === 401) return;
       toast.error("Could not add room", { description: data.error });
       return;
     }
@@ -53,13 +57,14 @@ export function RoomsContent() {
   };
 
   const toggleRoom = async (room: AdminRoom) => {
-    const response = await fetch(`/api/admin/rooms/${room.id}`, {
+    const response = await fetchAdminApi(`/api/admin/rooms/${room.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isActive: !room.isActive }),
     });
 
     if (!response.ok) {
+      if (response.status === 401) return;
       const data = (await response.json()) as { error?: string };
       toast.error("Could not update room", { description: data.error });
       return;
@@ -71,11 +76,12 @@ export function RoomsContent() {
   const deleteRoom = async () => {
     if (!deleteId) return;
 
-    const response = await fetch(`/api/admin/rooms/${deleteId}`, {
+    const response = await fetchAdminApi(`/api/admin/rooms/${deleteId}`, {
       method: "DELETE",
     });
 
     if (!response.ok) {
+      if (response.status === 401) return;
       const data = (await response.json()) as { error?: string };
       toast.error("Could not delete room", { description: data.error });
       return;
@@ -92,12 +98,12 @@ export function RoomsContent() {
     if (!swapRoom) return;
 
     const response = await Promise.all([
-      fetch(`/api/admin/rooms/${room.id}`, {
+      fetchAdminApi(`/api/admin/rooms/${room.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sortOrder: swapRoom.sortOrder }),
       }),
-      fetch(`/api/admin/rooms/${swapRoom.id}`, {
+      fetchAdminApi(`/api/admin/rooms/${swapRoom.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sortOrder: room.sortOrder }),
@@ -112,21 +118,91 @@ export function RoomsContent() {
     void loadRooms();
   };
 
+  const releaseTablet = async (room: AdminRoom) => {
+    const response = await fetchAdminApi(`/api/admin/rooms/${room.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ releaseTabletClaim: true }),
+    });
+    if (!response.ok) {
+      if (response.status === 401) return;
+      const data = (await response.json()) as { error?: string };
+      toast.error("Could not release tablet", { description: data.error });
+      return;
+    }
+    toast.success(`${room.name} tablet released`);
+    void loadRooms();
+  };
+
+  const applyRecommendedPriority = async () => {
+    if (rooms.length === 0) return;
+    setApplyingPreset(true);
+    try {
+      const desiredOrder = ["2", "3", "4", "1", "6"];
+      const parsed = rooms.map((room) => {
+        const match = room.name.match(/(\d+)/);
+        return { room, num: match?.[1] ?? null };
+      });
+
+      const ordered = [
+        ...desiredOrder
+          .map((n) => parsed.find((p) => p.num === n)?.room)
+          .filter(Boolean),
+        ...parsed
+          .filter((p) => !p.num || !desiredOrder.includes(p.num))
+          .map((p) => p.room),
+      ] as AdminRoom[];
+
+      // Assign sequential sort orders so server normalization becomes a no-op.
+      const results = await Promise.all(
+        ordered.map((room, idx) =>
+          fetchAdminApi(`/api/admin/rooms/${room.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sortOrder: idx + 1 }),
+          }),
+        ),
+      );
+
+      if (results.some((r) => !r.ok)) {
+        toast.error("Could not apply room priority");
+        return;
+      }
+
+      toast.success("Room priority updated");
+      void loadRooms();
+    } finally {
+      setApplyingPreset(false);
+    }
+  };
+
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-3 py-4 sm:px-4 lg:gap-6 lg:p-6">
       <AdminPageHeader
         title="Rooms"
-        description="Booking priority follows the order below (e.g. Room 2 → 3 → 4 → 1 → 6). The first free room in this list is auto-assigned."
+        description="Booking priority follows the order below (e.g. Room 2 → 3 → 4 → 1 → 6). Room tablets sign in at /room with no password — each room can only be claimed by one tablet."
         action={
-          <Link
-            href="/admin/rooms/schedule"
-            className={cn(
-              appButtonVariants({ variant: "outline" }),
-              "h-11 w-full rounded-xl sm:w-auto",
-            )}
-          >
-            View schedule
-          </Link>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <AppButton
+              type="button"
+              variant="outline"
+              className="h-11 w-full rounded-xl sm:w-auto"
+              disabled={rooms.length === 0 || applyingPreset}
+              onClick={() => void applyRecommendedPriority()}
+            >
+              <Sparkles className="size-4" />
+              Apply 2 → 3 → 4 → 1 → 6
+            </AppButton>
+            <Link
+              href="/admin/rooms/schedule"
+              className={cn(
+                appButtonVariants({ variant: "outline" }),
+                "h-11 w-full rounded-xl sm:w-auto",
+              )}
+            >
+              View schedule
+            </Link>
+          </div>
         }
       />
 
@@ -162,10 +238,21 @@ export function RoomsContent() {
                 <p className="text-xs text-muted-foreground">
                   Priority {index + 1}
                   {room.isActive ? "" : " · Inactive"}
+                  {room.tabletClaimed ? " · Tablet signed in" : ""}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-1">
+              {room.tabletClaimed ? (
+                <AppButton
+                  type="button"
+                  variant="outline"
+                  className="mr-1 h-8 rounded-lg px-2 text-xs"
+                  onClick={() => void releaseTablet(room)}
+                >
+                  Release
+                </AppButton>
+              ) : null}
               <AppButton
                 type="button"
                 variant="ghost"

@@ -5,7 +5,7 @@ import { ChevronLeft } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-const TOTAL_SAMPLES = 7;
+const TOTAL_SAMPLES = 11;
 
 interface BookingSampleShellProps {
   sampleLabel: string;
@@ -14,7 +14,7 @@ interface BookingSampleShellProps {
   subtitle?: string;
   children: React.ReactNode;
   className?: string;
-  theme?: "light" | "dark" | "pink" | "pastel";
+  theme?: "light" | "dark" | "pink" | "pastel" | "black";
   totalSamples?: number;
 }
 
@@ -31,42 +31,49 @@ export function BookingSampleShell({
   const isDark = theme === "dark";
   const isPink = theme === "pink";
   const isPastel = theme === "pastel";
+  const isBlack = theme === "black";
 
   return (
     <div
       className={cn(
         "min-h-svh",
-        isDark
-          ? "bg-black"
-          : isPastel
-            ? "bg-[#fce4ec]"
-            : isPink
-              ? "bg-gradient-to-b from-rose-50 via-white to-pink-50/60"
-              : "bg-muted/30",
+        isBlack
+          ? "bg-[#111111]"
+          : isDark
+            ? "bg-black"
+            : isPastel
+              ? "bg-[#fce4ec]"
+              : isPink
+                ? "bg-gradient-to-b from-rose-50 via-white to-pink-50/60"
+                : "bg-muted/30",
       )}
     >
       <div
         className={cn(
           "mx-auto min-h-svh max-w-md shadow-xl md:border-x",
-          isDark
-            ? "border-stone-800/60 bg-[#0a0909] text-stone-100"
-            : isPastel
-              ? "border-pink-200/60 bg-[#fce4ec] text-stone-800"
-              : isPink
-                ? "border-rose-100/80 bg-white text-stone-800"
-                : "border-border/60 bg-background",
+          isBlack
+            ? "border-white/10 bg-[#111111] text-white"
+            : isDark
+              ? "border-stone-800/60 bg-[#0a0909] text-stone-100"
+              : isPastel
+                ? "border-pink-200/60 bg-[#fce4ec] text-stone-800"
+                : isPink
+                  ? "border-rose-100/80 bg-white text-stone-800"
+                  : "border-border/60 bg-background",
         )}
       >
         <header
           className={cn(
             "sticky top-0 z-10 border-b px-4 py-3 backdrop-blur-md",
-            isDark
-              ? "border-stone-800/80 bg-[#0a0909]/95"
-              : isPastel
-                ? "border-pink-200/80 bg-[#fce4ec]/95"
-                : isPink
-                  ? "border-rose-100 bg-white/90"
-                  : "border-border/60 bg-background/95",
+            isBlack
+              ? "border-white/10 bg-[#111111]/95"
+              : isDark
+                ? "border-stone-800/80 bg-[#0a0909]/95"
+                : isPastel
+                  ? "border-pink-200/80 bg-[#fce4ec]/95"
+                  : isPink
+                    ? "border-rose-100 bg-white/90"
+                    : "border-border/60 bg-background/95",
           )}
         >
           <div className="flex items-center gap-2">
@@ -74,13 +81,15 @@ export function BookingSampleShell({
               href="/booking/samples"
               className={cn(
                 "flex size-9 items-center justify-center rounded-full transition-colors",
-                isDark
-                  ? "text-stone-400 hover:bg-stone-800 hover:text-stone-100"
-                  : isPastel
-                    ? "text-[#e91e63] hover:bg-white/60"
-                    : isPink
-                      ? "text-rose-400 hover:bg-rose-50 hover:text-rose-600"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                isBlack
+                  ? "text-white/70 hover:bg-white/10 hover:text-white"
+                  : isDark
+                    ? "text-stone-400 hover:bg-stone-800 hover:text-stone-100"
+                    : isPastel
+                      ? "text-[#e91e63] hover:bg-white/60"
+                      : isPink
+                        ? "text-rose-400 hover:bg-rose-50 hover:text-rose-600"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
               aria-label="Back to samples"
             >
@@ -90,13 +99,15 @@ export function BookingSampleShell({
               <p
                 className={cn(
                   "text-[11px] font-semibold uppercase tracking-widest",
-                  isDark
-                    ? "text-rose-300/70"
-                    : isPastel
-                      ? "text-[#e91e63]"
-                      : isPink
-                        ? "text-rose-400"
-                        : "text-primary",
+                  isBlack
+                    ? "text-[#8B1E3F]"
+                    : isDark
+                      ? "text-rose-300/70"
+                      : isPastel
+                        ? "text-[#e91e63]"
+                        : isPink
+                          ? "text-rose-400"
+                          : "text-primary",
                 )}
               >
                 {sampleLabel}
@@ -108,13 +119,15 @@ export function BookingSampleShell({
             <span
               className={cn(
                 "rounded-full px-2.5 py-1 text-xs font-medium",
-                isDark
-                  ? "bg-stone-900 text-stone-400 ring-1 ring-stone-800"
-                  : isPastel
-                    ? "bg-white/70 text-[#e91e63] ring-1 ring-pink-200"
-                    : isPink
-                      ? "bg-rose-50 text-rose-500 ring-1 ring-rose-100"
-                      : "bg-muted text-muted-foreground",
+                isBlack
+                  ? "bg-white/10 text-white/70 ring-1 ring-white/15"
+                  : isDark
+                    ? "bg-stone-900 text-stone-400 ring-1 ring-stone-800"
+                    : isPastel
+                      ? "bg-white/70 text-[#e91e63] ring-1 ring-pink-200"
+                      : isPink
+                        ? "bg-rose-50 text-rose-500 ring-1 ring-rose-100"
+                        : "bg-muted text-muted-foreground",
               )}
             >
               {sampleNumber}/{totalSamples}
@@ -124,13 +137,15 @@ export function BookingSampleShell({
             <p
               className={cn(
                 "mt-2 pl-11 text-sm",
-                isDark
-                  ? "text-stone-400"
-                  : isPastel
-                    ? "text-[#e91e63]/70"
-                    : isPink
-                      ? "text-rose-400/70"
-                      : "text-muted-foreground",
+                isBlack
+                  ? "text-white/55"
+                  : isDark
+                    ? "text-stone-400"
+                    : isPastel
+                      ? "text-[#e91e63]/70"
+                      : isPink
+                        ? "text-rose-400/70"
+                        : "text-muted-foreground",
               )}
             >
               {subtitle}
@@ -143,13 +158,15 @@ export function BookingSampleShell({
         <footer
           className={cn(
             "sticky bottom-0 border-t px-4 py-3 backdrop-blur-md",
-            isDark
-              ? "border-stone-800/80 bg-[#0a0909]/95"
-              : isPastel
-                ? "border-pink-200/80 bg-[#fce4ec]/95"
-                : isPink
-                  ? "border-rose-100 bg-white/90"
-                  : "border-border/60 bg-background/95",
+            isBlack
+              ? "border-white/10 bg-[#111111]/95"
+              : isDark
+                ? "border-stone-800/80 bg-[#0a0909]/95"
+                : isPastel
+                  ? "border-pink-200/80 bg-[#fce4ec]/95"
+                  : isPink
+                    ? "border-rose-100 bg-white/90"
+                    : "border-border/60 bg-background/95",
           )}
         >
           <div className="flex gap-2">
@@ -158,13 +175,15 @@ export function BookingSampleShell({
                 href={`/booking/samples/${sampleNumber - 1}`}
                 className={cn(
                   "flex-1 rounded-full border-2 py-2.5 text-center text-sm font-semibold transition-colors",
-                  isDark
-                    ? "border-stone-700 text-stone-300"
-                    : isPastel
-                      ? "border-[#e91e63] bg-white text-[#e91e63] active:bg-white/80"
-                      : isPink
-                        ? "border-rose-200 text-rose-600"
-                        : "rounded-xl border",
+                  isBlack
+                    ? "border-white/20 text-white/80"
+                    : isDark
+                      ? "border-stone-700 text-stone-300"
+                      : isPastel
+                        ? "border-[#e91e63] bg-white text-[#e91e63] active:bg-white/80"
+                        : isPink
+                          ? "border-rose-200 text-rose-600"
+                          : "rounded-xl border",
                 )}
               >
                 Previous
@@ -177,13 +196,17 @@ export function BookingSampleShell({
                 href={`/booking/samples/${sampleNumber + 1}`}
                 className={cn(
                   "flex-1 py-2.5 text-center text-sm font-semibold transition-colors",
-                  isDark
-                    ? "rounded-xl bg-gradient-to-r from-rose-900 to-amber-900 text-rose-50"
-                    : isPastel
-                      ? "rounded-full border-2 border-[#e91e63] bg-white text-[#e91e63] active:bg-white/80"
-                      : isPink
-                        ? "rounded-xl bg-gradient-to-r from-rose-400 to-pink-500 text-white shadow-sm shadow-rose-200/50"
-                        : "rounded-xl bg-primary text-primary-foreground",
+                  isBlack
+                    ? "rounded-xl bg-[#8B1E3F] text-white"
+                    : isDark
+                      ? "rounded-xl bg-gradient-to-r from-rose-900 to-amber-900 text-rose-50"
+                      : isPastel
+                        ? "rounded-full border-2 border-[#e91e63] bg-white text-[#e91e63] active:bg-white/80"
+                        : isPink
+                          ? "rounded-xl bg-gradient-to-r from-rose-400 to-pink-500 text-white shadow-sm shadow-rose-200/50"
+                          : sampleNumber >= 8
+                            ? "rounded-xl bg-[#8B1E3F] text-white"
+                            : "rounded-xl bg-primary text-primary-foreground",
                 )}
               >
                 Next sample
@@ -193,13 +216,15 @@ export function BookingSampleShell({
                 href="/booking/samples"
                 className={cn(
                   "flex-1 py-2.5 text-center text-sm font-semibold transition-colors",
-                  isDark
-                    ? "rounded-xl bg-gradient-to-r from-rose-900 to-amber-900 text-rose-50"
-                    : isPastel
-                      ? "rounded-full border-2 border-[#e91e63] bg-white text-[#e91e63] active:bg-white/80"
-                      : isPink
-                        ? "rounded-xl bg-gradient-to-r from-rose-400 to-pink-500 text-white shadow-sm shadow-rose-200/50"
-                        : "rounded-xl bg-primary text-primary-foreground",
+                  isBlack
+                    ? "rounded-xl bg-[#8B1E3F] text-white"
+                    : isDark
+                      ? "rounded-xl bg-gradient-to-r from-rose-900 to-amber-900 text-rose-50"
+                      : isPastel
+                        ? "rounded-full border-2 border-[#e91e63] bg-white text-[#e91e63] active:bg-white/80"
+                        : isPink
+                          ? "rounded-xl bg-gradient-to-r from-rose-400 to-pink-500 text-white shadow-sm shadow-rose-200/50"
+                          : "rounded-xl bg-primary text-primary-foreground",
                 )}
               >
                 All samples
