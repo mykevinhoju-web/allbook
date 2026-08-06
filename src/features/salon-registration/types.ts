@@ -59,8 +59,11 @@ export type CreateSalonRegistrationInput = {
 
 export type CreateSalonRegistrationResult = {
   salonId: string;
+  authUserId: string;
   slug: string;
   categorySlug: MarketplaceCategorySlug;
   publicPath: string;
   publicUrl: string;
+  /** Owner portal home after registration */
+  dashboardPath: "/platform/salon";
 };

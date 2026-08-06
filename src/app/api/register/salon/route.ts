@@ -18,21 +18,49 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!body.owner?.ownerEmail || !body.owner?.password) {
+      return NextResponse.json(
+        { error: "Owner email and password are required." },
+        { status: 400 },
+      );
+    }
+
     const sessionClient = await createClient();
     const {
-      data: { user },
+      data: { user: existingUser },
     } = await sessionClient.auth.getUser();
 
-    const supabase = createServiceSupabase();
-    const result = await createSalonRegistration(supabase, {
+    const service = createServiceSupabase();
+    const result = await createSalonRegistration(service, {
       ...body,
-      authUserId: body.authUserId ?? user?.id,
+      authUserId: body.authUserId ?? existingUser?.id,
     });
+
+    // Establish cookie session so /platform/salon resolves the new owner immediately.
+    if (existingUser?.id !== result.authUserId) {
+      const { error: signInError } = await sessionClient.auth.signInWithPassword({
+        email: body.owner.ownerEmail.trim().toLowerCase(),
+        password: body.owner.password,
+      });
+      if (signInError) {
+        return NextResponse.json(
+          {
+            error:
+              "Salon created, but sign-in failed. Please log in to open your dashboard.",
+            salonId: result.salonId,
+            dashboardPath: result.dashboardPath,
+            loginRequired: true,
+          },
+          { status: 201 },
+        );
+      }
+    }
+
     return NextResponse.json(result);
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Could not create salon.";
-    const status = /required|choose|valid|match|accept|unknown|already/i.test(
+    const status = /required|choose|valid|match|accept|unknown|already|owns/i.test(
       message,
     )
       ? 400

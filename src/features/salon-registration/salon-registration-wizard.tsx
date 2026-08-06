@@ -115,10 +115,10 @@ export function SalonRegistrationWizard() {
       });
 
       const payload = (await response.json()) as
-        | CreateSalonRegistrationResult
-        | { error?: string };
+        | (CreateSalonRegistrationResult & { loginRequired?: boolean })
+        | { error?: string; loginRequired?: boolean; dashboardPath?: string };
 
-      if (!response.ok) {
+      if (!response.ok && response.status !== 201) {
         throw new Error(
           "error" in payload && payload.error
             ? payload.error
@@ -126,8 +126,22 @@ export function SalonRegistrationWizard() {
         );
       }
 
-      setResult(payload as CreateSalonRegistrationResult);
+      if ("loginRequired" in payload && payload.loginRequired) {
+        window.location.assign(
+          `/login?next=${encodeURIComponent("/platform/salon")}`,
+        );
+        return;
+      }
+
+      if ("error" in payload && payload.error && !("salonId" in payload)) {
+        throw new Error(payload.error);
+      }
+
+      const ok = payload as CreateSalonRegistrationResult;
+      setResult(ok);
       setStep("success");
+      // Hard navigation ensures auth cookies are applied for the dashboard.
+      window.location.assign(ok.dashboardPath || "/platform/salon");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create salon.");
     } finally {

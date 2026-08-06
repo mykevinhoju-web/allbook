@@ -1,17 +1,38 @@
 "use client";
 
 import Link from "next/link";
-import { CheckCircle2, ExternalLink } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { CheckCircle2, LayoutDashboard } from "lucide-react";
 
 import type { CreateSalonRegistrationResult } from "@/features/salon-registration";
 
-import { registerPrimaryButtonClass, registerSecondaryButtonClass } from "./register-ui";
+import {
+  registerPrimaryButtonClass,
+  registerSecondaryButtonClass,
+} from "./register-ui";
 
 type RegistrationSuccessProps = {
   result: CreateSalonRegistrationResult;
+  /** When true, auto-redirect to the owner dashboard */
+  autoRedirect?: boolean;
 };
 
-export function RegistrationSuccess({ result }: RegistrationSuccessProps) {
+export function RegistrationSuccess({
+  result,
+  autoRedirect = true,
+}: RegistrationSuccessProps) {
+  const router = useRouter();
+  const dashboardPath = result.dashboardPath || "/platform/salon";
+
+  useEffect(() => {
+    if (!autoRedirect) return;
+    const timer = window.setTimeout(() => {
+      router.replace(dashboardPath);
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [autoRedirect, dashboardPath, router]);
+
   return (
     <div className="mx-auto max-w-lg space-y-8 text-center">
       <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
@@ -23,41 +44,37 @@ export function RegistrationSuccess({ result }: RegistrationSuccessProps) {
           Step 6 of 6 · Done
         </p>
         <h1 className="font-serif text-3xl tracking-tight text-neutral-950 sm:text-4xl">
-          Your salon is live
+          Your salon is ready
         </h1>
         <p className="text-[15px] leading-relaxed text-neutral-600">
-          We created your public page and owner account. Next you can add
-          services, photos, and open bookings — payment setup comes later.
+          Opening your dashboard…
         </p>
       </header>
 
       <div className="rounded-[24px] border border-neutral-200 bg-white p-6 text-left shadow-sm">
         <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-neutral-500">
-          Public URL
+          Public page
         </p>
         <p className="mt-2 break-all font-mono text-[14px] text-neutral-900">
           {result.publicUrl}
-        </p>
-        <p className="mt-4 text-[12px] font-semibold uppercase tracking-[0.12em] text-neutral-500">
-          Slug
-        </p>
-        <p className="mt-2 font-mono text-[14px] text-neutral-900">
-          {result.slug}
         </p>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
         <Link
-          href={result.publicPath}
+          href={dashboardPath}
           className={`${registerPrimaryButtonClass} inline-flex`}
+        >
+          <LayoutDashboard className="mr-2 size-4" />
+          Go to dashboard
+        </Link>
+        <Link
+          href={result.publicPath}
+          className={registerSecondaryButtonClass}
           target="_blank"
           rel="noreferrer"
         >
           View public page
-          <ExternalLink className="ml-2 size-4" />
-        </Link>
-        <Link href="/platform/login" className={registerSecondaryButtonClass}>
-          Go to platform login
         </Link>
       </div>
     </div>

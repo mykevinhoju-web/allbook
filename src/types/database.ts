@@ -774,6 +774,7 @@ export type Database = {
           email: string;
           password_hash: string;
           auth_user_id: string | null;
+          role: "owner" | "admin" | "staff";
           accepted_terms_at: string;
           created_at: string;
           updated_at: string;
@@ -785,6 +786,7 @@ export type Database = {
           email: string;
           password_hash: string;
           auth_user_id?: string | null;
+          role?: "owner" | "admin" | "staff";
           accepted_terms_at?: string;
           created_at?: string;
           updated_at?: string;
@@ -796,6 +798,7 @@ export type Database = {
           email?: string;
           password_hash?: string;
           auth_user_id?: string | null;
+          role?: "owner" | "admin" | "staff";
           accepted_terms_at?: string;
           created_at?: string;
           updated_at?: string;

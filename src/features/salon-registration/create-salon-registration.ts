@@ -58,8 +58,10 @@ async function resolveOrCreateSuburb(
 }
 
 /**
- * Complete marketplace salon registration (no payment).
- * Creates salon + owner account; returns public category URL.
+ * Marketplace salon registration:
+ * 1) Supabase Auth user
+ * 2) salons row (from form — never demo)
+ * 3) salon_owners { salon_id, auth_user_id, role: owner }
  */
 export async function createSalonRegistration(
   supabase: AnySupabase,
@@ -82,14 +84,73 @@ export async function createSalonRegistration(
   const categorySlug = input.profile.categorySlug;
   if (!categorySlug) throw new Error("Please choose a category.");
 
+  const ownerEmail = input.owner.ownerEmail.trim().toLowerCase();
+  const ownerName = input.owner.ownerName.trim();
+  const password = input.owner.password;
+
+  // 1. Auth user first (reuse session user when already signed in)
+  let authUserId: string | null = input.authUserId ?? null;
+  let createdAuthUserId: string | null = null;
+
+  if (!authUserId) {
+    const { data: created, error: createAuthError } =
+      await supabase.auth.admin.createUser({
+        email: ownerEmail,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          full_name: ownerName,
+        },
+      });
+
+    if (createAuthError || !created.user) {
+      const message =
+        createAuthError?.message ?? "Could not create owner login.";
+      if (/already|registered|exists/i.test(message)) {
+        throw new Error(
+          "An account with this email already exists. Please log in, then continue registration.",
+        );
+      }
+      throw new Error(message);
+    }
+    authUserId = created.user.id;
+    createdAuthUserId = created.user.id;
+  }
+
+  // Block registering a second salon for the same auth user
+  const { data: existingOwner } = await supabase
+    .from("salon_owners")
+    .select("id, salon_id")
+    .eq("auth_user_id", authUserId)
+    .maybeSingle();
+
+  if (existingOwner) {
+    if (createdAuthUserId) {
+      await supabase.auth.admin.deleteUser(createdAuthUserId);
+    }
+    throw new Error(
+      "This account already owns a salon. Open your dashboard instead.",
+    );
+  }
+
   const { data: category, error: categoryError } = await supabase
     .from("business_categories")
     .select("id, slug, name")
     .eq("slug", categorySlug)
     .maybeSingle();
 
-  if (categoryError) throw new Error(categoryError.message);
-  if (!category) throw new Error("Unknown business category.");
+  if (categoryError) {
+    if (createdAuthUserId) {
+      await supabase.auth.admin.deleteUser(createdAuthUserId);
+    }
+    throw new Error(categoryError.message);
+  }
+  if (!category) {
+    if (createdAuthUserId) {
+      await supabase.auth.admin.deleteUser(createdAuthUserId);
+    }
+    throw new Error("Unknown business category.");
+  }
 
   const suburb = await resolveOrCreateSuburb(supabase, {
     name: input.profile.suburb,
@@ -98,6 +159,11 @@ export async function createSalonRegistration(
     country: input.profile.country,
     latitude: input.profile.latitude,
     longitude: input.profile.longitude,
+  }).catch(async (err) => {
+    if (createdAuthUserId) {
+      await supabase.auth.admin.deleteUser(createdAuthUserId);
+    }
+    throw err;
   });
 
   const baseSlug = slugifySalonName(input.profile.businessName);
@@ -112,10 +178,10 @@ export async function createSalonRegistration(
 
   const lat = input.profile.latitude ?? suburb.latitude;
   const lng = input.profile.longitude ?? suburb.longitude;
-  const cover =
-    input.profile.coverImage.trim() || FALLBACK_COVER_IMAGE;
+  const cover = input.profile.coverImage.trim() || FALLBACK_COVER_IMAGE;
   const logo = input.profile.logo.trim() || null;
 
+  // 2. Real salon from registration form
   const { data: salon, error: salonError } = await supabase
     .from("salons")
     .insert({
@@ -125,7 +191,7 @@ export async function createSalonRegistration(
       slug,
       description: input.profile.description.trim() || null,
       phone: input.profile.phone.trim() || null,
-      email: input.profile.email.trim() || input.owner.ownerEmail.trim(),
+      email: input.profile.email.trim() || ownerEmail,
       website: input.profile.website.trim() || null,
       address: input.profile.address.trim(),
       suburb: suburb.name,
@@ -157,46 +223,31 @@ export async function createSalonRegistration(
     .select("id, slug")
     .single();
 
-  if (salonError) throw new Error(salonError.message);
-
-  const passwordHash = await hash(input.owner.password, 10);
-
-  let authUserId: string | null = input.authUserId ?? null;
-  if (!authUserId) {
-    const { data: created, error: createAuthError } =
-      await supabase.auth.admin.createUser({
-        email: input.owner.ownerEmail.trim().toLowerCase(),
-        password: input.owner.password,
-        email_confirm: true,
-        user_metadata: {
-          full_name: input.owner.ownerName.trim(),
-        },
-      });
-
-    if (createAuthError || !created.user) {
-      await supabase.from("salons").delete().eq("id", salon.id);
-      const message = createAuthError?.message ?? "Could not create owner login.";
-      if (/already|registered|exists/i.test(message)) {
-        throw new Error(
-          "An account with this email already exists. Please log in, then register.",
-        );
-      }
-      throw new Error(message);
+  if (salonError || !salon) {
+    if (createdAuthUserId) {
+      await supabase.auth.admin.deleteUser(createdAuthUserId);
     }
-    authUserId = created.user.id;
+    throw new Error(salonError?.message ?? "Could not create salon.");
   }
 
+  const passwordHash = await hash(password, 10);
+
+  // 3. salon_owners link
   const { error: ownerErrorInsert } = await supabase.from("salon_owners").insert({
     salon_id: salon.id,
-    full_name: input.owner.ownerName.trim(),
-    email: input.owner.ownerEmail.trim().toLowerCase(),
+    full_name: ownerName,
+    email: ownerEmail,
     password_hash: passwordHash,
     auth_user_id: authUserId,
+    role: "owner",
     accepted_terms_at: new Date().toISOString(),
   });
 
   if (ownerErrorInsert) {
     await supabase.from("salons").delete().eq("id", salon.id);
+    if (createdAuthUserId) {
+      await supabase.auth.admin.deleteUser(createdAuthUserId);
+    }
     if (/duplicate|unique/i.test(ownerErrorInsert.message)) {
       throw new Error("An account with this email already exists.");
     }
@@ -216,9 +267,11 @@ export async function createSalonRegistration(
 
   return {
     salonId: salon.id,
+    authUserId,
     slug,
     categorySlug,
     publicPath,
     publicUrl: `${PLATFORM_SITE_URL.replace(/\/$/, "")}${publicPath}`,
+    dashboardPath: "/platform/salon",
   };
 }
