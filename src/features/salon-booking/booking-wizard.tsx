@@ -10,6 +10,8 @@ import {
   StaffSelector,
   TimeSlotGrid,
 } from "@/components/booking";
+import { syncCustomersFromBookingEvent } from "@/features/customers";
+import { MOCK_CUSTOMERS } from "@/features/customers/mock-data";
 import {
   createBooking,
   BookingConflictError,
@@ -147,6 +149,33 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
         status: "pending",
         availability: availabilityInput,
       });
+
+      // CRM upsert (business layer) — booking created updates customer profile.
+      let crmStore = [...MOCK_CUSTOMERS];
+      syncCustomersFromBookingEvent(
+        {
+          getAll: () => crmStore,
+          setAll: (next) => {
+            crmStore = next;
+          },
+        },
+        {
+          salonId: context.salonId,
+          customerId: booking.customerId,
+          customerName: booking.customerName,
+          customerEmail: booking.customerEmail,
+          customerPhone: booking.customerPhone,
+          bookingId: booking.id,
+          bookingDate: booking.bookingDate,
+          status: booking.status,
+          amount: service.price,
+          staffId: staff.id,
+          staffName: staff.displayName,
+          serviceId: service.id,
+          serviceName: service.name,
+        },
+      );
+
       setCreated(booking);
       setStep("done");
     } catch (err) {
