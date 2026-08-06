@@ -12,6 +12,7 @@ export const SEARCH_FILTER_CHIPS: SearchFilterChip[] = [
   "Top Rated",
 ];
 
+/** Temporary mock marketplace data — replace with Supabase later. */
 export const MOCK_SALONS: Salon[] = [
   {
     id: "1",
@@ -75,7 +76,7 @@ export const MOCK_SALONS: Salon[] = [
     coverGradient: "from-[#EDE9FE] via-[#FAF5FF] to-[#F5F3FF]",
     rating: 4.6,
     reviewCount: 141,
-    address: "55 Indooroopilly Shopping Centre",
+    address: "55 Indooroopilly SC",
     suburb: "Indooroopilly QLD",
     distanceKm: 3.2,
     isOpen: false,
@@ -156,5 +157,41 @@ export const MOCK_SALONS: Salon[] = [
     startingPrice: 40,
     mapX: 62,
     mapY: 40,
+  },
+  {
+    id: "9",
+    name: "Northside Barber Co.",
+    logoInitials: "NB",
+    logoColor: "#1B1F3B",
+    coverGradient: "from-[#E5E7EB] via-[#F3F4F6] to-[#EEF2FF]",
+    rating: 4.8,
+    reviewCount: 156,
+    address: "220 Gympie Rd",
+    suburb: "Aspley QLD",
+    distanceKm: 0.5,
+    isOpen: true,
+    availableToday: true,
+    tags: ["Hair"],
+    startingPrice: 40,
+    mapX: 46,
+    mapY: 34,
+  },
+  {
+    id: "10",
+    name: "Chermside Lash Lounge",
+    logoInitials: "CL",
+    logoColor: "#A855F7",
+    coverGradient: "from-[#F3E8FF] via-[#FAF5FF] to-[#FCE7F3]",
+    rating: 4.6,
+    reviewCount: 94,
+    address: "Westfield Chermside",
+    suburb: "Chermside QLD",
+    distanceKm: 1.7,
+    isOpen: true,
+    availableToday: true,
+    tags: ["Brows", "Facial"],
+    startingPrice: 55,
+    mapX: 64,
+    mapY: 44,
   },
 ];

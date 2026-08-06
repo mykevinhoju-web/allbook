@@ -6,33 +6,31 @@ import type { Salon } from "./types";
 type SalonListProps = {
   salons: Salon[];
   selectedId?: string | null;
-  favorites: Set<string>;
   onSelect?: (id: string) => void;
-  onFavoriteToggle?: (id: string) => void;
   onBook?: (id: string) => void;
+  className?: string;
 };
 
 export function SalonList({
   salons,
   selectedId,
-  favorites,
   onSelect,
-  onFavoriteToggle,
   onBook,
+  className,
 }: SalonListProps) {
   return (
-    <div className="grid gap-4 sm:gap-5">
-      {salons.map((salon) => (
-        <SalonCard
-          key={salon.id}
-          salon={salon}
-          selected={selectedId === salon.id}
-          favorited={favorites.has(salon.id)}
-          onSelect={onSelect}
-          onFavoriteToggle={onFavoriteToggle}
-          onBook={onBook}
-        />
-      ))}
+    <div className={className}>
+      <div className="grid gap-3 sm:gap-4">
+        {salons.map((salon) => (
+          <SalonCard
+            key={salon.id}
+            salon={salon}
+            selected={selectedId === salon.id}
+            onSelect={onSelect}
+            onBook={onBook}
+          />
+        ))}
+      </div>
     </div>
   );
 }

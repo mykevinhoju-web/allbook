@@ -1,6 +1,6 @@
 "use client";
 
-import { Heart, MapPin, Star } from "lucide-react";
+import { Star } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -10,18 +10,14 @@ const ACCENT = "#6B5CF6";
 
 type SalonCardProps = {
   salon: Salon;
-  favorited?: boolean;
   selected?: boolean;
-  onFavoriteToggle?: (id: string) => void;
   onSelect?: (id: string) => void;
   onBook?: (id: string) => void;
 };
 
 export function SalonCard({
   salon,
-  favorited = false,
   selected = false,
-  onFavoriteToggle,
   onSelect,
   onBook,
 }: SalonCardProps) {
@@ -37,121 +33,84 @@ export function SalonCard({
         }
       }}
       className={cn(
-        "group overflow-hidden rounded-3xl border bg-white shadow-[0_8px_28px_rgba(27,31,59,0.05)] transition-all duration-300",
-        "hover:-translate-y-0.5 hover:shadow-[0_18px_44px_rgba(27,31,59,0.1)]",
+        "group grid overflow-hidden rounded-2xl border bg-white transition-all duration-300 sm:grid-cols-[148px_minmax(0,1fr)]",
+        "hover:shadow-[0_12px_32px_rgba(27,31,59,0.1)] hover:scale-[1.01]",
         selected
-          ? "border-[#6B5CF6] ring-2 ring-[#6B5CF6]/20"
-          : "border-[#EEEAF8]",
+          ? "border-[#6B5CF6] shadow-[0_12px_32px_rgba(107,92,246,0.14)] ring-2 ring-[#6B5CF6]/20"
+          : "border-neutral-200/80 shadow-[0_4px_16px_rgba(27,31,59,0.04)]",
       )}
     >
-      <div className="relative">
+      {/* Cover image */}
+      <div className="relative h-36 sm:h-auto sm:min-h-[148px]">
         <div
+          className={cn("absolute inset-0 bg-gradient-to-br", salon.coverGradient)}
+        />
+        <div
+          className="absolute left-3 top-3 flex size-10 items-center justify-center rounded-xl text-xs font-bold text-white shadow-md ring-2 ring-white/90"
+          style={{ backgroundColor: salon.logoColor }}
+          aria-hidden
+        >
+          {salon.logoInitials}
+        </div>
+        <span
           className={cn(
-            "h-40 bg-gradient-to-br sm:h-44",
-            salon.coverGradient,
+            "absolute bottom-3 left-3 rounded-full px-2 py-0.5 text-[11px] font-semibold backdrop-blur",
+            salon.isOpen
+              ? "bg-emerald-500/95 text-white"
+              : "bg-neutral-800/80 text-white",
           )}
         >
-          <div className="absolute inset-0 flex items-end justify-between p-4">
-            <div
-              className="flex size-12 items-center justify-center rounded-2xl text-sm font-bold text-white shadow-lg ring-2 ring-white/80 transition duration-300 group-hover:scale-105"
-              style={{ backgroundColor: salon.logoColor }}
-              aria-hidden
-            >
-              {salon.logoInitials}
-            </div>
-            <button
-              type="button"
-              aria-label={favorited ? "Remove from favourites" : "Save favourite"}
-              onClick={(e) => {
-                e.stopPropagation();
-                onFavoriteToggle?.(salon.id);
-              }}
-              className={cn(
-                "flex size-10 items-center justify-center rounded-full bg-white/90 shadow-md backdrop-blur transition hover:scale-110",
-                favorited ? "text-[#EC4899]" : "text-[#9AA0B4] hover:text-[#EC4899]",
-              )}
-            >
-              <Heart
-                className="size-4"
-                fill={favorited ? "currentColor" : "none"}
-                strokeWidth={2.2}
-              />
-            </button>
-          </div>
-        </div>
+          {salon.isOpen ? "Open" : "Closed"}
+        </span>
       </div>
 
-      <div className="space-y-3 p-4 sm:p-5">
+      <div className="flex flex-col gap-2.5 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="truncate text-[17px] font-semibold tracking-tight text-[#1B1F3B]">
+            <h3 className="truncate text-[15px] font-semibold tracking-tight text-neutral-950">
               {salon.name}
             </h3>
-            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-[#6B7289]">
-              <span className="inline-flex items-center gap-1 font-semibold text-[#1B1F3B]">
-                <Star className="size-3.5 fill-[#F59E0B] text-[#F59E0B]" />
+            <div className="mt-1 flex items-center gap-2 text-[13px] text-neutral-500">
+              <span className="inline-flex items-center gap-1 font-medium text-neutral-900">
+                <Star className="size-3.5 fill-amber-400 text-amber-400" />
                 {salon.rating.toFixed(1)}
               </span>
-              <span>({salon.reviewCount} reviews)</span>
-              <span className="text-[#D1D5E0]">·</span>
+              <span className="text-neutral-300">·</span>
               <span>{salon.distanceKm.toFixed(1)} km</span>
             </div>
           </div>
           <div className="shrink-0 text-right">
-            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#9AA0B4]">
-              From
-            </p>
-            <p className="text-lg font-semibold text-[#1B1F3B]">
+            <p className="text-[11px] text-neutral-400">From</p>
+            <p className="text-base font-semibold text-neutral-950">
               ${salon.startingPrice}
             </p>
           </div>
         </div>
 
-        <p className="flex items-start gap-1.5 text-[13px] leading-snug text-[#6B7289]">
-          <MapPin className="mt-0.5 size-3.5 shrink-0 text-[#9AA0B4]" />
-          <span>
-            {salon.address}
-            <span className="text-[#9AA0B4]"> · {salon.suburb}</span>
-          </span>
-        </p>
-
         <div className="flex flex-wrap gap-1.5">
-          <span
-            className={cn(
-              "rounded-full px-2.5 py-0.5 text-[11px] font-semibold",
-              salon.isOpen
-                ? "bg-emerald-50 text-emerald-700"
-                : "bg-neutral-100 text-neutral-500",
-            )}
-          >
-            {salon.isOpen ? "Open" : "Closed"}
-          </span>
-          {salon.availableToday ? (
-            <span className="rounded-full bg-[#EEF2FF] px-2.5 py-0.5 text-[11px] font-semibold text-[#4F46E5]">
-              Available Today
-            </span>
-          ) : null}
           {salon.tags.map((tag) => (
             <span
               key={tag}
-              className="rounded-full bg-[#FAFAFE] px-2.5 py-0.5 text-[11px] font-medium text-[#5B6178] ring-1 ring-[#E8E6F2]"
+              className="rounded-full bg-neutral-50 px-2.5 py-0.5 text-[11px] font-medium text-neutral-600 ring-1 ring-neutral-200/80"
             >
               {tag}
             </span>
           ))}
         </div>
 
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onBook?.(salon.id);
-          }}
-          className="inline-flex h-11 w-full items-center justify-center rounded-2xl text-sm font-semibold text-white transition duration-200 hover:opacity-95 hover:shadow-[0_10px_24px_rgba(107,92,246,0.3)] active:scale-[0.99]"
-          style={{ backgroundColor: ACCENT }}
-        >
-          Book Now
-        </button>
+        <div className="mt-auto pt-1">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onBook?.(salon.id);
+            }}
+            className="inline-flex h-10 w-full items-center justify-center rounded-xl text-sm font-semibold text-white transition hover:opacity-95 active:scale-[0.99] sm:w-auto sm:px-5"
+            style={{ backgroundColor: ACCENT }}
+          >
+            Book
+          </button>
+        </div>
       </div>
     </article>
   );
