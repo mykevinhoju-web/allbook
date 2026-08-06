@@ -16,4 +16,8 @@ export type { SearchSalonsResult } from "./searchSalons";
 export {
   normalizeSalonSearchFilters,
 } from "./types";
-export type { SalonSearchFilters, SalonSearchOrigin } from "./types";
+export type {
+  SalonSearchFilters,
+  SalonSearchFiltersInput,
+  SalonSearchOrigin,
+} from "./types";

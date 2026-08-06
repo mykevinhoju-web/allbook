@@ -12,6 +12,7 @@ import { geocodeSearchLocation } from "./geocode";
 import {
   normalizeSalonSearchFilters,
   type SalonSearchFilters,
+  type SalonSearchFiltersInput,
   type SalonSearchOrigin,
 } from "./types";
 
@@ -35,7 +36,7 @@ export type SearchSalonsResult = {
  */
 export async function searchSalons(
   supabase: AnySupabase,
-  rawFilters: Partial<SalonSearchFilters> = {},
+  rawFilters: SalonSearchFiltersInput = {},
 ): Promise<SearchSalonsResult> {
   const filters = normalizeSalonSearchFilters(rawFilters);
   const page = filters.page ?? 1;

@@ -21,8 +21,18 @@ export type SalonSearchOrigin = {
   formattedAddress?: string;
 };
 
+/** Loose query/API input — always run through `normalizeSalonSearchFilters`. */
+export type SalonSearchFiltersInput = {
+  location?: string | null;
+  service?: string | null;
+  radiusKm?: SearchDistanceKm | number | string | null;
+  sort?: SearchSort | string | null;
+  page?: number | string | null;
+  pageSize?: number | string | null;
+};
+
 export function normalizeSalonSearchFilters(
-  input: Partial<SalonSearchFilters> & { radiusKm?: number | string },
+  input: SalonSearchFiltersInput = {},
 ): SalonSearchFilters {
   const radiusRaw = Number(input.radiusKm);
   const radiusKm = isSearchDistanceKm(radiusRaw)
