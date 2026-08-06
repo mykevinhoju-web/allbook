@@ -3,14 +3,16 @@ export type LatLngLiteral = {
   lng: number;
 };
 
-/** Brisbane CBD — default map center when no location query. */
+/** Brisbane CBD — default map center. */
 export const DEFAULT_MAP_CENTER: LatLngLiteral = {
   lat: -27.4698,
   lng: 153.0251,
 };
 
-export const DEFAULT_MAP_ZOOM = 12;
+export const DEFAULT_MAP_ZOOM = 11;
 export const SEARCH_MAP_ZOOM = 13;
+/** Zoom when a salon card / marker is focused */
+export const SELECTED_SALON_ZOOM = 15;
 
 export function getGoogleMapsBrowserKey(): string | undefined {
   const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim();

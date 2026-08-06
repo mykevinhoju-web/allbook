@@ -5,14 +5,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { List, Map as MapIcon } from "lucide-react";
 
+import { GoogleMap } from "@/components/maps";
+import { MOCK_SALONS } from "@/data/mockSalons";
 import { AllBookLogo } from "@/features/platform-landing/components/allbook-logo";
-import { SERVICE_TO_TAGS, parseSearchParams } from "@/lib/search";
+import { useMap } from "@/hooks/useMap";
+import { parseSearchParams } from "@/lib/search";
 import { cn } from "@/lib/utils";
 
 import { EmptyState } from "./EmptyState";
 import { LoadingSkeleton } from "./LoadingSkeleton";
-import { SearchMap } from "./SearchMap";
-import { MOCK_SALONS } from "./mock-salons";
 import { SalonList } from "./SalonList";
 import { SearchToolbar } from "./SearchToolbar";
 
@@ -20,21 +21,22 @@ const ACCENT = "#6B5CF6";
 
 function filterMockSalons(location: string, service: string) {
   const q = location.trim().toLowerCase();
+  const svc = service.trim().toLowerCase();
 
   return MOCK_SALONS.filter((salon) => {
     if (q) {
-      const haystack =
-        `${salon.name} ${salon.address} ${salon.suburb}`.toLowerCase();
+      const haystack = `${salon.name} ${salon.suburb} ${salon.service}`.toLowerCase();
       if (!haystack.includes(q)) return false;
     }
-
-    if (service) {
-      const tags = SERVICE_TO_TAGS[service] ?? [service];
-      if (!tags.some((tag) => salon.tags.includes(tag as never))) {
-        return false;
-      }
+    if (svc && salon.service.toLowerCase() !== svc) {
+      // Allow Barber ↔ Hair soft match for toolbar services
+      const aliases: Record<string, string[]> = {
+        hair: ["hair", "barber"],
+        barber: ["barber", "hair"],
+      };
+      const allowed = aliases[svc] ?? [svc];
+      if (!allowed.includes(salon.service.toLowerCase())) return false;
     }
-
     return true;
   });
 }
@@ -48,7 +50,6 @@ export function SearchPage() {
   );
 
   const [loading, setLoading] = useState(true);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showMapMobile, setShowMapMobile] = useState(false);
 
   const salons = useMemo(
@@ -56,31 +57,27 @@ export function SearchPage() {
     [query.location, query.service],
   );
 
+  const {
+    selectedId,
+    focusToken,
+    selectSalonFromCard,
+    selectSalonFromMarker,
+    clearSelection,
+  } = useMap(salons);
+
   useEffect(() => {
     setLoading(true);
-    setSelectedId(null);
-    const timer = window.setTimeout(() => setLoading(false), 450);
+    clearSelection();
+    const timer = window.setTimeout(() => setLoading(false), 400);
     return () => window.clearTimeout(timer);
-  }, [query.location, query.service]);
+  }, [query.location, query.service, clearSelection]);
 
-  useEffect(() => {
-    if (loading) return;
-    setSelectedId((prev) => {
-      if (prev && salons.some((s) => s.id === prev)) return prev;
-      return salons[0]?.id ?? null;
-    });
-  }, [loading, salons]);
-
-  const resultHint = [
-    query.location || null,
-    query.service || null,
-  ]
+  const resultHint = [query.location || null, query.service || null]
     .filter(Boolean)
     .join(" · ");
 
   return (
     <div className="flex h-svh flex-col overflow-hidden bg-white text-neutral-950">
-      {/* Sticky header + shared hero search UI */}
       <header className="z-40 shrink-0 border-b border-neutral-200/80 bg-white">
         <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
           <Link href="/" className="shrink-0">
@@ -127,13 +124,11 @@ export function SearchPage() {
           </div>
         </div>
 
-        {/* Mobile / tablet toolbar */}
         <div className="border-t border-neutral-100 px-4 py-3 sm:px-6 lg:hidden">
           <SearchToolbar location={query.location} service={query.service} />
         </div>
       </header>
 
-      {/* Airbnb-style split: list 45% | sticky map 55% */}
       <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1">
         <section
           className={cn(
@@ -168,7 +163,7 @@ export function SearchPage() {
               <SalonList
                 salons={salons}
                 selectedId={selectedId}
-                onSelect={setSelectedId}
+                onSelect={selectSalonFromCard}
                 onBook={() => {
                   /* mock only */
                 }}
@@ -184,11 +179,12 @@ export function SearchPage() {
           )}
         >
           <div className="sticky top-0 h-full w-full min-h-[calc(100svh-8rem)]">
-            <SearchMap
-              location={query.location}
+            <GoogleMap
               salons={loading ? [] : salons}
               selectedId={selectedId}
-              onSelect={setSelectedId}
+              focusToken={focusToken}
+              searchLocation={query.location}
+              onSelect={selectSalonFromMarker}
               className="h-full min-h-[calc(100svh-8.5rem)] rounded-2xl"
             />
           </div>

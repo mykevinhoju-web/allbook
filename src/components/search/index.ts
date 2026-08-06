@@ -1,10 +1,7 @@
 export { EmptyState } from "./EmptyState";
 export { LoadingSkeleton } from "./LoadingSkeleton";
 export { MapPlaceholder } from "./MapPlaceholder";
-export { MOCK_SALONS } from "./mock-salons";
 export { SalonCard } from "./SalonCard";
 export { SalonList } from "./SalonList";
-export { SearchMap } from "./SearchMap";
 export { SearchPage } from "./SearchPage";
 export { SearchToolbar } from "./SearchToolbar";
-export type { Salon, SalonServiceTag } from "./types";

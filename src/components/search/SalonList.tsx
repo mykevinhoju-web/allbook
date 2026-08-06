@@ -1,10 +1,11 @@
 "use client";
 
+import type { MockSalon } from "@/data/mockSalons";
+
 import { SalonCard } from "./SalonCard";
-import type { Salon } from "./types";
 
 type SalonListProps = {
-  salons: Salon[];
+  salons: MockSalon[];
   selectedId?: string | null;
   onSelect?: (id: string) => void;
   onBook?: (id: string) => void;
