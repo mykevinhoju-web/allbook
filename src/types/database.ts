@@ -908,6 +908,11 @@ export type Database = {
           description: string | null;
           duration_minutes: number;
           price: number;
+          price_type: "fixed" | "from" | "range";
+          price_max: number | null;
+          booking_enabled: boolean;
+          featured: boolean;
+          status: "active" | "inactive" | "archived";
           sort_order: number;
           is_active: boolean;
           created_at: string;
@@ -921,6 +926,11 @@ export type Database = {
           description?: string | null;
           duration_minutes: number;
           price: number;
+          price_type?: "fixed" | "from" | "range";
+          price_max?: number | null;
+          booking_enabled?: boolean;
+          featured?: boolean;
+          status?: "active" | "inactive" | "archived";
           sort_order?: number;
           is_active?: boolean;
           created_at?: string;
@@ -934,6 +944,11 @@ export type Database = {
           description?: string | null;
           duration_minutes?: number;
           price?: number;
+          price_type?: "fixed" | "from" | "range";
+          price_max?: number | null;
+          booking_enabled?: boolean;
+          featured?: boolean;
+          status?: "active" | "inactive" | "archived";
           sort_order?: number;
           is_active?: boolean;
           created_at?: string;
@@ -945,6 +960,39 @@ export type Database = {
             columns: ["salon_id"];
             isOneToOne: false;
             referencedRelation: "salons";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      salon_service_staff: {
+        Row: {
+          service_id: string;
+          staff_id: string;
+          created_at: string;
+        };
+        Insert: {
+          service_id: string;
+          staff_id: string;
+          created_at?: string;
+        };
+        Update: {
+          service_id?: string;
+          staff_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "salon_service_staff_service_id_fkey";
+            columns: ["service_id"];
+            isOneToOne: false;
+            referencedRelation: "salon_services";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "salon_service_staff_staff_id_fkey";
+            columns: ["staff_id"];
+            isOneToOne: false;
+            referencedRelation: "salon_staff";
             referencedColumns: ["id"];
           },
         ];
