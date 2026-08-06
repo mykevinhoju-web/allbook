@@ -4,22 +4,23 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  Bell,
+  BadgeDollarSign,
   Building2,
   CalendarClock,
   CalendarDays,
   Check,
+  ContactRound,
   CreditCard,
-  Gift,
   HandHeart,
   MapPin,
+  MessageSquare,
   Scissors,
   Search,
   Share2,
   Sparkles,
   Star,
+  Tag,
   TrendingUp,
-  Users,
 } from "lucide-react";
 
 import { PlatformDemoPhoneDialog } from "@/features/booking/components/platform-demo-phone-dialog";
@@ -289,66 +290,58 @@ export function LandingSampleVista({
             </div>
           </div>
         </section>
-        {/* Why salon owners choose Allbook */}
-        <section className="border-y border-neutral-200/80 bg-[#FAFBFF] py-16 sm:py-20">
-          <div className="mx-auto max-w-6xl px-5 sm:px-8">
-            <div className="mx-auto max-w-2xl text-center">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#7C3AED]">
-                Built for busy salons
-              </p>
-              <h2 className="mt-3 text-2xl font-bold tracking-tight text-neutral-950 sm:text-3xl">
-                Why salon owners choose Allbook
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-neutral-600 sm:text-base">
-                Everything you need to take bookings, get paid, and grow — without
-                the clutter.
-              </p>
-            </div>
+        {/* Why salons love Allbook */}
+        <section className="border-y border-neutral-100 bg-[#F7F8FC] py-16 sm:py-20">
+          <div className="mx-auto max-w-[1180px] px-5 sm:px-8">
+            <h2 className="text-center text-2xl font-bold tracking-tight text-[#1B1F3B] sm:text-[1.75rem]">
+              Why salons love Allbook
+            </h2>
 
-            <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
+            <div className="mt-12 grid grid-cols-2 gap-x-4 gap-y-10 sm:gap-x-6 md:grid-cols-3 lg:grid-cols-6 lg:gap-x-5">
               {[
                 {
                   title: "Online Booking 24/7",
-                  copy: "Customers can book anytime.",
+                  copy: "Let customers book anytime, anywhere.",
                   icon: CalendarClock,
                 },
                 {
-                  title: "Reduce No-Shows",
-                  copy: "Automatic SMS & Email reminders.",
-                  icon: Bell,
+                  title: "No More No-Shows",
+                  copy: "SMS & email reminders reduce no-shows.",
+                  icon: MessageSquare,
                 },
                 {
                   title: "Get Paid Faster",
                   copy: "Secure online payments with Stripe.",
-                  icon: CreditCard,
+                  icon: BadgeDollarSign,
                 },
                 {
-                  title: "Manage Clients",
-                  copy: "Simple CRM with customer history.",
-                  icon: Users,
+                  title: "Manage Your Clients",
+                  copy: "CRM to manage clients and build loyalty.",
+                  icon: ContactRound,
                 },
                 {
                   title: "Grow Your Business",
-                  copy: "Reports, analytics and marketing tools.",
+                  copy: "Insights & reports to help you grow.",
                   icon: TrendingUp,
                 },
                 {
-                  title: "Free Forever",
-                  copy: "No monthly fee. No lock-in contract.",
-                  icon: Gift,
+                  title: "100% Free to Start",
+                  copy: "No lock-in. No monthly fees. Ever.",
+                  icon: Tag,
                 },
               ].map(({ title, copy, icon: Icon }) => (
                 <article
                   key={title}
-                  className="rounded-2xl border border-neutral-200/80 bg-white p-6 shadow-[0_12px_40px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_48px_rgba(124,58,237,0.1)] sm:p-7"
+                  className="flex flex-col items-center px-1 text-center"
                 >
-                  <span className="inline-flex size-11 items-center justify-center rounded-2xl bg-[#7C3AED]/10 text-[#7C3AED]">
-                    <Icon className="size-5" strokeWidth={2} />
-                  </span>
-                  <h3 className="mt-5 text-[15px] font-bold tracking-tight text-neutral-950 sm:text-base">
+                  <Icon
+                    className="size-8 text-[#6B5CF6] sm:size-9"
+                    strokeWidth={1.6}
+                  />
+                  <h3 className="mt-4 text-[13px] font-bold leading-snug text-[#1B1F3B] sm:text-sm">
                     {title}
                   </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-neutral-600">
+                  <p className="mt-2 max-w-[11rem] text-[12px] leading-relaxed text-[#6B7289] sm:text-[13px]">
                     {copy}
                   </p>
                 </article>
