@@ -656,6 +656,12 @@ export type Database = {
           amenities: string[];
           service_tags: string[];
           opening_hours: Record<string, unknown>;
+          registration_method: "google" | "manual" | "admin" | null;
+          google_place_id: string | null;
+          social_instagram: string | null;
+          social_facebook: string | null;
+          social_tiktok: string | null;
+          languages: string[];
           created_at: string;
           updated_at: string;
         };
@@ -689,6 +695,12 @@ export type Database = {
           amenities?: string[];
           service_tags?: string[];
           opening_hours?: Record<string, unknown>;
+          registration_method?: "google" | "manual" | "admin" | null;
+          google_place_id?: string | null;
+          social_instagram?: string | null;
+          social_facebook?: string | null;
+          social_tiktok?: string | null;
+          languages?: string[];
           created_at?: string;
           updated_at?: string;
         };
@@ -722,6 +734,12 @@ export type Database = {
           amenities?: string[];
           service_tags?: string[];
           opening_hours?: Record<string, unknown>;
+          registration_method?: "google" | "manual" | "admin" | null;
+          google_place_id?: string | null;
+          social_instagram?: string | null;
+          social_facebook?: string | null;
+          social_tiktok?: string | null;
+          languages?: string[];
           created_at?: string;
           updated_at?: string;
         };
@@ -738,6 +756,47 @@ export type Database = {
             columns: ["suburb_id"];
             isOneToOne: false;
             referencedRelation: "suburbs";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      salon_owners: {
+        Row: {
+          id: string;
+          salon_id: string;
+          full_name: string;
+          email: string;
+          password_hash: string;
+          accepted_terms_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          salon_id: string;
+          full_name: string;
+          email: string;
+          password_hash: string;
+          accepted_terms_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          salon_id?: string;
+          full_name?: string;
+          email?: string;
+          password_hash?: string;
+          accepted_terms_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "salon_owners_salon_id_fkey";
+            columns: ["salon_id"];
+            isOneToOne: true;
+            referencedRelation: "salons";
             referencedColumns: ["id"];
           },
         ];

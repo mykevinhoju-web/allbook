@@ -25,6 +25,7 @@ export const RESERVED_PATH_SEGMENTS = new Set([
   "massage",
   "nails",
   "platform",
+  "register",
   "room",
   "robots.txt",
   "salon",
@@ -93,6 +94,8 @@ export function isPlatformApexPublicPath(pathname: string): boolean {
     pathname === "/" ||
     pathname === "/signup" ||
     pathname.startsWith("/signup/") ||
+    pathname === "/register" ||
+    pathname.startsWith("/register/") ||
     pathname === "/login" ||
     pathname.startsWith("/landing") ||
     pathname.startsWith("/shops") ||
