@@ -5,8 +5,8 @@ import {
   Copy,
   MoreHorizontal,
   Pencil,
-  Star,
-  Trash2,
+  Power,
+  RotateCcw,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -21,7 +21,9 @@ type StaffCardProps = {
   onEdit: (member: SalonStaffMember) => void;
   onDuplicate: (member: SalonStaffMember) => void;
   onArchive: (member: SalonStaffMember) => void;
-  onDelete: (member: SalonStaffMember) => void;
+  onRestore: (member: SalonStaffMember) => void;
+  onActivate: (member: SalonStaffMember) => void;
+  onDeactivate: (member: SalonStaffMember) => void;
 };
 
 export function StaffCard({
@@ -29,11 +31,14 @@ export function StaffCard({
   onEdit,
   onDuplicate,
   onArchive,
-  onDelete,
+  onRestore,
+  onActivate,
+  onDeactivate,
 }: StaffCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const working = member.workingHours.filter((d) => !d.isDayOff);
+  const isArchived = member.status === "archived";
 
   useEffect(() => {
     function onPointerDown(event: MouseEvent) {
@@ -65,44 +70,103 @@ export function StaffCard({
                 <MoreHorizontal className="size-4" />
               </button>
               {menuOpen ? (
-                <Menu
-                  onEdit={() => {
-                    setMenuOpen(false);
-                    onEdit(member);
-                  }}
-                  onDuplicate={() => {
-                    setMenuOpen(false);
-                    onDuplicate(member);
-                  }}
-                  onArchive={() => {
-                    setMenuOpen(false);
-                    onArchive(member);
-                  }}
-                  onDelete={() => {
-                    setMenuOpen(false);
-                    onDelete(member);
-                  }}
-                />
+                <div className="absolute right-0 z-10 mt-1 w-44 overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
+                  {isArchived ? (
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-[13px] hover:bg-neutral-50"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onRestore(member);
+                      }}
+                    >
+                      <RotateCcw className="size-3.5" /> Restore
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 px-3 py-2 text-[13px] hover:bg-neutral-50"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          onEdit(member);
+                        }}
+                      >
+                        <Pencil className="size-3.5" /> Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 px-3 py-2 text-[13px] hover:bg-neutral-50"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          onDuplicate(member);
+                        }}
+                      >
+                        <Copy className="size-3.5" /> Duplicate
+                      </button>
+                      {member.status === "active" ? (
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 px-3 py-2 text-[13px] hover:bg-neutral-50"
+                          onClick={() => {
+                            setMenuOpen(false);
+                            onDeactivate(member);
+                          }}
+                        >
+                          <Power className="size-3.5" /> Deactivate
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 px-3 py-2 text-[13px] hover:bg-neutral-50"
+                          onClick={() => {
+                            setMenuOpen(false);
+                            onActivate(member);
+                          }}
+                        >
+                          <Power className="size-3.5" /> Activate
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 px-3 py-2 text-[13px] hover:bg-neutral-50"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          onArchive(member);
+                        }}
+                      >
+                        <Archive className="size-3.5" /> Archive
+                      </button>
+                    </>
+                  )}
+                </div>
               ) : null}
             </div>
           </div>
 
           <div className="mt-3 flex flex-wrap gap-2 text-[12px]">
-            <Chip tone={member.status === "active" ? "good" : "muted"}>
-              {member.status === "active" ? "Active" : "Inactive"}
-            </Chip>
-            <Chip>
-              <Star className="mr-1 inline size-3 fill-amber-400 text-amber-400" />
-              {member.rating.toFixed(1)}
-            </Chip>
-            <Chip>{member.experience} yrs</Chip>
-            <Chip tone={member.bookingEnabled ? "good" : "muted"}>
-              {member.bookingEnabled ? "Bookable" : "Booking off"}
+            <Chip
+              tone={
+                member.status === "active"
+                  ? "good"
+                  : member.status === "archived"
+                    ? "muted"
+                    : "muted"
+              }
+            >
+              {member.status === "active"
+                ? "Active"
+                : member.status === "archived"
+                  ? "Archived"
+                  : "Inactive"}
             </Chip>
           </div>
 
           <p className="mt-3 truncate text-[12px] text-neutral-500">
-            {member.languages.join(" · ") || "No languages"}
+            {member.phone || "No phone"}
+          </p>
+          <p className="mt-1 truncate text-[12px] text-neutral-500">
+            {member.email || "No email"}
           </p>
           <p className="mt-1 truncate text-[12px] text-neutral-500">
             {working.length
@@ -160,34 +224,5 @@ function Chip({
     >
       {children}
     </span>
-  );
-}
-
-function Menu({
-  onEdit,
-  onDuplicate,
-  onArchive,
-  onDelete,
-}: {
-  onEdit: () => void;
-  onDuplicate: () => void;
-  onArchive: () => void;
-  onDelete: () => void;
-}) {
-  return (
-    <div className="absolute right-0 z-10 mt-1 w-40 overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
-      <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-[13px] hover:bg-neutral-50" onClick={onEdit}>
-        <Pencil className="size-3.5" /> Edit
-      </button>
-      <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-[13px] hover:bg-neutral-50" onClick={onDuplicate}>
-        <Copy className="size-3.5" /> Duplicate
-      </button>
-      <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-[13px] hover:bg-neutral-50" onClick={onArchive}>
-        <Archive className="size-3.5" /> Archive
-      </button>
-      <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-[13px] text-rose-600 hover:bg-rose-50" onClick={onDelete}>
-        <Trash2 className="size-3.5" /> Delete
-      </button>
-    </div>
   );
 }

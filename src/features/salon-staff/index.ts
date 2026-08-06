@@ -9,13 +9,19 @@ export {
   staffDisplayName,
   getWorkingMinutesForDay,
 } from "./constants";
-export { getStaff, getBookableStaff } from "./getStaff";
-export { createStaff } from "./createStaff";
-export { updateStaff, duplicateStaff, archiveStaff } from "./updateStaff";
-export { deleteStaff, deleteStaffMany } from "./deleteStaff";
 export { validateStaffInput } from "./validate";
-export { getAssignableServices } from "./mock-data";
 export { StaffManager } from "./staff-manager";
+export {
+  createStaff,
+  updateStaff,
+  duplicateStaff,
+  archiveStaff,
+  restoreStaff,
+  activateStaff,
+  deactivateStaff,
+  deleteStaff,
+  deleteStaffMany,
+} from "./staff-client";
 export type {
   SalonStaffMember,
   StaffAssignedService,

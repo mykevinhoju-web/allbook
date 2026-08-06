@@ -4,8 +4,9 @@ import { requireOwnerSalon } from "@/features/dashboard/getOwnerSalon";
 import {
   getAssignableServices,
   getStaff,
-} from "@/features/salon-staff";
+} from "@/features/salon-staff/getStaff";
 import { StaffManager } from "@/features/salon-staff/staff-manager";
+import { createServiceSupabase } from "@/lib/supabase/service";
 
 export const metadata: Metadata = {
   title: "Staff",
@@ -15,9 +16,12 @@ export const metadata: Metadata = {
 export default async function SalonStaffPage() {
   const owner = await requireOwnerSalon("/platform/salon/staff");
   const salonId = owner.salon.id;
+  // Service role: salon_staff_leaves has no owner SELECT RLS.
+  const supabase = createServiceSupabase();
+
   const [staff, serviceOptions] = await Promise.all([
-    getStaff({ salonId, includeArchived: true }),
-    Promise.resolve(getAssignableServices()),
+    getStaff(supabase, { salonId, includeArchived: true }),
+    getAssignableServices(supabase, salonId),
   ]);
 
   return (
