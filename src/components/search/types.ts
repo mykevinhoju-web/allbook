@@ -27,8 +27,12 @@ export interface Salon {
   availableToday: boolean;
   tags: SalonServiceTag[];
   startingPrice: number;
+  /** Percentage layout for placeholder map fallback */
   mapX: number;
   mapY: number;
+  /** WGS84 coordinates for Google Maps markers */
+  lat: number;
+  lng: number;
 }
 
 export interface SearchToolbarValues {

@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 import { EmptyState } from "./EmptyState";
 import { LoadingSkeleton } from "./LoadingSkeleton";
-import { MapPlaceholder } from "./MapPlaceholder";
+import { SearchMap } from "./SearchMap";
 import { MOCK_SALONS } from "./mock-salons";
 import { SalonList } from "./SalonList";
 import { SearchToolbar } from "./SearchToolbar";
@@ -184,7 +184,8 @@ export function SearchPage() {
           )}
         >
           <div className="sticky top-0 h-full w-full min-h-[calc(100svh-8rem)]">
-            <MapPlaceholder
+            <SearchMap
+              location={query.location}
               salons={loading ? [] : salons}
               selectedId={selectedId}
               onSelect={setSelectedId}

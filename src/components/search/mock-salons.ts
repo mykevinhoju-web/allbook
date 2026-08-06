@@ -31,6 +31,8 @@ export const MOCK_SALONS: Salon[] = [
     startingPrice: 65,
     mapX: 42,
     mapY: 38,
+    lat: -27.3632,
+    lng: 153.0164,
   },
   {
     id: "2",
@@ -49,6 +51,8 @@ export const MOCK_SALONS: Salon[] = [
     startingPrice: 45,
     mapX: 58,
     mapY: 48,
+    lat: -27.3849,
+    lng: 153.0312,
   },
   {
     id: "3",
@@ -67,6 +71,8 @@ export const MOCK_SALONS: Salon[] = [
     startingPrice: 99,
     mapX: 28,
     mapY: 55,
+    lat: -27.5704,
+    lng: 153.0608,
   },
   {
     id: "4",
@@ -85,6 +91,8 @@ export const MOCK_SALONS: Salon[] = [
     startingPrice: 35,
     mapX: 35,
     mapY: 72,
+    lat: -27.4992,
+    lng: 152.9726,
   },
   {
     id: "5",
@@ -103,6 +111,8 @@ export const MOCK_SALONS: Salon[] = [
     startingPrice: 120,
     mapX: 78,
     mapY: 32,
+    lat: -27.5048,
+    lng: 153.1015,
   },
   {
     id: "6",
@@ -121,6 +131,8 @@ export const MOCK_SALONS: Salon[] = [
     startingPrice: 85,
     mapX: 48,
     mapY: 60,
+    lat: -27.4676,
+    lng: 153.0489,
   },
   {
     id: "7",
@@ -139,6 +151,8 @@ export const MOCK_SALONS: Salon[] = [
     startingPrice: 75,
     mapX: 52,
     mapY: 22,
+    lat: -27.4598,
+    lng: 152.9994,
   },
   {
     id: "8",
@@ -157,6 +171,8 @@ export const MOCK_SALONS: Salon[] = [
     startingPrice: 40,
     mapX: 62,
     mapY: 40,
+    lat: -27.3671,
+    lng: 153.0218,
   },
   {
     id: "9",
@@ -175,6 +191,8 @@ export const MOCK_SALONS: Salon[] = [
     startingPrice: 40,
     mapX: 46,
     mapY: 34,
+    lat: -27.3605,
+    lng: 153.0131,
   },
   {
     id: "10",
@@ -193,5 +211,7 @@ export const MOCK_SALONS: Salon[] = [
     startingPrice: 55,
     mapX: 64,
     mapY: 44,
+    lat: -27.3866,
+    lng: 153.0291,
   },
 ];
