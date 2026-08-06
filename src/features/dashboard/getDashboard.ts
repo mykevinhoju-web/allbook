@@ -3,50 +3,18 @@ import { createClient } from "@/lib/supabase/server";
 import { getBookings } from "./getBookings";
 import {
   getOwnerSalonContext,
-  todayIsoSydney,
   type OwnerSalonContext,
 } from "./getOwnerSalon";
 import { getStats } from "./getStats";
+import { DASHBOARD_QUICK_ACTIONS } from "./quick-actions";
 import type {
   DashboardCalendarSlot,
   DashboardPerformanceMetric,
-  DashboardQuickAction,
   DashboardReviewSummary,
   SalonDashboardData,
 } from "./types";
 
-export const DASHBOARD_QUICK_ACTIONS: DashboardQuickAction[] = [
-  {
-    id: "add-service",
-    label: "Add Service",
-    description: "Grow your menu",
-    href: "/platform/salon/services",
-  },
-  {
-    id: "add-staff",
-    label: "Add Staff",
-    description: "Invite your team",
-    href: "/platform/salon/staff",
-  },
-  {
-    id: "edit-business",
-    label: "Business Profile",
-    description: "Hours & details",
-    href: "/platform/salon/business",
-  },
-  {
-    id: "bookings",
-    label: "Bookings",
-    description: "Manage appointments",
-    href: "/platform/salon/bookings",
-  },
-  {
-    id: "open-calendar",
-    label: "Calendar",
-    description: "Today’s schedule",
-    href: "/platform/salon/calendar",
-  },
-];
+export { DASHBOARD_QUICK_ACTIONS } from "./quick-actions";
 
 async function buildCalendar(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -157,5 +125,3 @@ export async function getDashboard(
     },
   };
 }
-
-export { todayIsoSydney };

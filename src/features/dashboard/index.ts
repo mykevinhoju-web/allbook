@@ -1,12 +1,8 @@
-export { getDashboard, DASHBOARD_QUICK_ACTIONS } from "./getDashboard";
-export { getStats } from "./getStats";
-export { getBookings } from "./getBookings";
-export {
-  getOwnerSalonContext,
-  todayIsoSydney,
-  formatAud,
-} from "./getOwnerSalon";
-export type { OwnerSalonContext, OwnerSalonRow } from "./getOwnerSalon";
+/**
+ * Client-safe dashboard barrel.
+ * Server loaders (getDashboard, getOwnerSalon, …) must be imported from their files.
+ */
+export { DASHBOARD_QUICK_ACTIONS } from "./quick-actions";
 export { SALON_DASHBOARD_NAV, isSalonNavActive } from "./navigation";
 export { SalonDashboardShell, SalonDashboardHome } from "./salon-dashboard-shell";
 export { SalonDashboardPlaceholder } from "./salon-dashboard-placeholder";
