@@ -1009,6 +1009,22 @@ export type Database = {
           specialties: string[];
           sort_order: number;
           is_active: boolean;
+          first_name: string | null;
+          last_name: string | null;
+          display_name: string | null;
+          email: string | null;
+          phone: string | null;
+          role: string;
+          bio: string | null;
+          instagram: string | null;
+          certificates: string[];
+          portfolio_images: string[];
+          rating: number;
+          booking_enabled: boolean;
+          max_daily_bookings: number | null;
+          max_weekly_bookings: number | null;
+          buffer_minutes: number;
+          status: "active" | "inactive" | "archived";
           created_at: string;
           updated_at: string;
         };
@@ -1023,6 +1039,22 @@ export type Database = {
           specialties?: string[];
           sort_order?: number;
           is_active?: boolean;
+          first_name?: string | null;
+          last_name?: string | null;
+          display_name?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          role?: string;
+          bio?: string | null;
+          instagram?: string | null;
+          certificates?: string[];
+          portfolio_images?: string[];
+          rating?: number;
+          booking_enabled?: boolean;
+          max_daily_bookings?: number | null;
+          max_weekly_bookings?: number | null;
+          buffer_minutes?: number;
+          status?: "active" | "inactive" | "archived";
           created_at?: string;
           updated_at?: string;
         };
@@ -1037,6 +1069,22 @@ export type Database = {
           specialties?: string[];
           sort_order?: number;
           is_active?: boolean;
+          first_name?: string | null;
+          last_name?: string | null;
+          display_name?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          role?: string;
+          bio?: string | null;
+          instagram?: string | null;
+          certificates?: string[];
+          portfolio_images?: string[];
+          rating?: number;
+          booking_enabled?: boolean;
+          max_daily_bookings?: number | null;
+          max_weekly_bookings?: number | null;
+          buffer_minutes?: number;
+          status?: "active" | "inactive" | "archived";
           created_at?: string;
           updated_at?: string;
         };
@@ -1046,6 +1094,156 @@ export type Database = {
             columns: ["salon_id"];
             isOneToOne: false;
             referencedRelation: "salons";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      salon_staff_services: {
+        Row: {
+          staff_id: string;
+          service_id: string;
+          created_at: string;
+        };
+        Insert: {
+          staff_id: string;
+          service_id: string;
+          created_at?: string;
+        };
+        Update: {
+          staff_id?: string;
+          service_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "salon_staff_services_staff_id_fkey";
+            columns: ["staff_id"];
+            isOneToOne: false;
+            referencedRelation: "salon_staff";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "salon_staff_services_service_id_fkey";
+            columns: ["service_id"];
+            isOneToOne: false;
+            referencedRelation: "salon_services";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      salon_staff_working_hours: {
+        Row: {
+          id: string;
+          staff_id: string;
+          day_of_week: number;
+          start_time: string;
+          end_time: string;
+          is_day_off: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          staff_id: string;
+          day_of_week: number;
+          start_time: string;
+          end_time: string;
+          is_day_off?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          staff_id?: string;
+          day_of_week?: number;
+          start_time?: string;
+          end_time?: string;
+          is_day_off?: boolean;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "salon_staff_working_hours_staff_id_fkey";
+            columns: ["staff_id"];
+            isOneToOne: false;
+            referencedRelation: "salon_staff";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      salon_staff_breaks: {
+        Row: {
+          id: string;
+          staff_id: string;
+          day_of_week: number;
+          start_time: string;
+          end_time: string;
+          break_type: "lunch" | "coffee" | "custom";
+          label: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          staff_id: string;
+          day_of_week: number;
+          start_time: string;
+          end_time: string;
+          break_type?: "lunch" | "coffee" | "custom";
+          label?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          staff_id?: string;
+          day_of_week?: number;
+          start_time?: string;
+          end_time?: string;
+          break_type?: "lunch" | "coffee" | "custom";
+          label?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "salon_staff_breaks_staff_id_fkey";
+            columns: ["staff_id"];
+            isOneToOne: false;
+            referencedRelation: "salon_staff";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      salon_staff_leaves: {
+        Row: {
+          id: string;
+          staff_id: string;
+          start_date: string;
+          end_date: string;
+          leave_type: "annual" | "sick" | "holiday" | "custom";
+          reason: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          staff_id: string;
+          start_date: string;
+          end_date: string;
+          leave_type?: "annual" | "sick" | "holiday" | "custom";
+          reason?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          staff_id?: string;
+          start_date?: string;
+          end_date?: string;
+          leave_type?: "annual" | "sick" | "holiday" | "custom";
+          reason?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "salon_staff_leaves_staff_id_fkey";
+            columns: ["staff_id"];
+            isOneToOne: false;
+            referencedRelation: "salon_staff";
             referencedColumns: ["id"];
           },
         ];
