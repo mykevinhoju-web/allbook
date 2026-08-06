@@ -7,10 +7,8 @@ import {
   BadgeDollarSign,
   Building2,
   CalendarClock,
-  CalendarDays,
   Check,
   ContactRound,
-  CreditCard,
   HandHeart,
   MapPin,
   MessageSquare,
@@ -114,8 +112,8 @@ export function LandingSampleVista({
 
           <nav className="hidden items-center gap-5 text-[13px] font-medium text-[#5B6178] xl:flex">
             {[
-              { label: "For Customers", href: "#features" },
-              { label: "For Salons", href: "#pricing" },
+              { label: "For Customers", href: "#for-customers" },
+              { label: "For Salons", href: "#for-salons" },
               { label: "Features", href: "#features" },
               { label: "Pricing", href: "#pricing" },
               { label: "Jobs", href: "#demo", badge: "New" },
@@ -350,51 +348,95 @@ export function LandingSampleVista({
           </div>
         </section>
 
-        {/* Features */}
-        <section id="features" className="mx-auto max-w-5xl px-5 py-16 sm:px-8 sm:py-20">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-2xl font-bold tracking-tight text-neutral-950 sm:text-3xl">
-              Everything your shop needs to take bookings
-            </h2>
-            <p className="mt-3 text-sm leading-relaxed text-neutral-600 sm:text-base">
-              One platform for front-of-house and back-of-house — customise it to
-              your brand, services, and staff.
-            </p>
-          </div>
-          <div className="mt-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
-            {[
-              {
-                title: "Online Booking",
-                copy: "Customers book 24/7 — Korean, Chinese, Japanese & English friendly.",
-                icon: CalendarDays,
-              },
-              {
-                title: "Take Deposits",
-                copy: "Secure bookings with Stripe deposits in Australian dollars.",
-                icon: CreditCard,
-              },
-              {
-                title: "Customisable",
-                copy: "Match your branding, services, rooms, and staff workflows.",
-                icon: Sparkles,
-              },
-              {
-                title: "Any Industry",
-                copy: "Spas, salons, clinics, cleaning — or your unique business.",
-                icon: Building2,
-              },
-            ].map(({ title, copy, icon: Icon }) => (
-              <div key={title} className="space-y-3">
-                <span
-                  className="inline-flex size-9 items-center justify-center rounded-xl"
-                  style={{ backgroundColor: `${ACCENT}12`, color: ACCENT }}
+        {/* Audience split — For Customers / For Salons */}
+        <section id="features" className="bg-white py-16 sm:py-20">
+          <div className="mx-auto grid max-w-[1180px] gap-5 px-5 sm:px-8 lg:grid-cols-2 lg:gap-6">
+            <article
+              id="for-customers"
+              className="grid overflow-hidden rounded-[1.5rem] bg-[#FFF9F2] sm:grid-cols-[1.05fr_0.95fr] lg:min-h-[420px]"
+            >
+              <div className="relative z-10 px-6 py-8 sm:px-8 sm:py-10">
+                <p className="text-sm font-bold" style={{ color: ACCENT }}>
+                  For Customers
+                </p>
+                <h2 className="mt-3 text-[1.65rem] font-bold leading-tight tracking-tight text-[#1B1F3B] sm:text-[1.85rem]">
+                  Discover the best salons near you
+                </h2>
+                <ul className="mt-6 space-y-3">
+                  {[
+                    "Search by location, service or salon name",
+                    "Compare reviews, pricing and photos",
+                    "Book instantly and pay securely",
+                    "Save your favourite salons",
+                  ].map((item) => (
+                    <li
+                      key={item}
+                      className="flex items-start gap-2.5 text-[13px] leading-snug text-[#3F455A] sm:text-sm"
+                    >
+                      <span
+                        className="mt-0.5 flex size-[18px] shrink-0 items-center justify-center rounded-full text-white"
+                        style={{ backgroundColor: ACCENT }}
+                      >
+                        <Check className="size-2.5 stroke-[3.5]" />
+                      </span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  onClick={openDemo}
+                  className="mt-8 inline-flex h-11 items-center rounded-xl px-5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
+                  style={{ backgroundColor: ACCENT }}
                 >
-                  <Icon className="size-4" />
-                </span>
-                <h3 className="text-[15px] font-bold text-neutral-950">{title}</h3>
-                <p className="text-sm leading-relaxed text-neutral-600">{copy}</p>
+                  Find a Salon
+                </button>
               </div>
-            ))}
+              <AudienceCustomerVisual />
+            </article>
+
+            <article
+              id="for-salons"
+              className="grid overflow-hidden rounded-[1.5rem] bg-[#F4F7FF] sm:grid-cols-[1.05fr_0.95fr] lg:min-h-[420px]"
+            >
+              <div className="relative z-10 px-6 py-8 sm:px-8 sm:py-10">
+                <p className="text-sm font-bold" style={{ color: ACCENT }}>
+                  For Salons
+                </p>
+                <h2 className="mt-3 text-[1.65rem] font-bold leading-tight tracking-tight text-[#1B1F3B] sm:text-[1.85rem]">
+                  Your all-in-one booking platform
+                </h2>
+                <ul className="mt-6 space-y-3">
+                  {[
+                    "Free online booking system",
+                    "Customisable salon page",
+                    "SMS & email notifications",
+                    "Client management & marketing tools",
+                  ].map((item) => (
+                    <li
+                      key={item}
+                      className="flex items-start gap-2.5 text-[13px] leading-snug text-[#3F455A] sm:text-sm"
+                    >
+                      <span
+                        className="mt-0.5 flex size-[18px] shrink-0 items-center justify-center rounded-full text-white"
+                        style={{ backgroundColor: ACCENT }}
+                      >
+                        <Check className="size-2.5 stroke-[3.5]" />
+                      </span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href="/signup"
+                  className="mt-8 inline-flex h-11 items-center rounded-xl px-5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
+                  style={{ backgroundColor: ACCENT }}
+                >
+                  Start Free Now
+                </Link>
+              </div>
+              <AudienceSalonVisual />
+            </article>
           </div>
         </section>
 
@@ -644,6 +686,129 @@ export function LandingSampleVista({
 
       {isLive ? null : <LandingSampleSwitcher active={5} tone="light" />}
       <PlatformDemoPhoneDialog open={demoOpen} onOpenChange={setDemoOpen} />
+    </div>
+  );
+}
+
+function AudienceCustomerVisual() {
+  return (
+    <div
+      aria-hidden
+      className="relative mx-auto h-[220px] w-full max-w-[280px] sm:mx-0 sm:h-full sm:min-h-[320px] sm:max-w-none"
+    >
+      <div className="absolute right-[8%] top-[8%] w-[68%] overflow-hidden rounded-2xl shadow-[0_16px_36px_rgba(27,31,59,0.16)] ring-1 ring-black/5">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/landing/audience-salon-interior.jpg"
+          alt=""
+          className="aspect-[4/3] w-full object-cover"
+        />
+      </div>
+      <div className="absolute left-[4%] top-[36%] w-[52%] overflow-hidden rounded-2xl shadow-[0_16px_36px_rgba(27,31,59,0.18)] ring-1 ring-black/5">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/landing/audience-hair.jpg"
+          alt=""
+          className="aspect-[4/5] w-full object-cover object-top"
+        />
+      </div>
+      <div className="absolute bottom-[8%] right-[10%] w-[58%] overflow-hidden rounded-2xl shadow-[0_16px_36px_rgba(27,31,59,0.18)] ring-1 ring-black/5">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/landing/audience-nails.jpg"
+          alt=""
+          className="aspect-[5/3] w-full object-cover"
+        />
+      </div>
+    </div>
+  );
+}
+
+function AudienceSalonVisual() {
+  const days = ["M", "T", "W", "T", "F", "S", "S"];
+  const slots = [
+    { day: 1, row: 1, span: 2, label: "Cut" },
+    { day: 2, row: 0, span: 1, label: "Colour" },
+    { day: 3, row: 2, span: 2, label: "Balayage" },
+    { day: 4, row: 1, span: 1, label: "Blow" },
+    { day: 5, row: 0, span: 2, label: "Perm" },
+  ];
+
+  return (
+    <div
+      aria-hidden
+      className="relative mx-auto h-[240px] w-full max-w-[280px] sm:mx-0 sm:h-full sm:min-h-[320px] sm:max-w-none"
+    >
+      <div className="absolute right-[6%] top-[10%] w-[82%] overflow-hidden rounded-2xl border border-white/80 bg-white shadow-[0_18px_40px_rgba(27,31,59,0.14)]">
+        <div className="flex items-center justify-between border-b border-neutral-100 px-3 py-2.5">
+          <p className="text-[11px] font-bold text-[#1B1F3B]">May</p>
+          <div className="flex gap-1">
+            <span className="size-1.5 rounded-full bg-neutral-200" />
+            <span className="size-1.5 rounded-full bg-neutral-200" />
+          </div>
+        </div>
+        <div className="grid grid-cols-7 gap-1 px-2.5 pt-2">
+          {days.map((d, i) => (
+            <span
+              key={`${d}-${i}`}
+              className="text-center text-[8px] font-semibold text-[#9AA0B4]"
+            >
+              {d}
+            </span>
+          ))}
+        </div>
+        <div className="relative mt-1 h-[120px] px-2.5 pb-3 sm:h-[150px]">
+          <div className="grid h-full grid-cols-7 gap-1">
+            {Array.from({ length: 7 }).map((_, col) => (
+              <div key={col} className="relative rounded-md bg-[#F7F8FC]">
+                {slots
+                  .filter((s) => s.day === col)
+                  .map((s) => (
+                    <div
+                      key={`${s.day}-${s.label}`}
+                      className="absolute inset-x-0.5 rounded-md px-0.5 py-1 text-center text-[7px] font-semibold leading-tight text-[#5B4AE0]"
+                      style={{
+                        top: `${s.row * 28}%`,
+                        height: `${s.span * 26}%`,
+                        backgroundColor: "#E9E4FF",
+                      }}
+                    >
+                      <span className="hidden sm:inline">{s.label}</span>
+                    </div>
+                  ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="absolute bottom-[6%] left-[2%] w-[56%] overflow-hidden rounded-[1.35rem] border-[5px] border-[#1B1F3B] bg-white shadow-[0_20px_40px_rgba(27,31,59,0.22)]">
+        <div className="mx-auto mt-1.5 h-1 w-8 rounded-full bg-neutral-200" />
+        <div className="space-y-2 px-2.5 pb-2.5 pt-2">
+          <p className="text-[10px] font-bold text-[#1B1F3B]">Today&apos;s Bookings</p>
+          <ul className="space-y-1.5">
+            {[
+              ["Jessica Lee", "Hair Cut"],
+              ["Minji Kim", "Balayage"],
+              ["Sara Park", "Blow Dry"],
+            ].map(([name, service]) => (
+              <li
+                key={name}
+                className="rounded-lg bg-[#F7F8FC] px-2 py-1.5"
+              >
+                <p className="text-[9px] font-semibold text-[#1B1F3B]">{name}</p>
+                <p className="text-[8px] text-[#8B91A5]">{service}</p>
+              </li>
+            ))}
+          </ul>
+          <div
+            className="rounded-lg py-1.5 text-center text-[9px] font-semibold text-white"
+            style={{ backgroundColor: ACCENT }}
+          >
+            + New Booking
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
