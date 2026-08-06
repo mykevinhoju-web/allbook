@@ -1248,6 +1248,136 @@ export type Database = {
           },
         ];
       };
+      salon_customers: {
+        Row: {
+          id: string;
+          salon_id: string;
+          full_name: string;
+          email: string | null;
+          phone: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          salon_id: string;
+          full_name: string;
+          email?: string | null;
+          phone?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          salon_id?: string;
+          full_name?: string;
+          email?: string | null;
+          phone?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "salon_customers_salon_id_fkey";
+            columns: ["salon_id"];
+            isOneToOne: false;
+            referencedRelation: "salons";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      salon_bookings: {
+        Row: {
+          id: string;
+          salon_id: string;
+          staff_id: string;
+          customer_id: string | null;
+          service_id: string;
+          booking_date: string;
+          start_time: string;
+          end_time: string;
+          duration: number;
+          buffer_minutes: number;
+          status: "pending" | "confirmed" | "completed" | "cancelled" | "no_show";
+          notes: string | null;
+          customer_name: string | null;
+          customer_email: string | null;
+          customer_phone: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          salon_id: string;
+          staff_id: string;
+          customer_id?: string | null;
+          service_id: string;
+          booking_date: string;
+          start_time: string;
+          end_time: string;
+          duration: number;
+          buffer_minutes?: number;
+          status?: "pending" | "confirmed" | "completed" | "cancelled" | "no_show";
+          notes?: string | null;
+          customer_name?: string | null;
+          customer_email?: string | null;
+          customer_phone?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          salon_id?: string;
+          staff_id?: string;
+          customer_id?: string | null;
+          service_id?: string;
+          booking_date?: string;
+          start_time?: string;
+          end_time?: string;
+          duration?: number;
+          buffer_minutes?: number;
+          status?: "pending" | "confirmed" | "completed" | "cancelled" | "no_show";
+          notes?: string | null;
+          customer_name?: string | null;
+          customer_email?: string | null;
+          customer_phone?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "salon_bookings_salon_id_fkey";
+            columns: ["salon_id"];
+            isOneToOne: false;
+            referencedRelation: "salons";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "salon_bookings_staff_id_fkey";
+            columns: ["staff_id"];
+            isOneToOne: false;
+            referencedRelation: "salon_staff";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "salon_bookings_service_id_fkey";
+            columns: ["service_id"];
+            isOneToOne: false;
+            referencedRelation: "salon_services";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "salon_bookings_customer_id_fkey";
+            columns: ["customer_id"];
+            isOneToOne: false;
+            referencedRelation: "salon_customers";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       favorites: {
         Row: {
           id: string;

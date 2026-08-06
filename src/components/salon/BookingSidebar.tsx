@@ -18,6 +18,8 @@ type BookingSidebarProps = {
   onBook: () => void;
   className?: string;
   compact?: boolean;
+  /** When set, Book CTA can be used without pre-selecting date/time (full flow). */
+  allowDirectBook?: boolean;
 };
 
 function todayInputValue(): string {
@@ -34,11 +36,12 @@ export function BookingSidebar({
   onBook,
   className,
   compact = false,
+  allowDirectBook = false,
 }: BookingSidebarProps) {
   const estimatedPrice = selection.service?.price ?? null;
-  const canBook = Boolean(
-    selection.service && selection.date && selection.time,
-  );
+  const canBook = allowDirectBook
+    ? true
+    : Boolean(selection.service && selection.date && selection.time);
 
   return (
     <aside

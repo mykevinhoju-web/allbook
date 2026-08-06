@@ -36,16 +36,14 @@ export const MOCK_SALON_STAFF: SalonStaffMember[] = [
     certificates: ["Certificate III Hairdressing"],
     portfolioImages: [],
     workingHours: defaultWorkingHours(),
-    breaks: [
-      {
-        id: "brk_emma_lunch",
-        dayOfWeek: 0,
-        startTime: "13:00",
-        endTime: "13:30",
-        breakType: "lunch",
-        label: "Lunch",
-      },
-    ],
+    breaks: [0, 1, 2, 3, 4].map((dayOfWeek) => ({
+      id: `brk_emma_lunch_${dayOfWeek}`,
+      dayOfWeek: dayOfWeek as 0 | 1 | 2 | 3 | 4,
+      startTime: "12:00",
+      endTime: "13:00",
+      breakType: "lunch" as const,
+      label: "Lunch",
+    })),
     leaves: [],
     serviceIds: ["svc_womens_cut", "svc_balayage", "svc_colour_refresh", "svc_blowdry"],
     services: servicesFor([

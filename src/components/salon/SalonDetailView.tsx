@@ -17,6 +17,7 @@ import { StaffList } from "./StaffList";
 type SalonDetailViewProps = {
   data: SalonPageData;
   backHref?: string;
+  bookHref?: string;
 };
 
 function emptySelection(): BookingSelection {
@@ -31,6 +32,7 @@ function emptySelection(): BookingSelection {
 export function SalonDetailView({
   data,
   backHref = "/",
+  bookHref,
 }: SalonDetailViewProps) {
   const { salon, serviceGroups, staff, reviews } = data;
   const [selection, setSelection] = useState<BookingSelection>(emptySelection);
@@ -71,6 +73,10 @@ export function SalonDetailView({
   }
 
   function handleBook() {
+    if (bookHref) {
+      window.location.href = bookHref;
+      return;
+    }
     if (!selection.service || !selection.date || !selection.time) return;
     setBookedMessage(
       `Ready to book ${selection.service.name}${
@@ -112,6 +118,7 @@ export function SalonDetailView({
                 setSelection((prev) => ({ ...prev, time }))
               }
               onBook={handleBook}
+              allowDirectBook={Boolean(bookHref)}
             />
             {bookedMessage ? (
               <p className="mt-3 rounded-2xl bg-white px-4 py-3 text-sm text-neutral-600 shadow-sm">
@@ -129,6 +136,7 @@ export function SalonDetailView({
           onDateChange={(date) => setSelection((prev) => ({ ...prev, date }))}
           onTimeChange={(time) => setSelection((prev) => ({ ...prev, time }))}
           onBook={handleBook}
+          allowDirectBook={Boolean(bookHref)}
         />
       </div>
     </div>

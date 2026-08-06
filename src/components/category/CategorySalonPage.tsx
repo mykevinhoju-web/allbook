@@ -32,7 +32,11 @@ export function CategorySalonPage({
           <CategoryBreadcrumb items={breadcrumbs} />
         </div>
       </div>
-      <SalonDetailView data={data} backHref={`/${category.slug}`} />
+      <SalonDetailView
+        data={data}
+        backHref={`/${category.slug}`}
+        bookHref={`/${category.slug}/${data.salon.slug}/book`}
+      />
     </div>
   );
 }
