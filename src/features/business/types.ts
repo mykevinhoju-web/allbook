@@ -97,6 +97,3 @@ export function defaultOpeningHours(): OpeningHours {
     sun: { open: "10:00", close: "16:00", closed: true },
   };
 }
-
-/** Demo owner salon for /platform/salon until auth is wired. */
-export const PLATFORM_DEMO_SALON_SLUG = "glow-hair";

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { MOCK_SALON_SESSION } from "@/features/dashboard/mock-data";
+import { requireOwnerSalon } from "@/features/dashboard/getOwnerSalon";
 import {
   getServiceStaffOptions,
   getServices,
@@ -13,7 +13,8 @@ export const metadata: Metadata = {
 };
 
 export default async function SalonServicesPage() {
-  const salonId = MOCK_SALON_SESSION.salonId;
+  const owner = await requireOwnerSalon("/platform/salon/services");
+  const salonId = owner.salon.id;
   const [services, staffOptions] = await Promise.all([
     getServices({ salonId, includeArchived: true }),
     getServiceStaffOptions(),

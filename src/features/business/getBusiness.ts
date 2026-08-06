@@ -4,10 +4,7 @@ import { resolveCategoryFromService } from "@/features/category";
 import type { Database } from "@/types/database";
 
 import { parseBusinessOpeningHours } from "./opening-hours-settings";
-import {
-  PLATFORM_DEMO_SALON_SLUG,
-  type BusinessProfile,
-} from "./types";
+import type { BusinessProfile } from "./types";
 
 type AnySupabase = SupabaseClient<Database>;
 
@@ -57,23 +54,23 @@ function mapBusiness(row: SalonRow): BusinessProfile {
 }
 
 /**
- * Load salon business profile from Supabase `salons` (no mocks).
+ * Load salon business profile from Supabase `salons` (no mocks / no demo slug).
+ * Callers must pass salonId from the owner auth context.
  */
 export async function getBusiness(
   supabase: AnySupabase,
-  options: { salonId?: string; slug?: string } = {},
+  options: { salonId: string },
 ): Promise<{ business: BusinessProfile | null; error: string | null }> {
   const salonId = options.salonId?.trim();
-  const slug = (options.slug ?? PLATFORM_DEMO_SALON_SLUG).trim();
-
-  let query = supabase.from("salons").select("*");
-  if (salonId) {
-    query = query.eq("id", salonId);
-  } else {
-    query = query.eq("slug", slug);
+  if (!salonId) {
+    return { business: null, error: "salonId is required." };
   }
 
-  const { data, error } = await query.maybeSingle();
+  const { data, error } = await supabase
+    .from("salons")
+    .select("*")
+    .eq("id", salonId)
+    .maybeSingle();
 
   if (error) {
     return { business: null, error: error.message };

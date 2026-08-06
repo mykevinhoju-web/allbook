@@ -1,4 +1,5 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { redirect } from "next/navigation";
 
 import { resolveCategoryFromService } from "@/features/category";
 import { createClient } from "@/lib/supabase/server";
@@ -17,22 +18,24 @@ export type OwnerSalonRow = {
   review_count: number;
 };
 
+export type OwnerSalonOk = {
+  status: "ok";
+  user: User;
+  owner: {
+    id: string;
+    fullName: string;
+    email: string;
+    salonId: string;
+  };
+  salon: OwnerSalonRow;
+  session: SalonOwnerSession;
+};
+
 export type OwnerSalonContext =
   | { status: "unauthenticated" }
   | { status: "error"; error: string }
   | { status: "no_salon"; user: User }
-  | {
-      status: "ok";
-      user: User;
-      owner: {
-        id: string;
-        fullName: string;
-        email: string;
-        salonId: string;
-      };
-      salon: OwnerSalonRow;
-      session: SalonOwnerSession;
-    };
+  | OwnerSalonOk;
 
 /**
  * Resolve the authenticated owner's salon.
@@ -113,6 +116,49 @@ export async function getOwnerSalonContext(
       publicPath: `/${categorySlug}/${salon.slug}`,
     },
   };
+}
+
+/**
+ * Portal pages: require auth + linked salon.
+ * Unauthenticated → /login
+ * No salon link → /register
+ */
+export async function requireOwnerSalon(
+  nextPath = "/platform/salon",
+): Promise<OwnerSalonOk> {
+  const context = await getOwnerSalonContext();
+
+  if (context.status === "unauthenticated") {
+    redirect(`/login?next=${encodeURIComponent(nextPath)}`);
+  }
+  if (context.status === "error") {
+    throw new Error(context.error);
+  }
+  if (context.status === "no_salon") {
+    redirect("/register");
+  }
+
+  return context;
+}
+
+/**
+ * API guard: true only when auth user owns the given salon_id.
+ */
+export async function ownerOwnsSalon(
+  authUserId: string,
+  salonId: string,
+  supabase?: AnySupabase,
+): Promise<boolean> {
+  const client = supabase ?? (await createClient());
+  const { data, error } = await client
+    .from("salon_owners")
+    .select("id")
+    .eq("auth_user_id", authUserId)
+    .eq("salon_id", salonId)
+    .maybeSingle();
+
+  if (error) return false;
+  return Boolean(data?.id);
 }
 
 /** Calendar date YYYY-MM-DD in Australia/Sydney. */

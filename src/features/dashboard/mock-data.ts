@@ -8,6 +8,11 @@ import type {
   SalonOwnerSession,
 } from "./types";
 
+/**
+ * @deprecated Owner portal must not use this.
+ * Use getOwnerSalonContext / requireOwnerSalon (auth.uid → salon_owners).
+ * Kept only for unfinished mock-backed owner modules (services/staff/customers data layer).
+ */
 export const MOCK_SALON_SESSION: SalonOwnerSession = {
   salonId: "salon_glow_hair",
   salonName: "Glow Hair Studio",
