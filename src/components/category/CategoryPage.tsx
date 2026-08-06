@@ -2,7 +2,7 @@
 
 import { Suspense } from "react";
 
-import { SearchPage } from "@/components/search";
+import { SearchResults } from "@/components/search";
 import type { MarketplaceCategory } from "@/features/category";
 import { LoadingSkeleton } from "@/components/search/LoadingSkeleton";
 
@@ -18,11 +18,11 @@ function CategorySearchFallback() {
   );
 }
 
-/** Generic category listing engine — one component for all category routes. */
+/** Generic category listing — one component for every category route. */
 export function CategoryPage({ category }: CategoryPageProps) {
   return (
     <Suspense fallback={<CategorySearchFallback />}>
-      <SearchPage category={category} />
+      <SearchResults category={category} />
     </Suspense>
   );
 }

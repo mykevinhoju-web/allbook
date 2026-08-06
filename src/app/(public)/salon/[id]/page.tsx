@@ -15,7 +15,7 @@ export default async function LegacySalonRedirect({ params }: PageProps) {
   const { salon } = await getSalon(supabase, id);
 
   if (!salon?.slug) {
-    redirect("/search");
+    redirect("/");
   }
 
   redirect(buildSalonPathFromService(salon.service, salon.slug));

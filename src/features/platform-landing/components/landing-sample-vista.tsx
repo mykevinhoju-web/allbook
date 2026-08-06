@@ -69,7 +69,8 @@ export function LandingSampleVista({
   };
 
   const goPopular = (service: string) => {
-    router.push(buildSearchPath({ location: "Aspley", service }));
+    const path = buildSearchPath({ location: "Aspley", service });
+    if (path) router.push(path);
   };
 
   return (
@@ -194,9 +195,11 @@ export function LandingSampleVista({
                         type="button"
                         onClick={() => {
                           setCategory(id);
-                          router.push(
-                            buildSearchPath({ location: "Aspley", service: id }),
-                          );
+                          const path = buildSearchPath({
+                            location: "Aspley",
+                            service: id,
+                          });
+                          if (path) router.push(path);
                         }}
                         className={cn(
                           "inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition",

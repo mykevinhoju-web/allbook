@@ -15,6 +15,7 @@ export const RESERVED_PATH_SEGMENTS = new Set([
   "booking",
   "brand",
   "dashboard",
+  "facial",
   "favicon.ico",
   "hair",
   "icon.png",
@@ -33,6 +34,7 @@ export const RESERVED_PATH_SEGMENTS = new Set([
   "sitemap.xml",
   "spa",
   "staff",
+  "waxing",
 ]);
 
 const TENANT_SLUG_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;

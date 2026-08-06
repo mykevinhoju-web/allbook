@@ -1,17 +1,21 @@
 /**
- * Shared search query model for landing → marketplace / category routes.
+ * Shared search query model for landing → category routes.
+ * There is no generic /search page — category is required.
  */
 
-import { resolveCategoryFromService } from "@/features/category/constants";
+import {
+  resolveCategoryFromService,
+  toLocationQueryParam,
+} from "@/features/category/constants";
 import {
   DEFAULT_SEARCH_DISTANCE_KM,
   DEFAULT_SEARCH_SORT,
-  SEARCH_SERVICE_FILTERS,
   isSearchDistanceKm,
   isSearchSort,
   type SearchDistanceKm,
   type SearchSort,
 } from "@/features/search/constants";
+import { MARKETPLACE_CATEGORIES } from "@/features/category/constants";
 
 export const LOCATION_SUGGESTIONS = [
   "Aspley",
@@ -25,8 +29,13 @@ export const LOCATION_SUGGESTIONS = [
 
 export type LocationSuggestion = (typeof LOCATION_SUGGESTIONS)[number];
 
-export const SEARCH_SERVICES = SEARCH_SERVICE_FILTERS;
-export type SearchService = (typeof SEARCH_SERVICES)[number];
+/** Hero category options — driven by the category engine. */
+export const SEARCH_CATEGORIES = MARKETPLACE_CATEGORIES.map((c) => c.label);
+export type SearchCategoryLabel = (typeof SEARCH_CATEGORIES)[number];
+
+/** @deprecated Prefer SEARCH_CATEGORIES — kept for older imports */
+export const SEARCH_SERVICES = SEARCH_CATEGORIES;
+export type SearchService = SearchCategoryLabel;
 
 export type SearchQuery = {
   location: string;
@@ -36,10 +45,12 @@ export type SearchQuery = {
 };
 
 export const SEARCH_LOCATION_EMPTY_MESSAGE = "Please select a suburb";
+export const SEARCH_CATEGORY_EMPTY_MESSAGE = "Please select a category";
 
 export const DEFAULT_SEARCH_PLACEHOLDERS = {
   location: "Suburb or city",
-  service: "All services",
+  service: "Category",
+  category: "Category",
 } as const;
 
 export function normalizeSearchQuery(
@@ -69,6 +80,10 @@ export function isSearchLocationValid(location: string): boolean {
   return location.trim().length > 0;
 }
 
+export function isSearchCategoryValid(service: string): boolean {
+  return Boolean(resolveCategoryFromService(service.trim()));
+}
+
 export function filterLocationSuggestions(
   input: string,
   limit = 6,
@@ -86,7 +101,9 @@ function toQueryString(
   options: { omitService?: boolean } = {},
 ): string {
   const params = new URLSearchParams();
-  if (query.location) params.set("location", query.location);
+  if (query.location) {
+    params.set("location", toLocationQueryParam(query.location));
+  }
   if (!options.omitService && query.service) {
     params.set("service", query.service);
   }
@@ -101,18 +118,14 @@ function toQueryString(
 }
 
 /**
- * Prefer category routes when service maps to a marketplace category.
- * Category engine owns the slug list; this keeps URL builders shared.
+ * Category routes only. Landing must choose a category before searching.
  */
-export function buildSearchPath(query: Partial<SearchQuery>): string {
+export function buildSearchPath(query: Partial<SearchQuery>): string | null {
   const normalized = normalizeSearchQuery(query);
   const category = resolveCategoryFromService(normalized.service);
+  if (!category) return null;
 
-  if (category) {
-    return `/${category.slug}${toQueryString(normalized, { omitService: true })}`;
-  }
-
-  return `/search${toQueryString(normalized)}`;
+  return `/${category.slug}${toQueryString(normalized, { omitService: true })}`;
 }
 
 export function parseSearchParams(

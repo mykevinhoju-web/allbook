@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   buildCategoryPath,
-  buildMarketplaceSearchPath,
   type MarketplaceCategory,
 } from "@/features/category";
 import type { SearchDistanceKm, SearchSort } from "@/features/search/constants";
@@ -23,32 +22,31 @@ type SearchApiResponse = {
 };
 
 export type UseSalonSearchOptions = {
-  /** When set, locks service filter + URL to /{category} */
-  category?: MarketplaceCategory | null;
+  /** Required — marketplace search is always category-scoped. */
+  category: MarketplaceCategory;
 };
 
 /**
- * Search-page state: URL ↔ filters ↔ API ↔ results.
- * Presentation components should only consume this hook's outputs.
+ * Category search state: URL ↔ filters ↔ API ↔ results.
  */
-export function useSalonSearch(options: UseSalonSearchOptions = {}) {
-  const { category = null } = options;
+export function useSalonSearch(options: UseSalonSearchOptions) {
+  const { category } = options;
   const router = useRouter();
   const searchParams = useSearchParams();
   const query = useMemo(
     () =>
       parseSearchParams(searchParams, {
-        service: category?.service ?? "",
+        service: category.service,
       }),
-    [searchParams, category?.service],
+    [searchParams, category.service],
   );
 
   const effectiveQuery = useMemo<SearchQuery>(
     () => ({
       ...query,
-      service: category?.service ?? query.service,
+      service: category.service,
     }),
-    [query, category?.service],
+    [query, category.service],
   );
 
   const [salons, setSalons] = useState<Salon[]>([]);
@@ -62,16 +60,14 @@ export function useSalonSearch(options: UseSalonSearchOptions = {}) {
     (next: Partial<SearchQuery>) => {
       const merged = {
         location: next.location ?? effectiveQuery.location,
-        service: category?.service ?? next.service ?? effectiveQuery.service,
+        service: category.service,
         radiusKm: next.radiusKm ?? effectiveQuery.radiusKm,
         sort: next.sort ?? effectiveQuery.sort,
       };
 
-      const path = category
-        ? buildCategoryPath(category.slug, merged)
-        : buildMarketplaceSearchPath(merged);
-
-      router.replace(path, { scroll: false });
+      router.replace(buildCategoryPath(category.slug, merged), {
+        scroll: false,
+      });
     },
     [category, effectiveQuery, router],
   );
@@ -79,13 +75,6 @@ export function useSalonSearch(options: UseSalonSearchOptions = {}) {
   const setLocation = useCallback(
     (location: string) => pushFilters({ location }),
     [pushFilters],
-  );
-  const setService = useCallback(
-    (service: string) => {
-      if (category) return;
-      pushFilters({ service });
-    },
-    [category, pushFilters],
   );
   const setRadiusKm = useCallback(
     (radiusKm: SearchDistanceKm) => pushFilters({ radiusKm }),
@@ -99,10 +88,8 @@ export function useSalonSearch(options: UseSalonSearchOptions = {}) {
   const retry = useCallback(() => setRetryKey((n) => n + 1), []);
 
   const clearFilters = useCallback(() => {
-    router.replace(category ? `/${category.slug}` : "/search", {
-      scroll: false,
-    });
-  }, [category, router]);
+    router.replace(`/${category.slug}`, { scroll: false });
+  }, [category.slug, router]);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,9 +103,7 @@ export function useSalonSearch(options: UseSalonSearchOptions = {}) {
       if (effectiveQuery.location) {
         params.set("location", effectiveQuery.location);
       }
-      if (effectiveQuery.service) {
-        params.set("service", effectiveQuery.service);
-      }
+      params.set("service", category.service);
       params.set("radius", String(effectiveQuery.radiusKm));
       params.set("sort", effectiveQuery.sort);
 
@@ -165,8 +150,8 @@ export function useSalonSearch(options: UseSalonSearchOptions = {}) {
       controller.abort();
     };
   }, [
+    category.service,
     effectiveQuery.location,
-    effectiveQuery.service,
     effectiveQuery.radiusKm,
     effectiveQuery.sort,
     retryKey,
@@ -181,7 +166,6 @@ export function useSalonSearch(options: UseSalonSearchOptions = {}) {
     error,
     category,
     setLocation,
-    setService,
     setRadiusKm,
     setSort,
     pushFilters,

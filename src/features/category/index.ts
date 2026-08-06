@@ -1,9 +1,13 @@
 export {
   MARKETPLACE_CATEGORIES,
   MARKETPLACE_CATEGORY_SLUGS,
+  buildCategoryResultsTitle,
+  formatLocationDisplay,
   getMarketplaceCategory,
   isMarketplaceCategorySlug,
+  resolveCategoryFromLabel,
   resolveCategoryFromService,
+  toLocationQueryParam,
 } from "./constants";
 export type {
   MarketplaceCategory,

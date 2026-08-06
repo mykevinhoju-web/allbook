@@ -5,33 +5,47 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { List, Map as MapIcon } from "lucide-react";
 
-import { CategoryHero } from "@/components/category/CategoryHero";
+import { HeroSearch } from "@/components/HeroSearch";
 import { GoogleMap } from "@/components/maps";
 import {
+  buildCategoryResultsTitle,
   buildSalonPathFromService,
+  formatLocationDisplay,
   type MarketplaceCategory,
 } from "@/features/category";
 import { AllBookLogo } from "@/features/platform-landing/components/allbook-logo";
 import { useMap } from "@/hooks/useMap";
 import { useSalonSearch } from "@/hooks/useSalonSearch";
+import {
+  SEARCH_DISTANCE_KM,
+  SEARCH_SORT_OPTIONS,
+  type SearchDistanceKm,
+  type SearchSort,
+} from "@/features/search/constants";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 import { EmptyState } from "./EmptyState";
 import { LoadingSkeleton } from "./LoadingSkeleton";
 import { SalonList } from "./SalonList";
-import { SearchToolbar } from "./SearchToolbar";
 
 const ACCENT = "#6B5CF6";
 
-type SearchPageProps = {
-  category?: MarketplaceCategory | null;
+type SearchResultsProps = {
+  category: MarketplaceCategory;
 };
 
 /**
- * Shared marketplace search shell.
- * Used by `/search` and every `/{category}` route — no duplicated list/map UI.
+ * Shared category search results shell.
+ * Only the category changes between /hair, /nails, /spa, …
  */
-export function SearchPage({ category = null }: SearchPageProps) {
+export function SearchResults({ category }: SearchResultsProps) {
   const router = useRouter();
   const [showMapMobile, setShowMapMobile] = useState(false);
   const {
@@ -41,8 +55,6 @@ export function SearchPage({ category = null }: SearchPageProps) {
     origin,
     status,
     error,
-    setLocation,
-    setService,
     setRadiusKm,
     setSort,
     retry,
@@ -67,26 +79,14 @@ export function SearchPage({ category = null }: SearchPageProps) {
     clearSelection,
   ]);
 
-  const resultHint = [
-    query.location || null,
-    category ? null : query.service || null,
-    query.location ? `within ${query.radiusKm} km` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const pageTitle = buildCategoryResultsTitle(category, query.location);
+  const locationLabel = formatLocationDisplay(query.location);
 
   function openSalon(id: string) {
     const salon = salons.find((row) => row.id === id);
-    if (!salon?.slug) {
-      router.push(`/salon/${id}`);
-      return;
-    }
+    if (!salon?.slug) return;
     router.push(
-      buildSalonPathFromService(
-        salon.service,
-        salon.slug,
-        category?.slug ?? "hair",
-      ),
+      buildSalonPathFromService(salon.service, salon.slug, category.slug),
     );
   }
 
@@ -102,14 +102,11 @@ export function SearchPage({ category = null }: SearchPageProps) {
             />
           </Link>
           <div className="hidden min-w-0 flex-1 justify-center px-4 xl:flex">
-            <div className="w-full max-w-4xl">
-              <SearchToolbar
-                values={query}
-                lockService={Boolean(category)}
-                onLocationChange={setLocation}
-                onServiceChange={setService}
-                onRadiusChange={setRadiusKm}
-                onSortChange={setSort}
+            <div className="w-full max-w-3xl">
+              <HeroSearch
+                variant="compact"
+                initialLocation={locationLabel}
+                initialCategory={category.service}
               />
             </div>
           </div>
@@ -142,18 +139,13 @@ export function SearchPage({ category = null }: SearchPageProps) {
         </div>
 
         <div className="border-t border-neutral-100 px-4 py-3 sm:px-6 xl:hidden">
-          <SearchToolbar
-            values={query}
-            lockService={Boolean(category)}
-            onLocationChange={setLocation}
-            onServiceChange={setService}
-            onRadiusChange={setRadiusKm}
-            onSortChange={setSort}
+          <HeroSearch
+            variant="compact"
+            initialLocation={locationLabel}
+            initialCategory={category.service}
           />
         </div>
       </header>
-
-      {category ? <CategoryHero category={category} /> : null}
 
       <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1">
         <section
@@ -162,27 +154,65 @@ export function SearchPage({ category = null }: SearchPageProps) {
             showMapMobile && "hidden lg:flex",
           )}
         >
-          <div className="shrink-0 px-4 pb-2 pt-5 sm:px-6">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#6B5CF6]">
-              {category ? category.label : "Search results"}
-            </p>
-            <h2 className="mt-1 text-xl font-semibold tracking-tight">
-              {status === "loading"
-                ? "Searching…"
-                : `${total} salon${total === 1 ? "" : "s"}`}
-            </h2>
-            {resultHint ? (
-              <p className="mt-0.5 text-sm text-neutral-500">{resultHint}</p>
-            ) : (
+          <div className="shrink-0 space-y-3 px-4 pb-2 pt-5 sm:px-6">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#6B5CF6]">
+                {category.label}
+              </p>
+              <h1 className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">
+                {status === "loading" ? "Searching…" : pageTitle}
+              </h1>
               <p className="mt-0.5 text-sm text-neutral-500">
-                Salons near Brisbane
+                {status === "ready"
+                  ? `${total} salon${total === 1 ? "" : "s"}`
+                  : "Find and book nearby"}
+                {query.location ? ` · within ${query.radiusKm} km` : null}
               </p>
-            )}
-            {origin?.formattedAddress ? (
-              <p className="mt-0.5 truncate text-xs text-neutral-400">
-                Near {origin.formattedAddress}
-              </p>
-            ) : null}
+              {origin?.formattedAddress ? (
+                <p className="mt-0.5 truncate text-xs text-neutral-400">
+                  Near {origin.formattedAddress}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Select
+                value={String(query.radiusKm)}
+                onValueChange={(value) => {
+                  if (!value) return;
+                  setRadiusKm(Number(value) as SearchDistanceKm);
+                }}
+              >
+                <SelectTrigger className="h-9 w-auto min-w-[132px] rounded-full border-neutral-200 bg-neutral-50 px-3 text-[13px] font-medium">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl">
+                  {SEARCH_DISTANCE_KM.map((km) => (
+                    <SelectItem key={km} value={String(km)}>
+                      Within {km} km
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={query.sort}
+                onValueChange={(value) => {
+                  if (value) setSort(value as SearchSort);
+                }}
+              >
+                <SelectTrigger className="h-9 w-auto min-w-[120px] rounded-full border-neutral-200 bg-neutral-50 px-3 text-[13px] font-medium">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl">
+                  {SEARCH_SORT_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8 sm:px-6">
@@ -226,7 +256,7 @@ export function SearchPage({ category = null }: SearchPageProps) {
               salons={status === "ready" ? salons : []}
               selectedId={selectedId}
               focusToken={focusToken}
-              searchLocation={query.location}
+              searchLocation={locationLabel}
               onSelect={selectSalonFromMarker}
               className="h-full min-h-[calc(100svh-8.5rem)] rounded-2xl"
             />
@@ -236,3 +266,6 @@ export function SearchPage({ category = null }: SearchPageProps) {
     </div>
   );
 }
+
+/** @deprecated Use SearchResults — kept for import compatibility */
+export const SearchPage = SearchResults;

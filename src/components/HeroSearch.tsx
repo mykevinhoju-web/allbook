@@ -1,7 +1,7 @@
 "use client";
 
 import { MapPin, Search } from "lucide-react";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
 import {
   Select,
@@ -10,28 +10,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MARKETPLACE_CATEGORIES } from "@/features/category";
 import { useSearch } from "@/hooks/useSearch";
-import {
-  DEFAULT_SEARCH_PLACEHOLDERS,
-  SEARCH_SERVICES,
-} from "@/lib/search";
+import { DEFAULT_SEARCH_PLACEHOLDERS } from "@/lib/search";
 import { cn } from "@/lib/utils";
 
 const ACCENT = "#6B5CF6";
 
 type HeroSearchProps = {
   className?: string;
-  /** Visual density for marketplace hero vs compact embeds */
+  /** Visual density for marketplace hero vs category toolbar */
   variant?: "hero" | "compact";
   initialLocation?: string;
-  initialService?: string;
+  initialCategory?: string;
 };
 
+/**
+ * Reusable location + category search.
+ * Landing and category result pages share this component.
+ */
 export function HeroSearch({
   className,
   variant = "hero",
   initialLocation = "",
-  initialService = "",
+  initialCategory = "",
 }: HeroSearchProps) {
   const {
     location,
@@ -45,11 +47,19 @@ export function HeroSearch({
     selectSuggestion,
     submit,
   } = useSearch({
-    initial: { location: initialLocation, service: initialService },
+    initial: { location: initialLocation, service: initialCategory },
   });
 
   const blurTimer = useRef<number | null>(null);
   const isCompact = variant === "compact";
+
+  useEffect(() => {
+    setLocation(initialLocation);
+  }, [initialLocation, setLocation]);
+
+  useEffect(() => {
+    setService(initialCategory);
+  }, [initialCategory, setService]);
 
   return (
     <div className={cn("w-full", className)}>
@@ -101,10 +111,7 @@ export function HeroSearch({
                   aria-controls="hero-location-suggestions"
                   aria-invalid={Boolean(error)}
                   aria-describedby={error ? "hero-location-error" : undefined}
-                  className={cn(
-                    "w-full bg-transparent font-medium text-[#1B1F3B] outline-none placeholder:font-normal placeholder:text-[#9AA0B4]",
-                    isCompact ? "text-sm" : "text-sm",
-                  )}
+                  className="w-full bg-transparent text-sm font-medium text-[#1B1F3B] outline-none placeholder:font-normal placeholder:text-[#9AA0B4]"
                   aria-label="Location"
                 />
               </div>
@@ -140,7 +147,7 @@ export function HeroSearch({
             <div className="min-w-0 flex-1">
               {!isCompact ? (
                 <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9AA0B4]">
-                  Service
+                  Category
                 </span>
               ) : null}
               <Select
@@ -150,12 +157,14 @@ export function HeroSearch({
                 }}
               >
                 <SelectTrigger className="h-7 w-full border-0 bg-transparent px-0 text-sm font-medium text-[#1B1F3B] shadow-none focus-visible:ring-0 data-[size=default]:h-7 data-placeholder:text-[#9AA0B4]">
-                  <SelectValue placeholder={DEFAULT_SEARCH_PLACEHOLDERS.service} />
+                  <SelectValue
+                    placeholder={DEFAULT_SEARCH_PLACEHOLDERS.category}
+                  />
                 </SelectTrigger>
                 <SelectContent align="start" className="rounded-2xl">
-                  {SEARCH_SERVICES.map((item) => (
-                    <SelectItem key={item} value={item}>
-                      {item}
+                  {MARKETPLACE_CATEGORIES.map((item) => (
+                    <SelectItem key={item.slug} value={item.service}>
+                      {item.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

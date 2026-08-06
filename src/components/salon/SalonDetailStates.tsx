@@ -11,8 +11,8 @@ type SalonDetailErrorProps = {
 
 export function SalonDetailError({
   message = "Something went wrong loading this salon.",
-  backHref = "/search",
-  backLabel = "Back to search",
+  backHref = "/",
+  backLabel = "Back to home",
 }: SalonDetailErrorProps) {
   const router = useRouter();
 
@@ -47,7 +47,7 @@ type SalonNotFoundProps = {
 };
 
 export function SalonNotFound({
-  backHref = "/search",
+  backHref = "/",
   backLabel = "Browse salons",
 }: SalonNotFoundProps) {
   return (

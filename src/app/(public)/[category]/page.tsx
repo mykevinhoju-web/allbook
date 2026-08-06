@@ -8,31 +8,35 @@ import {
   buildCategoryMetadata,
   getMarketplaceCategory,
   isMarketplaceCategorySlug,
+  MARKETPLACE_CATEGORY_SLUGS,
 } from "@/features/category";
 
 type PageProps = {
   params: Promise<{ category: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export async function generateStaticParams() {
-  return [
-    { category: "hair" },
-    { category: "nails" },
-    { category: "spa" },
-    { category: "barber" },
-    { category: "massage" },
-  ];
+  return MARKETPLACE_CATEGORY_SLUGS.map((category) => ({ category }));
 }
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: PageProps): Promise<Metadata> {
   const { category: raw } = await params;
   const category = getMarketplaceCategory(raw);
   if (!category) {
     return { title: "Category" };
   }
-  return buildCategoryMetadata(category);
+
+  const sp = await searchParams;
+  const locationRaw = sp.location;
+  const location = Array.isArray(locationRaw)
+    ? locationRaw[0]
+    : locationRaw;
+
+  return buildCategoryMetadata(category, location);
 }
 
 function CategoryFallback() {

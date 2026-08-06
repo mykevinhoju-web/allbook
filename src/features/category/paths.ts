@@ -4,6 +4,8 @@ import type { SearchQuery } from "@/lib/search";
 import { buildSearchPath, normalizeSearchQuery } from "@/lib/search";
 
 import {
+  buildCategoryResultsTitle,
+  formatLocationDisplay,
   getMarketplaceCategory,
   resolveCategoryFromService,
   type MarketplaceCategory,
@@ -19,7 +21,7 @@ export type BreadcrumbItem = {
 export function buildMarketplaceSearchPath(
   query: Partial<SearchQuery> = {},
 ): string {
-  return buildSearchPath(query);
+  return buildSearchPath(query) ?? "/";
 }
 
 export function buildCategoryPath(
@@ -27,12 +29,14 @@ export function buildCategoryPath(
   query: Partial<SearchQuery> = {},
 ): string {
   const category = getMarketplaceCategory(categorySlug);
-  if (!category) return "/search";
+  if (!category) return "/";
 
-  return buildSearchPath({
-    ...normalizeSearchQuery(query),
-    service: category.service,
-  });
+  return (
+    buildSearchPath({
+      ...normalizeSearchQuery(query),
+      service: category.service,
+    }) ?? `/${category.slug}`
+  );
 }
 
 export function buildSalonPath(
@@ -55,18 +59,25 @@ export function buildSalonPathFromService(
 
 export function buildCategoryBreadcrumbs(
   category: MarketplaceCategory,
-  salonName?: string,
+  options: { location?: string | null; salonName?: string } = {},
 ): BreadcrumbItem[] {
   const items: BreadcrumbItem[] = [
     { label: "Home", href: "/" },
     {
-      label: category.label,
-      href: salonName ? `/${category.slug}` : undefined,
+      label: options.location
+        ? buildCategoryResultsTitle(category, options.location)
+        : category.label,
+      href: options.salonName
+        ? buildCategoryPath(category.slug, {
+            location: options.location ?? "",
+            service: category.service,
+          })
+        : undefined,
     },
   ];
 
-  if (salonName) {
-    items.push({ label: salonName });
+  if (options.salonName) {
+    items.push({ label: options.salonName });
   }
 
   return items;
@@ -74,13 +85,20 @@ export function buildCategoryBreadcrumbs(
 
 export function buildCategoryMetadata(
   category: MarketplaceCategory,
+  location?: string | null,
 ): Metadata {
+  const title = buildCategoryResultsTitle(category, location);
+  const place = formatLocationDisplay(location);
+  const description = place
+    ? `Book ${category.resultsNoun.toLowerCase()} in ${place} on AllBook.`
+    : category.seoDescription;
+
   return {
-    title: category.seoTitle,
-    description: category.seoDescription,
+    title,
+    description,
     openGraph: {
-      title: `${category.seoTitle} | AllBook`,
-      description: category.seoDescription,
+      title: `${title} | AllBook`,
+      description,
       images: [{ url: category.heroImage }],
     },
   };

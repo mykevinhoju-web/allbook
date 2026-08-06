@@ -20,7 +20,10 @@ export function CategorySalonPage({
   category,
   data,
 }: CategorySalonPageProps) {
-  const breadcrumbs = buildCategoryBreadcrumbs(category, data.salon.name);
+  const breadcrumbs = buildCategoryBreadcrumbs(category, {
+    salonName: data.salon.name,
+    location: data.salon.suburb,
+  });
 
   return (
     <div>

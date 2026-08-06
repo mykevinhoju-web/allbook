@@ -43,7 +43,7 @@ function StarRow({ rating }: { rating: number }) {
 
 export function SalonHero({
   salon,
-  backHref = "/search",
+  backHref = "/",
   onFavoriteChange,
   onShare,
 }: HeroProps) {

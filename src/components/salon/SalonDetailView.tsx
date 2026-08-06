@@ -30,7 +30,7 @@ function emptySelection(): BookingSelection {
 
 export function SalonDetailView({
   data,
-  backHref = "/search",
+  backHref = "/",
 }: SalonDetailViewProps) {
   const { salon, serviceGroups, staff, reviews } = data;
   const [selection, setSelection] = useState<BookingSelection>(emptySelection);

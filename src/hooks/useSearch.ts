@@ -4,22 +4,24 @@ import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 
 import {
+  SEARCH_CATEGORY_EMPTY_MESSAGE,
   SEARCH_LOCATION_EMPTY_MESSAGE,
   buildSearchPath,
   filterLocationSuggestions,
+  isSearchCategoryValid,
   isSearchLocationValid,
   normalizeSearchQuery,
   type SearchQuery,
 } from "@/lib/search";
 
 export type UseSearchOptions = {
-  /** Seed values (landing hero or URL-hydrated search page). */
+  /** Seed values (landing hero or category toolbar). */
   initial?: Partial<SearchQuery>;
 };
 
 /**
- * Reusable search state for landing → /search (and later Maps / Supabase).
- * Does not read the URL itself — pass `initial` from `parseSearchParams` when needed.
+ * Landing / toolbar search state → category route.
+ * Category is required — there is no generic /search page.
  */
 export function useSearch(options: UseSearchOptions = {}) {
   const { initial } = options;
@@ -57,17 +59,30 @@ export function useSearch(options: UseSearchOptions = {}) {
       return false;
     }
 
+    if (!isSearchCategoryValid(service)) {
+      setError(SEARCH_CATEGORY_EMPTY_MESSAGE);
+      return false;
+    }
+
+    const path = buildSearchPath(query);
+    if (!path) {
+      setError(SEARCH_CATEGORY_EMPTY_MESSAGE);
+      return false;
+    }
+
     setError(null);
     setSuggestionsOpen(false);
-    router.push(buildSearchPath(query));
+    router.push(path);
     return true;
-  }, [location, query, router]);
+  }, [location, query, router, service]);
 
   return {
     location,
     setLocation,
     service,
     setService,
+    category: service,
+    setCategory: setService,
     query,
     error,
     setError,
