@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, Search } from "lucide-react";
+import { MapPin, Search, Sparkles } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import {
@@ -14,8 +14,6 @@ import { MARKETPLACE_CATEGORIES } from "@/features/category";
 import { useSearch } from "@/hooks/useSearch";
 import { DEFAULT_SEARCH_PLACEHOLDERS } from "@/lib/search";
 import { cn } from "@/lib/utils";
-
-const ACCENT = "#6B5CF6";
 
 type HeroSearchProps = {
   className?: string;
@@ -65,8 +63,17 @@ export function HeroSearch({
     <div className={cn("w-full", className)}>
       <form
         className={cn(
-          "rounded-2xl border border-neutral-200/80 bg-white shadow-[0_18px_50px_rgba(27,31,59,0.08)]",
-          isCompact ? "p-2" : "p-3 sm:p-4",
+          "group/search relative transition duration-500",
+          isCompact
+            ? "rounded-2xl border border-neutral-200/80 bg-white p-2 shadow-[0_12px_32px_rgba(17,17,17,0.06)]"
+            : cn(
+                "rounded-[2rem] p-[1px]",
+                "bg-gradient-to-b from-white/70 via-white/40 to-white/20",
+                "shadow-[0_24px_80px_rgba(0,0,0,0.28)]",
+                "backdrop-blur-xl",
+                "hover:shadow-[0_28px_90px_rgba(0,0,0,0.34)]",
+                "focus-within:shadow-[0_28px_90px_rgba(0,0,0,0.36)]",
+              ),
         )}
         onSubmit={(e) => {
           e.preventDefault();
@@ -75,19 +82,49 @@ export function HeroSearch({
       >
         <div
           className={cn(
-            "flex flex-col gap-2 rounded-xl border border-neutral-200 bg-[#FAFBFC] p-2 sm:flex-row sm:items-stretch sm:gap-0 sm:p-1.5",
-            error && "border-rose-200",
+            "flex flex-col sm:flex-row sm:items-stretch",
+            isCompact
+              ? cn(
+                  "gap-2 rounded-xl border border-neutral-200 bg-[#FAFBFC] p-1.5",
+                  error && "border-rose-200",
+                )
+              : cn(
+                  "overflow-hidden rounded-[1.9rem]",
+                  "bg-white/82 supports-backdrop-filter:bg-white/72",
+                  "backdrop-blur-2xl",
+                  "ring-1 ring-inset ring-white/60",
+                  error && "ring-rose-300/80",
+                ),
           )}
         >
-          <div className="relative min-w-0 flex-1">
-            <label className="flex items-center gap-2 px-2.5 py-2">
-              <MapPin className="size-4 shrink-0 text-[#6B5CF6]" />
+          <div
+            className={cn(
+              "relative min-w-0 flex-1",
+              !isCompact &&
+                "transition-colors duration-300 hover:bg-black/[0.03] sm:rounded-l-[1.9rem]",
+            )}
+          >
+            <label
+              className={cn(
+                "flex h-full items-center gap-3",
+                isCompact ? "px-2.5 py-2" : "px-5 py-4 sm:px-6 sm:py-5",
+              )}
+            >
+              <MapPin
+                className={cn(
+                  "shrink-0",
+                  isCompact ? "size-4 text-neutral-500" : "size-5 text-neutral-800",
+                )}
+              />
               <div className="min-w-0 flex-1">
-                {!isCompact ? (
-                  <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9AA0B4]">
-                    Location
-                  </span>
-                ) : null}
+                <span
+                  className={cn(
+                    "block font-semibold uppercase tracking-[0.14em] text-neutral-400",
+                    isCompact ? "text-[10px]" : "text-[11px]",
+                  )}
+                >
+                  Location
+                </span>
                 <input
                   value={location}
                   onChange={(e) => {
@@ -111,7 +148,10 @@ export function HeroSearch({
                   aria-controls="hero-location-suggestions"
                   aria-invalid={Boolean(error)}
                   aria-describedby={error ? "hero-location-error" : undefined}
-                  className="w-full bg-transparent text-sm font-medium text-[#1B1F3B] outline-none placeholder:font-normal placeholder:text-[#9AA0B4]"
+                  className={cn(
+                    "w-full bg-transparent font-medium text-neutral-950 outline-none placeholder:font-normal placeholder:text-neutral-400",
+                    isCompact ? "text-sm" : "mt-0.5 text-base sm:text-[17px]",
+                  )}
                   aria-label="Location"
                 />
               </div>
@@ -121,17 +161,21 @@ export function HeroSearch({
               <ul
                 id="hero-location-suggestions"
                 role="listbox"
-                className="absolute left-0 right-0 top-[calc(100%-2px)] z-30 overflow-hidden rounded-xl border border-[#E8E6F2] bg-white py-1 shadow-[0_16px_40px_rgba(27,31,59,0.12)]"
+                className={cn(
+                  "absolute left-3 right-3 z-30 overflow-hidden py-1.5",
+                  "rounded-2xl border border-white/50 bg-white/95 shadow-[0_20px_50px_rgba(0,0,0,0.18)] backdrop-blur-xl",
+                  isCompact ? "top-[calc(100%+4px)]" : "top-[calc(100%-6px)]",
+                )}
               >
                 {suggestions.map((suburb) => (
                   <li key={suburb} role="option">
                     <button
                       type="button"
-                      className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-sm text-[#1B1F3B] transition hover:bg-[#F5F3FF]"
+                      className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-neutral-800 transition hover:bg-neutral-100/90"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => selectSuggestion(suburb)}
                     >
-                      <MapPin className="size-3.5 text-[#6B5CF6]" />
+                      <MapPin className="size-3.5 text-neutral-400" />
                       {suburb}
                     </button>
                   </li>
@@ -140,23 +184,48 @@ export function HeroSearch({
             ) : null}
           </div>
 
-          <span className="hidden w-px self-stretch bg-neutral-200 sm:block" />
+          <span
+            className={cn(
+              "hidden self-stretch sm:block",
+              isCompact ? "w-px bg-neutral-200" : "w-px bg-neutral-200/80",
+            )}
+          />
 
-          <div className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-1.5 sm:py-2">
-            <Search className="size-4 shrink-0 text-[#9AA0B4]" />
+          <div
+            className={cn(
+              "flex min-w-0 flex-1 items-center gap-3",
+              isCompact ? "px-2.5 py-1.5" : "px-5 py-4 transition-colors duration-300 hover:bg-black/[0.03] sm:px-6 sm:py-5",
+            )}
+          >
+            <Sparkles
+              className={cn(
+                "shrink-0",
+                isCompact ? "size-4 text-neutral-400" : "size-5 text-neutral-800",
+              )}
+            />
             <div className="min-w-0 flex-1">
-              {!isCompact ? (
-                <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9AA0B4]">
-                  Category
-                </span>
-              ) : null}
+              <span
+                className={cn(
+                  "block font-semibold uppercase tracking-[0.14em] text-neutral-400",
+                  isCompact ? "text-[10px]" : "text-[11px]",
+                )}
+              >
+                Category
+              </span>
               <Select
                 value={service || undefined}
                 onValueChange={(value) => {
                   if (value) setService(value);
                 }}
               >
-                <SelectTrigger className="h-7 w-full border-0 bg-transparent px-0 text-sm font-medium text-[#1B1F3B] shadow-none focus-visible:ring-0 data-[size=default]:h-7 data-placeholder:text-[#9AA0B4]">
+                <SelectTrigger
+                  className={cn(
+                    "w-full border-0 bg-transparent px-0 font-medium text-neutral-950 shadow-none focus-visible:ring-0 data-placeholder:text-neutral-400",
+                    isCompact
+                      ? "h-7 text-sm data-[size=default]:h-7"
+                      : "mt-0.5 h-8 text-base sm:text-[17px] data-[size=default]:h-8",
+                  )}
+                >
                   <SelectValue
                     placeholder={DEFAULT_SEARCH_PLACEHOLDERS.category}
                   />
@@ -172,16 +241,26 @@ export function HeroSearch({
             </div>
           </div>
 
-          <button
-            type="submit"
+          <div
             className={cn(
-              "inline-flex shrink-0 items-center justify-center rounded-xl text-sm font-semibold text-white transition hover:opacity-90 sm:ml-1",
-              isCompact ? "h-10 px-4" : "h-11 px-5",
+              "flex items-center",
+              isCompact ? "sm:pl-1" : "p-2 sm:p-2.5",
             )}
-            style={{ backgroundColor: ACCENT }}
           >
-            Search
-          </button>
+            <button
+              type="submit"
+              className={cn(
+                "inline-flex w-full shrink-0 items-center justify-center gap-2 font-semibold text-white transition duration-300",
+                "bg-neutral-950 hover:bg-neutral-800 active:scale-[0.98]",
+                isCompact
+                  ? "h-10 rounded-xl px-4 text-sm"
+                  : "h-14 rounded-[1.35rem] px-7 text-[15px] shadow-[0_10px_30px_rgba(0,0,0,0.25)] hover:shadow-[0_14px_36px_rgba(0,0,0,0.3)] sm:min-w-[148px]",
+              )}
+            >
+              <Search className={isCompact ? "size-4" : "size-[18px]"} />
+              Search
+            </button>
+          </div>
         </div>
       </form>
 
@@ -189,7 +268,10 @@ export function HeroSearch({
         <p
           id="hero-location-error"
           role="alert"
-          className="mt-2 px-1 text-sm font-medium text-rose-600"
+          className={cn(
+            "mt-3 px-1 text-sm font-medium",
+            isCompact ? "text-rose-600" : "text-rose-100",
+          )}
         >
           {error}
         </p>

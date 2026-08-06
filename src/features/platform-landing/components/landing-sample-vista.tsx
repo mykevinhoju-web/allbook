@@ -9,12 +9,8 @@ import {
   CalendarClock,
   Check,
   ContactRound,
-  HandHeart,
   MessageSquare,
-  Scissors,
   Share2,
-  Sparkles,
-  Star,
   Tag,
   TrendingUp,
 } from "lucide-react";
@@ -29,14 +25,6 @@ import { LandingSampleSwitcher } from "./landing-sample-switcher";
 
 const ACCENT = "#6B5CF6";
 
-const CATEGORIES = [
-  { id: "Hair", label: "Hair Salon", icon: Scissors },
-  { id: "Nails", label: "Nail", icon: Sparkles },
-  { id: "Facial", label: "Beauty", icon: Sparkles },
-  { id: "Massage", label: "Massage", icon: HandHeart },
-  { id: "Barber", label: "Barber", icon: Scissors },
-] as const;
-
 /**
  * Sample 5 — Vista
  * Marketplace hero matched to the supplied AllBook design (content + visuals).
@@ -49,7 +37,6 @@ export function LandingSampleVista({
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
-  const [category, setCategory] = useState<(typeof CATEGORIES)[number]["id"]>("Hair");
   const isLive = mode === "live";
 
   useEffect(() => {
@@ -107,6 +94,9 @@ export function LandingSampleVista({
         .landing-vista[data-ready="true"] [data-rise="3"] {
           animation-delay: 0.24s;
         }
+        .landing-vista[data-ready="true"] [data-rise="4"] {
+          animation-delay: 0.34s;
+        }
       `}</style>
 
       <header className="sticky top-0 z-40 border-b border-neutral-100 bg-white/95 backdrop-blur-md">
@@ -161,118 +151,70 @@ export function LandingSampleVista({
       </header>
 
       <main>
-        {/* Hero — matched to marketplace design mock */}
-        <section className="relative overflow-hidden bg-white">
-          <div className="relative mx-auto grid max-w-[1180px] items-center gap-8 px-5 pb-12 pt-10 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8 lg:pb-16 lg:pt-12">
-            <div className="relative z-10 max-w-[560px]">
-              <h1
-                data-rise="1"
-                className="text-[clamp(2.1rem,4.4vw,3.15rem)] font-bold leading-[1.12] tracking-tight text-[#1B1F3B]"
-              >
-                Find. Book. Get Beautiful.
-                <span className="mt-1 block" style={{ color: ACCENT }}>
-                  All in Allbook.
-                </span>
-              </h1>
-              <p
-                data-rise="2"
-                className="mt-4 max-w-[460px] text-[15px] leading-relaxed text-[#6B7289] sm:text-base"
-              >
-                The easiest way to discover and book trusted hair &amp; beauty
-                salons in Australia. Free for salons. Easy for everyone.
-              </p>
+        {/* Hero — search-first, full-bleed */}
+        <section className="relative isolate min-h-[min(92svh,820px)] overflow-hidden">
+          <div className="absolute inset-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/landing/marketplace-hero-visual.png"
+              alt=""
+              className="h-full w-full object-cover object-center scale-[1.02]"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/45 to-black/70" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.35)_100%)]" />
+          </div>
 
-              <div
-                data-rise="3"
-                className="mt-7 rounded-2xl border border-neutral-200/80 bg-white p-3 shadow-[0_18px_50px_rgba(27,31,59,0.08)] sm:p-4"
-              >
-                <div className="flex gap-1 overflow-x-auto pb-1">
-                  {CATEGORIES.map(({ id, label, icon: Icon }) => {
-                    const active = category === id;
-                    return (
-                      <button
-                        key={id}
-                        type="button"
-                        onClick={() => {
-                          setCategory(id);
-                          const path = buildSearchPath({
-                            location: "Aspley",
-                            service: id,
-                          });
-                          if (path) router.push(path);
-                        }}
-                        className={cn(
-                          "inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition",
-                          active
-                            ? "bg-[#EFEAFF] text-[#6B5CF6]"
-                            : "text-[#7A8196] hover:bg-neutral-50",
-                        )}
-                      >
-                        <Icon className="size-3.5" strokeWidth={2.2} />
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
+          <div className="relative mx-auto flex min-h-[min(92svh,820px)] max-w-[920px] flex-col items-center justify-center px-5 py-20 text-center sm:px-8 sm:py-24">
+            <p
+              data-rise="1"
+              className="text-[12px] font-semibold uppercase tracking-[0.22em] text-white/70"
+            >
+              AllBook
+            </p>
 
-                <div className="mt-3">
-                  <HeroSearch className="[&>form]:border-0 [&>form]:bg-transparent [&>form]:p-0 [&>form]:shadow-none" />
-                </div>
-              </div>
+            <h1
+              data-rise="2"
+              className="mt-4 max-w-[18ch] text-[clamp(2.4rem,6vw,4.25rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-white"
+            >
+              Find your next appointment
+            </h1>
 
-              <div
-                data-rise="3"
-                className="mt-4 flex flex-wrap items-center gap-2"
-              >
-                <span className="text-xs text-[#8B91A5]">Popular searches:</span>
-                {[
-                  { label: "Korean Hair Salon", service: "Hair" },
-                  { label: "Nails", service: "Nails" },
-                  { label: "Massage", service: "Massage" },
-                  { label: "Facial", service: "Facial" },
-                ].map((tag) => (
-                  <button
-                    key={tag.label}
-                    type="button"
-                    onClick={() => goPopular(tag.service)}
-                    className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-xs font-medium text-[#5B6178] transition hover:border-[#6B5CF6]/40 hover:text-[#6B5CF6]"
-                  >
-                    {tag.label}
-                  </button>
-                ))}
-              </div>
+            <p
+              data-rise="3"
+              className="mt-4 max-w-[36ch] text-[15px] leading-relaxed text-white/75 sm:text-base"
+            >
+              Discover trusted hair, beauty and wellness salons near you — then
+              book in seconds.
+            </p>
 
-              <div
-                data-rise="3"
-                className="mt-7 flex flex-col gap-3 text-[12px] text-[#6B7289] sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-2 sm:text-[13px]"
-              >
-                <span className="inline-flex items-center gap-2">
-                  <Building2 className="size-4 text-[#6B5CF6]" />
-                  200+ Salons in Brisbane
-                </span>
-                <span className="inline-flex items-center gap-2">
-                  <HandHeart className="size-4 text-[#6B5CF6]" />
-                  10,000+ Happy Customers
-                </span>
-                <span className="inline-flex items-center gap-2">
-                  <Star className="size-4 fill-amber-400 text-amber-400" />
-                  4.9 Average Rating
-                </span>
-              </div>
+            <div data-rise="4" className="mt-10 w-full max-w-[720px]">
+              <HeroSearch variant="hero" />
             </div>
 
             <div
-              data-rise="3"
-              className="relative mx-auto w-full max-w-lg lg:max-w-none"
+              data-rise="4"
+              className="mt-6 flex flex-wrap items-center justify-center gap-x-1 gap-y-2 text-[13px] text-white/55"
             >
-              <div className="relative overflow-hidden rounded-[1.5rem] shadow-[0_24px_60px_rgba(27,31,59,0.14)] ring-1 ring-black/5">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/landing/marketplace-hero-visual.png"
-                  alt="AllBook app on phone over a modern salon interior"
-                  className="h-auto w-full object-cover object-center"
-                />
-              </div>
+              <span className="mr-1">Try</span>
+              {[
+                { label: "Aspley · Hair", service: "Hair" },
+                { label: "Nails", service: "Nails" },
+                { label: "Massage", service: "Massage" },
+                { label: "Facial", service: "Facial" },
+              ].map((tag, index) => (
+                <span key={tag.label} className="inline-flex items-center">
+                  {index > 0 ? (
+                    <span className="mx-1.5 text-white/25">·</span>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => goPopular(tag.service)}
+                    className="underline-offset-4 transition hover:text-white hover:underline"
+                  >
+                    {tag.label}
+                  </button>
+                </span>
+              ))}
             </div>
           </div>
         </section>
