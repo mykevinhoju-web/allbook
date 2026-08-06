@@ -6,6 +6,8 @@ export { getReviews, buildRatingDistribution } from "./getReviews";
 export { getSalonPageDataBySlug, getSalonIdBySlug } from "./getSalonBySlug";
 export { getSalonPageData } from "./getSalonPageData";
 export type { GetSalonPageResult, SalonPageData } from "./getSalonPageData";
+export { importSalons } from "./importSalons";
+export type { ImportSalonsResult, SalonImportRecord } from "./import-types";
 export {
   DAY_OF_WEEK_LABELS,
   DAY_OF_WEEK_ORDER,

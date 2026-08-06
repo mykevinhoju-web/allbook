@@ -21,6 +21,10 @@ export type SalonRow = {
   primary_service: string | null;
   starting_price: number;
   slug?: string | null;
+  category_id?: string | null;
+  suburb_id?: string | null;
+  price_min?: number | null;
+  price_max?: number | null;
   amenities?: string[] | null;
   service_tags?: string[] | null;
   opening_hours?: Record<string, unknown> | null;
@@ -54,6 +58,10 @@ export type Salon = {
   verified: boolean;
   service: string;
   price: number;
+  priceMin?: number | null;
+  priceMax?: number | null;
+  categoryId?: string | null;
+  suburbId?: string | null;
   /** Public URL slug for /{category}/{slug} */
   slug: string;
   /** Present when search used a geocoded origin */

@@ -649,6 +649,10 @@ export type Database = {
           primary_service: string | null;
           starting_price: number;
           slug: string;
+          category_id: string | null;
+          suburb_id: string | null;
+          price_min: number | null;
+          price_max: number | null;
           amenities: string[];
           service_tags: string[];
           opening_hours: Record<string, unknown>;
@@ -678,6 +682,10 @@ export type Database = {
           primary_service?: string | null;
           starting_price?: number;
           slug: string;
+          category_id?: string | null;
+          suburb_id?: string | null;
+          price_min?: number | null;
+          price_max?: number | null;
           amenities?: string[];
           service_tags?: string[];
           opening_hours?: Record<string, unknown>;
@@ -707,11 +715,93 @@ export type Database = {
           primary_service?: string | null;
           starting_price?: number;
           slug?: string;
+          category_id?: string | null;
+          suburb_id?: string | null;
+          price_min?: number | null;
+          price_max?: number | null;
           amenities?: string[];
           service_tags?: string[];
           opening_hours?: Record<string, unknown>;
           created_at?: string;
           updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "salons_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "business_categories";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "salons_suburb_id_fkey";
+            columns: ["suburb_id"];
+            isOneToOne: false;
+            referencedRelation: "suburbs";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      business_categories: {
+        Row: {
+          id: string;
+          name: string;
+          slug: string;
+          icon: string | null;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          icon?: string | null;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          slug?: string;
+          icon?: string | null;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      suburbs: {
+        Row: {
+          id: string;
+          name: string;
+          postcode: string | null;
+          city: string;
+          state: string;
+          country: string;
+          latitude: number;
+          longitude: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          postcode?: string | null;
+          city?: string;
+          state?: string;
+          country?: string;
+          latitude: number;
+          longitude: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          postcode?: string | null;
+          city?: string;
+          state?: string;
+          country?: string;
+          latitude?: number;
+          longitude?: number;
+          created_at?: string;
         };
         Relationships: [];
       };

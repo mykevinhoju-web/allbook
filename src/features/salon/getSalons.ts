@@ -30,7 +30,11 @@ export function mapSalonRow(row: SalonRow): Salon {
     reviewCount: row.review_count ?? 0,
     verified: row.verified,
     service: row.primary_service?.trim() || "Beauty",
-    price: row.starting_price ?? 0,
+    price: row.starting_price ?? row.price_min ?? 0,
+    priceMin: row.price_min ?? null,
+    priceMax: row.price_max ?? null,
+    categoryId: row.category_id ?? null,
+    suburbId: row.suburb_id ?? null,
     slug:
       row.slug?.trim() ||
       row.name

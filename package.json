@@ -7,7 +7,8 @@
     "dev:warm": "node scripts/warm-dev.mjs",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "import:brisbane-hair": "npx tsx scripts/import-brisbane-hair.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
