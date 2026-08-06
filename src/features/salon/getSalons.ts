@@ -31,6 +31,13 @@ export function mapSalonRow(row: SalonRow): Salon {
     verified: row.verified,
     service: row.primary_service?.trim() || "Beauty",
     price: row.starting_price ?? 0,
+    slug:
+      row.slug?.trim() ||
+      row.name
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, ""),
   };
 }
 

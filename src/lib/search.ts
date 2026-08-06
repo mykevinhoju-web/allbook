@@ -1,7 +1,8 @@
 /**
- * Shared search query model for landing → /search.
+ * Shared search query model for landing → marketplace / category routes.
  */
 
+import { resolveCategoryFromService } from "@/features/category/constants";
 import {
   DEFAULT_SEARCH_DISTANCE_KM,
   DEFAULT_SEARCH_SORT,
@@ -80,29 +81,49 @@ export function filterLocationSuggestions(
   ).slice(0, limit);
 }
 
-export function buildSearchPath(query: Partial<SearchQuery>): string {
-  const normalized = normalizeSearchQuery(query);
+function toQueryString(
+  query: SearchQuery,
+  options: { omitService?: boolean } = {},
+): string {
   const params = new URLSearchParams();
-  if (normalized.location) params.set("location", normalized.location);
-  if (normalized.service) params.set("service", normalized.service);
-  if (normalized.radiusKm !== DEFAULT_SEARCH_DISTANCE_KM) {
-    params.set("radius", String(normalized.radiusKm));
+  if (query.location) params.set("location", query.location);
+  if (!options.omitService && query.service) {
+    params.set("service", query.service);
   }
-  if (normalized.sort !== DEFAULT_SEARCH_SORT) {
-    params.set("sort", normalized.sort);
+  if (query.radiusKm !== DEFAULT_SEARCH_DISTANCE_KM) {
+    params.set("radius", String(query.radiusKm));
+  }
+  if (query.sort !== DEFAULT_SEARCH_SORT) {
+    params.set("sort", query.sort);
   }
   const qs = params.toString();
-  return qs ? `/search?${qs}` : "/search";
+  return qs ? `?${qs}` : "";
+}
+
+/**
+ * Prefer category routes when service maps to a marketplace category.
+ * Category engine owns the slug list; this keeps URL builders shared.
+ */
+export function buildSearchPath(query: Partial<SearchQuery>): string {
+  const normalized = normalizeSearchQuery(query);
+  const category = resolveCategoryFromService(normalized.service);
+
+  if (category) {
+    return `/${category.slug}${toQueryString(normalized, { omitService: true })}`;
+  }
+
+  return `/search${toQueryString(normalized)}`;
 }
 
 export function parseSearchParams(
   params: URLSearchParams | { get(name: string): string | null },
+  defaults: Partial<SearchQuery> = {},
 ): SearchQuery {
   return normalizeSearchQuery({
-    location: params.get("location") ?? "",
-    service: params.get("service") ?? "",
-    radiusKm: params.get("radius") ?? undefined,
-    sort: (params.get("sort") as SearchSort | null) ?? undefined,
+    location: params.get("location") ?? defaults.location ?? "",
+    service: params.get("service") ?? defaults.service ?? "",
+    radiusKm: params.get("radius") ?? defaults.radiusKm ?? undefined,
+    sort: params.get("sort") ?? defaults.sort ?? undefined,
   });
 }
 

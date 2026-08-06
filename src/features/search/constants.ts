@@ -48,6 +48,8 @@ export function resolveServiceFilterValues(service: string): string[] | null {
   const aliases: Record<string, string[]> = {
     Hair: ["Hair", "Barber"],
     Barber: ["Barber", "Hair"],
+    Spa: ["Spa", "Facial", "Massage"],
+    Massage: ["Massage", "Spa"],
     Lashes: ["Brows", "Lashes"],
     Brows: ["Brows", "Lashes"],
   };

@@ -5,10 +5,14 @@ import { useRouter } from "next/navigation";
 
 type SalonDetailErrorProps = {
   message?: string;
+  backHref?: string;
+  backLabel?: string;
 };
 
 export function SalonDetailError({
   message = "Something went wrong loading this salon.",
+  backHref = "/search",
+  backLabel = "Back to search",
 }: SalonDetailErrorProps) {
   const router = useRouter();
 
@@ -27,17 +31,25 @@ export function SalonDetailError({
           Retry
         </button>
         <Link
-          href="/search"
+          href={backHref}
           className="inline-flex h-11 items-center rounded-full border border-neutral-200 bg-white px-5 text-sm font-semibold text-neutral-800"
         >
-          Back to search
+          {backLabel}
         </Link>
       </div>
     </div>
   );
 }
 
-export function SalonNotFound() {
+type SalonNotFoundProps = {
+  backHref?: string;
+  backLabel?: string;
+};
+
+export function SalonNotFound({
+  backHref = "/search",
+  backLabel = "Browse salons",
+}: SalonNotFoundProps) {
   return (
     <div className="flex min-h-svh flex-col items-center justify-center bg-[#F6F6F7] px-4 text-center">
       <p className="text-lg font-semibold text-neutral-950">Salon not found</p>
@@ -45,10 +57,10 @@ export function SalonNotFound() {
         This salon may have moved or is no longer listed.
       </p>
       <Link
-        href="/search"
+        href={backHref}
         className="mt-6 inline-flex h-11 items-center rounded-full bg-neutral-950 px-5 text-sm font-semibold text-white"
       >
-        Browse salons
+        {backLabel}
       </Link>
     </div>
   );

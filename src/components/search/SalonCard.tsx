@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { MapPin, Star } from "lucide-react";
 
+import { buildSalonPathFromService } from "@/features/category";
 import type { Salon } from "@/types/salon";
 import { cn } from "@/lib/utils";
 
@@ -71,7 +72,11 @@ export function SalonCard({
           <div className="min-w-0">
             <h3 className="truncate text-[15px] font-semibold tracking-tight text-neutral-950">
               <Link
-                href={`/salon/${salon.id}`}
+                href={
+                  salon.slug
+                    ? buildSalonPathFromService(salon.service, salon.slug)
+                    : `/salon/${salon.id}`
+                }
                 onClick={(e) => e.stopPropagation()}
                 className="hover:underline"
               >

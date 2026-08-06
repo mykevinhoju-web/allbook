@@ -39,6 +39,8 @@ type SearchToolbarProps = {
   onRadiusChange: (radiusKm: SearchDistanceKm) => void;
   onSortChange: (sort: SearchSort) => void;
   onSubmit?: () => void;
+  /** Hide service select when category route locks the service */
+  lockService?: boolean;
   className?: string;
 };
 
@@ -53,6 +55,7 @@ export function SearchToolbar({
   onRadiusChange,
   onSortChange,
   onSubmit,
+  lockService = false,
   className,
 }: SearchToolbarProps) {
   const [draftLocation, setDraftLocation] = useState(values.location);
@@ -76,7 +79,14 @@ export function SearchToolbar({
           onSubmit?.();
         }}
       >
-        <div className="grid gap-2 lg:grid-cols-[1.2fr_1fr_0.85fr_0.85fr_auto]">
+        <div
+          className={cn(
+            "grid gap-2",
+            lockService
+              ? "lg:grid-cols-[1.4fr_0.9fr_0.9fr_auto]"
+              : "lg:grid-cols-[1.2fr_1fr_0.85fr_0.85fr_auto]",
+          )}
+        >
           <div className="relative min-w-0">
             <label className="flex min-h-12 items-center gap-2 rounded-xl bg-[#FAFAFE] px-3">
               <MapPin className="size-4 shrink-0 text-[#6B5CF6]" />
@@ -130,31 +140,35 @@ export function SearchToolbar({
             ) : null}
           </div>
 
-          <div className="flex min-h-12 items-center gap-2 rounded-xl bg-[#FAFAFE] px-3">
-            <Search className="size-4 shrink-0 text-[#9AA0B4]" />
-            <div className="min-w-0 flex-1">
-              <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9AA0B4]">
-                Service
-              </span>
-              <Select
-                value={values.service || undefined}
-                onValueChange={(value) => {
-                  if (value) onServiceChange(value);
-                }}
-              >
-                <SelectTrigger className="h-7 w-full border-0 bg-transparent px-0 text-sm font-medium shadow-none focus-visible:ring-0 data-[size=default]:h-7 data-placeholder:text-[#9AA0B4]">
-                  <SelectValue placeholder={DEFAULT_SEARCH_PLACEHOLDERS.service} />
-                </SelectTrigger>
-                <SelectContent align="start" className="rounded-2xl">
-                  {SEARCH_SERVICE_FILTERS.map((item) => (
-                    <SelectItem key={item} value={item}>
-                      {item}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {!lockService ? (
+            <div className="flex min-h-12 items-center gap-2 rounded-xl bg-[#FAFAFE] px-3">
+              <Search className="size-4 shrink-0 text-[#9AA0B4]" />
+              <div className="min-w-0 flex-1">
+                <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9AA0B4]">
+                  Service
+                </span>
+                <Select
+                  value={values.service || undefined}
+                  onValueChange={(value) => {
+                    if (value) onServiceChange(value);
+                  }}
+                >
+                  <SelectTrigger className="h-7 w-full border-0 bg-transparent px-0 text-sm font-medium shadow-none focus-visible:ring-0 data-[size=default]:h-7 data-placeholder:text-[#9AA0B4]">
+                    <SelectValue
+                      placeholder={DEFAULT_SEARCH_PLACEHOLDERS.service}
+                    />
+                  </SelectTrigger>
+                  <SelectContent align="start" className="rounded-2xl">
+                    {SEARCH_SERVICE_FILTERS.map((item) => (
+                      <SelectItem key={item} value={item}>
+                        {item}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </div>
+          ) : null}
 
           <div className="flex min-h-12 items-center rounded-xl bg-[#FAFAFE] px-3">
             <div className="min-w-0 flex-1">

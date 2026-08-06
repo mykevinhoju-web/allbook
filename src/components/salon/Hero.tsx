@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 
 type HeroProps = {
   salon: SalonDetail;
+  backHref?: string;
   onFavoriteChange?: (favorited: boolean) => void;
   onShare?: () => void;
 };
@@ -40,7 +41,12 @@ function StarRow({ rating }: { rating: number }) {
   );
 }
 
-export function SalonHero({ salon, onFavoriteChange, onShare }: HeroProps) {
+export function SalonHero({
+  salon,
+  backHref = "/search",
+  onFavoriteChange,
+  onShare,
+}: HeroProps) {
   const [favorited, setFavorited] = useState(false);
 
   return (
@@ -61,10 +67,10 @@ export function SalonHero({ salon, onFavoriteChange, onShare }: HeroProps) {
       <div className="absolute inset-x-0 top-0 z-10">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <Link
-            href="/search"
+            href={backHref}
             className="rounded-full bg-white/15 px-3.5 py-1.5 text-[13px] font-medium text-white backdrop-blur-md transition hover:bg-white/25"
           >
-            ← Search
+            ← Back
           </Link>
           <div className="flex items-center gap-2">
             <button

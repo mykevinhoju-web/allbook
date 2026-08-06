@@ -3,13 +3,14 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import {
+  buildCategoryPath,
+  buildMarketplaceSearchPath,
+  type MarketplaceCategory,
+} from "@/features/category";
 import type { SearchDistanceKm, SearchSort } from "@/features/search/constants";
 import type { SalonSearchOrigin } from "@/features/search/types";
-import {
-  buildSearchPath,
-  parseSearchParams,
-  type SearchQuery,
-} from "@/lib/search";
+import { parseSearchParams, type SearchQuery } from "@/lib/search";
 import type { Salon } from "@/types/salon";
 
 export type SalonSearchStatus = "loading" | "ready" | "error";
@@ -21,16 +22,33 @@ type SearchApiResponse = {
   error?: string | null;
 };
 
+export type UseSalonSearchOptions = {
+  /** When set, locks service filter + URL to /{category} */
+  category?: MarketplaceCategory | null;
+};
+
 /**
  * Search-page state: URL ↔ filters ↔ API ↔ results.
  * Presentation components should only consume this hook's outputs.
  */
-export function useSalonSearch() {
+export function useSalonSearch(options: UseSalonSearchOptions = {}) {
+  const { category = null } = options;
   const router = useRouter();
   const searchParams = useSearchParams();
   const query = useMemo(
-    () => parseSearchParams(searchParams),
-    [searchParams],
+    () =>
+      parseSearchParams(searchParams, {
+        service: category?.service ?? "",
+      }),
+    [searchParams, category?.service],
+  );
+
+  const effectiveQuery = useMemo<SearchQuery>(
+    () => ({
+      ...query,
+      service: category?.service ?? query.service,
+    }),
+    [query, category?.service],
   );
 
   const [salons, setSalons] = useState<Salon[]>([]);
@@ -42,17 +60,20 @@ export function useSalonSearch() {
 
   const pushFilters = useCallback(
     (next: Partial<SearchQuery>) => {
-      router.replace(
-        buildSearchPath({
-          location: next.location ?? query.location,
-          service: next.service ?? query.service,
-          radiusKm: next.radiusKm ?? query.radiusKm,
-          sort: next.sort ?? query.sort,
-        }),
-        { scroll: false },
-      );
+      const merged = {
+        location: next.location ?? effectiveQuery.location,
+        service: category?.service ?? next.service ?? effectiveQuery.service,
+        radiusKm: next.radiusKm ?? effectiveQuery.radiusKm,
+        sort: next.sort ?? effectiveQuery.sort,
+      };
+
+      const path = category
+        ? buildCategoryPath(category.slug, merged)
+        : buildMarketplaceSearchPath(merged);
+
+      router.replace(path, { scroll: false });
     },
-    [query, router],
+    [category, effectiveQuery, router],
   );
 
   const setLocation = useCallback(
@@ -60,8 +81,11 @@ export function useSalonSearch() {
     [pushFilters],
   );
   const setService = useCallback(
-    (service: string) => pushFilters({ service }),
-    [pushFilters],
+    (service: string) => {
+      if (category) return;
+      pushFilters({ service });
+    },
+    [category, pushFilters],
   );
   const setRadiusKm = useCallback(
     (radiusKm: SearchDistanceKm) => pushFilters({ radiusKm }),
@@ -75,8 +99,10 @@ export function useSalonSearch() {
   const retry = useCallback(() => setRetryKey((n) => n + 1), []);
 
   const clearFilters = useCallback(() => {
-    router.replace("/search", { scroll: false });
-  }, [router]);
+    router.replace(category ? `/${category.slug}` : "/search", {
+      scroll: false,
+    });
+  }, [category, router]);
 
   useEffect(() => {
     let cancelled = false;
@@ -87,10 +113,14 @@ export function useSalonSearch() {
       setError(null);
 
       const params = new URLSearchParams();
-      if (query.location) params.set("location", query.location);
-      if (query.service) params.set("service", query.service);
-      params.set("radius", String(query.radiusKm));
-      params.set("sort", query.sort);
+      if (effectiveQuery.location) {
+        params.set("location", effectiveQuery.location);
+      }
+      if (effectiveQuery.service) {
+        params.set("service", effectiveQuery.service);
+      }
+      params.set("radius", String(effectiveQuery.radiusKm));
+      params.set("sort", effectiveQuery.sort);
 
       try {
         const response = await fetch(`/api/search/salons?${params}`, {
@@ -135,20 +165,21 @@ export function useSalonSearch() {
       controller.abort();
     };
   }, [
-    query.location,
-    query.service,
-    query.radiusKm,
-    query.sort,
+    effectiveQuery.location,
+    effectiveQuery.service,
+    effectiveQuery.radiusKm,
+    effectiveQuery.sort,
     retryKey,
   ]);
 
   return {
-    query,
+    query: effectiveQuery,
     salons,
     total,
     origin,
     status,
     error,
+    category,
     setLocation,
     setService,
     setRadiusKm,

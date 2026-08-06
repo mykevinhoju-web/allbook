@@ -16,6 +16,7 @@ import { StaffList } from "./StaffList";
 
 type SalonDetailViewProps = {
   data: SalonPageData;
+  backHref?: string;
 };
 
 function emptySelection(): BookingSelection {
@@ -27,7 +28,10 @@ function emptySelection(): BookingSelection {
   };
 }
 
-export function SalonDetailView({ data }: SalonDetailViewProps) {
+export function SalonDetailView({
+  data,
+  backHref = "/search",
+}: SalonDetailViewProps) {
   const { salon, serviceGroups, staff, reviews } = data;
   const [selection, setSelection] = useState<BookingSelection>(emptySelection);
   const [, startTransition] = useTransition();
@@ -77,7 +81,7 @@ export function SalonDetailView({ data }: SalonDetailViewProps) {
 
   return (
     <div className="min-h-svh bg-[#F6F6F7] text-neutral-950">
-      <SalonHero salon={salon} onShare={handleShare} />
+      <SalonHero salon={salon} backHref={backHref} onShare={handleShare} />
 
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-10 lg:px-8 lg:py-10">
         <div className="min-w-0 space-y-12 pb-28 lg:pb-10">

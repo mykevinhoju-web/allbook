@@ -648,6 +648,7 @@ export type Database = {
           verified: boolean;
           primary_service: string | null;
           starting_price: number;
+          slug: string;
           amenities: string[];
           service_tags: string[];
           opening_hours: Record<string, unknown>;
@@ -676,6 +677,7 @@ export type Database = {
           verified?: boolean;
           primary_service?: string | null;
           starting_price?: number;
+          slug: string;
           amenities?: string[];
           service_tags?: string[];
           opening_hours?: Record<string, unknown>;
@@ -704,6 +706,7 @@ export type Database = {
           verified?: boolean;
           primary_service?: string | null;
           starting_price?: number;
+          slug?: string;
           amenities?: string[];
           service_tags?: string[];
           opening_hours?: Record<string, unknown>;
@@ -966,6 +969,7 @@ export type Database = {
           verified: boolean;
           primary_service: string | null;
           starting_price: number;
+          slug: string;
           created_at: string;
           updated_at: string;
           distance_km: number | null;

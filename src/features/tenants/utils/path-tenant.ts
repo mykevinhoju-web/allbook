@@ -1,3 +1,5 @@
+import { isMarketplaceCategorySlug } from "@/features/category/constants";
+
 /**
  * First path segments reserved for the AllBook platform itself.
  * Anything else on the apex host may be treated as a tenant slug:
@@ -9,20 +11,27 @@ export const RESERVED_PATH_SEGMENTS = new Set([
   "api",
   "apple-icon.png",
   "auth",
+  "barber",
   "booking",
   "brand",
   "dashboard",
   "favicon.ico",
+  "hair",
   "icon.png",
   "icons",
   "landing",
   "login",
+  "massage",
+  "nails",
   "platform",
   "room",
   "robots.txt",
+  "salon",
+  "search",
   "shops",
   "signup",
   "sitemap.xml",
+  "spa",
   "staff",
 ]);
 
@@ -76,6 +85,8 @@ export function shouldPrefixTenantPath(pathname: string): boolean {
  * otherwise allbook.com.au/ shows a tenant home instead of the landing page.
  */
 export function isPlatformApexPublicPath(pathname: string): boolean {
+  const segment = pathname.split("/").filter(Boolean)[0] ?? "";
+
   return (
     pathname === "/" ||
     pathname === "/signup" ||
@@ -84,6 +95,8 @@ export function isPlatformApexPublicPath(pathname: string): boolean {
     pathname.startsWith("/landing") ||
     pathname.startsWith("/shops") ||
     pathname.startsWith("/search") ||
+    pathname.startsWith("/salon") ||
+    isMarketplaceCategorySlug(segment) ||
     pathname.startsWith("/platform") ||
     pathname.startsWith("/auth")
   );

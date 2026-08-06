@@ -3,6 +3,7 @@ export { getSalon } from "./getSalon";
 export { getServices, groupSalonServices } from "./getServices";
 export { getStaff } from "./getStaff";
 export { getReviews, buildRatingDistribution } from "./getReviews";
+export { getSalonPageDataBySlug, getSalonIdBySlug } from "./getSalonBySlug";
 export { getSalonPageData } from "./getSalonPageData";
 export type { GetSalonPageResult, SalonPageData } from "./getSalonPageData";
 export {

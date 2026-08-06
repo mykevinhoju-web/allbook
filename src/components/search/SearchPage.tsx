@@ -1,12 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
-import { List, Map as MapIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { List, Map as MapIcon } from "lucide-react";
 
+import { CategoryHero } from "@/components/category/CategoryHero";
 import { GoogleMap } from "@/components/maps";
+import {
+  buildSalonPathFromService,
+  type MarketplaceCategory,
+} from "@/features/category";
 import { AllBookLogo } from "@/features/platform-landing/components/allbook-logo";
 import { useMap } from "@/hooks/useMap";
 import { useSalonSearch } from "@/hooks/useSalonSearch";
@@ -19,7 +23,15 @@ import { SearchToolbar } from "./SearchToolbar";
 
 const ACCENT = "#6B5CF6";
 
-export function SearchPage() {
+type SearchPageProps = {
+  category?: MarketplaceCategory | null;
+};
+
+/**
+ * Shared marketplace search shell.
+ * Used by `/search` and every `/{category}` route — no duplicated list/map UI.
+ */
+export function SearchPage({ category = null }: SearchPageProps) {
   const router = useRouter();
   const [showMapMobile, setShowMapMobile] = useState(false);
   const {
@@ -35,7 +47,7 @@ export function SearchPage() {
     setSort,
     retry,
     clearFilters,
-  } = useSalonSearch();
+  } = useSalonSearch({ category });
 
   const {
     selectedId,
@@ -57,15 +69,27 @@ export function SearchPage() {
 
   const resultHint = [
     query.location || null,
-    query.service || null,
+    category ? null : query.service || null,
     query.location ? `within ${query.radiusKm} km` : null,
   ]
     .filter(Boolean)
     .join(" · ");
 
   function openSalon(id: string) {
-    router.push(`/salon/${id}`);
+    const salon = salons.find((row) => row.id === id);
+    if (!salon?.slug) {
+      router.push(`/salon/${id}`);
+      return;
+    }
+    router.push(
+      buildSalonPathFromService(
+        salon.service,
+        salon.slug,
+        category?.slug ?? "hair",
+      ),
+    );
   }
+
   return (
     <div className="flex h-svh flex-col overflow-hidden bg-white text-neutral-950">
       <header className="z-40 shrink-0 border-b border-neutral-200/80 bg-white">
@@ -81,6 +105,7 @@ export function SearchPage() {
             <div className="w-full max-w-4xl">
               <SearchToolbar
                 values={query}
+                lockService={Boolean(category)}
                 onLocationChange={setLocation}
                 onServiceChange={setService}
                 onRadiusChange={setRadiusKm}
@@ -119,6 +144,7 @@ export function SearchPage() {
         <div className="border-t border-neutral-100 px-4 py-3 sm:px-6 xl:hidden">
           <SearchToolbar
             values={query}
+            lockService={Boolean(category)}
             onLocationChange={setLocation}
             onServiceChange={setService}
             onRadiusChange={setRadiusKm}
@@ -126,6 +152,8 @@ export function SearchPage() {
           />
         </div>
       </header>
+
+      {category ? <CategoryHero category={category} /> : null}
 
       <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1">
         <section
@@ -136,13 +164,13 @@ export function SearchPage() {
         >
           <div className="shrink-0 px-4 pb-2 pt-5 sm:px-6">
             <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#6B5CF6]">
-              Search results
+              {category ? category.label : "Search results"}
             </p>
-            <h1 className="mt-1 text-xl font-semibold tracking-tight">
+            <h2 className="mt-1 text-xl font-semibold tracking-tight">
               {status === "loading"
                 ? "Searching…"
                 : `${total} salon${total === 1 ? "" : "s"}`}
-            </h1>
+            </h2>
             {resultHint ? (
               <p className="mt-0.5 text-sm text-neutral-500">{resultHint}</p>
             ) : (
