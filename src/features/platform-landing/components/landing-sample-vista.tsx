@@ -38,7 +38,7 @@ const CATEGORIES = [
 ] as const;
 
 /**
- * Sample 5 — Vista
+ * Sample 5 ??Vista
  * Marketplace hero matched to the supplied AllBook design (content + visuals).
  */
 export function LandingSampleVista({
@@ -113,7 +113,7 @@ export function LandingSampleVista({
           <nav className="hidden items-center gap-5 text-[13px] font-medium text-[#5B6178] xl:flex">
             {[
               { label: "For Customers", href: "#for-customers" },
-              { label: "For Salons", href: "#for-salons" },
+              { label: "For Shops", href: "#for-shops" },
               { label: "Features", href: "#features" },
               { label: "Pricing", href: "#pricing" },
               { label: "Jobs", href: "#demo", badge: "New" },
@@ -156,7 +156,7 @@ export function LandingSampleVista({
       </header>
 
       <main>
-        {/* Hero — matched to marketplace design mock */}
+        {/* Hero ??matched to marketplace design mock */}
         <section className="relative overflow-hidden bg-white">
           <div className="relative mx-auto grid max-w-[1180px] items-center gap-8 px-5 pb-12 pt-10 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8 lg:pb-16 lg:pt-12">
             <div className="relative z-10 max-w-[560px]">
@@ -348,7 +348,7 @@ export function LandingSampleVista({
           </div>
         </section>
 
-        {/* Audience split — For Customers / For Salons */}
+        {/* Audience split — For Customers / For Shops */}
         <section id="features" className="bg-white py-16 sm:py-20">
           <div className="mx-auto grid max-w-[1180px] gap-5 px-5 sm:px-8 lg:grid-cols-2 lg:gap-6">
             <article
@@ -360,14 +360,14 @@ export function LandingSampleVista({
                   For Customers
                 </p>
                 <h2 className="mt-3 text-[1.65rem] font-bold leading-tight tracking-tight text-[#1B1F3B] sm:text-[1.85rem]">
-                  Discover the best salons near you
+                  Discover the best shops near you
                 </h2>
                 <ul className="mt-6 space-y-3">
                   {[
-                    "Search by location, service or salon name",
+                    "Search by location, service or shop name",
                     "Compare reviews, pricing and photos",
                     "Book instantly and pay securely",
-                    "Save your favourite salons",
+                    "Save your favourite shops",
                   ].map((item) => (
                     <li
                       key={item}
@@ -389,19 +389,19 @@ export function LandingSampleVista({
                   className="mt-8 inline-flex h-11 items-center rounded-xl px-5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
                   style={{ backgroundColor: ACCENT }}
                 >
-                  Find a Salon
+                  Find a Shop
                 </button>
               </div>
               <AudienceCustomerVisual />
             </article>
 
             <article
-              id="for-salons"
+              id="for-shops"
               className="grid overflow-hidden rounded-[1.5rem] bg-[#F4F7FF] sm:grid-cols-[1.05fr_0.95fr] lg:min-h-[420px]"
             >
               <div className="relative z-10 px-6 py-8 sm:px-8 sm:py-10">
                 <p className="text-sm font-bold" style={{ color: ACCENT }}>
-                  For Salons
+                  For Shops
                 </p>
                 <h2 className="mt-3 text-[1.65rem] font-bold leading-tight tracking-tight text-[#1B1F3B] sm:text-[1.85rem]">
                   Your all-in-one booking platform
@@ -409,7 +409,7 @@ export function LandingSampleVista({
                 <ul className="mt-6 space-y-3">
                   {[
                     "Free online booking system",
-                    "Customisable salon page",
+                    "Customisable shop page",
                     "SMS & email notifications",
                     "Client management & marketing tools",
                   ].map((item) => (
@@ -457,12 +457,12 @@ export function LandingSampleVista({
                 Made for Korean, Chinese & Japanese shops
               </h2>
               <p className="mt-4 text-base leading-relaxed text-neutral-600">
-                Sydney, Melbourne, Brisbane and beyond — AllBook helps Korean,
+                Sydney, Melbourne, Brisbane and beyond ??AllBook helps Korean,
                 Chinese, and Japanese-owned service businesses take online bookings
                 without complex overseas tools. Local Stripe payments in AUD.
               </p>
               <div className="mt-4 space-y-2 text-sm leading-relaxed text-neutral-500">
-                <p>Supports English, 한국어, 中文 and 日本語.</p>
+                <p>Supports English, ?쒓뎅?? 訝?뻼 and ?ζ쑍沃?</p>
               </div>
             </div>
             <div className="rounded-2xl border border-neutral-200 bg-[#FAFAF9] p-6 sm:p-8">
@@ -474,8 +474,8 @@ export function LandingSampleVista({
                   "Your logo, colours, and booking page",
                   "Services, durations, and deposit rules you choose",
                   "Staff, rooms, and schedules that fit your shop",
-                  "Works for beauty, wellness, healthcare, cleaning — or something new",
-                  "Free trial · no lock-in · cancel anytime",
+                  "Works for beauty, wellness, healthcare, cleaning ??or something new",
+                  "Free trial 쨌 no lock-in 쨌 cancel anytime",
                 ].map((item) => (
                   <li
                     key={item}
@@ -515,7 +515,7 @@ export function LandingSampleVista({
                 All-in-one
               </p>
               <h2 className="mt-3 text-2xl font-bold tracking-tight text-neutral-950 sm:text-3xl">
-                One platform — tailored to how you work.
+                One platform ??tailored to how you work.
               </h2>
               <p className="mt-4 text-base leading-relaxed text-neutral-600">
                 Run bookings, staff, rooms, and payments together. We customise
@@ -553,7 +553,7 @@ export function LandingSampleVista({
               {[
                 {
                   quote:
-                    "한국어로도 설명 받을 수 있어서 좋았어요. 예약·보증금이 한곳에 정리됐습니다.",
+                    "?쒓뎅?대줈???ㅻ챸 諛쏆쓣 ???덉뼱??醫뗭븯?댁슂. ?덉빟쨌蹂댁쬆湲덉씠 ?쒓납???뺣━?먯뒿?덈떎.",
                   name: "Minji K.",
                   role: "Korean Day Spa, Sydney",
                 },
@@ -565,7 +565,7 @@ export function LandingSampleVista({
                 },
                 {
                   quote:
-                    "We run beauty and wellness under one roof. AllBook adapted to both — not just a spa template.",
+                    "We run beauty and wellness under one roof. AllBook adapted to both ??not just a spa template.",
                   name: "Sora P.",
                   role: "Multi-service Studio, Brisbane",
                 },
@@ -577,13 +577,11 @@ export function LandingSampleVista({
                   <div className="flex gap-0.5 text-sm" style={{ color: ACCENT }}>
                     {Array.from({ length: 5 }).map((_, i) => (
                       <span key={i} aria-hidden>
-                        ★
-                      </span>
+                        ??                      </span>
                     ))}
                   </div>
                   <p className="mt-3 text-sm leading-relaxed text-neutral-700">
-                    “{item.quote}”
-                  </p>
+                    ??item.quote}??                  </p>
                   <div className="mt-5 flex items-center gap-3">
                     <span
                       className="flex size-8 items-center justify-center rounded-full text-[11px] font-bold text-white"
@@ -614,7 +612,7 @@ export function LandingSampleVista({
             Ready to customise AllBook for your business?
           </h2>
           <p className="mx-auto mt-3 max-w-lg text-sm text-neutral-600 sm:text-base">
-            Free trial for Australian service businesses — Korean, Chinese &
+            Free trial for Australian service businesses ??Korean, Chinese &
             Japanese-owned shops welcome. Any industry.
           </p>
           <Link
@@ -632,8 +630,7 @@ export function LandingSampleVista({
             <div className="space-y-3">
             <AllBookLogo size="sm" variant="blue" />
             <p className="max-w-xs text-sm leading-relaxed text-neutral-500">
-              Customisable booking software for Australian service businesses —
-              including Korean, Chinese & Japanese-owned shops. Any industry.
+              Customisable booking software for Australian service businesses ??              including Korean, Chinese & Japanese-owned shops. Any industry.
               Book. Get Paid. Grow.
             </p>
           </div>
@@ -670,8 +667,8 @@ export function LandingSampleVista({
         <div className="border-t border-neutral-200">
           <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-5 py-5 text-xs text-neutral-500 sm:px-8">
             <p>
-              © {new Date().getFullYear()} AllBook
-              {isLive ? "" : ". Sample design · not final"}
+              짤 {new Date().getFullYear()} AllBook
+              {isLive ? "" : ". Sample design 쨌 not final"}
             </p>
             <div className="flex items-center gap-4">
               <span className="inline-flex items-center gap-1.5">
@@ -821,7 +818,7 @@ function DeviceStack() {
           <span className="size-2 rounded-full bg-neutral-300" />
           <span className="size-2 rounded-full bg-neutral-300" />
           <span className="size-2 rounded-full bg-neutral-300" />
-          <span className="ml-3 text-[11px] text-neutral-400">Admin · Dashboard</span>
+          <span className="ml-3 text-[11px] text-neutral-400">Admin 쨌 Dashboard</span>
         </div>
         <div className="space-y-4 p-4 sm:p-5">
           <div className="grid grid-cols-3 gap-2">
@@ -869,7 +866,7 @@ function DeviceStack() {
         <div className="space-y-2 p-2.5">
           <p className="text-[10px] font-bold text-neutral-900">Confirm</p>
           <div className="rounded-lg bg-neutral-50 p-2 text-[9px] text-neutral-600">
-            Emma · Wed 2:00 PM
+            Emma 쨌 Wed 2:00 PM
             <br />
             Deposit $20
           </div>
