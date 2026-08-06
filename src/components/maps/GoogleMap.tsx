@@ -3,7 +3,7 @@
 import { APIProvider, Map, useMap } from "@vis.gl/react-google-maps";
 import { useEffect, useMemo } from "react";
 
-import type { MockSalon } from "@/data/mockSalons";
+import type { Salon } from "@/types/salon";
 import { useGeocodeLocation } from "@/hooks/useGeocodeLocation";
 import {
   DEFAULT_MAP_CENTER,
@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { SalonMarker } from "./SalonMarker";
 
 type GoogleMapProps = {
-  salons: MockSalon[];
+  salons: Salon[];
   selectedId?: string | null;
   /** Bumps on intentional focus (card/marker) to retrigger pan + bounce. */
   focusToken?: number;

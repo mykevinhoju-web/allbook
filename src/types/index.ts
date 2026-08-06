@@ -1,4 +1,9 @@
 export type { Database, Json } from "./database";
+export type {
+  GetSalonsParams,
+  Salon,
+  SalonRow,
+} from "./salon";
 
 export type BusinessCategory =
   | "massage"

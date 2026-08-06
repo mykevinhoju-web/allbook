@@ -595,6 +595,135 @@ export type Database = {
         };
         Relationships: [];
       };
+      salons: {
+        Row: {
+          id: string;
+          name: string;
+          description: string | null;
+          phone: string | null;
+          email: string | null;
+          website: string | null;
+          cover_image: string | null;
+          logo: string | null;
+          address: string | null;
+          suburb: string | null;
+          city: string;
+          state: string;
+          postcode: string | null;
+          country: string;
+          latitude: number;
+          longitude: number;
+          rating: number;
+          review_count: number;
+          verified: boolean;
+          primary_service: string | null;
+          starting_price: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string | null;
+          phone?: string | null;
+          email?: string | null;
+          website?: string | null;
+          cover_image?: string | null;
+          logo?: string | null;
+          address?: string | null;
+          suburb?: string | null;
+          city?: string;
+          state?: string;
+          postcode?: string | null;
+          country?: string;
+          latitude: number;
+          longitude: number;
+          rating?: number;
+          review_count?: number;
+          verified?: boolean;
+          primary_service?: string | null;
+          starting_price?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string | null;
+          phone?: string | null;
+          email?: string | null;
+          website?: string | null;
+          cover_image?: string | null;
+          logo?: string | null;
+          address?: string | null;
+          suburb?: string | null;
+          city?: string;
+          state?: string;
+          postcode?: string | null;
+          country?: string;
+          latitude?: number;
+          longitude?: number;
+          rating?: number;
+          review_count?: number;
+          verified?: boolean;
+          primary_service?: string | null;
+          starting_price?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      favorites: {
+        Row: {
+          id: string;
+          user_id: string;
+          salon_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          salon_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          salon_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      reviews: {
+        Row: {
+          id: string;
+          salon_id: string;
+          user_id: string | null;
+          rating: number;
+          comment: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          salon_id: string;
+          user_id?: string | null;
+          rating: number;
+          comment?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          salon_id?: string;
+          user_id?: string | null;
+          rating?: number;
+          comment?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

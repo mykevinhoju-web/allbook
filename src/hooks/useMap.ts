@@ -2,13 +2,13 @@
 
 import { useCallback, useMemo, useState } from "react";
 
-import type { MockSalon } from "@/data/mockSalons";
+import type { Salon } from "@/types/salon";
 
 /**
  * Shared map ↔ list selection for Search.
  * Focusing a salon (card or marker) bumps `focusToken` so the map can pan/zoom/bounce.
  */
-export function useMap(salons: MockSalon[]) {
+export function useMap(salons: Salon[]) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [focusToken, setFocusToken] = useState(0);
 

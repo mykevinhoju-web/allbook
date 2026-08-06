@@ -4,13 +4,13 @@ import Image from "next/image";
 import { useEffect, useRef } from "react";
 import { MapPin, Star } from "lucide-react";
 
-import type { MockSalon } from "@/data/mockSalons";
+import type { Salon } from "@/types/salon";
 import { cn } from "@/lib/utils";
 
 const ACCENT = "#6B5CF6";
 
 type SalonCardProps = {
-  salon: MockSalon;
+  salon: Salon;
   selected?: boolean;
   onSelect?: (id: string) => void;
   onBook?: (id: string) => void;

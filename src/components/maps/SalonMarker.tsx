@@ -3,10 +3,10 @@
 import { Marker, useMarkerRef } from "@vis.gl/react-google-maps";
 import { useEffect } from "react";
 
-import type { MockSalon } from "@/data/mockSalons";
+import type { Salon } from "@/types/salon";
 
 type SalonMarkerProps = {
-  salon: MockSalon;
+  salon: Salon;
   selected?: boolean;
   /** Incremented when the user focuses this salon — retriggers bounce. */
   bounceToken?: number;
@@ -14,7 +14,7 @@ type SalonMarkerProps = {
 };
 
 /**
- * Reusable Google Maps marker for a mock salon.
+ * Reusable Google Maps marker for a salon.
  * Selected markers bounce briefly and sit above siblings.
  */
 export function SalonMarker({

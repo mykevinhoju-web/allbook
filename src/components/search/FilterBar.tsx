@@ -2,8 +2,19 @@
 
 import { cn } from "@/lib/utils";
 
-import { SEARCH_FILTER_CHIPS } from "./mock-salons";
-import type { SearchFilterChip } from "./types";
+export const SEARCH_FILTER_CHIPS = [
+  "Hair",
+  "Nails",
+  "Spa",
+  "Massage",
+  "Facial",
+  "Waxing",
+  "Brows",
+  "Open Now",
+  "Top Rated",
+] as const;
+
+export type SearchFilterChip = (typeof SEARCH_FILTER_CHIPS)[number];
 
 type FilterBarProps = {
   active: SearchFilterChip[];
