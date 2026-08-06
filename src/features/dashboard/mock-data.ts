@@ -9,12 +9,12 @@ import type {
 } from "./types";
 
 export const MOCK_SALON_SESSION: SalonOwnerSession = {
-  salonId: "salon_glow_hair",
+  salonId: "3c5e87b8-299e-486c-a357-f46ed20ff541",
   salonName: "Glow Hair Studio",
   ownerName: "Sarah Chen",
   ownerEmail: "sarah@glowhair.studio",
   categoryLabel: "Hair",
-  publicPath: "/hair/glow-hair-studio",
+  publicPath: "/hair/glow-hair",
 };
 
 export const MOCK_DASHBOARD_STATS: DashboardStat[] = [
