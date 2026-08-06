@@ -111,11 +111,15 @@ export type SalonServiceGroup = {
 export type SalonStaffMember = {
   id: string;
   name: string;
+  /** Display role (maps from `role` or `position`) */
   position: string;
+  role: string;
   photoUrl: string | null;
   yearsExperience: number;
   languages: string[];
   specialties: string[];
+  /** Service names this staff can perform */
+  availableServices: string[];
 };
 
 export type SalonReview = {

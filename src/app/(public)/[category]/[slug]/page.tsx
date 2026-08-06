@@ -42,6 +42,7 @@ export async function generateMetadata({
     salonName: result.data.salon.name,
     description: result.data.salon.description,
     suburb: result.data.salon.suburb,
+    slug: result.data.salon.slug,
   });
 }
 

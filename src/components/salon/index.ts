@@ -1,4 +1,11 @@
-export { SalonHero } from "./Hero";
+export { SalonHero } from "./SalonHero";
+export { AboutSection } from "./AboutSection";
+export { ServicesSection } from "./ServicesSection";
+export { StaffSection } from "./StaffSection";
+export { GallerySection } from "./GallerySection";
+export { ReviewsSection } from "./ReviewsSection";
+export { LocationSection } from "./LocationSection";
+export { StickyBookingCard } from "./StickyBookingCard";
 export { SalonGallery } from "./Gallery";
 export { ServiceList } from "./ServiceList";
 export { StaffList } from "./StaffList";

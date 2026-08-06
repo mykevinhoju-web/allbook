@@ -1,18 +1,19 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
+import { useState } from "react";
 
 import type { SalonPageData } from "@/features/salon";
 import type { SalonServiceItem, SalonStaffMember } from "@/types/salon";
 
-import { BookingSidebar, type BookingSelection } from "./BookingSidebar";
-import { SalonGallery } from "./Gallery";
-import { SalonHero } from "./Hero";
-import { LocationMap } from "./LocationMap";
-import { ReviewList } from "./ReviewList";
-import { SalonInfo } from "./SalonInfo";
-import { ServiceList } from "./ServiceList";
-import { StaffList } from "./StaffList";
+import { AboutSection } from "./AboutSection";
+import { GallerySection } from "./GallerySection";
+import { LocationSection } from "./LocationSection";
+import { ReviewsSection } from "./ReviewsSection";
+import { SalonHero } from "./SalonHero";
+import { ServicesSection } from "./ServicesSection";
+import { StaffSection } from "./StaffSection";
+import { StickyBookingCard } from "./StickyBookingCard";
 
 type SalonDetailViewProps = {
   data: SalonPageData;
@@ -20,43 +21,23 @@ type SalonDetailViewProps = {
   bookHref?: string;
 };
 
-function emptySelection(): BookingSelection {
-  return {
-    service: null,
-    staff: null,
-    date: "",
-    time: "",
-  };
-}
-
+/**
+ * Public salon detail page shell — reusable for every marketplace category.
+ */
 export function SalonDetailView({
   data,
   backHref = "/",
   bookHref,
 }: SalonDetailViewProps) {
   const { salon, serviceGroups, staff, reviews } = data;
-  const [selection, setSelection] = useState<BookingSelection>(emptySelection);
-  const [, startTransition] = useTransition();
-  const [bookedMessage, setBookedMessage] = useState<string | null>(null);
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(
+    null,
+  );
+  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
+  const [shareMessage, setShareMessage] = useState<string | null>(null);
 
-  const stickyOffset = useMemo(() => "top-6", []);
-
-  function selectService(service: SalonServiceItem) {
-    startTransition(() => {
-      setSelection((prev) => ({ ...prev, service }));
-      setBookedMessage(null);
-      document
-        .getElementById("salon-booking")
-        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    });
-  }
-
-  function selectStaff(member: SalonStaffMember) {
-    startTransition(() => {
-      setSelection((prev) => ({ ...prev, staff: member }));
-      setBookedMessage(null);
-    });
-  }
+  const resolvedBookHref =
+    bookHref ?? `/${salon.service.toLowerCase()}/${salon.slug}/book`;
 
   async function handleShare() {
     const url = typeof window !== "undefined" ? window.location.href : "";
@@ -66,63 +47,58 @@ export function SalonDetailView({
         return;
       }
       await navigator.clipboard.writeText(url);
-      setBookedMessage("Link copied");
+      setShareMessage("Link copied");
+      window.setTimeout(() => setShareMessage(null), 2000);
     } catch {
-      // User cancelled share — ignore.
+      // cancelled
     }
   }
 
-  function handleBook() {
-    if (bookHref) {
-      window.location.href = bookHref;
-      return;
-    }
-    if (!selection.service || !selection.date || !selection.time) return;
-    setBookedMessage(
-      `Ready to book ${selection.service.name}${
-        selection.staff ? ` with ${selection.staff.name}` : ""
-      } on ${selection.date} at ${selection.time}. Checkout coming soon.`,
-    );
+  function selectService(service: SalonServiceItem) {
+    setSelectedServiceId(service.id);
+  }
+
+  function selectStaff(member: SalonStaffMember) {
+    setSelectedStaffId(member.id);
   }
 
   return (
     <div className="min-h-svh bg-[#F6F6F7] text-neutral-950">
-      <SalonHero salon={salon} backHref={backHref} onShare={handleShare} />
+      <SalonHero
+        salon={salon}
+        backHref={backHref}
+        bookHref={resolvedBookHref}
+        onShare={handleShare}
+      />
 
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-10 lg:px-8 lg:py-10">
         <div className="min-w-0 space-y-12 pb-28 lg:pb-10">
-          <SalonInfo salon={salon} />
-          <SalonGallery images={salon.gallery} salonName={salon.name} />
-          <ServiceList
+          <AboutSection salon={salon} />
+          <ServicesSection
             groups={serviceGroups}
-            selectedServiceId={selection.service?.id}
+            bookHref={resolvedBookHref}
+            selectedServiceId={selectedServiceId}
             onSelectService={selectService}
           />
-          <StaffList
+          <StaffSection
             staff={staff}
-            selectedStaffId={selection.staff?.id}
+            selectedStaffId={selectedStaffId}
             onSelectStaff={selectStaff}
           />
-          <ReviewList summary={reviews} />
-          <LocationMap salon={salon} />
+          <GallerySection images={salon.gallery} salonName={salon.name} />
+          <ReviewsSection summary={reviews} />
+          <LocationSection salon={salon} />
         </div>
 
         <div className="relative hidden lg:block">
-          <div id="salon-booking" className={`sticky ${stickyOffset}`}>
-            <BookingSidebar
-              selection={selection}
-              onDateChange={(date) =>
-                setSelection((prev) => ({ ...prev, date }))
-              }
-              onTimeChange={(time) =>
-                setSelection((prev) => ({ ...prev, time }))
-              }
-              onBook={handleBook}
-              allowDirectBook={Boolean(bookHref)}
+          <div className="sticky top-6">
+            <StickyBookingCard
+              salon={salon}
+              bookHref={resolvedBookHref}
             />
-            {bookedMessage ? (
+            {shareMessage ? (
               <p className="mt-3 rounded-2xl bg-white px-4 py-3 text-sm text-neutral-600 shadow-sm">
-                {bookedMessage}
+                {shareMessage}
               </p>
             ) : null}
           </div>
@@ -130,14 +106,12 @@ export function SalonDetailView({
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200/80 bg-white/95 p-3 backdrop-blur-md lg:hidden">
-        <BookingSidebar
-          compact
-          selection={selection}
-          onDateChange={(date) => setSelection((prev) => ({ ...prev, date }))}
-          onTimeChange={(time) => setSelection((prev) => ({ ...prev, time }))}
-          onBook={handleBook}
-          allowDirectBook={Boolean(bookHref)}
-        />
+        <Link
+          href={resolvedBookHref}
+          className="inline-flex h-12 w-full items-center justify-center rounded-full bg-neutral-950 text-sm font-semibold text-white"
+        >
+          Book Now
+        </Link>
       </div>
     </div>
   );

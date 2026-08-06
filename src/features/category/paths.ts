@@ -117,17 +117,28 @@ export function buildSalonMetadata(input: {
   salonName: string;
   description: string | null;
   suburb: string;
+  slug?: string;
 }): Metadata {
+  const place = input.suburb?.trim() || "Brisbane";
+  const title = `${input.salonName} | ${input.category.label} Salon in ${place}`;
   const description =
     input.description?.trim() ||
-    `Book ${input.salonName} in ${input.suburb} for ${input.category.label.toLowerCase()} on AllBook.`;
+    `Book ${input.salonName} in ${place}. View services, staff, reviews, and hours on AllBook.`;
+
+  const path = input.slug
+    ? `/${input.category.slug}/${encodeURIComponent(input.slug)}`
+    : `/${input.category.slug}`;
 
   return {
-    title: `${input.salonName} · ${input.category.label}`,
+    title,
     description,
+    alternates: {
+      canonical: path,
+    },
     openGraph: {
-      title: `${input.salonName} | AllBook`,
+      title: `${title} | AllBook`,
       description,
+      url: path,
     },
   };
 }
