@@ -83,6 +83,7 @@ export function isPlatformApexPublicPath(pathname: string): boolean {
     pathname === "/login" ||
     pathname.startsWith("/landing") ||
     pathname.startsWith("/shops") ||
+    pathname.startsWith("/search") ||
     pathname.startsWith("/platform") ||
     pathname.startsWith("/auth")
   );
