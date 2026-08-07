@@ -134,6 +134,7 @@ export function mapPlaceToSnapshot(
     ...(place.types ?? []),
   ];
   const googleCategories = [...new Set(categories.filter(Boolean))];
+  const businessStatus = place.businessStatus?.trim() || null;
 
   return {
     placeId,
@@ -160,6 +161,7 @@ export function mapPlaceToSnapshot(
     primaryType: place.primaryType ?? null,
     categorySlug: mapping.categorySlug,
     primaryService: mapping.primaryService,
+    businessStatus,
   };
 }
 

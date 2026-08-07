@@ -42,7 +42,9 @@ export type SearchSalonsOptions = {
 
 /**
  * Marketplace search engine (Supabase RPC + post-filters).
- * No mock data. Reusable for Hair, Day Spa, Nails, Barber, Massage, …
+ * Catalogue queries hit the local `salons` table / RPC only.
+ * Google Places is never called for business discovery at search time
+ * (geocoding may resolve the user's typed location only).
  */
 export async function searchSalons(
   supabase: AnySupabase,

@@ -104,6 +104,9 @@ export async function upsertGoogleSalon(
     widthPx: p.widthPx ?? null,
     heightPx: p.heightPx ?? null,
   }));
+  const businessStatus = snapshot.businessStatus;
+  const permanentlyClosed =
+    businessStatus?.toUpperCase() === "CLOSED_PERMANENTLY";
 
   if (existing) {
     const row = existing as ExistingSalon;
@@ -125,7 +128,10 @@ export async function upsertGoogleSalon(
           review_count: snapshot.reviewCount,
           google_categories: snapshot.googleCategories,
           google_photos: googlePhotos,
+          google_business_status: businessStatus,
+          permanently_closed: permanentlyClosed,
           google_synced_at: now,
+          is_synthetic: false,
           updated_at: now,
         })
         .eq("id", row.id);
@@ -180,7 +186,10 @@ export async function upsertGoogleSalon(
         registration_method: "google",
         google_categories: snapshot.googleCategories,
         google_photos: googlePhotos,
+        google_business_status: businessStatus,
+        permanently_closed: permanentlyClosed,
         google_synced_at: now,
+        is_synthetic: false,
         review_status: "pending",
         updated_at: now,
       })
@@ -247,8 +256,11 @@ export async function upsertGoogleSalon(
       google_place_id: snapshot.placeId,
       google_categories: snapshot.googleCategories,
       google_photos: googlePhotos,
+      google_business_status: businessStatus,
+      permanently_closed: permanentlyClosed,
       google_synced_at: now,
       imported_at: now,
+      is_synthetic: false,
       review_status: "pending",
       marketplace_visible: true,
       booking_enabled: false,
@@ -256,6 +268,12 @@ export async function upsertGoogleSalon(
       amenities: [],
       service_tags: [],
       languages: [],
+      search_keywords: [],
+      search_styles: [],
+      search_brands: [],
+      search_techniques: [],
+      search_features: [],
+      search_availability_mode: "unknown",
     })
     .select("id")
     .single();

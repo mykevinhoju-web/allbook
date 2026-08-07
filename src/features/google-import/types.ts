@@ -66,6 +66,8 @@ export type GooglePlaceSnapshot = {
   primaryType: string | null;
   categorySlug: MarketplaceCategorySlug;
   primaryService: string;
+  /** Places businessStatus e.g. OPERATIONAL | CLOSED_TEMPORARILY | CLOSED_PERMANENTLY */
+  businessStatus: string | null;
 };
 
 export type GoogleImportUpsertAction =

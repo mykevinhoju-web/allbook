@@ -60,6 +60,7 @@ const SEARCH_FIELD_MASK = [
   "places.types",
   "places.primaryType",
   "places.googleMapsUri",
+  "places.businessStatus",
   "nextPageToken",
 ].join(",");
 
