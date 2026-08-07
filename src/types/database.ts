@@ -1325,6 +1325,214 @@ export type Database = {
           },
         ];
       };
+      salon_customer_notes: {
+        Row: {
+          id: string;
+          customer_id: string;
+          staff_id: string | null;
+          note: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          customer_id: string;
+          staff_id?: string | null;
+          note: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          customer_id?: string;
+          staff_id?: string | null;
+          note?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "salon_customer_notes_customer_id_fkey";
+            columns: ["customer_id"];
+            isOneToOne: false;
+            referencedRelation: "salon_customers";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      salon_customer_tags: {
+        Row: {
+          id: string;
+          customer_id: string;
+          tag: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          customer_id: string;
+          tag: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          customer_id?: string;
+          tag?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "salon_customer_tags_customer_id_fkey";
+            columns: ["customer_id"];
+            isOneToOne: false;
+            referencedRelation: "salon_customers";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      salon_customer_statistics: {
+        Row: {
+          customer_id: string;
+          total_bookings: number;
+          completed_bookings: number;
+          cancelled_bookings: number;
+          total_spent: number;
+          average_spent: number;
+          last_visit: string | null;
+          next_booking: string | null;
+          preferred_staff_id: string | null;
+          favorite_service_id: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          customer_id: string;
+          total_bookings?: number;
+          completed_bookings?: number;
+          cancelled_bookings?: number;
+          total_spent?: number;
+          average_spent?: number;
+          last_visit?: string | null;
+          next_booking?: string | null;
+          preferred_staff_id?: string | null;
+          favorite_service_id?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          customer_id?: string;
+          total_bookings?: number;
+          completed_bookings?: number;
+          cancelled_bookings?: number;
+          total_spent?: number;
+          average_spent?: number;
+          last_visit?: string | null;
+          next_booking?: string | null;
+          preferred_staff_id?: string | null;
+          favorite_service_id?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "salon_customer_statistics_customer_id_fkey";
+            columns: ["customer_id"];
+            isOneToOne: true;
+            referencedRelation: "salon_customers";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      salon_customer_timeline: {
+        Row: {
+          id: string;
+          customer_id: string;
+          salon_id: string;
+          event_type:
+            | "booking_created"
+            | "booking_completed"
+            | "booking_cancelled"
+            | "review_submitted"
+            | "payment_completed"
+            | "note_added"
+            | "status_changed";
+          title: string;
+          detail: string | null;
+          booking_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          customer_id: string;
+          salon_id: string;
+          event_type:
+            | "booking_created"
+            | "booking_completed"
+            | "booking_cancelled"
+            | "review_submitted"
+            | "payment_completed"
+            | "note_added"
+            | "status_changed";
+          title: string;
+          detail?: string | null;
+          booking_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          customer_id?: string;
+          salon_id?: string;
+          event_type?:
+            | "booking_created"
+            | "booking_completed"
+            | "booking_cancelled"
+            | "review_submitted"
+            | "payment_completed"
+            | "note_added"
+            | "status_changed";
+          title?: string;
+          detail?: string | null;
+          booking_id?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "salon_customer_timeline_customer_id_fkey";
+            columns: ["customer_id"];
+            isOneToOne: false;
+            referencedRelation: "salon_customers";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      salon_customer_media: {
+        Row: {
+          id: string;
+          customer_id: string;
+          url: string;
+          media_type: "before" | "after" | "upload";
+          caption: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          customer_id: string;
+          url: string;
+          media_type?: "before" | "after" | "upload";
+          caption?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          customer_id?: string;
+          url?: string;
+          media_type?: "before" | "after" | "upload";
+          caption?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "salon_customer_media_customer_id_fkey";
+            columns: ["customer_id"];
+            isOneToOne: false;
+            referencedRelation: "salon_customers";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       salon_bookings: {
         Row: {
           id: string;

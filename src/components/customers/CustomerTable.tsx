@@ -35,9 +35,9 @@ export function CustomerTable({
               <th className="px-5 py-3 font-semibold">Customer</th>
               <th className="px-3 py-3 font-semibold">Contact</th>
               <th className="px-3 py-3 font-semibold">Status</th>
-              <th className="px-3 py-3 font-semibold">Visits</th>
+              <th className="px-3 py-3 font-semibold">Bookings</th>
               <th className="px-3 py-3 font-semibold">Spent</th>
-              <th className="px-3 py-3 font-semibold">Last visit</th>
+              <th className="px-3 py-3 font-semibold">Last booking</th>
               <th className="px-5 py-3 font-semibold">Next booking</th>
             </tr>
           </thead>
@@ -83,7 +83,7 @@ export function CustomerTable({
                     </span>
                   </td>
                   <td className="px-3 py-3.5 tabular-nums text-neutral-700">
-                    {customer.statistics.completedBookings}
+                    {customer.statistics.totalBookings}
                   </td>
                   <td className="px-3 py-3.5 tabular-nums text-neutral-700">
                     {formatMoney(customer.statistics.totalSpent)}

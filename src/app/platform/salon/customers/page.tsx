@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
-import { CustomersManager, getCustomers } from "@/features/customers";
+import { getCustomers } from "@/features/customers/getCustomers";
+import { CustomersManager } from "@/features/customers/customers-manager";
 import { requireOwnerSalon } from "@/features/dashboard/getOwnerSalon";
+import { createServiceSupabase } from "@/lib/supabase/service";
 
 export const metadata: Metadata = {
   title: "Customers",
@@ -11,7 +13,9 @@ export const metadata: Metadata = {
 export default async function SalonCustomersPage() {
   const owner = await requireOwnerSalon("/platform/salon/customers");
   const salonId = owner.salon.id;
-  const customers = await getCustomers({ salonId });
+  // Service role: CRM notes/tags/timeline have no owner SELECT RLS.
+  const supabase = createServiceSupabase();
+  const customers = await getCustomers(supabase, { salonId });
 
   return <CustomersManager salonId={salonId} initialCustomers={customers} />;
 }

@@ -6,22 +6,21 @@ export {
   formatDateLabel,
   exportCustomersToCsv,
 } from "./constants";
-export { getCustomers, getCustomer } from "./getCustomers";
+export { validateCustomerInput } from "./validateCustomer";
+export { CustomersManager } from "./customers-manager";
 export {
   createCustomer,
   updateCustomer,
   blockCustomer,
   addCustomerNote,
   setCustomerTags,
-  validateCustomerInput,
-} from "./updateCustomer";
+} from "./customers-client";
 export {
   upsertCustomerFromBooking,
   applyBookingToCustomerStats,
 } from "./syncFromBooking";
 export { syncCustomersFromBookingEvent } from "./syncCustomersFromBookingEvent";
 export type { SyncCustomersStore } from "./syncCustomersFromBookingEvent";
-export { CustomersManager } from "./customers-manager";
 export type {
   SalonCustomer,
   CustomerStatus,
