@@ -21,6 +21,12 @@ export type {
   SearchSalonsOptions,
   SearchSalonsResult,
 } from "./searchSalons";
+export {
+  SEARCH_AREA_MIN_LOCAL,
+  SEARCH_AREA_STALE_DAYS,
+  fillSearchAreaFromGoogle,
+  shouldFillFromGoogle,
+} from "./auto-google-import";
 export { normalizeSalonSearchFilters } from "./types";
 export type {
   SalonSearchFilters,

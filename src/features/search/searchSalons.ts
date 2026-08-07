@@ -1,10 +1,19 @@
+import { after } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { mapSalonRow } from "@/features/salon/getSalons";
 import { parseOpeningHours } from "@/features/salon/map-salon-detail";
+import { createServiceSupabase } from "@/lib/supabase/service";
 import type { Database } from "@/types/database";
 import type { OpeningHours, Salon, SalonRow } from "@/types/salon";
 
+import {
+  buildSearchAreaKey,
+  fillSearchAreaFromGoogle,
+  getSearchAreaCoverage,
+  serviceToImportCategory,
+  shouldFillFromGoogle,
+} from "./auto-google-import";
 import {
   SEARCH_PAGE_SIZE,
   resolveServiceFilterValues,
@@ -38,13 +47,15 @@ export type SearchSalonsResult = {
 export type SearchSalonsOptions = {
   /** Skip geocode and use this origin (for getNearbySalons). */
   originOverride?: SalonSearchOrigin | null;
+  /** Disable search-time Google fill (tests / admin). */
+  skipGoogleFill?: boolean;
 };
 
 /**
  * Marketplace search engine (Supabase RPC + post-filters).
- * Catalogue queries hit the local `salons` table / RPC only.
- * Google Places is never called for business discovery at search time
- * (geocoding may resolve the user's typed location only).
+ * 1) Always search local DB first (returns Salon rows only).
+ * 2) If area missing/stale, fill from Google Places (background preferred).
+ * 3) Never return raw Google objects to the UI.
  */
 export async function searchSalons(
   supabase: AnySupabase,
@@ -79,16 +90,81 @@ export async function searchSalons(
     }
   }
 
+  let result = await runLocalSearch(supabase, filters, origin, {
+    page,
+    pageSize,
+    offset,
+  });
+
+  if (options.skipGoogleFill) {
+    return result;
+  }
+
+  const category = serviceToImportCategory(filters.service);
+  const locationLabel =
+    origin?.formattedAddress || filters.location || filters.suburb;
+
+  if (origin && category && locationLabel) {
+    const areaKey = buildSearchAreaKey({
+      categorySlug: category,
+      latitude: origin.lat,
+      longitude: origin.lng,
+      radiusKm: filters.radiusKm,
+    });
+
+    const service = createServiceSupabase();
+    const coverage = await getSearchAreaCoverage(service, areaKey);
+    const needsFill = shouldFillFromGoogle({
+      localCount: result.salons.length + (result.hasMore ? pageSize : 0),
+      lastFetchedAt: coverage?.lastFetchedAt,
+      hasOrigin: true,
+      hasCategory: true,
+    });
+
+    if (needsFill) {
+      const fillInput = {
+        category,
+        locationLabel,
+        latitude: origin.lat,
+        longitude: origin.lng,
+        radiusKm: filters.radiusKm,
+      };
+
+      // Empty first page: await a short fill so the user sees real results.
+      // Otherwise refresh in the background without blocking the response.
+      if (page === 1 && result.salons.length === 0) {
+        await fillSearchAreaFromGoogle(service, fillInput);
+        result = await runLocalSearch(supabase, filters, origin, {
+          page,
+          pageSize,
+          offset,
+        });
+      } else {
+        after(() => {
+          void fillSearchAreaFromGoogle(service, fillInput);
+        });
+      }
+    }
+  }
+
+  return result;
+}
+
+async function runLocalSearch(
+  supabase: AnySupabase,
+  filters: SalonSearchFilters,
+  origin: SalonSearchOrigin | null,
+  paging: { page: number; pageSize: number; offset: number },
+): Promise<SearchSalonsResult> {
+  const { page, pageSize, offset } = paging;
   const services = resolveServiceFilterValues(filters.service);
 
-  // Prefer explicit suburb filter; else location text when not geocoded.
   const suburbFilter = filters.suburb
     ? filters.suburb.replace(/[%_,]/g, "")
     : origin || !filters.location
       ? null
       : filters.location.replace(/[%_,]/g, "");
 
-  // Over-fetch when post-filters may drop rows, then page in memory.
   const needsPostFilter =
     filters.verifiedOnly ||
     filters.openNow ||
@@ -148,7 +224,6 @@ export async function searchSalons(
       })
       .filter((salon) => salon.isOpen);
   } else if (salons.length > 0) {
-    // Lightweight open/closed for cards (optional fetch)
     const hoursById = await loadOpeningHours(
       supabase,
       salons.slice(0, pageSize + 1).map((s) => s.id),
@@ -173,7 +248,6 @@ export async function searchSalons(
   } else {
     hasMore = salons.length > pageSize;
     pageRows = hasMore ? salons.slice(0, pageSize) : salons;
-    // Approximate total for UI when RPC has no count — at least current window.
     total = offset + pageRows.length + (hasMore ? 1 : 0);
   }
 

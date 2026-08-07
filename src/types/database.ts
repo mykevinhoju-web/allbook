@@ -625,6 +625,117 @@ export type Database = {
         };
         Relationships: [];
       };
+      search_area_coverage: {
+        Row: {
+          id: string;
+          area_key: string;
+          category_slug: string;
+          location_label: string | null;
+          latitude: number;
+          longitude: number;
+          radius_km: number;
+          last_fetched_at: string | null;
+          last_status: string;
+          imported_count: number;
+          updated_count: number;
+          skipped_count: number;
+          failed_count: number;
+          error_message: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          area_key: string;
+          category_slug: string;
+          location_label?: string | null;
+          latitude: number;
+          longitude: number;
+          radius_km?: number;
+          last_fetched_at?: string | null;
+          last_status?: string;
+          imported_count?: number;
+          updated_count?: number;
+          skipped_count?: number;
+          failed_count?: number;
+          error_message?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          area_key?: string;
+          category_slug?: string;
+          location_label?: string | null;
+          latitude?: number;
+          longitude?: number;
+          radius_km?: number;
+          last_fetched_at?: string | null;
+          last_status?: string;
+          imported_count?: number;
+          updated_count?: number;
+          skipped_count?: number;
+          failed_count?: number;
+          error_message?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      search_google_import_runs: {
+        Row: {
+          id: string;
+          area_key: string;
+          category_slug: string;
+          location_label: string | null;
+          latitude: number | null;
+          longitude: number | null;
+          radius_km: number | null;
+          queried: number;
+          imported: number;
+          updated: number;
+          skipped: number;
+          failed: number;
+          status: string;
+          error_message: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          area_key: string;
+          category_slug: string;
+          location_label?: string | null;
+          latitude?: number | null;
+          longitude?: number | null;
+          radius_km?: number | null;
+          queried?: number;
+          imported?: number;
+          updated?: number;
+          skipped?: number;
+          failed?: number;
+          status?: string;
+          error_message?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          area_key?: string;
+          category_slug?: string;
+          location_label?: string | null;
+          latitude?: number | null;
+          longitude?: number | null;
+          radius_km?: number | null;
+          queried?: number;
+          imported?: number;
+          updated?: number;
+          skipped?: number;
+          failed?: number;
+          status?: string;
+          error_message?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       salons: {
         Row: {
           id: string;
