@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 
 import { PlatformSignupForm } from "@/features/platform-auth";
+import { isPrivatePreviewEnabled } from "@/features/private-preview";
 
 export const metadata: Metadata = {
   title: "Start free trial",
   description:
     "Create your AllBook account free — name, contact, business details, and email. No password required.",
-  robots: { index: true, follow: true },
+  robots: isPrivatePreviewEnabled()
+    ? { index: false, follow: false }
+    : { index: true, follow: true },
 };
 
 export default function SignupPage() {

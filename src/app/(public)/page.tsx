@@ -1,21 +1,45 @@
 import type { Metadata } from "next";
 
-import { PlatformLandingPage, TenantHomePage } from "@/components/common";
+import {
+  PlatformLandingPage,
+  SiteFooter,
+  TenantHomePage,
+} from "@/components/common";
 import {
   PLATFORM_SITE_URL,
   buildPlatformJsonLd,
   platformSeo,
 } from "@/features/platform-landing/lib/platform-seo";
+import {
+  PrivatePreviewLanding,
+  canAccessMarketplacePreview,
+  isPrivatePreviewEnabled,
+} from "@/features/private-preview";
 import { getTenantOptional } from "@/features/tenants/server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const tenant = await getTenantOptional();
+  const preview = isPrivatePreviewEnabled();
 
   if (tenant) {
     return {
       title: tenant.branding.displayName,
       description: tenant.branding.tagline,
+      robots: preview
+        ? { index: false, follow: false }
+        : { index: true, follow: true },
     };
+  }
+
+  if (preview) {
+    const allowMarketplace = await canAccessMarketplacePreview();
+    if (!allowMarketplace) {
+      return {
+        title: { absolute: "AllBook — Private Preview" },
+        description: "AllBook Private Preview — Launching Soon",
+        robots: { index: false, follow: false },
+      };
+    }
   }
 
   return {
@@ -61,17 +85,19 @@ export async function generateMetadata(): Promise<Metadata> {
       description: platformSeo.description,
       images: [platformSeo.ogImage],
     },
-    robots: {
-      index: true,
-      follow: true,
-      googleBot: {
-        index: true,
-        follow: true,
-        "max-image-preview": "large",
-        "max-snippet": -1,
-        "max-video-preview": -1,
-      },
-    },
+    robots: preview
+      ? { index: false, follow: false }
+      : {
+          index: true,
+          follow: true,
+          googleBot: {
+            index: true,
+            follow: true,
+            "max-image-preview": "large",
+            "max-snippet": -1,
+            "max-video-preview": -1,
+          },
+        },
   };
 }
 
@@ -79,6 +105,26 @@ export default async function HomePage() {
   const tenant = await getTenantOptional();
 
   if (!tenant) {
+    if (isPrivatePreviewEnabled()) {
+      const allowMarketplace = await canAccessMarketplacePreview();
+      if (!allowMarketplace) {
+        return <PrivatePreviewLanding isPlatformAdmin={false} />;
+      }
+      // Platform admin: real Marketplace + footer Documentation link.
+      return (
+        <>
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify(buildPlatformJsonLd()),
+            }}
+          />
+          <PlatformLandingPage />
+          <SiteFooter />
+        </>
+      );
+    }
+
     const jsonLd = buildPlatformJsonLd();
 
     return (

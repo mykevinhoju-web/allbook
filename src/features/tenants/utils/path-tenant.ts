@@ -15,6 +15,7 @@ export const RESERVED_PATH_SEGMENTS = new Set([
   "booking",
   "brand",
   "dashboard",
+  "docs",
   "facial",
   "favicon.ico",
   "hair",
@@ -103,6 +104,7 @@ export function isPlatformApexPublicPath(pathname: string): boolean {
     pathname.startsWith("/salon") ||
     isMarketplaceCategorySlug(segment) ||
     pathname.startsWith("/platform") ||
-    pathname.startsWith("/auth")
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/docs")
   );
 }

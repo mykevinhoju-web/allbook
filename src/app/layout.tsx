@@ -7,6 +7,7 @@ import {
   PLATFORM_SITE_URL,
   platformSeo,
 } from "@/features/platform-landing/lib/platform-seo";
+import { isPrivatePreviewEnabled } from "@/features/private-preview";
 import { TenantProvider } from "@/features/tenants";
 import { getTenantOptional } from "@/features/tenants/server";
 
@@ -22,18 +23,31 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const previewRobots = {
+  index: false,
+  follow: false,
+  googleBot: {
+    index: false,
+    follow: false,
+  },
+} as const;
+
 export async function generateMetadata(): Promise<Metadata> {
   const tenant = await getTenantOptional();
+  const preview = isPrivatePreviewEnabled();
 
   if (!tenant) {
     return {
       title: {
-        default: platformSeo.title,
+        default: preview ? "AllBook — Private Preview" : platformSeo.title,
         template: platformSeo.titleTemplate,
       },
-      description: platformSeo.description,
+      description: preview
+        ? "AllBook Private Preview — Launching Soon"
+        : platformSeo.description,
       applicationName: platformConfig.name,
       metadataBase: new URL(PLATFORM_SITE_URL),
+      robots: preview ? previewRobots : undefined,
       icons: {
         icon: [
           { url: "/favicon.png", sizes: "32x32", type: "image/png" },
@@ -53,6 +67,7 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     description: tenant.branding.tagline,
     applicationName: platformConfig.name,
+    robots: preview ? previewRobots : undefined,
     icons: {
       icon: [
         { url: "/favicon.png", sizes: "32x32", type: "image/png" },

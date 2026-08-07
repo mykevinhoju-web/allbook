@@ -1,8 +1,14 @@
 import type { MetadataRoute } from "next";
 
 import { PLATFORM_SITE_URL } from "@/features/platform-landing/lib/platform-seo";
+import { isPrivatePreviewEnabled } from "@/features/private-preview";
 
 export default function sitemap(): MetadataRoute.Sitemap {
+  // Private Preview — do not advertise Marketplace URLs to crawlers.
+  if (isPrivatePreviewEnabled()) {
+    return [];
+  }
+
   const now = new Date();
 
   return [

@@ -1,5 +1,14 @@
+import type { Metadata } from "next";
+
 import { SiteFooter, SiteHeader } from "@/components/common";
+import { isPrivatePreviewEnabled } from "@/features/private-preview";
 import { getTenantOptional } from "@/features/tenants/server";
+
+export const metadata: Metadata = {
+  robots: isPrivatePreviewEnabled()
+    ? { index: false, follow: false }
+    : undefined,
+};
 
 export default async function PublicLayout({
   children,

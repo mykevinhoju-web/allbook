@@ -14,6 +14,10 @@ import {
   STAFF_SESSION_COOKIE,
 } from "@/lib/app-session";
 import { resolvePlatformAdminAccess } from "@/features/platform/server/platform-admin-middleware";
+import {
+  isMarketplacePreviewProtectedPath,
+  isPrivatePreviewEnabled,
+} from "@/features/private-preview";
 import { updateSession } from "@/lib/supabase/middleware";
 
 function withTenantHeaders(
@@ -180,6 +184,34 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(
         new URL("/platform/login?error=not_admin", request.url),
       );
+    }
+    return access.response;
+  }
+
+  // Private Preview — Marketplace discovery stays online but admin-only.
+  if (
+    isPrivatePreviewEnabled() &&
+    platform &&
+    isMarketplacePreviewProtectedPath(pathname)
+  ) {
+    const access = await resolvePlatformAdminAccess(request, requestHeaders);
+    applyTenantCookie(access.response, request, tenantSlug, host);
+    if (!access.isAdmin) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    return access.response;
+  }
+
+  // Docs section — platform admins only while in Private Preview.
+  if (
+    isPrivatePreviewEnabled() &&
+    platform &&
+    (pathname === "/docs" || pathname.startsWith("/docs/"))
+  ) {
+    const access = await resolvePlatformAdminAccess(request, requestHeaders);
+    applyTenantCookie(access.response, request, tenantSlug, host);
+    if (!access.isAdmin) {
+      return NextResponse.redirect(new URL("/platform/login", request.url));
     }
     return access.response;
   }
