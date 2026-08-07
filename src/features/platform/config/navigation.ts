@@ -2,6 +2,7 @@ import {
   BarChart3,
   Building2,
   CreditCard,
+  Download,
   LayoutDashboard,
   Settings,
   Users,
@@ -14,6 +15,11 @@ export const platformNavItems: PlatformNavItem[] = [
     title: "Dashboard",
     href: "/platform",
     icon: LayoutDashboard,
+  },
+  {
+    title: "Import",
+    href: "/platform/import",
+    icon: Download,
   },
   {
     title: "Signups",

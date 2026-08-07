@@ -84,7 +84,7 @@ export async function upsertGoogleSalon(
     return {
       placeId: snapshot.placeId,
       name: snapshot.name,
-      action: "skipped",
+      action: "failed",
       error: existingError.message,
     };
   }
@@ -132,7 +132,7 @@ export async function upsertGoogleSalon(
         return {
           placeId: snapshot.placeId,
           name: snapshot.name,
-          action: "skipped",
+          action: "failed",
           salonId: row.id,
           error: error.message,
         };
@@ -181,7 +181,7 @@ export async function upsertGoogleSalon(
       return {
         placeId: snapshot.placeId,
         name: snapshot.name,
-        action: "skipped",
+        action: "failed",
         salonId: row.id,
         error: error.message,
       };
@@ -246,7 +246,7 @@ export async function upsertGoogleSalon(
     return {
       placeId: snapshot.placeId,
       name: snapshot.name,
-      action: "skipped",
+      action: "failed",
       error: insertError?.message ?? "Insert failed",
     };
   }

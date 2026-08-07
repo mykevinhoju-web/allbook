@@ -53,14 +53,13 @@ async function main() {
   const state = arg("state", "Queensland");
   const country = arg("country", "Australia");
   const category = arg("category", "hair");
+  const scope = arg("scope", "city");
   const maxPages = Number(arg("max-pages", "5"));
   const pageSize = Number(arg("page-size", "20"));
   const dryRun = flag("dry-run");
 
-  if (!city || !state || !country || !category) {
-    console.error(
-      "Required: --city --state --country --category (e.g. hair)",
-    );
+  if (!country || !category) {
+    console.error("Required: --country --category (e.g. hair)");
     process.exitCode = 1;
     return;
   }
@@ -81,6 +80,7 @@ async function main() {
         state,
         country,
         category,
+        scope,
         maxPages,
         pageSize,
         dryRun,
@@ -92,17 +92,25 @@ async function main() {
 
   const result = await runGoogleBusinessImport(
     supabase,
-    { city, state, country, category },
+    {
+      city,
+      state,
+      country,
+      category,
+      scope: scope as "suburb" | "city" | "state" | "country",
+    },
     { maxPages, pageSize, dryRun },
   );
 
   console.log(
     JSON.stringify(
       {
+        cellsProcessed: result.cellsProcessed,
         queried: result.queried,
         inserted: result.inserted,
         updated: result.updated,
         skipped: result.skipped,
+        failed: result.failed,
         errorCount: result.errors.length,
         errors: result.errors.slice(0, 20),
         sample: result.places.slice(0, 10),

@@ -193,6 +193,57 @@ export async function searchTextPlaces(
   };
 }
 
+const DETAIL_FIELD_MASK = [
+  "id",
+  "name",
+  "displayName",
+  "formattedAddress",
+  "shortFormattedAddress",
+  "addressComponents",
+  "location",
+  "nationalPhoneNumber",
+  "internationalPhoneNumber",
+  "websiteUri",
+  "rating",
+  "userRatingCount",
+  "regularOpeningHours",
+  "photos",
+  "types",
+  "primaryType",
+  "googleMapsUri",
+].join(",");
+
+/**
+ * Place Details (New) — used when admin imports a selected place_id.
+ */
+export async function getPlaceDetails(
+  placeId: string,
+): Promise<PlacesApiPlace> {
+  const key = getPlacesApiKey();
+  const id = placeId.startsWith("places/")
+    ? placeId.slice("places/".length)
+    : placeId;
+
+  const response = await fetch(
+    `https://places.googleapis.com/v1/places/${encodeURIComponent(id)}`,
+    {
+      headers: {
+        "X-Goog-Api-Key": key,
+        "X-Goog-FieldMask": DETAIL_FIELD_MASK,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(
+      `Place Details failed (${response.status}): ${text.slice(0, 400)}`,
+    );
+  }
+
+  return (await response.json()) as PlacesApiPlace;
+}
+
 export async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
