@@ -11,8 +11,11 @@ import {
   platformSeo,
 } from "@/features/platform-landing/lib/platform-seo";
 import {
-  PrivatePreviewLanding,
   canAccessMarketplacePreview,
+  getIsPlatformAdmin,
+} from "@/features/private-preview/access";
+import {
+  PrivatePreviewLanding,
   isPrivatePreviewEnabled,
 } from "@/features/private-preview";
 import { getTenantOptional } from "@/features/tenants/server";
@@ -111,6 +114,7 @@ export default async function HomePage() {
         return <PrivatePreviewLanding isPlatformAdmin={false} />;
       }
       // Platform admin: real Marketplace + footer Documentation link.
+      const showDocumentation = await getIsPlatformAdmin();
       return (
         <>
           <script
@@ -120,7 +124,7 @@ export default async function HomePage() {
             }}
           />
           <PlatformLandingPage />
-          <SiteFooter />
+          <SiteFooter showDocumentation={showDocumentation} />
         </>
       );
     }

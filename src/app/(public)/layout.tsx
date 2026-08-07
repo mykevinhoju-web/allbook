@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { SiteFooter, SiteHeader } from "@/components/common";
+import { getIsPlatformAdmin } from "@/features/private-preview/access";
 import { isPrivatePreviewEnabled } from "@/features/private-preview";
 import { getTenantOptional } from "@/features/tenants/server";
 
@@ -22,11 +23,17 @@ export default async function PublicLayout({
     return children;
   }
 
+  const showDocumentation = await getIsPlatformAdmin();
+
   return (
     <>
       <SiteHeader />
       <main className="flex-1">{children}</main>
-      <SiteFooter />
+      <SiteFooter
+        displayName={tenant.branding.displayName}
+        tagline={tenant.branding.tagline}
+        showDocumentation={showDocumentation}
+      />
     </>
   );
 }

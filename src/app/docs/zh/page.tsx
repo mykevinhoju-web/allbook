@@ -2,10 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import {
-  canAccessMarketplacePreview,
-  isPrivatePreviewEnabled,
-} from "@/features/private-preview";
+import { canAccessMarketplacePreview } from "@/features/private-preview/access";
+import { isPrivatePreviewEnabled } from "@/features/private-preview";
 
 export const metadata: Metadata = {
   title: "Documentation (ZH)",
