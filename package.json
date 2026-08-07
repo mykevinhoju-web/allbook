@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "import:brisbane-hair": "npx tsx scripts/import-brisbane-hair.ts"
+    "import:brisbane-hair": "npx tsx scripts/import-brisbane-hair.ts",
+    "import:google-places": "npx tsx scripts/import-google-places.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

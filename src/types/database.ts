@@ -664,6 +664,11 @@ export type Database = {
           languages: string[];
           booking_enabled: boolean;
           accept_new_customers: boolean;
+          source: "google" | "manual" | "admin" | "owner";
+          claimed: boolean;
+          google_categories: string[];
+          google_synced_at: string | null;
+          google_photos: unknown;
           created_at: string;
           updated_at: string;
         };
@@ -705,6 +710,11 @@ export type Database = {
           languages?: string[];
           booking_enabled?: boolean;
           accept_new_customers?: boolean;
+          source?: "google" | "manual" | "admin" | "owner";
+          claimed?: boolean;
+          google_categories?: string[];
+          google_synced_at?: string | null;
+          google_photos?: unknown;
           created_at?: string;
           updated_at?: string;
         };
@@ -746,6 +756,11 @@ export type Database = {
           languages?: string[];
           booking_enabled?: boolean;
           accept_new_customers?: boolean;
+          source?: "google" | "manual" | "admin" | "owner";
+          claimed?: boolean;
+          google_categories?: string[];
+          google_synced_at?: string | null;
+          google_photos?: unknown;
           created_at?: string;
           updated_at?: string;
         };

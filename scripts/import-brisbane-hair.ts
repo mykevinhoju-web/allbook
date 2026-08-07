@@ -1,10 +1,10 @@
 /**
- * Import Brisbane hair salons into Supabase.
+ * @deprecated Synthetic Brisbane hair seed — not for production catalogs.
+ * Use Google Places discovery import instead:
+ *   npm run import:google-places -- --city Brisbane --state Queensland --country Australia --category hair
  *
- * Usage:
+ * Legacy usage:
  *   npx tsx scripts/import-brisbane-hair.ts
- *
- * Requires NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (or anon in local).
  */
 
 import { existsSync, readFileSync } from "node:fs";
