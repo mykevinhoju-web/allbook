@@ -90,7 +90,7 @@ export function SearchBar({
           aria-label="Location"
         />
         {suggestionsOpen && suggestions.length > 0 ? (
-          <ul className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
+          <ul className="absolute left-0 right-0 top-[calc(100%+4px)] z-[60] overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
             {suggestions.map((suburb) => (
               <li key={suburb}>
                 <button

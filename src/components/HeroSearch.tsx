@@ -64,16 +64,15 @@ export function HeroSearch({
       <form
         className={cn(
           "group/search relative transition duration-500",
-          isCompact
-            ? "rounded-2xl border border-neutral-200/80 bg-white p-2 shadow-[0_12px_32px_rgba(17,17,17,0.06)]"
-            : cn(
-                "rounded-[2rem] p-[1px]",
-                "bg-gradient-to-b from-white/70 via-white/40 to-white/20",
-                "shadow-[0_24px_80px_rgba(0,0,0,0.28)]",
-                "backdrop-blur-xl",
-                "hover:shadow-[0_28px_90px_rgba(0,0,0,0.34)]",
-                "focus-within:shadow-[0_28px_90px_rgba(0,0,0,0.36)]",
-              ),
+            isCompact
+              ? "rounded-2xl border border-neutral-200/80 bg-white p-2 shadow-[0_12px_32px_rgba(17,17,17,0.06)]"
+              : cn(
+                  "relative z-20 rounded-[2rem] p-[1px]",
+                  "bg-gradient-to-b from-white via-white to-neutral-100",
+                  "shadow-[0_24px_80px_rgba(0,0,0,0.35)]",
+                  "hover:shadow-[0_28px_90px_rgba(0,0,0,0.4)]",
+                  "focus-within:shadow-[0_28px_90px_rgba(0,0,0,0.42)]",
+                ),
         )}
         onSubmit={(e) => {
           e.preventDefault();
@@ -89,10 +88,8 @@ export function HeroSearch({
                   error && "border-rose-200",
                 )
               : cn(
-                  "overflow-hidden rounded-[1.9rem]",
-                  "bg-white/82 supports-backdrop-filter:bg-white/72",
-                  "backdrop-blur-2xl",
-                  "ring-1 ring-inset ring-white/60",
+                  "overflow-visible rounded-[1.9rem] bg-white",
+                  "ring-1 ring-inset ring-neutral-200/80",
                   error && "ring-rose-300/80",
                 ),
           )}
@@ -162,9 +159,9 @@ export function HeroSearch({
                 id="hero-location-suggestions"
                 role="listbox"
                 className={cn(
-                  "absolute left-3 right-3 z-30 overflow-hidden py-1.5",
-                  "rounded-2xl border border-white/50 bg-white/95 shadow-[0_20px_50px_rgba(0,0,0,0.18)] backdrop-blur-xl",
-                  isCompact ? "top-[calc(100%+4px)]" : "top-[calc(100%-6px)]",
+                  "absolute left-3 right-3 z-50 overflow-hidden py-1.5",
+                  "rounded-2xl border border-neutral-200 bg-white shadow-[0_20px_50px_rgba(0,0,0,0.22)]",
+                  isCompact ? "top-[calc(100%+4px)]" : "top-[calc(100%+6px)]",
                 )}
               >
                 {suggestions.map((suburb) => (

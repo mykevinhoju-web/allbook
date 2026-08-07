@@ -158,13 +158,13 @@ export function LandingSampleVista({
             <img
               src="/landing/marketplace-hero-visual.png"
               alt=""
-              className="h-full w-full object-cover object-center scale-[1.02]"
+              className="h-full w-full object-cover object-[center_35%] scale-[1.02]"
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/45 to-black/70" />
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.35)_100%)]" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/55 to-black/75" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.25)_0%,rgba(0,0,0,0.55)_100%)]" />
           </div>
 
-          <div className="relative mx-auto flex min-h-[min(92svh,820px)] max-w-[920px] flex-col items-center justify-center px-5 py-20 text-center sm:px-8 sm:py-24">
+          <div className="relative z-10 mx-auto flex min-h-[min(92svh,820px)] max-w-[920px] flex-col items-center justify-center px-5 py-20 text-center sm:px-8 sm:py-24">
             <p
               data-rise="1"
               className="text-[12px] font-semibold uppercase tracking-[0.22em] text-white/70"
@@ -187,13 +187,17 @@ export function LandingSampleVista({
               book in seconds.
             </p>
 
-            <div data-rise="4" className="mt-10 w-full max-w-[720px]">
+            <div data-rise="4" className="relative z-20 mt-10 w-full max-w-[720px]">
+              <div
+                aria-hidden
+                className="pointer-events-none absolute -inset-x-6 -inset-y-4 -z-10 rounded-[3rem] bg-black/45 blur-2xl sm:-inset-x-10"
+              />
               <HeroSearch variant="hero" />
             </div>
 
             <div
               data-rise="4"
-              className="mt-6 flex flex-wrap items-center justify-center gap-x-1 gap-y-2 text-[13px] text-white/55"
+              className="relative z-20 mt-6 flex flex-wrap items-center justify-center gap-x-1 gap-y-2 text-[13px] text-white/80"
             >
               <span className="mr-1">Try</span>
               {[
