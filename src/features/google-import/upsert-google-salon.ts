@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { recordBusinessEvent } from "@/features/marketplace-review/record-event";
 import type { Database } from "@/types/database";
 
 import { slugifyName } from "./map-place";
@@ -137,6 +138,13 @@ export async function upsertGoogleSalon(
           error: error.message,
         };
       }
+      await recordBusinessEvent(supabase, {
+        salonId: row.id,
+        placeId: snapshot.placeId,
+        action: "updated",
+        actor: "google-import",
+        details: { claimed: true },
+      });
       return {
         placeId: snapshot.placeId,
         name: snapshot.name,
@@ -173,6 +181,7 @@ export async function upsertGoogleSalon(
         google_categories: snapshot.googleCategories,
         google_photos: googlePhotos,
         google_synced_at: now,
+        review_status: "pending",
         updated_at: now,
       })
       .eq("id", row.id);
@@ -188,6 +197,12 @@ export async function upsertGoogleSalon(
     }
 
     await syncGoogleGallery(supabase, row.id, snapshot, false);
+    await recordBusinessEvent(supabase, {
+      salonId: row.id,
+      placeId: snapshot.placeId,
+      action: "updated",
+      actor: "google-import",
+    });
     return {
       placeId: snapshot.placeId,
       name: snapshot.name,
@@ -233,6 +248,9 @@ export async function upsertGoogleSalon(
       google_categories: snapshot.googleCategories,
       google_photos: googlePhotos,
       google_synced_at: now,
+      imported_at: now,
+      review_status: "pending",
+      marketplace_visible: true,
       booking_enabled: false,
       accept_new_customers: true,
       amenities: [],
@@ -252,6 +270,12 @@ export async function upsertGoogleSalon(
   }
 
   await syncGoogleGallery(supabase, inserted.id, snapshot, true);
+  await recordBusinessEvent(supabase, {
+    salonId: inserted.id,
+    placeId: snapshot.placeId,
+    action: "imported",
+    actor: "google-import",
+  });
   return {
     placeId: snapshot.placeId,
     name: snapshot.name,

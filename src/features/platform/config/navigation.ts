@@ -1,6 +1,7 @@
 import {
   BarChart3,
   Building2,
+  ClipboardCheck,
   CreditCard,
   Download,
   LayoutDashboard,
@@ -26,6 +27,11 @@ export const platformNavItems: PlatformNavItem[] = [
     title: "Sync",
     href: "/platform/sync",
     icon: RefreshCw,
+  },
+  {
+    title: "Review",
+    href: "/platform/review",
+    icon: ClipboardCheck,
   },
   {
     title: "Signups",

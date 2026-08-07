@@ -22,6 +22,8 @@ export async function getSalonPageDataBySlug(
     .from("salons")
     .select("id")
     .eq("slug", normalized)
+    .eq("marketplace_visible", true)
+    .eq("permanently_closed", false)
     .maybeSingle();
 
   if (error) {
@@ -48,6 +50,8 @@ export async function getSalonIdBySlug(
     .from("salons")
     .select("id")
     .eq("slug", normalized)
+    .eq("marketplace_visible", true)
+    .eq("permanently_closed", false)
     .maybeSingle();
 
   if (error) {

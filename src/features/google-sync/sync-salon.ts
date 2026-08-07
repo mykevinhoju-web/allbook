@@ -5,6 +5,7 @@ import {
   PlaceDetailsError,
   sleep,
 } from "@/features/google-import/places-client";
+import { recordBusinessEvent } from "@/features/marketplace-review/record-event";
 import type { Database } from "@/types/database";
 
 import {
@@ -154,6 +155,14 @@ export async function syncSalonFromGoogle(
         error: error.message,
       };
     }
+
+    await recordBusinessEvent(supabase, {
+      salonId: salon.id,
+      placeId,
+      action: snapshot.permanentlyClosed ? "permanently_closed" : "synced",
+      actor: "google-sync",
+      details: { changedFields, permanentlyClosed: snapshot.permanentlyClosed },
+    });
 
     return {
       ...base,

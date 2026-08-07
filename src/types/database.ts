@@ -673,6 +673,12 @@ export type Database = {
           google_business_status: string | null;
           google_snapshot_hash: string | null;
           permanently_closed: boolean;
+          review_status: "pending" | "approved" | "rejected" | "duplicate" | "hidden";
+          marketplace_visible: boolean;
+          duplicate_of_salon_id: string | null;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          imported_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -723,6 +729,12 @@ export type Database = {
           google_business_status?: string | null;
           google_snapshot_hash?: string | null;
           permanently_closed?: boolean;
+          review_status?: "pending" | "approved" | "rejected" | "duplicate" | "hidden";
+          marketplace_visible?: boolean;
+          duplicate_of_salon_id?: string | null;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          imported_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -773,6 +785,12 @@ export type Database = {
           google_business_status?: string | null;
           google_snapshot_hash?: string | null;
           permanently_closed?: boolean;
+          review_status?: "pending" | "approved" | "rejected" | "duplicate" | "hidden";
+          marketplace_visible?: boolean;
+          duplicate_of_salon_id?: string | null;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          imported_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -894,6 +912,93 @@ export type Database = {
           {
             foreignKeyName: "google_sync_run_items_salon_id_fkey";
             columns: ["salon_id"];
+            isOneToOne: false;
+            referencedRelation: "salons";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      marketplace_business_events: {
+        Row: {
+          id: string;
+          salon_id: string | null;
+          related_salon_id: string | null;
+          place_id: string | null;
+          action:
+            | "imported"
+            | "updated"
+            | "merged"
+            | "rejected"
+            | "hidden"
+            | "claimed"
+            | "synced"
+            | "approved"
+            | "restored"
+            | "marked_duplicate"
+            | "permanently_closed"
+            | "re_synced"
+            | "import_error";
+          actor: string | null;
+          details: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          salon_id?: string | null;
+          related_salon_id?: string | null;
+          place_id?: string | null;
+          action:
+            | "imported"
+            | "updated"
+            | "merged"
+            | "rejected"
+            | "hidden"
+            | "claimed"
+            | "synced"
+            | "approved"
+            | "restored"
+            | "marked_duplicate"
+            | "permanently_closed"
+            | "re_synced"
+            | "import_error";
+          actor?: string | null;
+          details?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          salon_id?: string | null;
+          related_salon_id?: string | null;
+          place_id?: string | null;
+          action?:
+            | "imported"
+            | "updated"
+            | "merged"
+            | "rejected"
+            | "hidden"
+            | "claimed"
+            | "synced"
+            | "approved"
+            | "restored"
+            | "marked_duplicate"
+            | "permanently_closed"
+            | "re_synced"
+            | "import_error";
+          actor?: string | null;
+          details?: Json;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_business_events_salon_id_fkey";
+            columns: ["salon_id"];
+            isOneToOne: false;
+            referencedRelation: "salons";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "marketplace_business_events_related_salon_id_fkey";
+            columns: ["related_salon_id"];
             isOneToOne: false;
             referencedRelation: "salons";
             referencedColumns: ["id"];
