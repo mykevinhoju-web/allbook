@@ -10,3 +10,8 @@ export function isPrivatePreviewEnabled(): boolean {
 }
 
 export const PRIVATE_PREVIEW_DOCS_HREF = "/docs";
+
+export {
+  PRIVATE_PREVIEW_ACCESS_COOKIE,
+  PRIVATE_PREVIEW_UNLOCK_PATH,
+} from "./preview-access-cookie";

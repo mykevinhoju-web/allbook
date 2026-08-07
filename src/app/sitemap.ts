@@ -5,6 +5,7 @@ import { isPrivatePreviewEnabled } from "@/features/private-preview";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   // Private Preview — do not advertise Marketplace URLs to crawlers.
+  // Unlock path is never listed.
   if (isPrivatePreviewEnabled()) {
     return [];
   }

@@ -33,6 +33,14 @@ export function isMarketplacePreviewProtectedPath(pathname: string): boolean {
   // Home is always reachable — page swaps Preview vs real marketplace.
   if (pathname === "/") return false;
 
+  // Secret unlock route — handled by its own handler (sets cookie + redirect).
+  if (
+    pathname === "/allbook-internal-preview-9X4K2P" ||
+    pathname.startsWith("/allbook-internal-preview-9X4K2P/")
+  ) {
+    return false;
+  }
+
   // Docs: gated separately (admin-only page).
   if (pathname === "/docs" || pathname.startsWith("/docs/")) return false;
 

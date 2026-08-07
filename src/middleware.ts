@@ -22,6 +22,10 @@ import {
   isMarketplacePreviewProtectedPath,
   isPrivatePreviewEnabled,
 } from "@/features/private-preview";
+import {
+  PRIVATE_PREVIEW_ACCESS_COOKIE,
+  verifyPreviewAccessToken,
+} from "@/features/private-preview/preview-access-cookie";
 import { updateSession } from "@/lib/supabase/middleware";
 
 function withTenantHeaders(
@@ -218,12 +222,20 @@ export async function middleware(request: NextRequest) {
     return access.response;
   }
 
-  // Private Preview — Marketplace + samples stay admin-only on apex.
+  // Private Preview — Marketplace + samples stay locked on apex unless
+  // platform admin or signed preview-access cookie.
   if (
     isPrivatePreviewEnabled() &&
     platform &&
     isMarketplacePreviewProtectedPath(pathname)
   ) {
+    const hasPreviewAccess = await verifyPreviewAccessToken(
+      request.cookies.get(PRIVATE_PREVIEW_ACCESS_COOKIE)?.value,
+    );
+    if (hasPreviewAccess) {
+      return response;
+    }
+
     const access = await resolvePlatformAdminAccess(request, requestHeaders);
     await applyTenantCookie(access.response, request, tenantSlug, host);
     if (!access.isAdmin) {

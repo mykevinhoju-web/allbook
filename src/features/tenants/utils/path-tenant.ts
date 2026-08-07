@@ -8,6 +8,7 @@ import { isMarketplaceCategorySlug } from "@/features/category/constants";
 export const RESERVED_PATH_SEGMENTS = new Set([
   "_next",
   "admin",
+  "allbook-internal-preview-9X4K2P",
   "api",
   "apple-icon.png",
   "auth",
@@ -105,6 +106,8 @@ export function isPlatformApexPublicPath(pathname: string): boolean {
     isMarketplaceCategorySlug(segment) ||
     pathname.startsWith("/platform") ||
     pathname.startsWith("/auth") ||
-    pathname.startsWith("/docs")
+    pathname.startsWith("/docs") ||
+    pathname === "/allbook-internal-preview-9X4K2P" ||
+    pathname.startsWith("/allbook-internal-preview-9X4K2P/")
   );
 }
