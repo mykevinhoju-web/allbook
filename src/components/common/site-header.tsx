@@ -41,9 +41,6 @@ export function SiteHeader() {
           {tenant.branding.displayName}
         </Link>
         <nav className="flex items-center gap-6 text-sm text-muted-foreground">
-          <Link href="/shops" className="hover:text-foreground">
-            Shops
-          </Link>
           <Link href="/login" className="hover:text-foreground">
             Sign in
           </Link>

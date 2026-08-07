@@ -1,13 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  BarChart3,
   Briefcase,
-  CalendarDays,
-  Camera,
-  ClipboardList,
   LayoutDashboard,
-  Megaphone,
-  MessageSquareHeart,
   Settings,
   Store,
   Users,
@@ -20,21 +14,12 @@ export type SalonDashboardNavItem = {
   icon: LucideIcon;
 };
 
+/** Live salon-owner destinations only — placeholders omitted from production menus. */
 export const SALON_DASHBOARD_NAV: SalonDashboardNavItem[] = [
   {
     title: "Dashboard",
     href: "/platform/salon",
     icon: LayoutDashboard,
-  },
-  {
-    title: "Bookings",
-    href: "/platform/salon/bookings",
-    icon: ClipboardList,
-  },
-  {
-    title: "Calendar",
-    href: "/platform/salon/calendar",
-    icon: CalendarDays,
   },
   {
     title: "Services",
@@ -47,34 +32,14 @@ export const SALON_DASHBOARD_NAV: SalonDashboardNavItem[] = [
     icon: Users,
   },
   {
-    title: "Gallery",
-    href: "/platform/salon/gallery",
-    icon: Camera,
-  },
-  {
     title: "Customers",
     href: "/platform/salon/customers",
     icon: UserRound,
   },
   {
-    title: "Reviews",
-    href: "/platform/salon/reviews",
-    icon: MessageSquareHeart,
-  },
-  {
     title: "Business",
     href: "/platform/salon/business",
     icon: Store,
-  },
-  {
-    title: "Marketing",
-    href: "/platform/salon/marketing",
-    icon: Megaphone,
-  },
-  {
-    title: "Analytics",
-    href: "/platform/salon/analytics",
-    icon: BarChart3,
   },
   {
     title: "Settings",

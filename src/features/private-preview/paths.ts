@@ -2,7 +2,7 @@ import { isMarketplaceCategorySlug } from "@/features/category/constants";
 import { parseTenantPathPrefix } from "@/features/tenants/utils/path-tenant";
 
 /**
- * Marketplace browse/discovery surfaces protected in Private Preview.
+ * Marketplace browse/discovery + demo/sample surfaces protected in Private Preview.
  * SaaS tenant paths (/{slug}/admin|booking|…) stay available.
  * Auth + platform admin + APIs stay available.
  */
@@ -24,12 +24,8 @@ export function isMarketplacePreviewProtectedPath(pathname: string): boolean {
     pathname.startsWith("/admin/") ||
     pathname === "/staff" ||
     pathname.startsWith("/staff/") ||
-    pathname === "/booking" ||
-    pathname.startsWith("/booking/") ||
     pathname === "/room" ||
-    pathname.startsWith("/room/") ||
-    pathname === "/dashboard" ||
-    pathname.startsWith("/dashboard/")
+    pathname.startsWith("/room/")
   ) {
     return false;
   }
@@ -48,6 +44,11 @@ export function isMarketplacePreviewProtectedPath(pathname: string): boolean {
     pathname.startsWith("/salon") ||
     pathname.startsWith("/register") ||
     pathname.startsWith("/landing") ||
+    // Apex demo + sample booking UIs (tenant /{slug}/booking remains open).
+    pathname === "/booking" ||
+    pathname.startsWith("/booking/") ||
+    pathname === "/dashboard" ||
+    pathname.startsWith("/dashboard/") ||
     isMarketplaceCategorySlug(first)
   );
 }

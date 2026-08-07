@@ -7,4 +7,3 @@ export {
   staffPresenceFilterOptions,
   staffStatusOptions,
 } from "./form-options";
-export { mockStaffList } from "./mock-staff";

@@ -21,7 +21,7 @@ import {
 } from "@/features/booking/lib/schedule-utils";
 import { getStaffWorkingTodayLabel } from "../utils/shift-label";
 import { useOptionalTenant } from "@/features/tenants";
-import { mockStaffList, staffPresenceFilterOptions } from "../config";
+import { staffPresenceFilterOptions } from "../config";
 import type { AdminStaffRow, StaffFilterStatus, StaffRecord } from "../types";
 import { StaffTable } from "./staff-table";
 import { StaffMobileList } from "./staff-mobile-list";
@@ -42,7 +42,7 @@ export function StaffListContent() {
   const [statusFilter, setStatusFilter] = useState<StaffFilterStatus>("all");
   const [staff, setStaff] = useState<StaffRecord[]>([]);
   const [bookings, setBookings] = useState<BookingSummary[]>([]);
-  const [useMock, setUseMock] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -89,12 +89,13 @@ export function StaffListContent() {
 
       if (!staffResponse.ok || !staffData.staff) {
         if (staffResponse.status === 401) return;
-        setUseMock(true);
+        setLoadError(staffData.error ?? "Could not load staff.");
         setStaff([]);
+        setBookings([]);
         return;
       }
 
-      setUseMock(false);
+      setLoadError(null);
       setStaff(staffData.staff);
 
       const bookingsData = (await bookingsResponse.json()) as {
@@ -108,7 +109,9 @@ export function StaffListContent() {
         })),
       );
     } catch {
-      setUseMock(true);
+      setLoadError("Could not load staff.");
+      setStaff([]);
+      setBookings([]);
     }
   }, []);
 
@@ -128,10 +131,6 @@ export function StaffListContent() {
   useBookingRealtime(tenant?.id, loadData);
 
   const rows: AdminStaffRow[] = useMemo(() => {
-    if (useMock) {
-      return mockStaffList;
-    }
-
     const now = Date.now();
 
     return staff.map((member) => {
@@ -169,7 +168,7 @@ export function StaffListContent() {
           : null,
       };
     });
-  }, [bookings, staff, today, timeZone, useMock]);
+  }, [bookings, staff, today, timeZone]);
 
   const filteredStaff = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -200,11 +199,9 @@ export function StaffListContent() {
         }
       />
 
-      {useMock ? (
-        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
-          Database tables are not ready yet. Run{" "}
-          <code className="rounded bg-black/5 px-1">supabase/setup.sql</code>{" "}
-          section 6 in Supabase SQL Editor. Showing sample data for now.
+      {loadError ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          {loadError}
         </div>
       ) : null}
 

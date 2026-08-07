@@ -2,10 +2,8 @@ import {
   BarChart3,
   CalendarDays,
   DoorOpen,
-  Images,
   LayoutDashboard,
   Palette,
-  Settings,
   UserCircle,
   Users,
   Wrench,
@@ -13,6 +11,7 @@ import {
 
 import type { AdminNavItem } from "../types";
 
+/** Live tenant-admin destinations only — placeholders omitted from production menus. */
 export const adminNavItems: AdminNavItem[] = [
   {
     title: "Dashboard",
@@ -46,12 +45,6 @@ export const adminNavItems: AdminNavItem[] = [
     module: "customers",
   },
   {
-    title: "Gallery",
-    href: "/admin/gallery",
-    icon: Images,
-    module: "gallery",
-  },
-  {
     title: "Reports",
     href: "/admin/reports",
     icon: BarChart3,
@@ -60,11 +53,5 @@ export const adminNavItems: AdminNavItem[] = [
     title: "Appearance",
     href: "/admin/appearance",
     icon: Palette,
-  },
-  {
-    title: "Settings",
-    href: "/admin/settings",
-    icon: Settings,
-    module: "settings",
   },
 ];

@@ -1,17 +1,14 @@
 import {
-  BarChart3,
   Building2,
   ClipboardCheck,
-  CreditCard,
   Download,
   LayoutDashboard,
   RefreshCw,
-  Settings,
-  Users,
 } from "lucide-react";
 
 import type { PlatformNavItem } from "../types";
 
+/** Live platform-admin destinations only — placeholders omitted from production menus. */
 export const platformNavItems: PlatformNavItem[] = [
   {
     title: "Dashboard",
@@ -37,25 +34,5 @@ export const platformNavItems: PlatformNavItem[] = [
     title: "Signups",
     href: "/platform/tenants",
     icon: Building2,
-  },
-  {
-    title: "Subscription",
-    href: "/platform/subscription",
-    icon: CreditCard,
-  },
-  {
-    title: "Users",
-    href: "/platform/users",
-    icon: Users,
-  },
-  {
-    title: "Reports",
-    href: "/platform/reports",
-    icon: BarChart3,
-  },
-  {
-    title: "Settings",
-    href: "/platform/settings",
-    icon: Settings,
   },
 ];

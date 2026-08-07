@@ -21,11 +21,6 @@ export {
 export {
   createSupabaseSalonBookingsRepository,
 } from "./repositories/supabase";
-export {
-  getMockBookingSalonContext,
-  buildStaffAvailabilityInput,
-  openingHoursForDate,
-} from "./mock-context";
 export { BookingWizard } from "./booking-wizard";
 export {
   NO_PREFERENCE_STAFF_ID,

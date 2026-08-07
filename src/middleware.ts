@@ -8,7 +8,11 @@ import {
   shouldPrefixTenantPath,
 } from "@/features/tenants/utils/path-tenant";
 import { isPlatformHost } from "@/features/tenants/utils/resolve-host";
-import { resolveTenantSlugFromRequest } from "@/features/tenants/utils/resolve-slug";
+import { resolveTenantSlugFromHost } from "@/features/tenants/utils/resolve-slug";
+import {
+  signTenantSlugToken,
+  verifyTenantSlugToken,
+} from "@/features/tenants/utils/tenant-slug-token";
 import {
   ADMIN_SESSION_COOKIE,
   STAFF_SESSION_COOKIE,
@@ -27,13 +31,15 @@ function withTenantHeaders(
 ) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", pathname);
+  // Strip any client-supplied tenant header, then set verified value only.
+  requestHeaders.delete(TENANT_SLUG_HEADER);
   if (tenantSlug) {
     requestHeaders.set(TENANT_SLUG_HEADER, tenantSlug);
   }
   return requestHeaders;
 }
 
-function applyTenantCookie(
+async function applyTenantCookie(
   response: NextResponse,
   request: NextRequest,
   tenantSlug: string | null,
@@ -41,17 +47,19 @@ function applyTenantCookie(
 ) {
   if (tenantSlug) {
     response.headers.set(TENANT_SLUG_HEADER, tenantSlug);
-    const existingSlug = request.cookies.get(TENANT_SLUG_COOKIE)?.value;
+    const existingRaw = request.cookies.get(TENANT_SLUG_COOKIE)?.value;
+    const existingSlug = await verifyTenantSlugToken(existingRaw);
     if (existingSlug !== tenantSlug) {
-      response.cookies.set(TENANT_SLUG_COOKIE, tenantSlug, {
+      const token = await signTenantSlugToken(tenantSlug);
+      response.cookies.set(TENANT_SLUG_COOKIE, token, {
         path: "/",
         sameSite: "lax",
         secure: process.env.NODE_ENV === "production",
+        httpOnly: true,
         maxAge: 60 * 60 * 24 * 365 * 10,
       });
     }
   } else if (isPlatformHost(host) && !request.nextUrl.pathname.startsWith("/api")) {
-    // Keep cookie for API calls on the apex; clear on marketing pages without a tenant.
     const path = request.nextUrl.pathname;
     if (isPlatformApexPublicPath(path)) {
       response.cookies.delete(TENANT_SLUG_COOKIE);
@@ -65,17 +73,19 @@ export async function middleware(request: NextRequest) {
   const platform = isPlatformHost(host);
 
   const pathTenant = platform ? parseTenantPathPrefix(pathname) : null;
-  const cookieSlug = request.cookies.get(TENANT_SLUG_COOKIE)?.value ?? null;
+  const verifiedCookieSlug = await verifyTenantSlugToken(
+    request.cookies.get(TENANT_SLUG_COOKIE)?.value,
+  );
 
   // Bare /admin on apex → /{slug}/admin so URLs stay allbook.com.au/{slug}/...
   if (
     platform &&
     !pathTenant &&
-    cookieSlug &&
+    verifiedCookieSlug &&
     shouldPrefixTenantPath(pathname)
   ) {
     const url = request.nextUrl.clone();
-    url.pathname = `/${cookieSlug}${pathname === "/" ? "" : pathname}`;
+    url.pathname = `/${verifiedCookieSlug}${pathname === "/" ? "" : pathname}`;
     return NextResponse.redirect(url);
   }
 
@@ -83,16 +93,18 @@ export async function middleware(request: NextRequest) {
   let rewritePath: string | null = null;
 
   if (platform && pathTenant) {
+    // Verified mapping: path prefix /{slug}/...
     tenantSlug = pathTenant.slug;
     rewritePath = pathTenant.restPath;
   } else if (platform && isPlatformApexPublicPath(pathname)) {
-    // Landing / signup / platform admin — never inherit a leftover tenant cookie.
     tenantSlug = null;
   } else if (platform) {
-    // /api and bare /admin|/booking redirects: prefer cookie, then local TENANT_SLUG.
-    tenantSlug = cookieSlug ?? resolveDevTenantSlugFromEnv();
+    // /api and similar on apex: signed cookie or local env — never client header.
+    tenantSlug = verifiedCookieSlug ?? resolveDevTenantSlugFromEnv();
   } else {
-    tenantSlug = resolveTenantSlugFromRequest(request);
+    // Tenant subdomain host — verified hostname mapping only.
+    tenantSlug =
+      resolveTenantSlugFromHost(host) ?? resolveDevTenantSlugFromEnv();
   }
 
   const effectivePathname = rewritePath ?? pathname;
@@ -119,15 +131,17 @@ export async function middleware(request: NextRequest) {
     });
   } else if (hasSupabaseAuth) {
     response = await updateSession(request);
-    // Ensure tenant header is present on the continued request.
     response.headers.set("x-pathname", effectivePathname);
+    if (tenantSlug) {
+      response.headers.set(TENANT_SLUG_HEADER, tenantSlug);
+    }
   } else {
     response = NextResponse.next({
       request: { headers: requestHeaders },
     });
   }
 
-  applyTenantCookie(response, request, tenantSlug, host);
+  await applyTenantCookie(response, request, tenantSlug, host);
 
   const adminToken = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
   const staffToken = request.cookies.get(STAFF_SESSION_COOKIE)?.value;
@@ -165,10 +179,26 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(login, request.url));
   }
 
+  // /platform/salon/* — authenticated salon owners (layout enforces ownership).
+  // Platform admins may also enter. Do NOT require profiles.role = admin.
+  if (
+    pathname === "/platform/salon" ||
+    pathname.startsWith("/platform/salon/")
+  ) {
+    const access = await resolvePlatformAdminAccess(request, requestHeaders);
+    await applyTenantCookie(access.response, request, tenantSlug, host);
+    if (!access.hasUser) {
+      return NextResponse.redirect(
+        new URL("/login?next=/platform/salon", request.url),
+      );
+    }
+    return access.response;
+  }
+
   // AllBook Admin (/platform) — Supabase Auth + profiles.role = 'admin' only.
   if (pathname.startsWith("/platform")) {
     const access = await resolvePlatformAdminAccess(request, requestHeaders);
-    applyTenantCookie(access.response, request, tenantSlug, host);
+    await applyTenantCookie(access.response, request, tenantSlug, host);
 
     if (pathname === "/platform/login") {
       if (access.isAdmin) {
@@ -188,14 +218,14 @@ export async function middleware(request: NextRequest) {
     return access.response;
   }
 
-  // Private Preview — Marketplace discovery stays online but admin-only.
+  // Private Preview — Marketplace + samples stay admin-only on apex.
   if (
     isPrivatePreviewEnabled() &&
     platform &&
     isMarketplacePreviewProtectedPath(pathname)
   ) {
     const access = await resolvePlatformAdminAccess(request, requestHeaders);
-    applyTenantCookie(access.response, request, tenantSlug, host);
+    await applyTenantCookie(access.response, request, tenantSlug, host);
     if (!access.isAdmin) {
       return NextResponse.redirect(new URL("/", request.url));
     }
@@ -209,7 +239,7 @@ export async function middleware(request: NextRequest) {
     (pathname === "/docs" || pathname.startsWith("/docs/"))
   ) {
     const access = await resolvePlatformAdminAccess(request, requestHeaders);
-    applyTenantCookie(access.response, request, tenantSlug, host);
+    await applyTenantCookie(access.response, request, tenantSlug, host);
     if (!access.isAdmin) {
       return NextResponse.redirect(new URL("/platform/login", request.url));
     }
