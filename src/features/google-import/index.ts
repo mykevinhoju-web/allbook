@@ -14,6 +14,9 @@ export {
   geocodeImportCenter,
   getPlaceDetails,
   searchTextPlaces,
+  searchTextPlacesWithRetry,
+  PlacesSearchError,
+  isTransientPlacesStatus,
 } from "./places-client";
 export {
   discoverGooglePlaceSnapshots,

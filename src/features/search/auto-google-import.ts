@@ -6,7 +6,7 @@ import {
 } from "@/features/google-import/category-map";
 import { mapPlaceToSnapshot } from "@/features/google-import/map-place";
 import {
-  searchTextPlaces,
+  searchTextPlacesWithRetry,
   sleep,
 } from "@/features/google-import/places-client";
 import { upsertGoogleSalon } from "@/features/google-import/upsert-google-salon";
@@ -20,8 +20,13 @@ export const SEARCH_AREA_STALE_DAYS = 7;
 /** If fewer than this many real local results, treat area as under-populated. */
 export const SEARCH_AREA_MIN_LOCAL = 5;
 
-/** Max Places Text Search pages per search-triggered fill (each ≤20). */
-const SEARCH_FILL_MAX_PAGES = 2;
+/**
+ * Hard safety cap — Places Text Search typically yields ≤3 pages,
+ * but we follow nextPageToken until exhausted within this bound.
+ */
+const SEARCH_FILL_PAGE_SAFETY_CAP = 20;
+
+const PAGE_GAP_MS = 300;
 
 export type SearchGoogleFillInput = {
   category: string;
@@ -31,14 +36,25 @@ export type SearchGoogleFillInput = {
   radiusKm: number;
 };
 
+export type SearchGoogleFillStatus =
+  | "ok"
+  | "failed"
+  | "partial_success"
+  | "skipped";
+
 export type SearchGoogleFillResult = {
   areaKey: string;
+  /** Pages successfully fetched and processed this run. */
+  totalPages: number;
   queried: number;
   imported: number;
   updated: number;
   skipped: number;
   failed: number;
-  status: "ok" | "failed" | "partial" | "skipped";
+  /** 0 when complete; 1+ when a resume token is saved (more pages pending). */
+  remainingPages: number;
+  status: SearchGoogleFillStatus;
+  resumePageToken: string | null;
   error?: string;
 };
 
@@ -61,13 +77,22 @@ export function buildSearchAreaKey(input: {
   ].join(":");
 }
 
+export type SearchAreaCoverageState = {
+  lastFetchedAt: string | null;
+  lastStatus: string;
+  resumePageToken: string | null;
+  pagesFetched: number;
+};
+
 export async function getSearchAreaCoverage(
   supabase: AnySupabase,
   areaKey: string,
-): Promise<{ lastFetchedAt: string | null; lastStatus: string } | null> {
+): Promise<SearchAreaCoverageState | null> {
   const { data } = await supabase
     .from("search_area_coverage")
-    .select("last_fetched_at, last_status")
+    .select(
+      "last_fetched_at, last_status, resume_page_token, pages_fetched",
+    )
     .eq("area_key", areaKey)
     .maybeSingle();
 
@@ -75,6 +100,8 @@ export async function getSearchAreaCoverage(
   return {
     lastFetchedAt: data.last_fetched_at,
     lastStatus: data.last_status,
+    resumePageToken: data.resume_page_token ?? null,
+    pagesFetched: data.pages_fetched ?? 0,
   };
 }
 
@@ -94,18 +121,83 @@ export function isSearchAreaStale(
 export function shouldFillFromGoogle(input: {
   localCount: number;
   lastFetchedAt: string | null | undefined;
+  lastStatus?: string | null;
+  hasResumeToken?: boolean;
   hasOrigin: boolean;
   hasCategory: boolean;
 }): boolean {
   if (!input.hasOrigin || !input.hasCategory) return false;
+  if (input.hasResumeToken || input.lastStatus === "partial_success") {
+    return true;
+  }
   if (input.localCount < SEARCH_AREA_MIN_LOCAL) return true;
   return isSearchAreaStale(input.lastFetchedAt);
 }
 
+async function persistFillOutcome(
+  supabase: AnySupabase,
+  input: {
+    areaKey: string;
+    categorySlug: string;
+    locationLabel: string;
+    latitude: number;
+    longitude: number;
+    radiusKm: number;
+    result: SearchGoogleFillResult;
+    priorPagesFetched: number;
+  },
+): Promise<void> {
+  const { result } = input;
+  const now = new Date().toISOString();
+  const pagesFetchedTotal = input.priorPagesFetched + result.totalPages;
+
+  await supabase.from("search_area_coverage").upsert(
+    {
+      area_key: input.areaKey,
+      category_slug: input.categorySlug,
+      location_label: input.locationLabel,
+      latitude: input.latitude,
+      longitude: input.longitude,
+      radius_km: input.radiusKm,
+      last_fetched_at: now,
+      last_status: result.status,
+      imported_count: result.imported,
+      updated_count: result.updated,
+      skipped_count: result.skipped,
+      failed_count: result.failed,
+      error_message: result.error ?? null,
+      resume_page_token: result.resumePageToken,
+      pages_fetched: pagesFetchedTotal,
+      updated_at: now,
+    },
+    { onConflict: "area_key" },
+  );
+
+  await supabase.from("search_google_import_runs").insert({
+    area_key: input.areaKey,
+    category_slug: input.categorySlug,
+    location_label: input.locationLabel,
+    latitude: input.latitude,
+    longitude: input.longitude,
+    radius_km: input.radiusKm,
+    queried: result.queried,
+    imported: result.imported,
+    updated: result.updated,
+    skipped: result.skipped,
+    failed: result.failed,
+    status: result.status,
+    error_message: result.error ?? null,
+    pages_fetched: result.totalPages,
+    remaining_pages: result.remainingPages,
+    resume_page_token: result.resumePageToken,
+  });
+}
+
 /**
  * Import Google Places for a search origin into local `salons`.
+ * Follows nextPageToken until exhausted; retries transient page errors;
+ * resumes from a saved token on partial_success.
  * Upserts by google_place_id — never creates duplicates.
- * Does not import synthetic/demo data (Google live Places only).
  */
 export async function fillSearchAreaFromGoogle(
   supabase: AnySupabase,
@@ -117,11 +209,14 @@ export async function fillSearchAreaFromGoogle(
   } catch (error) {
     return {
       areaKey: "",
+      totalPages: 0,
       queried: 0,
       imported: 0,
       updated: 0,
       skipped: 0,
       failed: 0,
+      remainingPages: 0,
+      resumePageToken: null,
       status: "skipped",
       error: error instanceof Error ? error.message : "Unsupported category",
     };
@@ -134,46 +229,104 @@ export async function fillSearchAreaFromGoogle(
     radiusKm: input.radiusKm,
   });
 
+  const prior = await getSearchAreaCoverage(supabase, areaKey);
+  const resuming = Boolean(prior?.resumePageToken);
+
   const result: SearchGoogleFillResult = {
     areaKey,
+    totalPages: 0,
     queried: 0,
     imported: 0,
     updated: 0,
     skipped: 0,
     failed: 0,
+    remainingPages: 0,
+    resumePageToken: null,
     status: "ok",
   };
 
+  const locationName =
+    input.locationLabel.split(",")[0]?.trim() || input.locationLabel;
+  const textQuery = buildTextQuery({
+    textNoun: mapping.textNoun,
+    city: locationName,
+    state: "Australia",
+    country: "Australia",
+  });
+
+  const radiusMeters = Math.min(
+    50_000,
+    Math.max(2_000, input.radiusKm * 1000),
+  );
+
+  const seen = new Set<string>();
+  let pageToken: string | null = resuming
+    ? prior?.resumePageToken ?? null
+    : null;
+  /** Token for the page we are about to fetch — saved on hard failure. */
+  let pendingResumeToken: string | null = pageToken;
+  const priorPagesFetched = resuming ? (prior?.pagesFetched ?? 0) : 0;
+
   try {
-    const locationName =
-      input.locationLabel.split(",")[0]?.trim() || input.locationLabel;
-    const textQuery = buildTextQuery({
-      textNoun: mapping.textNoun,
-      city: locationName,
-      state: "Australia",
-      country: "Australia",
-    });
+    for (let page = 0; page < SEARCH_FILL_PAGE_SAFETY_CAP; page += 1) {
+      pendingResumeToken = pageToken;
 
-    const radiusMeters = Math.min(
-      50_000,
-      Math.max(2_000, input.radiusKm * 1000),
-    );
+      let response;
+      try {
+        response = await searchTextPlacesWithRetry({
+          textQuery,
+          includedType: mapping.includedType,
+          pageSize: 20,
+          pageToken,
+          regionCode: "AU",
+          locationBias: {
+            center: { lat: input.latitude, lng: input.longitude },
+            radiusMeters,
+          },
+        });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Places page request failed";
+        // Prior pages in this or a previous run must never become a hard failed run.
+        const hadPriorSuccess =
+          result.totalPages > 0 ||
+          result.imported + result.updated > 0 ||
+          priorPagesFetched > 0;
 
-    const seen = new Set<string>();
-    let pageToken: string | null = null;
+        if (hadPriorSuccess) {
+          result.status = "partial_success";
+          result.error = message;
+          result.resumePageToken = pendingResumeToken;
+          result.remainingPages = pendingResumeToken ? 1 : 0;
+          await persistFillOutcome(supabase, {
+            areaKey,
+            categorySlug: mapping.categorySlug,
+            locationLabel: input.locationLabel,
+            latitude: input.latitude,
+            longitude: input.longitude,
+            radiusKm: input.radiusKm,
+            result,
+            priorPagesFetched,
+          });
+          return result;
+        }
 
-    for (let page = 0; page < SEARCH_FILL_MAX_PAGES; page += 1) {
-      const response = await searchTextPlaces({
-        textQuery,
-        includedType: mapping.includedType,
-        pageSize: 20,
-        pageToken,
-        regionCode: "AU",
-        locationBias: {
-          center: { lat: input.latitude, lng: input.longitude },
-          radiusMeters,
-        },
-      });
+        result.status = "failed";
+        result.error = message;
+        result.resumePageToken = null;
+        result.remainingPages = 0;
+        await persistFillOutcome(supabase, {
+          areaKey,
+          categorySlug: mapping.categorySlug,
+          locationLabel: input.locationLabel,
+          latitude: input.latitude,
+          longitude: input.longitude,
+          radiusKm: input.radiusKm,
+          result,
+          priorPagesFetched,
+        });
+        return result;
+      }
 
       for (const place of response.places) {
         const snapshot = mapPlaceToSnapshot(
@@ -203,96 +356,69 @@ export async function fillSearchAreaFromGoogle(
         }
       }
 
+      result.totalPages += 1;
       pageToken = response.nextPageToken;
       if (!pageToken) break;
-      await sleep(300);
+      await sleep(PAGE_GAP_MS);
     }
 
-    if (result.failed > 0 && result.imported + result.updated === 0) {
+    // Exhausted or hit safety cap with leftover token.
+    if (pageToken) {
+      result.status = "partial_success";
+      result.resumePageToken = pageToken;
+      result.remainingPages = 1;
+      result.error = `Stopped after ${SEARCH_FILL_PAGE_SAFETY_CAP} pages; resume token saved.`;
+    } else if (result.failed > 0 && result.imported + result.updated === 0) {
       result.status = "failed";
     } else if (result.failed > 0) {
-      result.status = "partial";
+      result.status = "partial_success";
+      result.error = `${result.failed} place upsert(s) failed`;
+    } else {
+      result.status = "ok";
+      result.resumePageToken = null;
+      result.remainingPages = 0;
     }
 
-    const now = new Date().toISOString();
-    await supabase.from("search_area_coverage").upsert(
-      {
-        area_key: areaKey,
-        category_slug: mapping.categorySlug,
-        location_label: input.locationLabel,
-        latitude: input.latitude,
-        longitude: input.longitude,
-        radius_km: input.radiusKm,
-        last_fetched_at: now,
-        last_status: result.status === "failed" ? "failed" : "ok",
-        imported_count: result.imported,
-        updated_count: result.updated,
-        skipped_count: result.skipped,
-        failed_count: result.failed,
-        error_message: result.error ?? null,
-        updated_at: now,
-      },
-      { onConflict: "area_key" },
-    );
-
-    await supabase.from("search_google_import_runs").insert({
-      area_key: areaKey,
-      category_slug: mapping.categorySlug,
-      location_label: input.locationLabel,
+    await persistFillOutcome(supabase, {
+      areaKey,
+      categorySlug: mapping.categorySlug,
+      locationLabel: input.locationLabel,
       latitude: input.latitude,
       longitude: input.longitude,
-      radius_km: input.radiusKm,
-      queried: result.queried,
-      imported: result.imported,
-      updated: result.updated,
-      skipped: result.skipped,
-      failed: result.failed,
-      status: result.status === "skipped" ? "ok" : result.status,
-      error_message: result.error ?? null,
+      radiusKm: input.radiusKm,
+      result,
+      priorPagesFetched,
     });
 
     return result;
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Google search fill failed";
-    result.status = "failed";
+    const hadPriorSuccess =
+      result.totalPages > 0 ||
+      result.imported + result.updated > 0 ||
+      priorPagesFetched > 0;
+
     result.error = message;
+    if (hadPriorSuccess) {
+      result.status = "partial_success";
+      result.resumePageToken = pendingResumeToken;
+      result.remainingPages = pendingResumeToken ? 1 : 0;
+    } else {
+      result.status = "failed";
+      result.resumePageToken = null;
+      result.remainingPages = 0;
+    }
 
-    const now = new Date().toISOString();
-    await supabase.from("search_area_coverage").upsert(
-      {
-        area_key: areaKey,
-        category_slug: mapping.categorySlug,
-        location_label: input.locationLabel,
-        latitude: input.latitude,
-        longitude: input.longitude,
-        radius_km: input.radiusKm,
-        last_fetched_at: now,
-        last_status: "failed",
-        imported_count: result.imported,
-        updated_count: result.updated,
-        skipped_count: result.skipped,
-        failed_count: result.failed,
-        error_message: message,
-        updated_at: now,
-      },
-      { onConflict: "area_key" },
-    );
-
-    await supabase.from("search_google_import_runs").insert({
-      area_key: areaKey,
-      category_slug: mapping.categorySlug,
-      location_label: input.locationLabel,
+    await persistFillOutcome(supabase, {
+      areaKey,
+      categorySlug: mapping.categorySlug,
+      locationLabel: input.locationLabel,
       latitude: input.latitude,
       longitude: input.longitude,
-      radius_km: input.radiusKm,
-      queried: result.queried,
-      imported: result.imported,
-      updated: result.updated,
-      skipped: result.skipped,
-      failed: result.failed,
-      status: "failed",
-      error_message: message,
+      radiusKm: input.radiusKm,
+      result,
+      priorPagesFetched,
     });
 
     return result;

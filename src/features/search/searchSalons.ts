@@ -117,6 +117,8 @@ export async function searchSalons(
     const needsFill = shouldFillFromGoogle({
       localCount: result.salons.length + (result.hasMore ? pageSize : 0),
       lastFetchedAt: coverage?.lastFetchedAt,
+      lastStatus: coverage?.lastStatus,
+      hasResumeToken: Boolean(coverage?.resumePageToken),
       hasOrigin: true,
       hasCategory: true,
     });
@@ -131,7 +133,7 @@ export async function searchSalons(
       };
 
       // Empty first page: await a short fill so the user sees real results.
-      // Otherwise refresh in the background without blocking the response.
+      // Resume / top-up runs prefer background so search stays responsive.
       if (page === 1 && result.salons.length === 0) {
         await fillSearchAreaFromGoogle(service, fillInput);
         result = await runLocalSearch(supabase, filters, origin, {

@@ -42,6 +42,27 @@ export type TextSearchPage = {
   nextPageToken: string | null;
 };
 
+export class PlacesSearchError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
+    super(message);
+    this.name = "PlacesSearchError";
+  }
+}
+
+export function isTransientPlacesStatus(status: number): boolean {
+  return (
+    status === 408 ||
+    status === 429 ||
+    status === 500 ||
+    status === 502 ||
+    status === 503 ||
+    status === 504
+  );
+}
+
 const SEARCH_FIELD_MASK = [
   "places.id",
   "places.name",
@@ -179,8 +200,9 @@ export async function searchTextPlaces(
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(
+    throw new PlacesSearchError(
       `Places searchText failed (${response.status}): ${text.slice(0, 500)}`,
+      response.status,
     );
   }
 
@@ -193,6 +215,36 @@ export async function searchTextPlaces(
     places: payload.places ?? [],
     nextPageToken: payload.nextPageToken ?? null,
   };
+}
+
+/**
+ * Text Search with retries for transient HTTP errors (503, 429, 5xx…).
+ * `maxRetries` = extra attempts after the first failure (default 3).
+ */
+export async function searchTextPlacesWithRetry(
+  params: SearchTextParams,
+  options: { maxRetries?: number; baseDelayMs?: number } = {},
+): Promise<TextSearchPage> {
+  const maxRetries = Math.max(0, options.maxRetries ?? 3);
+  const baseDelayMs = Math.max(100, options.baseDelayMs ?? 500);
+  let attempt = 0;
+
+  for (;;) {
+    try {
+      return await searchTextPlaces(params);
+    } catch (error) {
+      const status =
+        error instanceof PlacesSearchError ? error.status : undefined;
+      const canRetry =
+        status != null &&
+        isTransientPlacesStatus(status) &&
+        attempt < maxRetries;
+      if (!canRetry) throw error;
+      const delay = baseDelayMs * 2 ** attempt;
+      attempt += 1;
+      await sleep(delay);
+    }
+  }
 }
 
 const DETAIL_FIELD_MASK = [

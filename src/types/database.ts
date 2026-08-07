@@ -641,6 +641,8 @@ export type Database = {
           skipped_count: number;
           failed_count: number;
           error_message: string | null;
+          resume_page_token: string | null;
+          pages_fetched: number;
           created_at: string;
           updated_at: string;
         };
@@ -659,6 +661,8 @@ export type Database = {
           skipped_count?: number;
           failed_count?: number;
           error_message?: string | null;
+          resume_page_token?: string | null;
+          pages_fetched?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -677,6 +681,8 @@ export type Database = {
           skipped_count?: number;
           failed_count?: number;
           error_message?: string | null;
+          resume_page_token?: string | null;
+          pages_fetched?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -698,6 +704,9 @@ export type Database = {
           failed: number;
           status: string;
           error_message: string | null;
+          pages_fetched: number;
+          remaining_pages: number;
+          resume_page_token: string | null;
           created_at: string;
         };
         Insert: {
@@ -715,6 +724,9 @@ export type Database = {
           failed?: number;
           status?: string;
           error_message?: string | null;
+          pages_fetched?: number;
+          remaining_pages?: number;
+          resume_page_token?: string | null;
           created_at?: string;
         };
         Update: {
@@ -732,6 +744,9 @@ export type Database = {
           failed?: number;
           status?: string;
           error_message?: string | null;
+          pages_fetched?: number;
+          remaining_pages?: number;
+          resume_page_token?: string | null;
           created_at?: string;
         };
         Relationships: [];
