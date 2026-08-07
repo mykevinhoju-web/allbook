@@ -1215,6 +1215,198 @@ export type Database = {
           },
         ];
       };
+      platform_settings: {
+        Row: {
+          group_key: string;
+          setting_key: string;
+          value: Json;
+          description: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          group_key: string;
+          setting_key: string;
+          value?: Json;
+          description?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          group_key?: string;
+          setting_key?: string;
+          value?: Json;
+          description?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      salon_settings: {
+        Row: {
+          id: string;
+          salon_id: string;
+          group_key: string;
+          setting_key: string;
+          value: Json;
+          level: "business" | "service" | "staff" | "booking";
+          scope_id: string | null;
+          updated_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          salon_id: string;
+          group_key: string;
+          setting_key: string;
+          value?: Json;
+          level?: "business" | "service" | "staff" | "booking";
+          scope_id?: string | null;
+          updated_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          salon_id?: string;
+          group_key?: string;
+          setting_key?: string;
+          value?: Json;
+          level?: "business" | "service" | "staff" | "booking";
+          scope_id?: string | null;
+          updated_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "salon_settings_salon_id_fkey";
+            columns: ["salon_id"];
+            isOneToOne: false;
+            referencedRelation: "salons";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      salon_feature_flags: {
+        Row: {
+          salon_id: string;
+          flag_key: string;
+          enabled: boolean;
+          config: Json;
+          updated_at: string;
+        };
+        Insert: {
+          salon_id: string;
+          flag_key: string;
+          enabled?: boolean;
+          config?: Json;
+          updated_at?: string;
+        };
+        Update: {
+          salon_id?: string;
+          flag_key?: string;
+          enabled?: boolean;
+          config?: Json;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "salon_feature_flags_salon_id_fkey";
+            columns: ["salon_id"];
+            isOneToOne: false;
+            referencedRelation: "salons";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      salon_integration_slots: {
+        Row: {
+          salon_id: string;
+          provider:
+            | "stripe"
+            | "square"
+            | "tyro"
+            | "xero"
+            | "myob"
+            | "google_calendar"
+            | "outlook"
+            | "apple_calendar"
+            | "google_business"
+            | "meta"
+            | "instagram";
+          status: "disconnected" | "pending" | "connected" | "error";
+          config: Json;
+          connected_at: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          salon_id: string;
+          provider:
+            | "stripe"
+            | "square"
+            | "tyro"
+            | "xero"
+            | "myob"
+            | "google_calendar"
+            | "outlook"
+            | "apple_calendar"
+            | "google_business"
+            | "meta"
+            | "instagram";
+          status?: "disconnected" | "pending" | "connected" | "error";
+          config?: Json;
+          connected_at?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          salon_id?: string;
+          provider?:
+            | "stripe"
+            | "square"
+            | "tyro"
+            | "xero"
+            | "myob"
+            | "google_calendar"
+            | "outlook"
+            | "apple_calendar"
+            | "google_business"
+            | "meta"
+            | "instagram";
+          status?: "disconnected" | "pending" | "connected" | "error";
+          config?: Json;
+          connected_at?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "salon_integration_slots_salon_id_fkey";
+            columns: ["salon_id"];
+            isOneToOne: false;
+            referencedRelation: "salons";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      settings_group_permissions: {
+        Row: {
+          role: "owner" | "admin" | "staff" | "platform_admin";
+          group_key: string;
+          can_read: boolean;
+          can_write: boolean;
+        };
+        Insert: {
+          role: "owner" | "admin" | "staff" | "platform_admin";
+          group_key: string;
+          can_read?: boolean;
+          can_write?: boolean;
+        };
+        Update: {
+          role?: "owner" | "admin" | "staff" | "platform_admin";
+          group_key?: string;
+          can_read?: boolean;
+          can_write?: boolean;
+        };
+        Relationships: [];
+      };
       salon_booking_policies: {
         Row: {
           salon_id: string;

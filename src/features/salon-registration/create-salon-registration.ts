@@ -260,6 +260,12 @@ export async function createSalonRegistration(
   );
   await ensureDefaultBookingPolicy(supabase, salon.id);
 
+  // Unified Settings Engine defaults + feature flags.
+  const { ensureDefaultSalonSettings } = await import(
+    "@/features/business-settings/service"
+  );
+  await ensureDefaultSalonSettings(supabase, salon.id, ownerEmail);
+
   if (cover) {
     await supabase.from("salon_images").insert({
       salon_id: salon.id,
