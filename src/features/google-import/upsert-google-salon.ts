@@ -54,9 +54,8 @@ async function ensureUniqueSlug(
   base: string,
   excludeId?: string,
 ): Promise<string> {
-  let slug = base;
   for (let i = 0; i < 20; i += 1) {
-    const candidate = i === 0 ? slug : `${base}-${i + 1}`;
+    const candidate = i === 0 ? base : `${base}-${i + 1}`;
     const { data } = await supabase
       .from("salons")
       .select("id")
