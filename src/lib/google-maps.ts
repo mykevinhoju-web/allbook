@@ -21,35 +21,46 @@ export type LatLngBoundsLiteral = {
   west: number;
 };
 
-/**
- * Geographic bounds covering ~`radiusKm` around a search origin.
- * Used so the marketplace map frames the active search radius (not city-wide).
- */
-export function boundsForSearchRadius(
-  center: LatLngLiteral,
-  radiusKm: number,
-  /** Extra margin so the circle isn't clipped at the map edges */
-  paddingFactor = 1.15,
-): LatLngBoundsLiteral {
-  const km = Math.max(1, radiusKm) * paddingFactor;
-  const latDelta = km / 111.32;
-  const cosLat = Math.max(Math.cos((center.lat * Math.PI) / 180), 0.01);
-  const lngDelta = km / (111.32 * cosLat);
-  return {
-    north: center.lat + latDelta,
-    south: center.lat - latDelta,
-    east: center.lng + lngDelta,
-    west: center.lng - lngDelta,
-  };
-}
+/** Suburb-level zoom — closer than city-wide, without framing a large radius. */
+export const SUBURB_SEARCH_ZOOM = 13;
 
-/** Fallback zoom when fitBounds is unavailable. */
-export function zoomForSearchRadiusKm(radiusKm: number): number {
-  if (radiusKm <= 5) return 13;
-  if (radiusKm <= 10) return 12;
-  if (radiusKm <= 20) return 11;
-  if (radiusKm <= 50) return 10;
-  return 9;
+/**
+ * Bounds around result markers so the map zooms to the cluster,
+ * not the full distance-filter circle (e.g. 20 km ≈ all of Brisbane).
+ */
+export function boundsForSalonMarkers(
+  salons: Array<{ latitude: number; longitude: number }>,
+  /** Minimum padding so a single pin still has context */
+  minPaddingKm = 1.2,
+): LatLngBoundsLiteral | null {
+  if (salons.length === 0) return null;
+
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  let minLng = Infinity;
+  let maxLng = -Infinity;
+
+  for (const salon of salons) {
+    minLat = Math.min(minLat, salon.latitude);
+    maxLat = Math.max(maxLat, salon.latitude);
+    minLng = Math.min(minLng, salon.longitude);
+    maxLng = Math.max(maxLng, salon.longitude);
+  }
+
+  const midLat = (minLat + maxLat) / 2;
+  const cosLat = Math.max(Math.cos((midLat * Math.PI) / 180), 0.01);
+  const padLat = Math.max((maxLat - minLat) * 0.25, minPaddingKm / 111.32);
+  const padLng = Math.max(
+    (maxLng - minLng) * 0.25,
+    minPaddingKm / (111.32 * cosLat),
+  );
+
+  return {
+    north: maxLat + padLat,
+    south: minLat - padLat,
+    east: maxLng + padLng,
+    west: minLng - padLng,
+  };
 }
 
 export function getGoogleMapsBrowserKey(): string | undefined {

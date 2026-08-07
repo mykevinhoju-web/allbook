@@ -9,9 +9,9 @@ import {
   DEFAULT_MAP_CENTER,
   DEFAULT_MAP_ZOOM,
   SELECTED_SALON_ZOOM,
-  boundsForSearchRadius,
+  SUBURB_SEARCH_ZOOM,
+  boundsForSalonMarkers,
   getGoogleMapsBrowserKey,
-  zoomForSearchRadiusKm,
   type LatLngBoundsLiteral,
   type LatLngLiteral,
 } from "@/lib/google-maps";
@@ -28,7 +28,7 @@ type GoogleMapProps = {
   searchLocation?: string;
   /** Resolved search origin from the marketplace search engine (preferred). */
   searchOrigin?: LatLngLiteral | null;
-  /** Active distance filter — map frames this radius around the origin. */
+  /** Distance filter label only — does not widen the map to the full circle. */
   radiusKm?: number | null;
   onSelect?: (salonId: string) => void;
   className?: string;
@@ -38,6 +38,9 @@ type CameraTarget = {
   center: LatLngLiteral;
   zoom: number;
   bounds?: LatLngBoundsLiteral | null;
+  /** Clamp fitBounds so we never end up city-wide again. */
+  maxZoom?: number;
+  minZoom?: number;
 };
 
 function MapCamera({
@@ -51,10 +54,23 @@ function MapCamera({
 
   useEffect(() => {
     if (!map) return;
+
     if (target.bounds) {
-      map.fitBounds(target.bounds, 56);
-      return;
+      map.fitBounds(target.bounds, 64);
+      // fitBounds is async in practice — clamp on the next tick.
+      const timer = window.setTimeout(() => {
+        const zoom = map.getZoom();
+        if (zoom == null) return;
+        if (target.maxZoom != null && zoom > target.maxZoom) {
+          map.setZoom(target.maxZoom);
+        }
+        if (target.minZoom != null && zoom < target.minZoom) {
+          map.setZoom(target.minZoom);
+        }
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
+
     map.panTo(target.center);
     map.setZoom(target.zoom);
   }, [
@@ -66,40 +82,10 @@ function MapCamera({
     target.bounds?.south,
     target.bounds?.east,
     target.bounds?.west,
+    target.maxZoom,
+    target.minZoom,
     focusToken,
   ]);
-
-  return null;
-}
-
-function SearchRadiusCircle({
-  center,
-  radiusKm,
-}: {
-  center: LatLngLiteral;
-  radiusKm: number;
-}) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (!map || !(radiusKm > 0)) return;
-
-    const circle = new google.maps.Circle({
-      map,
-      center,
-      radius: radiusKm * 1000,
-      strokeColor: "#6B5CF6",
-      strokeOpacity: 0.5,
-      strokeWeight: 1.5,
-      fillColor: "#6B5CF6",
-      fillOpacity: 0.07,
-      clickable: false,
-    });
-
-    return () => {
-      circle.setMap(null);
-    };
-  }, [map, center.lat, center.lng, radiusKm]);
 
   return null;
 }
@@ -146,6 +132,11 @@ function GoogleMapCanvas({
       ? radiusKm
       : null;
 
+  const markerBounds = useMemo(
+    () => (!selectedSalon ? boundsForSalonMarkers(salons) : null),
+    [salons, selectedSalon],
+  );
+
   const camera = useMemo<CameraTarget>(() => {
     if (selectedSalon) {
       return {
@@ -158,24 +149,31 @@ function GoogleMapCanvas({
       };
     }
 
-    if (originCenter && activeRadiusKm != null) {
+    // Prefer the result cluster — not the full distance filter (20 km ≈ Brisbane).
+    if (markerBounds) {
+      const center = {
+        lat: (markerBounds.north + markerBounds.south) / 2,
+        lng: (markerBounds.east + markerBounds.west) / 2,
+      };
       return {
-        center: originCenter,
-        zoom: zoomForSearchRadiusKm(activeRadiusKm),
-        bounds: boundsForSearchRadius(originCenter, activeRadiusKm),
+        center,
+        zoom: SUBURB_SEARCH_ZOOM,
+        bounds: markerBounds,
+        maxZoom: 14,
+        minZoom: 12,
       };
     }
 
     if (originCenter) {
       return {
         center: originCenter,
-        zoom: DEFAULT_MAP_ZOOM,
+        zoom: SUBURB_SEARCH_ZOOM,
         bounds: null,
       };
     }
 
     return { center: DEFAULT_MAP_CENTER, zoom: DEFAULT_MAP_ZOOM, bounds: null };
-  }, [selectedSalon, originCenter, activeRadiusKm]);
+  }, [selectedSalon, markerBounds, originCenter]);
 
   const statusLabel =
     selectedSalon
@@ -184,8 +182,8 @@ function GoogleMapCanvas({
         ? "Finding location…"
         : needsClientGeocode && geocode.status === "error"
           ? "Showing Brisbane"
-          : activeRadiusKm != null && (searchLocation.trim() || originCenter)
-            ? `${searchLocation.trim() || "Search area"} · within ${activeRadiusKm} km`
+          : activeRadiusKm != null && searchLocation.trim()
+            ? `${searchLocation.trim()} · within ${activeRadiusKm} km`
             : geocode.formattedAddress ||
               (searchLocation.trim()
                 ? searchLocation
@@ -210,12 +208,6 @@ function GoogleMapCanvas({
         style={{ width: "100%", height: "100%" }}
       >
         <MapCamera target={camera} focusToken={focusToken} />
-        {originCenter && activeRadiusKm != null && !selectedSalon ? (
-          <SearchRadiusCircle
-            center={originCenter}
-            radiusKm={activeRadiusKm}
-          />
-        ) : null}
 
         {salons.map((salon) => (
           <SalonMarker
@@ -280,8 +272,8 @@ function GoogleMapFallback({
 }
 
 /**
- * Production-ready Google Map for marketplace search.
- * Frames the active search origin + radius (not city-wide).
+ * Marketplace search map — zooms to result markers (suburb cluster),
+ * not the full distance-filter circle.
  */
 export function GoogleMap(props: GoogleMapProps) {
   const apiKey = getGoogleMapsBrowserKey();
