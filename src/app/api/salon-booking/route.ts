@@ -9,6 +9,10 @@ import { pickStaffForSlot } from "@/features/salon-booking/generateAvailableSlot
 import { getBookingSalonContext } from "@/features/salon-booking/getBookingSalonContext";
 import { createSupabaseSalonBookingsRepository } from "@/features/salon-booking/repositories/supabase";
 import { NO_PREFERENCE_STAFF_ID } from "@/features/salon-booking/catalog-types";
+import {
+  resolvePolicyForBooking,
+  snapshotToJson,
+} from "@/features/booking-policy";
 import { createServiceSupabase } from "@/lib/supabase/service";
 
 export const runtime = "nodejs";
@@ -29,6 +33,7 @@ export async function POST(request: Request) {
         email?: string;
         notes?: string;
       };
+      policyAccepted?: boolean;
     };
 
     if (
@@ -117,6 +122,37 @@ export async function POST(request: Request) {
     const fullName =
       `${body.customer.firstName} ${body.customer.lastName}`.trim();
 
+    if (!body.policyAccepted) {
+      return NextResponse.json(
+        { error: "You must accept the booking policies to continue." },
+        { status: 400 },
+      );
+    }
+
+    const resolved = await resolvePolicyForBooking(supabase, {
+      salonId: context.salonId,
+      serviceId: service.id,
+      servicePrice: service.price,
+    });
+
+    if (!resolved.bookingEnabled) {
+      return NextResponse.json(
+        { error: "Online booking is disabled for this salon." },
+        { status: 403 },
+      );
+    }
+
+    // Gateway not implemented yet — block modes that require live capture.
+    if (resolved.requiresOnlinePayment) {
+      return NextResponse.json(
+        {
+          error:
+            "This service requires online payment, which is not enabled yet. Choose a booking-only service or ask the salon to switch to Booking Only.",
+        },
+        { status: 400 },
+      );
+    }
+
     const booking = await createBooking(repo, {
       salonId: context.salonId,
       staffId: pick.staff.id,
@@ -129,13 +165,17 @@ export async function POST(request: Request) {
       customerEmail: body.customer.email ?? "",
       customerPhone: body.customer.phone ?? "",
       notes: body.customer.notes ?? "",
-      status: "pending",
+      status: resolved.instantConfirmation ? "confirmed" : "pending",
+      policyAccepted: true,
+      policySnapshot: snapshotToJson(resolved),
+      policyAcceptedAt: new Date().toISOString(),
       availability: pick.availability,
     });
 
     return NextResponse.json({
       booking,
       staffName: pick.staff.displayName,
+      policy: resolved,
     });
   } catch (error) {
     if (

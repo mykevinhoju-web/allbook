@@ -119,6 +119,8 @@ export function createSupabaseSalonBookingsRepository(
           customer_name: input.customerName,
           customer_email: input.customerEmail || null,
           customer_phone: input.customerPhone || null,
+          policy_snapshot: (input.policySnapshot ?? null) as never,
+          policy_accepted_at: input.policyAcceptedAt ?? null,
         })
         .select("*")
         .single();

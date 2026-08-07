@@ -254,6 +254,12 @@ export async function createSalonRegistration(
     throw new Error(ownerErrorInsert.message);
   }
 
+  // Default Booking Only policy — accept bookings without payment setup.
+  const { ensureDefaultBookingPolicy } = await import(
+    "@/features/booking-policy/service"
+  );
+  await ensureDefaultBookingPolicy(supabase, salon.id);
+
   if (cover) {
     await supabase.from("salon_images").insert({
       salon_id: salon.id,

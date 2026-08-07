@@ -83,6 +83,12 @@ export async function createBooking(
     );
   }
 
+  if (!input.policyAccepted) {
+    throw new BookingValidationError(
+      "You must accept the booking policies to continue.",
+    );
+  }
+
   return repository.create({
     salonId: input.salonId,
     staffId: input.staffId,
@@ -98,5 +104,8 @@ export async function createBooking(
     customerEmail: input.customerEmail?.trim() ?? "",
     customerPhone: input.customerPhone?.trim() ?? "",
     customerId: null,
+    policySnapshot: input.policySnapshot ?? null,
+    policyAcceptedAt:
+      input.policyAcceptedAt ?? new Date().toISOString(),
   });
 }

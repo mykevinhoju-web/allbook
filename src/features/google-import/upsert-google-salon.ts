@@ -276,6 +276,14 @@ export async function upsertGoogleSalon(
     action: "imported",
     actor: "google-import",
   });
+  try {
+    const { ensureDefaultBookingPolicy } = await import(
+      "@/features/booking-policy/service"
+    );
+    await ensureDefaultBookingPolicy(supabase, inserted.id);
+  } catch {
+    // Policy seed is best-effort on import; settings page can recreate.
+  }
   return {
     placeId: snapshot.placeId,
     name: snapshot.name,

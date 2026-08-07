@@ -111,6 +111,10 @@ export type CreateBookingInput = {
   customerPhone?: string;
   notes?: string;
   status?: BookingStatus;
+  /** Customer must accept resolved policies before confirm. */
+  policyAccepted?: boolean;
+  policySnapshot?: unknown | null;
+  policyAcceptedAt?: string | null;
   /** Snapshot used to re-validate slots before create */
   availability: Omit<GenerateTimeSlotsInput, "serviceDurationMinutes" | "bufferMinutes"> & {
     serviceDurationMinutes?: number;

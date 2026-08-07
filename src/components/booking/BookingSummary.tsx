@@ -14,6 +14,7 @@ type BookingSummaryProps = {
   customerName?: string;
   customerEmail?: string;
   customerPhone?: string;
+  confirmationNote?: string;
   className?: string;
 };
 
@@ -38,6 +39,7 @@ export function BookingSummary({
   customerName,
   customerEmail,
   customerPhone,
+  confirmationNote = "Your booking is held as pending until the salon confirms.",
   className,
 }: BookingSummaryProps) {
   return (
@@ -70,7 +72,7 @@ export function BookingSummary({
       </dl>
 
       <p className="mt-5 rounded-2xl bg-[#FAFBFC] px-4 py-3 text-[12px] text-neutral-500">
-        Your booking is held as pending until the salon confirms.
+        {confirmationNote}
       </p>
     </div>
   );

@@ -15,6 +15,8 @@ import {
   type BookingStepId,
   type CustomerFormValue,
 } from "@/components/booking";
+import { PolicyAcceptancePanel } from "@/features/booking-policy";
+import type { ResolvedPolicy } from "@/features/booking-policy/types";
 import {
   NO_PREFERENCE_STAFF_ID,
   type BookingSalonContext,
@@ -69,6 +71,11 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
   const [bookingsByStaff, setBookingsByStaff] = useState<
     Record<string, ExistingBookingBlock[]>
   >({});
+  const [resolvedPolicy, setResolvedPolicy] = useState<ResolvedPolicy | null>(
+    null,
+  );
+  const [policyLoading, setPolicyLoading] = useState(false);
+  const [policyAccepted, setPolicyAccepted] = useState(false);
 
   const service = context.services.find((s) => s.id === serviceId) ?? null;
 
@@ -107,6 +114,37 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
   useEffect(() => {
     void loadBookings();
   }, [loadBookings]);
+
+  useEffect(() => {
+    if (step !== "summary" || !service) return;
+    let cancelled = false;
+    setPolicyLoading(true);
+    setPolicyAccepted(false);
+    void (async () => {
+      try {
+        const params = new URLSearchParams({
+          salonId: context.salonId,
+          serviceId: service.id,
+          price: String(service.price),
+        });
+        const res = await fetch(`/api/salon-booking/policy?${params}`);
+        const data = (await res.json()) as {
+          policy?: ResolvedPolicy;
+          error?: string;
+        };
+        if (!cancelled) {
+          setResolvedPolicy(data.policy ?? null);
+        }
+      } catch {
+        if (!cancelled) setResolvedPolicy(null);
+      } finally {
+        if (!cancelled) setPolicyLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [step, service, context.salonId]);
 
   const slots = useMemo(() => {
     if (!service) return [];
@@ -189,6 +227,10 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
 
   async function confirmBooking() {
     if (!service || !startTime || !selectedSlot) return;
+    if (!policyAccepted) {
+      setError("Please accept the booking policies to continue.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -202,6 +244,7 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
           staffId,
           bookingDate: date,
           startTime,
+          policyAccepted: true,
           customer: {
             firstName: customer.firstName.trim(),
             lastName: customer.lastName.trim(),
@@ -359,6 +402,17 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
               customerName={customerName}
               customerEmail={customer.email}
               customerPhone={customer.phone}
+              confirmationNote={
+                resolvedPolicy?.instantConfirmation
+                  ? "Your booking will be confirmed instantly."
+                  : "Your booking is held as pending until the salon confirms."
+              }
+            />
+            <PolicyAcceptancePanel
+              policy={resolvedPolicy}
+              loading={policyLoading}
+              accepted={policyAccepted}
+              onAcceptedChange={setPolicyAccepted}
             />
           </section>
         ) : null}
@@ -411,7 +465,7 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
               <button
                 type="button"
                 onClick={() => void confirmBooking()}
-                disabled={submitting}
+                disabled={submitting || !policyAccepted}
                 className="inline-flex h-11 items-center justify-center rounded-full bg-neutral-950 px-5 text-[13px] font-semibold text-white disabled:opacity-50"
               >
                 {submitting ? "Booking…" : "Confirm booking"}

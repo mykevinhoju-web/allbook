@@ -11,6 +11,8 @@ export type CreateBookingRecord = Omit<
   "id" | "createdAt" | "updatedAt"
 > & {
   id?: string;
+  policySnapshot?: unknown | null;
+  policyAcceptedAt?: string | null;
 };
 
 /**

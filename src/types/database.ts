@@ -1215,6 +1215,287 @@ export type Database = {
           },
         ];
       };
+      salon_booking_policies: {
+        Row: {
+          salon_id: string;
+          booking_enabled: boolean;
+          allow_walk_ins: boolean;
+          appointment_only: boolean;
+          approval_required: boolean;
+          instant_confirmation: boolean;
+          max_advance_booking_days: number;
+          min_notice_hours: number;
+          payment_mode:
+            | "booking_only"
+            | "fixed_deposit"
+            | "percentage_deposit"
+            | "full_prepayment"
+            | "card_hold";
+          deposit_amount_cents: number | null;
+          deposit_percent: number | null;
+          currency: string;
+          capture_mode:
+            | "none"
+            | "immediate"
+            | "deposit"
+            | "automatic_capture"
+            | "manual_capture"
+            | "card_hold";
+          remaining_balance_in_salon: boolean;
+          online_payment_enabled: boolean;
+          cancellation_window_hours: number;
+          cancellation_refund_percent: number;
+          deposit_forfeiture_percent: number;
+          no_show_action: "record_only" | "fee" | "charge_hold";
+          no_show_fee_cents: number | null;
+          refund_mode: "none" | "full" | "partial" | "policy_based";
+          payment_provider:
+            | "stripe_connect"
+            | "square"
+            | "tyro"
+            | "paypal"
+            | "gift_card"
+            | "loyalty"
+            | "membership"
+            | "promo"
+            | "package"
+            | "invoice"
+            | "manual"
+            | null;
+          provider_config: Json;
+          extensions: Json;
+          version: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          salon_id: string;
+          booking_enabled?: boolean;
+          allow_walk_ins?: boolean;
+          appointment_only?: boolean;
+          approval_required?: boolean;
+          instant_confirmation?: boolean;
+          max_advance_booking_days?: number;
+          min_notice_hours?: number;
+          payment_mode?:
+            | "booking_only"
+            | "fixed_deposit"
+            | "percentage_deposit"
+            | "full_prepayment"
+            | "card_hold";
+          deposit_amount_cents?: number | null;
+          deposit_percent?: number | null;
+          currency?: string;
+          capture_mode?:
+            | "none"
+            | "immediate"
+            | "deposit"
+            | "automatic_capture"
+            | "manual_capture"
+            | "card_hold";
+          remaining_balance_in_salon?: boolean;
+          online_payment_enabled?: boolean;
+          cancellation_window_hours?: number;
+          cancellation_refund_percent?: number;
+          deposit_forfeiture_percent?: number;
+          no_show_action?: "record_only" | "fee" | "charge_hold";
+          no_show_fee_cents?: number | null;
+          refund_mode?: "none" | "full" | "partial" | "policy_based";
+          payment_provider?:
+            | "stripe_connect"
+            | "square"
+            | "tyro"
+            | "paypal"
+            | "gift_card"
+            | "loyalty"
+            | "membership"
+            | "promo"
+            | "package"
+            | "invoice"
+            | "manual"
+            | null;
+          provider_config?: Json;
+          extensions?: Json;
+          version?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          salon_id?: string;
+          booking_enabled?: boolean;
+          allow_walk_ins?: boolean;
+          appointment_only?: boolean;
+          approval_required?: boolean;
+          instant_confirmation?: boolean;
+          max_advance_booking_days?: number;
+          min_notice_hours?: number;
+          payment_mode?:
+            | "booking_only"
+            | "fixed_deposit"
+            | "percentage_deposit"
+            | "full_prepayment"
+            | "card_hold";
+          deposit_amount_cents?: number | null;
+          deposit_percent?: number | null;
+          currency?: string;
+          capture_mode?:
+            | "none"
+            | "immediate"
+            | "deposit"
+            | "automatic_capture"
+            | "manual_capture"
+            | "card_hold";
+          remaining_balance_in_salon?: boolean;
+          online_payment_enabled?: boolean;
+          cancellation_window_hours?: number;
+          cancellation_refund_percent?: number;
+          deposit_forfeiture_percent?: number;
+          no_show_action?: "record_only" | "fee" | "charge_hold";
+          no_show_fee_cents?: number | null;
+          refund_mode?: "none" | "full" | "partial" | "policy_based";
+          payment_provider?:
+            | "stripe_connect"
+            | "square"
+            | "tyro"
+            | "paypal"
+            | "gift_card"
+            | "loyalty"
+            | "membership"
+            | "promo"
+            | "package"
+            | "invoice"
+            | "manual"
+            | null;
+          provider_config?: Json;
+          extensions?: Json;
+          version?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "salon_booking_policies_salon_id_fkey";
+            columns: ["salon_id"];
+            isOneToOne: true;
+            referencedRelation: "salons";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      salon_service_policy_overrides: {
+        Row: {
+          service_id: string;
+          salon_id: string;
+          enabled: boolean;
+          payment_mode:
+            | "booking_only"
+            | "fixed_deposit"
+            | "percentage_deposit"
+            | "full_prepayment"
+            | "card_hold"
+            | null;
+          deposit_amount_cents: number | null;
+          deposit_percent: number | null;
+          capture_mode:
+            | "none"
+            | "immediate"
+            | "deposit"
+            | "automatic_capture"
+            | "manual_capture"
+            | "card_hold"
+            | null;
+          cancellation_window_hours: number | null;
+          cancellation_refund_percent: number | null;
+          deposit_forfeiture_percent: number | null;
+          no_show_action: "record_only" | "fee" | "charge_hold" | null;
+          no_show_fee_cents: number | null;
+          refund_mode: "none" | "full" | "partial" | "policy_based" | null;
+          online_payment_enabled: boolean | null;
+          extensions: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          service_id: string;
+          salon_id: string;
+          enabled?: boolean;
+          payment_mode?:
+            | "booking_only"
+            | "fixed_deposit"
+            | "percentage_deposit"
+            | "full_prepayment"
+            | "card_hold"
+            | null;
+          deposit_amount_cents?: number | null;
+          deposit_percent?: number | null;
+          capture_mode?:
+            | "none"
+            | "immediate"
+            | "deposit"
+            | "automatic_capture"
+            | "manual_capture"
+            | "card_hold"
+            | null;
+          cancellation_window_hours?: number | null;
+          cancellation_refund_percent?: number | null;
+          deposit_forfeiture_percent?: number | null;
+          no_show_action?: "record_only" | "fee" | "charge_hold" | null;
+          no_show_fee_cents?: number | null;
+          refund_mode?: "none" | "full" | "partial" | "policy_based" | null;
+          online_payment_enabled?: boolean | null;
+          extensions?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          service_id?: string;
+          salon_id?: string;
+          enabled?: boolean;
+          payment_mode?:
+            | "booking_only"
+            | "fixed_deposit"
+            | "percentage_deposit"
+            | "full_prepayment"
+            | "card_hold"
+            | null;
+          deposit_amount_cents?: number | null;
+          deposit_percent?: number | null;
+          capture_mode?:
+            | "none"
+            | "immediate"
+            | "deposit"
+            | "automatic_capture"
+            | "manual_capture"
+            | "card_hold"
+            | null;
+          cancellation_window_hours?: number | null;
+          cancellation_refund_percent?: number | null;
+          deposit_forfeiture_percent?: number | null;
+          no_show_action?: "record_only" | "fee" | "charge_hold" | null;
+          no_show_fee_cents?: number | null;
+          refund_mode?: "none" | "full" | "partial" | "policy_based" | null;
+          online_payment_enabled?: boolean | null;
+          extensions?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "salon_service_policy_overrides_service_id_fkey";
+            columns: ["service_id"];
+            isOneToOne: true;
+            referencedRelation: "salon_services";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "salon_service_policy_overrides_salon_id_fkey";
+            columns: ["salon_id"];
+            isOneToOne: false;
+            referencedRelation: "salons";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       salon_service_staff: {
         Row: {
           service_id: string;
@@ -1789,6 +2070,8 @@ export type Database = {
           customer_name: string | null;
           customer_email: string | null;
           customer_phone: string | null;
+          policy_snapshot: Json | null;
+          policy_accepted_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -1808,6 +2091,8 @@ export type Database = {
           customer_name?: string | null;
           customer_email?: string | null;
           customer_phone?: string | null;
+          policy_snapshot?: Json | null;
+          policy_accepted_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1827,6 +2112,8 @@ export type Database = {
           customer_name?: string | null;
           customer_email?: string | null;
           customer_phone?: string | null;
+          policy_snapshot?: Json | null;
+          policy_accepted_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
