@@ -1,3 +1,5 @@
+import { BRISBANE_SUBURB_NAMES } from "./brisbane-suburbs";
+
 /** Allowed distance filters (km). */
 export const SEARCH_DISTANCE_KM = [5, 10, 20, 50] as const;
 export type SearchDistanceKm = (typeof SEARCH_DISTANCE_KM)[number];
@@ -23,19 +25,8 @@ export const SEARCH_MIN_RATING_OPTIONS = [
   { value: 4.5, label: "4.5+" },
 ] as const;
 
-/** Brisbane suburbs for filter panel (aligned with seed data). */
-export const SEARCH_SUBURB_OPTIONS = [
-  "Aspley",
-  "Chermside",
-  "Sunnybank",
-  "Indooroopilly",
-  "Carindale",
-  "New Farm",
-  "Paddington",
-  "Fortitude Valley",
-  "Albany Creek",
-  "North Lakes",
-] as const;
+/** Brisbane suburbs for filter panel (prebuilt Greater Brisbane catalogue). */
+export const SEARCH_SUBURB_OPTIONS = BRISBANE_SUBURB_NAMES;
 
 export const SEARCH_SERVICE_FILTERS = [
   "Hair",

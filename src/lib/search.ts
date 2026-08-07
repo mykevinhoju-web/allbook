@@ -3,10 +3,7 @@
  * There is no generic /search page — category is required.
  */
 
-import {
-  resolveCategoryFromService,
-  toLocationQueryParam,
-} from "@/features/category/constants";
+import { BRISBANE_SUBURB_NAMES } from "@/features/search/brisbane-suburbs";
 import {
   DEFAULT_SEARCH_DISTANCE_KM,
   DEFAULT_SEARCH_SORT,
@@ -16,19 +13,13 @@ import {
   type SearchSort,
 } from "@/features/search/constants";
 import { MARKETPLACE_CATEGORIES } from "@/features/category/constants";
+import {
+  resolveCategoryFromService,
+  toLocationQueryParam,
+} from "@/features/category/constants";
 
-export const LOCATION_SUGGESTIONS = [
-  "Aspley",
-  "Chermside",
-  "Sunnybank",
-  "Indooroopilly",
-  "Carindale",
-  "New Farm",
-  "Paddington",
-  "Fortitude Valley",
-  "Albany Creek",
-  "North Lakes",
-] as const;
+/** Prebuilt Greater Brisbane suburbs for location typeahead. */
+export const LOCATION_SUGGESTIONS = BRISBANE_SUBURB_NAMES;
 
 export type LocationSuggestion = (typeof LOCATION_SUGGESTIONS)[number];
 
@@ -89,14 +80,19 @@ export function isSearchCategoryValid(service: string): boolean {
 
 export function filterLocationSuggestions(
   input: string,
-  limit = 6,
+  limit = 8,
 ): string[] {
   const q = input.trim().toLowerCase();
   if (!q) return [...LOCATION_SUGGESTIONS].slice(0, limit);
 
-  return LOCATION_SUGGESTIONS.filter((suburb) =>
-    suburb.toLowerCase().includes(q),
-  ).slice(0, limit);
+  const starts: string[] = [];
+  const contains: string[] = [];
+  for (const suburb of LOCATION_SUGGESTIONS) {
+    const lower = suburb.toLowerCase();
+    if (lower.startsWith(q)) starts.push(suburb);
+    else if (lower.includes(q)) contains.push(suburb);
+  }
+  return [...starts, ...contains].slice(0, limit);
 }
 
 function toQueryString(

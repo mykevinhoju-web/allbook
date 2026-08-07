@@ -1,4 +1,9 @@
 export {
+  BRISBANE_SUBURBS,
+  BRISBANE_SUBURB_NAMES,
+} from "./brisbane-suburbs";
+export type { BrisbaneSuburb } from "./brisbane-suburbs";
+export {
   DEFAULT_SEARCH_DISTANCE_KM,
   DEFAULT_SEARCH_SORT,
   SEARCH_DISTANCE_KM,
