@@ -71,6 +71,7 @@ export function SearchResults({
     clearSelection();
   }, [
     query.location,
+    query.radiusKm,
     filters.suburb,
     filters.minRating,
     filters.verifiedOnly,
@@ -258,6 +259,12 @@ export function SearchResults({
               selectedId={selectedId}
               focusToken={focusToken}
               searchLocation={locationLabel}
+              searchOrigin={
+                origin
+                  ? { lat: origin.lat, lng: origin.lng }
+                  : null
+              }
+              radiusKm={query.radiusKm}
               onSelect={selectSalonFromMarker}
               className="h-full min-h-[calc(100svh-8.5rem)] rounded-2xl"
             />

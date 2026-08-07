@@ -9,7 +9,10 @@ import {
   DEFAULT_MAP_CENTER,
   DEFAULT_MAP_ZOOM,
   SELECTED_SALON_ZOOM,
+  boundsForSearchRadius,
   getGoogleMapsBrowserKey,
+  zoomForSearchRadiusKm,
+  type LatLngBoundsLiteral,
   type LatLngLiteral,
 } from "@/lib/google-maps";
 import { cn } from "@/lib/utils";
@@ -23,6 +26,10 @@ type GoogleMapProps = {
   focusToken?: number;
   /** Suburb from the search toolbar / URL — geocoded when no salon is selected. */
   searchLocation?: string;
+  /** Resolved search origin from the marketplace search engine (preferred). */
+  searchOrigin?: LatLngLiteral | null;
+  /** Active distance filter — map frames this radius around the origin. */
+  radiusKm?: number | null;
   onSelect?: (salonId: string) => void;
   className?: string;
 };
@@ -30,6 +37,7 @@ type GoogleMapProps = {
 type CameraTarget = {
   center: LatLngLiteral;
   zoom: number;
+  bounds?: LatLngBoundsLiteral | null;
 };
 
 function MapCamera({
@@ -43,16 +51,55 @@ function MapCamera({
 
   useEffect(() => {
     if (!map) return;
+    if (target.bounds) {
+      map.fitBounds(target.bounds, 56);
+      return;
+    }
     map.panTo(target.center);
-    // Smooth zoom toward the target
     map.setZoom(target.zoom);
   }, [
     map,
     target.center.lat,
     target.center.lng,
     target.zoom,
+    target.bounds?.north,
+    target.bounds?.south,
+    target.bounds?.east,
+    target.bounds?.west,
     focusToken,
   ]);
+
+  return null;
+}
+
+function SearchRadiusCircle({
+  center,
+  radiusKm,
+}: {
+  center: LatLngLiteral;
+  radiusKm: number;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map || !(radiusKm > 0)) return;
+
+    const circle = new google.maps.Circle({
+      map,
+      center,
+      radius: radiusKm * 1000,
+      strokeColor: "#6B5CF6",
+      strokeOpacity: 0.5,
+      strokeWeight: 1.5,
+      fillColor: "#6B5CF6",
+      fillOpacity: 0.07,
+      clickable: false,
+    });
+
+    return () => {
+      circle.setMap(null);
+    };
+  }, [map, center.lat, center.lng, radiusKm]);
 
   return null;
 }
@@ -62,6 +109,8 @@ function GoogleMapCanvas({
   selectedId,
   focusToken = 0,
   searchLocation = "",
+  searchOrigin = null,
+  radiusKm = null,
   onSelect,
   className,
 }: GoogleMapProps) {
@@ -70,9 +119,32 @@ function GoogleMapCanvas({
     [salons, selectedId],
   );
 
+  const needsClientGeocode =
+    !selectedSalon && !searchOrigin && Boolean(searchLocation.trim());
   const geocode = useGeocodeLocation(
-    selectedSalon ? "" : searchLocation,
+    needsClientGeocode ? searchLocation : "",
   );
+
+  const originCenter = useMemo<LatLngLiteral | null>(() => {
+    if (searchOrigin) return searchOrigin;
+    if (needsClientGeocode && geocode.status === "ready") {
+      return geocode.center;
+    }
+    if (needsClientGeocode && geocode.status === "loading") {
+      return geocode.center;
+    }
+    return null;
+  }, [
+    searchOrigin,
+    needsClientGeocode,
+    geocode.status,
+    geocode.center,
+  ]);
+
+  const activeRadiusKm =
+    typeof radiusKm === "number" && Number.isFinite(radiusKm) && radiusKm > 0
+      ? radiusKm
+      : null;
 
   const camera = useMemo<CameraTarget>(() => {
     if (selectedSalon) {
@@ -82,31 +154,42 @@ function GoogleMapCanvas({
           lng: selectedSalon.longitude,
         },
         zoom: SELECTED_SALON_ZOOM,
+        bounds: null,
       };
     }
 
-    if (searchLocation.trim() && geocode.status === "ready") {
-      return { center: geocode.center, zoom: DEFAULT_MAP_ZOOM };
+    if (originCenter && activeRadiusKm != null) {
+      return {
+        center: originCenter,
+        zoom: zoomForSearchRadiusKm(activeRadiusKm),
+        bounds: boundsForSearchRadius(originCenter, activeRadiusKm),
+      };
     }
 
-    if (searchLocation.trim() && geocode.status === "loading") {
-      return { center: geocode.center, zoom: DEFAULT_MAP_ZOOM };
+    if (originCenter) {
+      return {
+        center: originCenter,
+        zoom: DEFAULT_MAP_ZOOM,
+        bounds: null,
+      };
     }
 
-    return { center: DEFAULT_MAP_CENTER, zoom: DEFAULT_MAP_ZOOM };
-  }, [selectedSalon, searchLocation, geocode.center, geocode.status]);
+    return { center: DEFAULT_MAP_CENTER, zoom: DEFAULT_MAP_ZOOM, bounds: null };
+  }, [selectedSalon, originCenter, activeRadiusKm]);
 
   const statusLabel =
     selectedSalon
       ? `${selectedSalon.name} · ${selectedSalon.suburb}`
-      : geocode.status === "loading"
+      : needsClientGeocode && geocode.status === "loading"
         ? "Finding location…"
-        : geocode.status === "error"
+        : needsClientGeocode && geocode.status === "error"
           ? "Showing Brisbane"
-          : geocode.formattedAddress ||
-            (searchLocation.trim()
-              ? searchLocation
-              : `${salons.length} salon${salons.length === 1 ? "" : "s"}`);
+          : activeRadiusKm != null && (searchLocation.trim() || originCenter)
+            ? `${searchLocation.trim() || "Search area"} · within ${activeRadiusKm} km`
+            : geocode.formattedAddress ||
+              (searchLocation.trim()
+                ? searchLocation
+                : `${salons.length} salon${salons.length === 1 ? "" : "s"}`);
 
   return (
     <div
@@ -127,6 +210,12 @@ function GoogleMapCanvas({
         style={{ width: "100%", height: "100%" }}
       >
         <MapCamera target={camera} focusToken={focusToken} />
+        {originCenter && activeRadiusKm != null && !selectedSalon ? (
+          <SearchRadiusCircle
+            center={originCenter}
+            radiusKm={activeRadiusKm}
+          />
+        ) : null}
 
         {salons.map((salon) => (
           <SalonMarker
@@ -192,7 +281,7 @@ function GoogleMapFallback({
 
 /**
  * Production-ready Google Map for marketplace search.
- * Reusable: pass mock (or future API) salons + selection handlers.
+ * Frames the active search origin + radius (not city-wide).
  */
 export function GoogleMap(props: GoogleMapProps) {
   const apiKey = getGoogleMapsBrowserKey();
