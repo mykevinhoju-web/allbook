@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 
+import {
+  getAdminSessionCookieName,
+  verifyAdminSession,
+} from "@/lib/admin-session";
 import { readCookieFromRequest } from "@/lib/cookies/read-request-cookie";
 import {
   getRoomSessionCookieName,
@@ -43,7 +47,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
-    let audience: "admin" | "staff" | "room" = "admin";
+    let audience: "admin" | "staff" | "room" | null = null;
     let staffId: string | null = null;
     let roomId: string | null = null;
 
@@ -63,13 +67,13 @@ export async function POST(request: Request) {
       }
     }
 
-    if (audience !== "room") {
-      const token = readCookieFromRequest(
+    if (!audience) {
+      const staffToken = readCookieFromRequest(
         request,
         getStaffSessionCookieName(),
       );
-      if (token) {
-        const payload = await verifyStaffSession(token);
+      if (staffToken) {
+        const payload = await verifyStaffSession(staffToken);
         if (
           payload &&
           payload.role === "staff" &&
@@ -79,6 +83,23 @@ export async function POST(request: Request) {
           staffId = payload.staffId;
         }
       }
+    }
+
+    if (!audience) {
+      const adminToken = readCookieFromRequest(
+        request,
+        getAdminSessionCookieName(),
+      );
+      if (adminToken) {
+        const admin = await verifyAdminSession(adminToken);
+        if (admin && admin.tenantId === tenant.id) {
+          audience = "admin";
+        }
+      }
+    }
+
+    if (!audience) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
     const supabase = createServiceSupabase();

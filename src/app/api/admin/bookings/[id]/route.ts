@@ -11,10 +11,10 @@ import {
 } from "@/features/booking/lib/validate-booking-update";
 import { computeBookingPriceCents } from "@/features/services/server/get-service-price";
 import {
-  createServiceSupabase,
-  requireTenantFromRequest,
-  TenantContextError,
-} from "@/lib/admin/tenant-context";
+  handleAdminRouteError,
+  requireTenantAndAdminActor,
+} from "@/lib/admin/require-admin-api";
+import { createServiceSupabase } from "@/lib/admin/tenant-context";
 import type { Database } from "@/types/database";
 import type { BookingStatus } from "@/types";
 
@@ -73,7 +73,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const tenant = await requireTenantFromRequest(request);
+    const { tenant } = await requireTenantAndAdminActor(request, {
+      allowStaff: true,
+    });
     const { id } = await params;
     const body = (await request.json()) as {
       staffId?: string;
@@ -207,10 +209,8 @@ export async function PATCH(
 
     return NextResponse.json({ booking: mapBooking(data!) });
   } catch (error) {
-    if (error instanceof TenantContextError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
-    }
-
+    const handled = handleAdminRouteError(error);
+    if (handled) return handled;
     throw error;
   }
 }
@@ -220,7 +220,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const tenant = await requireTenantFromRequest(request);
+    const { tenant } = await requireTenantAndAdminActor(request, {
+      allowStaff: true,
+    });
     const { id } = await params;
     const supabase = createServiceSupabase();
 
@@ -239,10 +241,8 @@ export async function DELETE(
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    if (error instanceof TenantContextError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
-    }
-
+    const handled = handleAdminRouteError(error);
+    if (handled) return handled;
     throw error;
   }
 }

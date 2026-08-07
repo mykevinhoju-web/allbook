@@ -30,10 +30,18 @@ export async function POST(request: Request) {
       data: { user: existingUser },
     } = await sessionClient.auth.getUser();
 
+    // Never trust client-supplied authUserId — bind ownership to the session only.
+    if (body.authUserId && existingUser && body.authUserId !== existingUser.id) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+    if (body.authUserId && !existingUser) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
     const service = createServiceSupabase();
     const result = await createSalonRegistration(service, {
       ...body,
-      authUserId: body.authUserId ?? existingUser?.id,
+      authUserId: existingUser?.id,
     });
 
     // Establish cookie session so /platform/salon resolves the new owner immediately.
