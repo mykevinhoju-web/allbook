@@ -45,10 +45,16 @@ export async function updateBusiness(
     return { business: null, error: "Salon not found." };
   }
 
+  const nextName = input.name.trim();
+  const nameChanged =
+    nextName.toLowerCase() !== existing.business.name.trim().toLowerCase();
+
   const { error } = await supabase
     .from("salons")
     .update({
-      name: input.name.trim(),
+      name: nextName,
+      // Owner renamed → Google Sync must not overwrite salons.name.
+      ...(nameChanged ? { owner_name_override: true } : {}),
       description: input.description.trim() || null,
       phone: input.phone.trim() || null,
       email: input.email.trim() || null,

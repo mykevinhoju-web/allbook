@@ -669,6 +669,10 @@ export type Database = {
           google_categories: string[];
           google_synced_at: string | null;
           google_photos: unknown;
+          owner_name_override: boolean;
+          google_business_status: string | null;
+          google_snapshot_hash: string | null;
+          permanently_closed: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -715,6 +719,10 @@ export type Database = {
           google_categories?: string[];
           google_synced_at?: string | null;
           google_photos?: unknown;
+          owner_name_override?: boolean;
+          google_business_status?: string | null;
+          google_snapshot_hash?: string | null;
+          permanently_closed?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -761,6 +769,10 @@ export type Database = {
           google_categories?: string[];
           google_synced_at?: string | null;
           google_photos?: unknown;
+          owner_name_override?: boolean;
+          google_business_status?: string | null;
+          google_snapshot_hash?: string | null;
+          permanently_closed?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -777,6 +789,113 @@ export type Database = {
             columns: ["suburb_id"];
             isOneToOne: false;
             referencedRelation: "suburbs";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      google_sync_runs: {
+        Row: {
+          id: string;
+          scope: "single" | "city" | "state" | "scheduled";
+          country: string | null;
+          state: string | null;
+          city: string | null;
+          salon_id: string | null;
+          status: "queued" | "running" | "completed" | "failed";
+          triggered_by: string | null;
+          totals: Json;
+          error: string | null;
+          created_at: string;
+          started_at: string | null;
+          finished_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          scope: "single" | "city" | "state" | "scheduled";
+          country?: string | null;
+          state?: string | null;
+          city?: string | null;
+          salon_id?: string | null;
+          status?: "queued" | "running" | "completed" | "failed";
+          triggered_by?: string | null;
+          totals?: Json;
+          error?: string | null;
+          created_at?: string;
+          started_at?: string | null;
+          finished_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          scope?: "single" | "city" | "state" | "scheduled";
+          country?: string | null;
+          state?: string | null;
+          city?: string | null;
+          salon_id?: string | null;
+          status?: "queued" | "running" | "completed" | "failed";
+          triggered_by?: string | null;
+          totals?: Json;
+          error?: string | null;
+          created_at?: string;
+          started_at?: string | null;
+          finished_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "google_sync_runs_salon_id_fkey";
+            columns: ["salon_id"];
+            isOneToOne: false;
+            referencedRelation: "salons";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      google_sync_run_items: {
+        Row: {
+          id: string;
+          run_id: string;
+          salon_id: string | null;
+          place_id: string | null;
+          business_name: string | null;
+          result: "updated" | "unchanged" | "failed" | "closed" | "missing";
+          changed_fields: string[];
+          error: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          run_id: string;
+          salon_id?: string | null;
+          place_id?: string | null;
+          business_name?: string | null;
+          result: "updated" | "unchanged" | "failed" | "closed" | "missing";
+          changed_fields?: string[];
+          error?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          run_id?: string;
+          salon_id?: string | null;
+          place_id?: string | null;
+          business_name?: string | null;
+          result?: "updated" | "unchanged" | "failed" | "closed" | "missing";
+          changed_fields?: string[];
+          error?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "google_sync_run_items_run_id_fkey";
+            columns: ["run_id"];
+            isOneToOne: false;
+            referencedRelation: "google_sync_runs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "google_sync_run_items_salon_id_fkey";
+            columns: ["salon_id"];
+            isOneToOne: false;
+            referencedRelation: "salons";
             referencedColumns: ["id"];
           },
         ];

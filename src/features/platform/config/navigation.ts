@@ -4,6 +4,7 @@ import {
   CreditCard,
   Download,
   LayoutDashboard,
+  RefreshCw,
   Settings,
   Users,
 } from "lucide-react";
@@ -20,6 +21,11 @@ export const platformNavItems: PlatformNavItem[] = [
     title: "Import",
     href: "/platform/import",
     icon: Download,
+  },
+  {
+    title: "Sync",
+    href: "/platform/sync",
+    icon: RefreshCw,
   },
   {
     title: "Signups",

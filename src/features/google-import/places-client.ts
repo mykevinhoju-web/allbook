@@ -15,6 +15,7 @@ export type PlacesApiPlace = {
   rating?: number;
   userRatingCount?: number;
   googleMapsUri?: string;
+  businessStatus?: string;
   displayName?: { text?: string; languageCode?: string };
   location?: { latitude?: number; longitude?: number };
   addressComponents?: Array<{
@@ -211,7 +212,18 @@ const DETAIL_FIELD_MASK = [
   "types",
   "primaryType",
   "googleMapsUri",
+  "businessStatus",
 ].join(",");
+
+export class PlaceDetailsError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
+    super(message);
+    this.name = "PlaceDetailsError";
+  }
+}
 
 /**
  * Place Details (New) — used when admin imports a selected place_id.
@@ -236,8 +248,9 @@ export async function getPlaceDetails(
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(
+    throw new PlaceDetailsError(
       `Place Details failed (${response.status}): ${text.slice(0, 400)}`,
+      response.status,
     );
   }
 
