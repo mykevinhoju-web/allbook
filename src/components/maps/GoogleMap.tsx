@@ -149,7 +149,17 @@ function GoogleMapCanvas({
       };
     }
 
-    // Prefer the result cluster — not the full distance filter (20 km ≈ Brisbane).
+    // Keep the camera on the searched suburb while paging.
+    // Page 2+ can list farther pins still inside the radius — don't jump the map there.
+    if (originCenter) {
+      return {
+        center: originCenter,
+        zoom: SUBURB_SEARCH_ZOOM,
+        bounds: null,
+      };
+    }
+
+    // No search origin (browse-all): fit whatever markers are on screen.
     if (markerBounds) {
       const center = {
         lat: (markerBounds.north + markerBounds.south) / 2,
@@ -161,14 +171,6 @@ function GoogleMapCanvas({
         bounds: markerBounds,
         maxZoom: 14,
         minZoom: 12,
-      };
-    }
-
-    if (originCenter) {
-      return {
-        center: originCenter,
-        zoom: SUBURB_SEARCH_ZOOM,
-        bounds: null,
       };
     }
 
@@ -272,8 +274,8 @@ function GoogleMapFallback({
 }
 
 /**
- * Marketplace search map — zooms to result markers (suburb cluster),
- * not the full distance-filter circle.
+ * Marketplace search map — stays on the search origin while paging.
+ * Selecting a salon still zooms to that pin.
  */
 export function GoogleMap(props: GoogleMapProps) {
   const apiKey = getGoogleMapsBrowserKey();

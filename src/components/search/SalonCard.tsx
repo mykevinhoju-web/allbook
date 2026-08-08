@@ -113,6 +113,13 @@ export function SalonCard({
               <span className="inline-flex items-center gap-1">
                 <MapPin className="size-3.5" />
                 {salon.suburb}
+                {typeof salon.distanceKm === "number" ? (
+                  <span className="text-neutral-400">
+                    · {salon.distanceKm < 10
+                      ? `${salon.distanceKm.toFixed(1)} km`
+                      : `${Math.round(salon.distanceKm)} km`}
+                  </span>
+                ) : null}
               </span>
               {salon.verified ? (
                 <span className="rounded-full bg-sky-50 px-1.5 py-0.5 text-[11px] font-semibold text-sky-700">

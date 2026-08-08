@@ -21,8 +21,8 @@ export type LatLngBoundsLiteral = {
   west: number;
 };
 
-/** Suburb-level zoom — closer than city-wide, without framing a large radius. */
-export const SUBURB_SEARCH_ZOOM = 13;
+/** Suburb-level zoom — anchors the map on the search location, not page-2 outliers. */
+export const SUBURB_SEARCH_ZOOM = 14;
 
 /**
  * Bounds around result markers so the map zooms to the cluster,

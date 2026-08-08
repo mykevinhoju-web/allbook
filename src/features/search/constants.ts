@@ -3,7 +3,8 @@ import { BRISBANE_SUBURB_NAMES } from "./brisbane-suburbs";
 /** Allowed distance filters (km). */
 export const SEARCH_DISTANCE_KM = [5, 10, 20, 50] as const;
 export type SearchDistanceKm = (typeof SEARCH_DISTANCE_KM)[number];
-export const DEFAULT_SEARCH_DISTANCE_KM: SearchDistanceKm = 20;
+/** Default search radius — 20 km around Brisbane suburbs reads as "whole city". */
+export const DEFAULT_SEARCH_DISTANCE_KM: SearchDistanceKm = 10;
 
 export const SEARCH_SORT_OPTIONS = [
   { value: "distance", label: "Distance" },
