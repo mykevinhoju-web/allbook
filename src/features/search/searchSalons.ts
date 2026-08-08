@@ -102,7 +102,7 @@ export async function searchSalons(
     }
   }
 
-  let result = await runLocalSearch(supabase, filters, origin, {
+  const result = await runLocalSearch(supabase, filters, origin, {
     page,
     pageSize,
     offset,
