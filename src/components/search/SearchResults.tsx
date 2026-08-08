@@ -255,6 +255,12 @@ export function SearchResults({
         >
           <div className="sticky top-0 h-full w-full min-h-[calc(100svh-8rem)]">
             <GoogleMap
+              key={[
+                query.location,
+                query.lat ?? "",
+                query.lng ?? "",
+                query.radiusKm,
+              ].join("|")}
               salons={status === "ready" ? salons : []}
               selectedId={selectedId}
               focusToken={focusToken}

@@ -93,6 +93,8 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
   );
   const [retryKey, setRetryKey] = useState(0);
   const skipNextFetch = useRef(Boolean(initialResult && !initialResult.error));
+  /** Ignore stale responses when the user searches again quickly. */
+  const fetchGeneration = useRef(0);
 
   const pushState = useCallback(
     (next: {
@@ -226,10 +228,16 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
 
     let cancelled = false;
     const controller = new AbortController();
+    const generation = ++fetchGeneration.current;
 
     async function run() {
+      // Drop previous pins immediately so the map never shows a mixed set.
       setStatus("loading");
       setError(null);
+      setSalons([]);
+      setTotal(0);
+      setHasMore(false);
+      setOrigin(null);
 
       const params = new URLSearchParams();
       if (effectiveQuery.location) {
@@ -257,7 +265,7 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
         });
         const data = (await response.json()) as SearchApiResponse;
 
-        if (cancelled) return;
+        if (cancelled || generation !== fetchGeneration.current) return;
 
         if (!response.ok || data.error) {
           setSalons([]);
@@ -278,6 +286,7 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
       } catch (err) {
         if (
           cancelled ||
+          generation !== fetchGeneration.current ||
           (err instanceof DOMException && err.name === "AbortError")
         ) {
           return;

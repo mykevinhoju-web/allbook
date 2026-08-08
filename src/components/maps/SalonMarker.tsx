@@ -44,6 +44,13 @@ export function SalonMarker({
     };
   }, [marker, selected, bounceToken]);
 
+  // Belt-and-braces: detach from the map if this pin unmounts mid-search.
+  useEffect(() => {
+    return () => {
+      marker?.setMap(null);
+    };
+  }, [marker]);
+
   return (
     <Marker
       ref={markerRef}
