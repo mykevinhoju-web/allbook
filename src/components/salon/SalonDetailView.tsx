@@ -36,8 +36,9 @@ export function SalonDetailView({
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
 
-  const resolvedBookHref =
-    bookHref ?? `/${salon.service.toLowerCase()}/${salon.slug}/book`;
+  const resolvedBookHref = salon.bookingEnabled
+    ? (bookHref ?? `/${salon.service.toLowerCase()}/${salon.slug}/book`)
+    : undefined;
 
   async function handleShare() {
     const url = typeof window !== "undefined" ? window.location.href : "";
@@ -92,10 +93,27 @@ export function SalonDetailView({
 
         <div className="relative hidden lg:block">
           <div className="sticky top-6">
-            <StickyBookingCard
-              salon={salon}
-              bookHref={resolvedBookHref}
-            />
+            {resolvedBookHref ? (
+              <StickyBookingCard
+                salon={salon}
+                bookHref={resolvedBookHref}
+              />
+            ) : (
+              <div className="rounded-3xl border border-neutral-200/80 bg-white p-5 text-sm text-neutral-600 shadow-[0_16px_48px_rgba(17,17,17,0.06)] sm:p-6">
+                <p className="font-semibold text-neutral-950">Booking</p>
+                <p className="mt-2 text-neutral-500">
+                  Online booking is not enabled for this business yet.
+                </p>
+                {salon.phone ? (
+                  <a
+                    href={`tel:${salon.phone}`}
+                    className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-full border border-neutral-200 text-sm font-semibold text-neutral-900"
+                  >
+                    Call {salon.phone}
+                  </a>
+                ) : null}
+              </div>
+            )}
             {shareMessage ? (
               <p className="mt-3 rounded-2xl bg-white px-4 py-3 text-sm text-neutral-600 shadow-sm">
                 {shareMessage}
@@ -105,14 +123,16 @@ export function SalonDetailView({
         </div>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200/80 bg-white/95 p-3 backdrop-blur-md lg:hidden">
-        <Link
-          href={resolvedBookHref}
-          className="inline-flex h-12 w-full items-center justify-center rounded-full bg-neutral-950 text-sm font-semibold text-white"
-        >
-          Book Now
-        </Link>
-      </div>
+      {resolvedBookHref ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200/80 bg-white/95 p-3 backdrop-blur-md lg:hidden">
+          <Link
+            href={resolvedBookHref}
+            className="inline-flex h-12 w-full items-center justify-center rounded-full bg-neutral-950 text-sm font-semibold text-white"
+          >
+            Book Now
+          </Link>
+        </div>
+      ) : null}
     </div>
   );
 }

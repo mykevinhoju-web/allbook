@@ -21,7 +21,10 @@ export function getPlatformBreadcrumbs(
 
   const pageSegment = segments[1];
   const labelMap: Record<string, string> = {
+    businesses: "Businesses",
     import: "Google Import",
+    review: "Review",
+    sync: "Sync",
     tenants: "Signups",
     subscription: "Subscription",
     users: "Users",

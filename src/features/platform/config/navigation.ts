@@ -4,6 +4,7 @@ import {
   Download,
   LayoutDashboard,
   RefreshCw,
+  Store,
 } from "lucide-react";
 
 import type { PlatformNavItem } from "../types";
@@ -14,6 +15,11 @@ export const platformNavItems: PlatformNavItem[] = [
     title: "Dashboard",
     href: "/platform",
     icon: LayoutDashboard,
+  },
+  {
+    title: "Businesses",
+    href: "/platform/businesses",
+    icon: Store,
   },
   {
     title: "Import",

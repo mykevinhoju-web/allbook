@@ -43,12 +43,15 @@ export function mapSalonDetail(
   gallery: SalonGalleryImage[] = [],
 ): SalonDetail {
   const base = mapSalonRow(row);
+  const bookingEnabled =
+    (row as SalonRow & { booking_enabled?: boolean }).booking_enabled === true;
   return {
     ...base,
     amenities: mapAmenities(row.amenities),
     serviceTags: (row.service_tags ?? []).filter(Boolean),
     openingHours: parseOpeningHours(row.opening_hours),
     gallery,
+    bookingEnabled,
   };
 }
 

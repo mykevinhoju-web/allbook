@@ -33,6 +33,13 @@ export async function getBookingSalonContext(
   if (salonError) return { context: null, error: salonError.message };
   if (!salon) return { context: null, error: null };
 
+  if (salon.booking_enabled !== true) {
+    return {
+      context: null,
+      error: "Online booking is not enabled for this business.",
+    };
+  }
+
   const salonId = salon.id;
 
   const [servicesRes, staffRes, linksRes] = await Promise.all([

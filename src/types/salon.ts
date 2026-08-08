@@ -151,6 +151,8 @@ export type SalonDetail = Salon & {
   serviceTags: string[];
   openingHours: OpeningHours;
   gallery: SalonGalleryImage[];
+  /** Platform-admin flag — public Book Now only when true */
+  bookingEnabled: boolean;
 };
 
 export type GetSalonsParams = {
