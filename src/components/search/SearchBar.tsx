@@ -14,6 +14,7 @@ import { MARKETPLACE_CATEGORIES } from "@/features/category";
 import { useDeviceLocation } from "@/hooks/useDeviceLocation";
 import {
   DEFAULT_SEARCH_PLACEHOLDERS,
+  SEARCH_LOCATION_EMPTY_MESSAGE,
   filterLocationSuggestions,
 } from "@/lib/search";
 import { cn } from "@/lib/utils";
@@ -70,7 +71,13 @@ export function SearchBar({
       onSubmit={(e) => {
         e.preventDefault();
         setSuggestionsOpen(false);
-        onLocationChange(draftLocation.trim());
+        const next = draftLocation.trim();
+        if (!next) {
+          setLocalError(SEARCH_LOCATION_EMPTY_MESSAGE);
+          return;
+        }
+        setLocalError(null);
+        onLocationChange(next);
         onSearch();
       }}
     >

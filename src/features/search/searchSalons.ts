@@ -144,20 +144,11 @@ export async function searchSalons(
         radiusKm: filters.radiusKm,
       };
 
-      // Empty first page: await a short fill so the user sees real results.
-      // Resume / top-up runs prefer background so search stays responsive.
-      if (page === 1 && result.salons.length === 0) {
-        await fillSearchAreaFromGoogle(service, fillInput);
-        result = await runLocalSearch(supabase, filters, origin, {
-          page,
-          pageSize,
-          offset,
-        });
-      } else {
-        after(() => {
-          void fillSearchAreaFromGoogle(service, fillInput);
-        });
-      }
+      // Never block the search HTTP response on Places import — that freezes the UI
+      // on "Searching…" for empty/stale areas (and after clearing Near me, etc.).
+      after(() => {
+        void fillSearchAreaFromGoogle(service, fillInput);
+      });
     }
   }
 

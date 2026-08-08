@@ -14,7 +14,10 @@ import {
 } from "@/features/search/constants";
 import type { SalonSearchOrigin } from "@/features/search/types";
 import { parseSearchParams, type SearchQuery } from "@/lib/search";
-import { saveSearchLocation } from "@/lib/search-location-preference";
+import {
+  clearSavedSearchLocation,
+  saveSearchLocation,
+} from "@/lib/search-location-preference";
 import type { Salon } from "@/types/salon";
 
 export type SalonSearchStatus = "loading" | "ready" | "error";
@@ -32,6 +35,9 @@ export type SalonSearchUiFilters = {
   verifiedOnly: boolean;
   openNow: boolean;
 };
+
+const SEARCH_FETCH_TIMEOUT_MS = 20_000;
+const EMPTY_IMPORT_RETRY_MS = 2_500;
 
 /**
  * Category search state: URL ↔ filters ↔ API ↔ results.
@@ -95,6 +101,7 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
   const skipNextFetch = useRef(Boolean(initialResult && !initialResult.error));
   /** Ignore stale responses when the user searches again quickly. */
   const fetchGeneration = useRef(0);
+  const emptyRetryDoneFor = useRef<string | null>(null);
 
   const pushState = useCallback(
     (next: {
@@ -135,7 +142,9 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
           ? next.lng
           : effectiveQuery.lng;
 
-      if (location) params.set("location", location.toLowerCase());
+      if (location.trim()) {
+        params.set("location", location.trim().toLowerCase());
+      }
       if (lat != null && lng != null) {
         params.set("lat", String(lat));
         params.set("lng", String(lng));
@@ -167,6 +176,7 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
         | { location: string; lat?: number | null; lng?: number | null },
     ) => {
       if (typeof value === "string") {
+        clearSavedSearchLocation();
         pushState({ location: value, clearCoords: true, page: 1 });
         return;
       }
@@ -226,12 +236,19 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
       return;
     }
 
-    let cancelled = false;
     const controller = new AbortController();
     const generation = ++fetchGeneration.current;
+    let settled = false;
+    let timedOut = false;
+
+    const timeoutId = window.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, SEARCH_FETCH_TIMEOUT_MS);
+
+    const isCurrent = () => generation === fetchGeneration.current;
 
     async function run() {
-      // Drop previous pins immediately so the map never shows a mixed set.
       setStatus("loading");
       setError(null);
       setSalons([]);
@@ -265,7 +282,8 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
         });
         const data = (await response.json()) as SearchApiResponse;
 
-        if (cancelled || generation !== fetchGeneration.current) return;
+        if (!isCurrent()) return;
+        settled = true;
 
         if (!response.ok || data.error) {
           setSalons([]);
@@ -284,25 +302,45 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
         setOrigin(data.origin ?? null);
         setStatus("ready");
       } catch (err) {
-        if (
-          cancelled ||
-          generation !== fetchGeneration.current ||
-          (err instanceof DOMException && err.name === "AbortError")
-        ) {
+        if (!isCurrent()) return;
+        settled = true;
+
+        const aborted =
+          (err instanceof DOMException && err.name === "AbortError") ||
+          (err instanceof Error && err.name === "AbortError");
+
+        if (aborted) {
+          if (timedOut) {
+            setSalons([]);
+            setTotal(0);
+            setHasMore(false);
+            setOrigin(null);
+            setError("Search timed out. Please try again.");
+            setStatus("error");
+          }
+          // Cleanup abort (superseded by a newer search) — leave state to the new run.
           return;
         }
+
         setSalons([]);
         setTotal(0);
         setHasMore(false);
         setOrigin(null);
         setError(err instanceof Error ? err.message : "Failed to search salons");
         setStatus("error");
+      } finally {
+        window.clearTimeout(timeoutId);
+        // Safety: if this generation somehow exits without settling, don't stick on loading.
+        if (isCurrent() && !settled && timedOut) {
+          setStatus("error");
+          setError("Search timed out. Please try again.");
+        }
       }
     }
 
     void run();
     return () => {
-      cancelled = true;
+      window.clearTimeout(timeoutId);
       controller.abort();
     };
   }, [
@@ -318,6 +356,44 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
     filters.openNow,
     page,
     retryKey,
+  ]);
+
+  // Background Google fill may populate an empty first page shortly after search.
+  useEffect(() => {
+    if (status !== "ready") return;
+    if (salons.length > 0) return;
+    if (page !== 1) return;
+
+    const hasOrigin =
+      (effectiveQuery.lat != null && effectiveQuery.lng != null) ||
+      Boolean(effectiveQuery.location.trim());
+    if (!hasOrigin) return;
+
+    const key = [
+      category.service,
+      effectiveQuery.location,
+      effectiveQuery.lat ?? "",
+      effectiveQuery.lng ?? "",
+      effectiveQuery.radiusKm,
+    ].join("|");
+
+    if (emptyRetryDoneFor.current === key) return;
+    emptyRetryDoneFor.current = key;
+
+    const timer = window.setTimeout(() => {
+      setRetryKey((n) => n + 1);
+    }, EMPTY_IMPORT_RETRY_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    status,
+    salons.length,
+    page,
+    category.service,
+    effectiveQuery.location,
+    effectiveQuery.lat,
+    effectiveQuery.lng,
+    effectiveQuery.radiusKm,
   ]);
 
   return {

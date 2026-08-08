@@ -16,6 +16,7 @@ import {
 import {
   readSavedSearchLocation,
   saveSearchLocation,
+  clearSavedSearchLocation,
 } from "@/lib/search-location-preference";
 
 import { useDeviceLocation } from "./useDeviceLocation";
@@ -75,6 +76,9 @@ export function useSearch(options: UseSearchOptions = {}) {
     // Typing a suburb manually invalidates precise GPS coords.
     setLat(null);
     setLng(null);
+    if (!value.trim()) {
+      clearSavedSearchLocation();
+    }
   }, []);
 
   const selectSuggestion = useCallback((suburb: string) => {
@@ -97,7 +101,7 @@ export function useSearch(options: UseSearchOptions = {}) {
     setSuggestionsOpen(false);
     setError(null);
     return true;
-  }, [deviceLocation]);
+  }, [deviceLocation.requestLocation]);
 
   const submit = useCallback(() => {
     if (!isSearchLocationValid(location)) {
