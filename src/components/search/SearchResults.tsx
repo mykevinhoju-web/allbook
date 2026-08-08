@@ -224,7 +224,15 @@ export function SearchResults({
                 </button>
               </div>
             ) : salons.length === 0 ? (
-              <EmptyState onReset={clearFilters} />
+              <EmptyState
+                discovering={Boolean(
+                  query.location.trim() ||
+                    (query.lat != null && query.lng != null),
+                )}
+                locationLabel={locationLabel}
+                onRetry={retry}
+                onReset={clearFilters}
+              />
             ) : (
               <>
                 <SalonList
