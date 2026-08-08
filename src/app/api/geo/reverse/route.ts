@@ -53,10 +53,11 @@ export async function GET(request: Request) {
     );
   }
 
+  // Google address types only — "suburb" is not valid and returns HTTP 400.
   const params = new URLSearchParams({
     latlng: `${lat},${lng}`,
     key: apiKey,
-    result_type: "suburb|locality|sublocality|neighborhood",
+    result_type: "locality|sublocality|neighborhood|postal_town",
   });
 
   const response = await fetch(
@@ -64,15 +65,8 @@ export async function GET(request: Request) {
     { next: { revalidate: 60 * 60 * 24 } },
   );
 
-  if (!response.ok) {
-    return NextResponse.json(
-      { error: `Reverse geocode failed (${response.status})` },
-      { status: 502 },
-    );
-  }
-
-  const payload = (await response.json()) as {
-    status: string;
+  const payload = (await response.json().catch(() => null)) as {
+    status?: string;
     results?: Array<{
       formatted_address?: string;
       address_components?: Array<{
@@ -82,13 +76,24 @@ export async function GET(request: Request) {
       }>;
     }>;
     error_message?: string;
-  };
+  } | null;
 
-  if (payload.status !== "OK" || !payload.results?.[0]) {
+  if (!response.ok) {
     return NextResponse.json(
       {
         error:
-          payload.error_message ||
+          payload?.error_message ||
+          `Reverse geocode failed (${response.status})`,
+      },
+      { status: 502 },
+    );
+  }
+
+  if (!payload || payload.status !== "OK" || !payload.results?.[0]) {
+    return NextResponse.json(
+      {
+        error:
+          payload?.error_message ||
           "Could not resolve a suburb for this location",
       },
       { status: 404 },
