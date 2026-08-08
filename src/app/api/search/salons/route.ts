@@ -9,6 +9,8 @@ export async function GET(request: Request) {
   const supabase = await createClient();
   const result = await searchSalons(supabase, {
     location: searchParams.get("location") ?? undefined,
+    latitude: searchParams.get("lat") ?? undefined,
+    longitude: searchParams.get("lng") ?? undefined,
     service: searchParams.get("service") ?? undefined,
     suburb: searchParams.get("suburb") ?? undefined,
     radiusKm: searchParams.get("radius") ?? undefined,

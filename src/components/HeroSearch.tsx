@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, Search, Sparkles } from "lucide-react";
+import { LocateFixed, MapPin, Search, Sparkles } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import {
@@ -43,6 +43,8 @@ export function HeroSearch({
     suggestionsOpen,
     setSuggestionsOpen,
     selectSuggestion,
+    useNearMe,
+    isLocating,
     submit,
   } = useSearch({
     initial: { location: initialLocation, service: initialCategory },
@@ -52,10 +54,13 @@ export function HeroSearch({
   const isCompact = variant === "compact";
 
   useEffect(() => {
+    // Don't wipe a restored "Near me" / saved location with an empty prop.
+    if (!initialLocation.trim()) return;
     setLocation(initialLocation);
   }, [initialLocation, setLocation]);
 
   useEffect(() => {
+    if (!initialCategory.trim()) return;
     setService(initialCategory);
   }, [initialCategory, setService]);
 
@@ -101,9 +106,9 @@ export function HeroSearch({
                 "transition-colors duration-300 hover:bg-black/[0.03] sm:rounded-l-[1.9rem]",
             )}
           >
-            <label
+            <div
               className={cn(
-                "flex h-full items-center gap-3",
+                "flex h-full items-center gap-2",
                 isCompact ? "px-2.5 py-2" : "px-5 py-4 sm:px-6 sm:py-5",
               )}
             >
@@ -113,7 +118,7 @@ export function HeroSearch({
                   isCompact ? "size-4 text-neutral-500" : "size-5 text-neutral-800",
                 )}
               />
-              <div className="min-w-0 flex-1">
+              <label className="min-w-0 flex-1">
                 <span
                   className={cn(
                     "block font-semibold uppercase tracking-[0.14em] text-neutral-400",
@@ -151,8 +156,28 @@ export function HeroSearch({
                   )}
                   aria-label="Location"
                 />
-              </div>
-            </label>
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  void useNearMe();
+                }}
+                disabled={isLocating}
+                className={cn(
+                  "inline-flex shrink-0 items-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-[11px] font-semibold text-neutral-700 transition hover:border-neutral-300 hover:bg-white disabled:opacity-60",
+                  isCompact ? "self-center" : "self-end mb-0.5",
+                )}
+                aria-label="Use my current location"
+              >
+                <LocateFixed
+                  className={cn(
+                    "size-3.5",
+                    isLocating && "animate-pulse text-[#6B5CF6]",
+                  )}
+                />
+                {isLocating ? "Locating…" : "Near me"}
+              </button>
+            </div>
 
             {suggestionsOpen && suggestions.length > 0 ? (
               <ul

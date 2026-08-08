@@ -71,6 +71,8 @@ export default async function MarketplaceCategoryPage({
   const supabase = await createClient();
   const initialResult = await searchSalons(supabase, {
     location: first(sp.location),
+    latitude: first(sp.lat),
+    longitude: first(sp.lng),
     service: category.service,
     suburb: first(sp.suburb),
     radiusKm: first(sp.radius),

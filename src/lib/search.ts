@@ -36,6 +36,9 @@ export type SearchQuery = {
   service: string;
   radiusKm: SearchDistanceKm;
   sort: SearchSort;
+  /** Precise coordinates from "Near me" / saved preference. */
+  lat: number | null;
+  lng: number | null;
 };
 
 export const SEARCH_LOCATION_EMPTY_MESSAGE = "Please select a suburb";
@@ -47,12 +50,23 @@ export const DEFAULT_SEARCH_PLACEHOLDERS = {
   category: "Category",
 } as const;
 
+function parseCoord(
+  value: number | string | null | undefined,
+  maxAbs: number,
+): number | null {
+  const n = Number(value);
+  if (!Number.isFinite(n) || Math.abs(n) > maxAbs) return null;
+  return n;
+}
+
 export function normalizeSearchQuery(
   query: {
     location?: string | null;
     service?: string | null;
     radiusKm?: SearchDistanceKm | number | string | null;
     sort?: SearchSort | string | null;
+    lat?: number | string | null;
+    lng?: number | string | null;
   } = {},
 ): SearchQuery {
   const radiusRaw = Number(query.radiusKm);
@@ -61,12 +75,17 @@ export function normalizeSearchQuery(
     : DEFAULT_SEARCH_DISTANCE_KM;
   const sortRaw = String(query.sort ?? DEFAULT_SEARCH_SORT);
   const sort = isSearchSort(sortRaw) ? sortRaw : DEFAULT_SEARCH_SORT;
+  const lat = parseCoord(query.lat, 90);
+  const lng = parseCoord(query.lng, 180);
+  const hasCoords = lat != null && lng != null;
 
   return {
     location: (query.location ?? "").trim(),
     service: (query.service ?? "").trim(),
     radiusKm,
     sort,
+    lat: hasCoords ? lat : null,
+    lng: hasCoords ? lng : null,
   };
 }
 
@@ -103,6 +122,10 @@ function toQueryString(
   if (query.location) {
     params.set("location", toLocationQueryParam(query.location));
   }
+  if (query.lat != null && query.lng != null) {
+    params.set("lat", String(query.lat));
+    params.set("lng", String(query.lng));
+  }
   if (!options.omitService && query.service) {
     params.set("service", query.service);
   }
@@ -136,6 +159,8 @@ export function parseSearchParams(
     service: params.get("service") ?? defaults.service ?? "",
     radiusKm: params.get("radius") ?? defaults.radiusKm ?? undefined,
     sort: params.get("sort") ?? defaults.sort ?? undefined,
+    lat: params.get("lat") ?? defaults.lat ?? undefined,
+    lng: params.get("lng") ?? defaults.lng ?? undefined,
   });
 }
 

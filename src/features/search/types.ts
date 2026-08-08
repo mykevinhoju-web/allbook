@@ -12,6 +12,9 @@ export type SalonSearchFilters = {
   service: string;
   /** Exact suburb filter (indexed text match via RPC p_suburb) */
   suburb: string;
+  /** Precise device / saved coordinates — skip string geocode when set. */
+  latitude: number | null;
+  longitude: number | null;
   radiusKm: SearchDistanceKm;
   sort: SearchSort;
   minRating: number | null;
@@ -32,6 +35,8 @@ export type SalonSearchFiltersInput = {
   location?: string | null;
   service?: string | null;
   suburb?: string | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
   radiusKm?: SearchDistanceKm | number | string | null;
   sort?: SearchSort | string | null;
   minRating?: number | string | null;
@@ -66,10 +71,20 @@ export function normalizeSalonSearchFilters(
       ? Math.min(5, minRatingRaw)
       : null;
 
+  const latitudeRaw = Number(input.latitude);
+  const longitudeRaw = Number(input.longitude);
+  const hasCoords =
+    Number.isFinite(latitudeRaw) &&
+    Number.isFinite(longitudeRaw) &&
+    Math.abs(latitudeRaw) <= 90 &&
+    Math.abs(longitudeRaw) <= 180;
+
   return {
     location: (input.location ?? "").trim(),
     service: (input.service ?? "").trim(),
     suburb: (input.suburb ?? "").trim(),
+    latitude: hasCoords ? latitudeRaw : null,
+    longitude: hasCoords ? longitudeRaw : null,
     radiusKm,
     sort,
     minRating,

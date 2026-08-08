@@ -69,6 +69,18 @@ export async function searchSalons(
 
   let origin: SalonSearchOrigin | null = options.originOverride ?? null;
 
+  if (
+    !origin &&
+    filters.latitude != null &&
+    filters.longitude != null
+  ) {
+    origin = {
+      lat: filters.latitude,
+      lng: filters.longitude,
+      formattedAddress: filters.location || undefined,
+    };
+  }
+
   if (!origin && filters.location) {
     try {
       const geocoded = await geocodeSearchLocation(filters.location);

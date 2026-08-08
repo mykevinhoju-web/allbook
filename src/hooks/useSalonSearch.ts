@@ -7,9 +7,14 @@ import {
   type MarketplaceCategory,
 } from "@/features/category";
 import type { SearchSalonsResult } from "@/features/search";
-import type { SearchDistanceKm, SearchSort } from "@/features/search/constants";
+import {
+  DEFAULT_SEARCH_DISTANCE_KM,
+  type SearchDistanceKm,
+  type SearchSort,
+} from "@/features/search/constants";
 import type { SalonSearchOrigin } from "@/features/search/types";
 import { parseSearchParams, type SearchQuery } from "@/lib/search";
+import { saveSearchLocation } from "@/lib/search-location-preference";
 import type { Salon } from "@/types/salon";
 
 export type SalonSearchStatus = "loading" | "ready" | "error";
@@ -92,6 +97,9 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
   const pushState = useCallback(
     (next: {
       location?: string;
+      lat?: number | null;
+      lng?: number | null;
+      clearCoords?: boolean;
       suburb?: string;
       minRating?: number | null;
       verifiedOnly?: boolean;
@@ -114,15 +122,31 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
       const radiusKm = next.radiusKm ?? effectiveQuery.radiusKm;
       const sort = next.sort ?? effectiveQuery.sort;
       const nextPage = next.page ?? 1;
+      const lat = next.clearCoords
+        ? null
+        : next.lat !== undefined
+          ? next.lat
+          : effectiveQuery.lat;
+      const lng = next.clearCoords
+        ? null
+        : next.lng !== undefined
+          ? next.lng
+          : effectiveQuery.lng;
 
       if (location) params.set("location", location.toLowerCase());
+      if (lat != null && lng != null) {
+        params.set("lat", String(lat));
+        params.set("lng", String(lng));
+      }
       if (suburb) params.set("suburb", suburb);
       if (minRating != null && minRating > 0) {
         params.set("rating", String(minRating));
       }
       if (verifiedOnly) params.set("verified", "1");
       if (openNow) params.set("open", "1");
-      if (radiusKm !== 20) params.set("radius", String(radiusKm));
+      if (radiusKm !== DEFAULT_SEARCH_DISTANCE_KM) {
+        params.set("radius", String(radiusKm));
+      }
       if (sort !== "distance") params.set("sort", sort);
       if (nextPage > 1) params.set("page", String(nextPage));
 
@@ -135,7 +159,35 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
   );
 
   const setLocation = useCallback(
-    (location: string) => pushState({ location, page: 1 }),
+    (
+      value:
+        | string
+        | { location: string; lat?: number | null; lng?: number | null },
+    ) => {
+      if (typeof value === "string") {
+        pushState({ location: value, clearCoords: true, page: 1 });
+        return;
+      }
+      if (value.lat != null && value.lng != null) {
+        saveSearchLocation({
+          label: value.location,
+          lat: value.lat,
+          lng: value.lng,
+        });
+        pushState({
+          location: value.location,
+          lat: value.lat,
+          lng: value.lng,
+          page: 1,
+        });
+        return;
+      }
+      pushState({
+        location: value.location,
+        clearCoords: true,
+        page: 1,
+      });
+    },
     [pushState],
   );
 
@@ -182,6 +234,10 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
       const params = new URLSearchParams();
       if (effectiveQuery.location) {
         params.set("location", effectiveQuery.location);
+      }
+      if (effectiveQuery.lat != null && effectiveQuery.lng != null) {
+        params.set("lat", String(effectiveQuery.lat));
+        params.set("lng", String(effectiveQuery.lng));
       }
       params.set("service", category.service);
       params.set("radius", String(effectiveQuery.radiusKm));
@@ -243,6 +299,8 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
   }, [
     category.service,
     effectiveQuery.location,
+    effectiveQuery.lat,
+    effectiveQuery.lng,
     effectiveQuery.radiusKm,
     effectiveQuery.sort,
     filters.suburb,

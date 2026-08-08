@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, Search } from "lucide-react";
+import { LocateFixed, MapPin, Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -11,17 +11,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { MARKETPLACE_CATEGORIES } from "@/features/category";
+import { useDeviceLocation } from "@/hooks/useDeviceLocation";
 import {
   DEFAULT_SEARCH_PLACEHOLDERS,
   filterLocationSuggestions,
 } from "@/lib/search";
 import { cn } from "@/lib/utils";
 
+export type SearchLocationValue = {
+  location: string;
+  lat?: number | null;
+  lng?: number | null;
+};
+
 type SearchBarProps = {
   location: string;
   /** Category service label, e.g. "Hair" */
   category: string;
-  onLocationChange: (location: string) => void;
+  onLocationChange: (value: string | SearchLocationValue) => void;
   onCategoryChange: (category: string) => void;
   onSearch: () => void;
   /** Lock category when on /hair, /nails, … */
@@ -44,7 +51,9 @@ export function SearchBar({
 }: SearchBarProps) {
   const [draftLocation, setDraftLocation] = useState(location);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
   const blurTimer = useRef<number | null>(null);
+  const deviceLocation = useDeviceLocation();
 
   useEffect(() => {
     setDraftLocation(location);
@@ -75,6 +84,7 @@ export function SearchBar({
           onChange={(e) => {
             setDraftLocation(e.target.value);
             setSuggestionsOpen(true);
+            setLocalError(null);
           }}
           onFocus={() => {
             if (blurTimer.current) window.clearTimeout(blurTimer.current);
@@ -86,9 +96,40 @@ export function SearchBar({
               150,
             );
           }}
-          className="h-11 w-full rounded-xl border-0 bg-transparent pl-9 pr-3 text-[14px] text-neutral-950 outline-none placeholder:text-neutral-400"
+          className="h-11 w-full rounded-xl border-0 bg-transparent pl-9 pr-[6.5rem] text-[14px] text-neutral-950 outline-none placeholder:text-neutral-400"
           aria-label="Location"
         />
+        <button
+          type="button"
+          onClick={() => {
+            void (async () => {
+              const result = await deviceLocation.requestLocation();
+              if (!result.ok) {
+                setLocalError(result.error);
+                return;
+              }
+              setDraftLocation(result.location.label);
+              setSuggestionsOpen(false);
+              setLocalError(null);
+              onLocationChange({
+                location: result.location.label,
+                lat: result.location.lat,
+                lng: result.location.lng,
+              });
+            })();
+          }}
+          disabled={deviceLocation.isLocating}
+          className="absolute right-2 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2 py-1 text-[11px] font-semibold text-neutral-700 transition hover:bg-white disabled:opacity-60"
+          aria-label="Use my current location"
+        >
+          <LocateFixed
+            className={cn(
+              "size-3.5",
+              deviceLocation.isLocating && "animate-pulse text-[#6B5CF6]",
+            )}
+          />
+          {deviceLocation.isLocating ? "…" : "Near me"}
+        </button>
         {suggestionsOpen && suggestions.length > 0 ? (
           <ul className="absolute left-0 right-0 top-[calc(100%+4px)] z-[60] overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg">
             {suggestions.map((suburb) => (
@@ -108,6 +149,11 @@ export function SearchBar({
               </li>
             ))}
           </ul>
+        ) : null}
+        {localError ? (
+          <p className="absolute left-0 top-[calc(100%+4px)] z-[61] rounded-lg bg-white px-2 py-1 text-[11px] font-medium text-rose-600 shadow">
+            {localError}
+          </p>
         ) : null}
       </div>
 
