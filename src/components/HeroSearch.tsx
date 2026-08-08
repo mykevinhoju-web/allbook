@@ -43,7 +43,7 @@ export function HeroSearch({
     suggestionsOpen,
     setSuggestionsOpen,
     selectSuggestion,
-    useNearMe,
+    locateNearMe,
     isLocating,
     submit,
   } = useSearch({
@@ -160,7 +160,7 @@ export function HeroSearch({
               <button
                 type="button"
                 onClick={() => {
-                  void useNearMe();
+                  void locateNearMe();
                 }}
                 disabled={isLocating}
                 className={cn(

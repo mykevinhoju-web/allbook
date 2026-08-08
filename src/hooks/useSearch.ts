@@ -85,7 +85,7 @@ export function useSearch(options: UseSearchOptions = {}) {
     setError(null);
   }, []);
 
-  const useNearMe = useCallback(async () => {
+  const locateNearMe = useCallback(async () => {
     const result = await deviceLocation.requestLocation();
     if (!result.ok) {
       setError(result.error);
@@ -143,7 +143,7 @@ export function useSearch(options: UseSearchOptions = {}) {
     suggestionsOpen,
     setSuggestionsOpen,
     selectSuggestion,
-    useNearMe,
+    locateNearMe,
     isLocating: deviceLocation.isLocating,
     submit,
   };
