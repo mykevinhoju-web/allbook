@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/brisbane-suburb-fill?categories=hair&batchSize=1&radiusKm=8&chain=1",
       "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/cron/enrich-salon-services?batchSize=3&chain=1",
+      "schedule": "45 3 * * *"
     }
   ]
 }

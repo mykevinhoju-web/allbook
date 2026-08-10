@@ -781,6 +781,8 @@ export type Database = {
           price_max: number | null;
           amenities: string[];
           service_tags: string[];
+          service_tags_synced_at: string | null;
+          services_enriched_at: string | null;
           opening_hours: Record<string, unknown>;
           registration_method: "google" | "manual" | "admin" | null;
           google_place_id: string | null;
@@ -845,6 +847,8 @@ export type Database = {
           price_max?: number | null;
           amenities?: string[];
           service_tags?: string[];
+          service_tags_synced_at?: string | null;
+          services_enriched_at?: string | null;
           opening_hours?: Record<string, unknown>;
           registration_method?: "google" | "manual" | "admin" | null;
           google_place_id?: string | null;
@@ -909,6 +913,8 @@ export type Database = {
           price_max?: number | null;
           amenities?: string[];
           service_tags?: string[];
+          service_tags_synced_at?: string | null;
+          services_enriched_at?: string | null;
           opening_hours?: Record<string, unknown>;
           registration_method?: "google" | "manual" | "admin" | null;
           google_place_id?: string | null;

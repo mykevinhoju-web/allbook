@@ -266,6 +266,9 @@ const DETAIL_FIELD_MASK = [
   "primaryType",
   "googleMapsUri",
   "businessStatus",
+  "editorialSummary",
+  "generativeSummary",
+  "reviews",
 ].join(",");
 
 export class PlaceDetailsError extends Error {

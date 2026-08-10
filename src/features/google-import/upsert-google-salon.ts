@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { recordBusinessEvent } from "@/features/marketplace-review/record-event";
+import { mapGoogleCategoriesToServiceTags } from "@/features/service-enrichment/google-category-tags";
 import type { Database } from "@/types/database";
 
 import { slugifyName } from "./map-place";
@@ -107,6 +108,10 @@ export async function upsertGoogleSalon(
   const businessStatus = snapshot.businessStatus;
   const permanentlyClosed =
     businessStatus?.toUpperCase() === "CLOSED_PERMANENTLY";
+  const serviceTags = mapGoogleCategoriesToServiceTags(
+    snapshot.googleCategories,
+    snapshot.primaryService,
+  );
 
   if (existing) {
     const row = existing as ExistingSalon;
@@ -191,8 +196,10 @@ export async function upsertGoogleSalon(
         google_synced_at: now,
         is_synthetic: false,
         review_status: "pending",
+        service_tags: serviceTags,
+        service_tags_synced_at: now,
         updated_at: now,
-      })
+      } as never)
       .eq("id", row.id);
 
     if (error) {
@@ -266,7 +273,7 @@ export async function upsertGoogleSalon(
       booking_enabled: false,
       accept_new_customers: true,
       amenities: [],
-      service_tags: [],
+      service_tags: serviceTags,
       languages: [],
       search_keywords: [],
       search_styles: [],

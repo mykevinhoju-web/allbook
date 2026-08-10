@@ -132,6 +132,18 @@ export function SalonCard({
                 {salon.address}
               </p>
             ) : null}
+            {salon.serviceTags && salon.serviceTags.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {salon.serviceTags.slice(0, 4).map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-600"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
 
