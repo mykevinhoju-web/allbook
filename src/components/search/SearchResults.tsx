@@ -89,6 +89,16 @@ export function SearchResults({
     filters.suburb || query.location,
   );
   const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1);
+  const pageDistances = salons
+    .map((s) => s.distanceKm)
+    .filter((d): d is number => typeof d === "number" && Number.isFinite(d));
+  const pageMaxDistanceKm =
+    pageDistances.length > 0 ? Math.max(...pageDistances) : null;
+  const denserThanRadius =
+    pageMaxDistanceKm != null &&
+    query.radiusKm >= 10 &&
+    pageMaxDistanceKm < query.radiusKm * 0.35 &&
+    (hasMore || page > 1);
 
   function openSalon(id: string) {
     const salon = salons.find((row) => row.id === id);
@@ -184,13 +194,34 @@ export function SearchResults({
                 {status === "loading" ? "Searching…" : pageTitle}
               </h1>
               <p className="mt-0.5 text-sm text-neutral-500">
-                {status === "ready"
-                  ? `${total} salon${total === 1 ? "" : "s"}`
-                  : "Find and book nearby"}
+                {status === "ready" ? (
+                  <>
+                    {hasMore
+                      ? `${salons.length}+ salons`
+                      : `${total} salon${total === 1 ? "" : "s"}`}
+                    {` within ${query.radiusKm} km`}
+                    {pageMaxDistanceKm != null
+                      ? ` · this page up to ${
+                          pageMaxDistanceKm < 10
+                            ? pageMaxDistanceKm.toFixed(1)
+                            : Math.round(pageMaxDistanceKm)
+                        } km`
+                      : null}
+                  </>
+                ) : (
+                  "Find and book nearby"
+                )}
               </p>
               {origin?.formattedAddress ? (
                 <p className="mt-0.5 truncate text-xs text-neutral-400">
                   Near {origin.formattedAddress}
+                </p>
+              ) : null}
+              {status === "ready" && denserThanRadius ? (
+                <p className="mt-1 text-xs text-neutral-500">
+                  Sorted by nearest first — page 1 can look the same after
+                  widening the radius. Open the next pages to see farther
+                  salons inside {query.radiusKm} km.
                 </p>
               ) : null}
             </div>
