@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import {
   SEARCH_DISTANCE_KM,
@@ -94,6 +94,11 @@ export function FilterPanel({
         </SelectContent>
       </Select>
 
+      <KeywordSearchField
+        value={values.keyword}
+        onCommit={(keyword) => onChange({ keyword })}
+      />
+
       <ToggleChip
         active={values.verifiedOnly}
         onClick={() => onChange({ verifiedOnly: !values.verifiedOnly })}
@@ -140,6 +145,40 @@ export function FilterPanel({
         Korean
       </ToggleChip>
     </div>
+  );
+}
+
+function KeywordSearchField({
+  value,
+  onCommit,
+}: {
+  value: string;
+  onCommit: (keyword: string) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => {
+    setDraft(value);
+  }, [value]);
+
+  function submit(e?: FormEvent) {
+    e?.preventDefault();
+    const next = draft.trim().toLowerCase();
+    if (next === value.trim().toLowerCase()) return;
+    onCommit(next);
+  }
+
+  return (
+    <form onSubmit={submit} className="flex items-center gap-1">
+      <input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => submit()}
+        placeholder="Keyword…"
+        aria-label="Search keyword"
+        className="h-9 w-[132px] rounded-full border border-neutral-200 bg-neutral-50 px-3 text-[13px] font-medium text-neutral-800 outline-none placeholder:text-neutral-400 focus:border-neutral-400 sm:w-[160px]"
+      />
+    </form>
   );
 }
 

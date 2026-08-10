@@ -808,6 +808,7 @@ export type Database = {
           reviewed_by: string | null;
           imported_at: string | null;
           search_keywords: string[];
+          owner_keywords: string[];
           search_styles: string[];
           search_brands: string[];
           search_techniques: string[];
@@ -874,6 +875,7 @@ export type Database = {
           reviewed_by?: string | null;
           imported_at?: string | null;
           search_keywords?: string[];
+          owner_keywords?: string[];
           search_styles?: string[];
           search_brands?: string[];
           search_techniques?: string[];
@@ -940,6 +942,7 @@ export type Database = {
           reviewed_by?: string | null;
           imported_at?: string | null;
           search_keywords?: string[];
+          owner_keywords?: string[];
           search_styles?: string[];
           search_brands?: string[];
           search_techniques?: string[];

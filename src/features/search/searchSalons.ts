@@ -282,6 +282,7 @@ async function runLocalSearch(
         ...salon,
         amenities: meta?.amenities ?? salon.amenities ?? [],
         searchKeywords: meta?.keywords ?? salon.searchKeywords ?? [],
+        ownerKeywords: meta?.ownerKeywords ?? salon.ownerKeywords ?? [],
         serviceTags: meta?.serviceTags ?? salon.serviceTags ?? [],
       };
     });
@@ -295,7 +296,11 @@ async function runLocalSearch(
   }
   if (filters.kidsOnly) {
     salons = salons.filter((s) => {
-      if ((s.searchKeywords ?? []).some((k) => k.toLowerCase() === "kids")) {
+      const keywords = [
+        ...(s.searchKeywords ?? []),
+        ...(s.ownerKeywords ?? []),
+      ];
+      if (keywords.some((k) => k.toLowerCase() === "kids")) {
         return true;
       }
       const hay = `${s.name} ${s.suburb}`.toLowerCase();
@@ -309,6 +314,7 @@ async function runLocalSearch(
         s.name,
         s.suburb,
         ...(s.searchKeywords ?? []),
+        ...(s.ownerKeywords ?? []),
         ...(s.serviceTags ?? []),
         ...(s.amenities ?? []),
       ]
@@ -373,6 +379,7 @@ async function loadSalonFeatures(
     {
       amenities: NonNullable<Salon["amenities"]>;
       keywords: string[];
+      ownerKeywords: string[];
       serviceTags: string[];
     }
   >
@@ -383,6 +390,7 @@ async function loadSalonFeatures(
     {
       amenities: NonNullable<Salon["amenities"]>;
       keywords: string[];
+      ownerKeywords: string[];
       serviceTags: string[];
     }
   >();
@@ -394,7 +402,7 @@ async function loadSalonFeatures(
     const chunk = unique.slice(i, i + chunkSize);
     const { data, error } = await supabase
       .from("salons")
-      .select("id, amenities, search_keywords, service_tags")
+      .select("id, amenities, search_keywords, owner_keywords, service_tags")
       .in("id", chunk);
     if (error || !data) continue;
     for (const row of data) {
@@ -403,6 +411,7 @@ async function loadSalonFeatures(
           Salon["amenities"]
         >,
         keywords: (row.search_keywords ?? []).filter(Boolean),
+        ownerKeywords: (row.owner_keywords ?? []).filter(Boolean),
         serviceTags: (row.service_tags ?? []).filter(Boolean),
       });
     }

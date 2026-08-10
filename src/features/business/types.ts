@@ -39,6 +39,10 @@ export type BusinessProfile = {
   openingHours: OpeningHours;
   social: BusinessSocialLinks;
   settings: BusinessSettings;
+  /** Owner-managed marketplace search keywords */
+  ownerKeywords: string[];
+  /** Platform-wide max keywords (super-admin setting) */
+  ownerKeywordLimit: number;
   categorySlug: string;
   publicPath: string;
   updatedAt: string;
@@ -58,6 +62,7 @@ export type BusinessProfileInput = {
   longitude: number;
   openingHours: OpeningHours;
   social: BusinessSocialLinks;
+  ownerKeywords: string[];
   settings: Pick<BusinessSettings, "bookingEnabled" | "acceptNewCustomers">;
 };
 

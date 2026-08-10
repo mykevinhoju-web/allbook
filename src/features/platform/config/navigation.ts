@@ -4,6 +4,7 @@ import {
   Download,
   LayoutDashboard,
   RefreshCw,
+  Settings,
   Store,
 } from "lucide-react";
 
@@ -40,5 +41,10 @@ export const platformNavItems: PlatformNavItem[] = [
     title: "Signups",
     href: "/platform/tenants",
     icon: Building2,
+  },
+  {
+    title: "Settings",
+    href: "/platform/settings",
+    icon: Settings,
   },
 ];

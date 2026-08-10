@@ -28,6 +28,7 @@ export type SalonRow = {
   amenities?: string[] | null;
   service_tags?: string[] | null;
   search_keywords?: string[] | null;
+  owner_keywords?: string[] | null;
   opening_hours?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
@@ -69,6 +70,7 @@ export type Salon = {
   serviceTags?: string[];
   amenities?: AmenityId[];
   searchKeywords?: string[];
+  ownerKeywords?: string[];
   /** Present when search used a geocoded origin */
   distanceKm?: number;
   /** Derived from opening_hours at query time */

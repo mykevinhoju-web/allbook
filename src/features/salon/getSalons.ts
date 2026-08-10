@@ -45,6 +45,7 @@ export function mapSalonRow(row: SalonRow): Salon {
     serviceTags: (row.service_tags ?? []).filter(Boolean),
     amenities: (row.amenities ?? []).filter(Boolean) as Salon["amenities"],
     searchKeywords: (row.search_keywords ?? []).filter(Boolean),
+    ownerKeywords: (row.owner_keywords ?? []).filter(Boolean),
   };
 }
 

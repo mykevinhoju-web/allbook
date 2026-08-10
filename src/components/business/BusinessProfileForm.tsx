@@ -15,6 +15,7 @@ import { BusinessHoursEditor } from "./BusinessHoursEditor";
 import { BusinessLocation } from "./BusinessLocation";
 import { CoverUploader } from "./CoverUploader";
 import { LogoUploader } from "./LogoUploader";
+import { OwnerKeywordsEditor } from "./OwnerKeywordsEditor";
 import { SocialLinks } from "./SocialLinks";
 
 type BusinessProfileFormProps = {
@@ -23,6 +24,8 @@ type BusinessProfileFormProps = {
   };
   onChange: (next: BusinessProfileFormProps["value"]) => void;
   onUploadFile: (file: File, kind: "logo" | "cover") => Promise<string>;
+  /** Platform-wide max owner keywords (super-admin setting). */
+  ownerKeywordLimit?: number;
   /** When false, Featured toggle is read-only */
   allowFeaturedEdit?: boolean;
 };
@@ -75,6 +78,7 @@ export function BusinessProfileForm({
   value,
   onChange,
   onUploadFile,
+  ownerKeywordLimit = 5,
   allowFeaturedEdit = false,
 }: BusinessProfileFormProps) {
   function patch(partial: Partial<BusinessProfileFormProps["value"]>) {
@@ -128,6 +132,17 @@ export function BusinessProfileForm({
             </Field>
           </div>
         </div>
+      </Section>
+
+      <Section
+        title="Search keywords"
+        description="Help customers find you on AllBook. These appear in marketplace search filters."
+      >
+        <OwnerKeywordsEditor
+          value={value.ownerKeywords}
+          limit={ownerKeywordLimit}
+          onChange={(ownerKeywords) => patch({ ownerKeywords })}
+        />
       </Section>
 
       <Section
@@ -289,6 +304,7 @@ export function toBusinessFormValue(
     longitude: business.longitude,
     openingHours: business.openingHours,
     social: business.social,
+    ownerKeywords: business.ownerKeywords ?? [],
     settings: business.settings,
   };
 }

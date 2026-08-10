@@ -54,6 +54,7 @@ export function BusinessProfileManager({
           salonId: business.id,
           input: {
             ...form,
+            ownerKeywords: form.ownerKeywords ?? [],
             settings: {
               bookingEnabled: form.settings.bookingEnabled,
               acceptNewCustomers: form.settings.acceptNewCustomers,
@@ -132,6 +133,7 @@ export function BusinessProfileManager({
         value={form}
         onChange={setForm}
         onUploadFile={uploadFile}
+        ownerKeywordLimit={business.ownerKeywordLimit}
         allowFeaturedEdit={allowFeaturedEdit}
       />
 

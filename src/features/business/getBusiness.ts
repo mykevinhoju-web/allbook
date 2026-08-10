@@ -3,6 +3,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveCategoryFromService } from "@/features/category";
 import type { Database } from "@/types/database";
 
+import {
+  DEFAULT_OWNER_KEYWORD_LIMIT,
+  getOwnerKeywordLimit,
+  normalizeOwnerKeywords,
+} from "./owner-keywords";
 import { parseBusinessOpeningHours } from "./opening-hours-settings";
 import type { BusinessProfile } from "./types";
 
@@ -10,7 +15,10 @@ type AnySupabase = SupabaseClient<Database>;
 
 type SalonRow = Database["public"]["Tables"]["salons"]["Row"];
 
-function mapBusiness(row: SalonRow): BusinessProfile {
+function mapBusiness(
+  row: SalonRow,
+  ownerKeywordLimit: number,
+): BusinessProfile {
   const category =
     resolveCategoryFromService(row.primary_service) ??
     resolveCategoryFromService("Hair");
@@ -47,6 +55,11 @@ function mapBusiness(row: SalonRow): BusinessProfile {
       // featured column does not exist on salons — UI-only placeholder
       featured: false,
     },
+    ownerKeywords: normalizeOwnerKeywords(
+      row.owner_keywords ?? [],
+      ownerKeywordLimit,
+    ),
+    ownerKeywordLimit,
     categorySlug,
     publicPath: `/${categorySlug}/${row.slug}`,
     updatedAt: row.updated_at,
@@ -66,11 +79,12 @@ export async function getBusiness(
     return { business: null, error: "salonId is required." };
   }
 
-  const { data, error } = await supabase
-    .from("salons")
-    .select("*")
-    .eq("id", salonId)
-    .maybeSingle();
+  const [limit, salonResult] = await Promise.all([
+    getOwnerKeywordLimit(supabase).catch(() => DEFAULT_OWNER_KEYWORD_LIMIT),
+    supabase.from("salons").select("*").eq("id", salonId).maybeSingle(),
+  ]);
+
+  const { data, error } = salonResult;
 
   if (error) {
     return { business: null, error: error.message };
@@ -79,5 +93,8 @@ export async function getBusiness(
     return { business: null, error: null };
   }
 
-  return { business: mapBusiness(data as SalonRow), error: null };
+  return {
+    business: mapBusiness(data as SalonRow, limit),
+    error: null,
+  };
 }

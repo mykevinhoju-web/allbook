@@ -3,12 +3,19 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 
 import { getBusiness } from "./getBusiness";
+import {
+  getOwnerKeywordLimit,
+  normalizeOwnerKeywords,
+} from "./owner-keywords";
 import { serializeBusinessOpeningHours } from "./opening-hours-settings";
 import type { BusinessProfile, BusinessProfileInput } from "./types";
 
 type AnySupabase = SupabaseClient<Database>;
 
-export function validateBusinessInput(input: BusinessProfileInput): string | null {
+export function validateBusinessInput(
+  input: BusinessProfileInput,
+  ownerKeywordLimit?: number,
+): string | null {
   if (!input.name.trim()) return "Business name is required.";
   if (!Number.isFinite(input.latitude) || !Number.isFinite(input.longitude)) {
     return "Latitude and longitude are required.";
@@ -22,6 +29,15 @@ export function validateBusinessInput(input: BusinessProfileInput): string | nul
   if (input.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email.trim())) {
     return "Enter a valid email address.";
   }
+  if (ownerKeywordLimit != null) {
+    const keywords = normalizeOwnerKeywords(
+      input.ownerKeywords,
+      ownerKeywordLimit + 1,
+    );
+    if (keywords.length > ownerKeywordLimit) {
+      return `You can add up to ${ownerKeywordLimit} search keywords.`;
+    }
+  }
   return null;
 }
 
@@ -34,7 +50,8 @@ export async function updateBusiness(
   salonId: string,
   input: BusinessProfileInput,
 ): Promise<{ business: BusinessProfile | null; error: string | null }> {
-  const validationError = validateBusinessInput(input);
+  const ownerKeywordLimit = await getOwnerKeywordLimit(supabase);
+  const validationError = validateBusinessInput(input, ownerKeywordLimit);
   if (validationError) {
     return { business: null, error: validationError };
   }
@@ -48,6 +65,10 @@ export async function updateBusiness(
   const nextName = input.name.trim();
   const nameChanged =
     nextName.toLowerCase() !== existing.business.name.trim().toLowerCase();
+  const ownerKeywords = normalizeOwnerKeywords(
+    input.ownerKeywords,
+    ownerKeywordLimit,
+  );
 
   const { error } = await supabase
     .from("salons")
@@ -71,6 +92,7 @@ export async function updateBusiness(
       social_tiktok: input.social.tiktok.trim() || null,
       booking_enabled: input.settings.bookingEnabled,
       accept_new_customers: input.settings.acceptNewCustomers,
+      owner_keywords: ownerKeywords,
       updated_at: new Date().toISOString(),
     })
     .eq("id", salonId);
