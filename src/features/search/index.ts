@@ -32,6 +32,18 @@ export {
   fillSearchAreaFromGoogle,
   shouldFillFromGoogle,
 } from "./auto-google-import";
+export {
+  BRISBANE_SUBURB_FILL_CATEGORIES,
+  BRISBANE_SUBURB_FILL_DEFAULT_BATCH,
+  BRISBANE_SUBURB_FILL_DEFAULT_RADIUS_KM,
+  runBrisbaneSuburbFillBatch,
+} from "./brisbane-suburb-fill";
+export type {
+  BrisbaneSuburbFillBatchResult,
+  BrisbaneSuburbFillCategory,
+  BrisbaneSuburbFillInput,
+  BrisbaneSuburbFillItemResult,
+} from "./brisbane-suburb-fill";
 export { normalizeSalonSearchFilters } from "./types";
 export type {
   SalonSearchFilters,
