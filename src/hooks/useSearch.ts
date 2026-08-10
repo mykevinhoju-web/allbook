@@ -115,7 +115,11 @@ export function useSearch(options: UseSearchOptions = {}) {
       return false;
     }
 
-    if (lat != null && lng != null) {
+    if (
+      lat != null &&
+      lng != null &&
+      !(lat === 0 && lng === 0)
+    ) {
       saveSearchLocation({ label: location.trim(), lat, lng });
     }
 

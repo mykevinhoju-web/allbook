@@ -71,13 +71,20 @@ export function normalizeSalonSearchFilters(
       ? Math.min(5, minRatingRaw)
       : null;
 
-  const latitudeRaw = Number(input.latitude);
-  const longitudeRaw = Number(input.longitude);
+  const latitudeRaw =
+    input.latitude == null || input.latitude === ""
+      ? Number.NaN
+      : Number(input.latitude);
+  const longitudeRaw =
+    input.longitude == null || input.longitude === ""
+      ? Number.NaN
+      : Number(input.longitude);
   const hasCoords =
     Number.isFinite(latitudeRaw) &&
     Number.isFinite(longitudeRaw) &&
     Math.abs(latitudeRaw) <= 90 &&
-    Math.abs(longitudeRaw) <= 180;
+    Math.abs(longitudeRaw) <= 180 &&
+    !(latitudeRaw === 0 && longitudeRaw === 0);
 
   return {
     location: (input.location ?? "").trim(),

@@ -54,7 +54,9 @@ function parseCoord(
   value: number | string | null | undefined,
   maxAbs: number,
 ): number | null {
-  const n = Number(value);
+  // Number(null) === 0 and Number("") === 0 — must not treat those as coords.
+  if (value == null || value === "") return null;
+  const n = typeof value === "number" ? value : Number(String(value).trim());
   if (!Number.isFinite(n) || Math.abs(n) > maxAbs) return null;
   return n;
 }
@@ -77,7 +79,9 @@ export function normalizeSearchQuery(
   const sort = isSearchSort(sortRaw) ? sortRaw : DEFAULT_SEARCH_SORT;
   const lat = parseCoord(query.lat, 90);
   const lng = parseCoord(query.lng, 180);
-  const hasCoords = lat != null && lng != null;
+  // (0,0) is never a real AU search origin — usually a null/empty coercion bug.
+  const hasCoords =
+    lat != null && lng != null && !(lat === 0 && lng === 0);
 
   return {
     location: (query.location ?? "").trim(),

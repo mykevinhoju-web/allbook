@@ -153,7 +153,11 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
       if (location.trim()) {
         params.set("location", location.trim().toLowerCase());
       }
-      if (lat != null && lng != null) {
+      if (
+        lat != null &&
+        lng != null &&
+        !(lat === 0 && lng === 0)
+      ) {
         params.set("lat", String(lat));
         params.set("lng", String(lng));
       }

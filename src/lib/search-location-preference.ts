@@ -19,7 +19,9 @@ function isValidSaved(value: unknown): value is SavedSearchLocation {
     typeof row.label === "string" &&
     row.label.trim().length > 0 &&
     Number.isFinite(row.lat) &&
-    Number.isFinite(row.lng)
+    Number.isFinite(row.lng) &&
+    // Reject null-island leftovers from Number(null)/Number("") bugs.
+    !(row.lat === 0 && row.lng === 0)
   );
 }
 
@@ -29,7 +31,11 @@ export function readSavedSearchLocation(): SavedSearchLocation | null {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
-    return isValidSaved(parsed) ? parsed : null;
+    if (!isValidSaved(parsed)) {
+      window.localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+    return parsed;
   } catch {
     return null;
   }
@@ -42,7 +48,12 @@ export function saveSearchLocation(input: {
 }): SavedSearchLocation | null {
   if (typeof window === "undefined") return null;
   const label = input.label.trim();
-  if (!label || !Number.isFinite(input.lat) || !Number.isFinite(input.lng)) {
+  if (
+    !label ||
+    !Number.isFinite(input.lat) ||
+    !Number.isFinite(input.lng) ||
+    (input.lat === 0 && input.lng === 0)
+  ) {
     return null;
   }
   const saved: SavedSearchLocation = {
