@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint",
     "import:brisbane-hair": "npx tsx scripts/import-brisbane-hair.ts",
-    "import:google-places": "npx tsx scripts/import-google-places.ts"
+    "import:google-places": "npx tsx scripts/import-google-places.ts",
+    "import:brisbane-suburbs": "npx tsx scripts/fill-brisbane-suburbs-from-google.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

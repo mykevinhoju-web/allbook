@@ -164,8 +164,17 @@ export async function searchSalons(
         radiusKm: filters.radiusKm,
       };
 
-      // Never block the search HTTP response on Places import — that freezes the UI
-      // on "Searching…" for empty/stale areas (and after clearing Near me, etc.).
+      // Empty areas: await fill once so Paddington / sparse suburbs are not blank
+      // on first visit. Already-populated areas keep background refresh only.
+      if (result.total === 0) {
+        await fillSearchAreaFromGoogle(service, fillInput);
+        return runLocalSearch(supabase, filters, origin, {
+          page,
+          pageSize,
+          offset,
+        });
+      }
+
       after(() => {
         void fillSearchAreaFromGoogle(service, fillInput);
       });

@@ -28,6 +28,23 @@ const SEARCH_FILL_PAGE_SAFETY_CAP = 20;
 
 const PAGE_GAP_MS = 300;
 
+function haversineKm(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
 export type SearchGoogleFillInput = {
   category: string;
   locationLabel: string;
@@ -130,6 +147,12 @@ export function shouldFillFromGoogle(input: {
   if (input.hasResumeToken || input.lastStatus === "partial_success") {
     return true;
   }
+  const freshOk =
+    input.lastStatus === "ok" &&
+    Boolean(input.lastFetchedAt) &&
+    !isSearchAreaStale(input.lastFetchedAt);
+  // Sparse areas still skip Places until coverage goes stale again.
+  if (freshOk) return false;
   if (input.localCount < SEARCH_AREA_MIN_LOCAL) return true;
   return isSearchAreaStale(input.lastFetchedAt);
 }
@@ -247,10 +270,11 @@ export async function fillSearchAreaFromGoogle(
 
   const locationName =
     input.locationLabel.split(",")[0]?.trim() || input.locationLabel;
+  // Always pin AU searches to Queensland so "Paddington" ≠ Sydney Paddington.
   const textQuery = buildTextQuery({
     textNoun: mapping.textNoun,
     city: locationName,
-    state: "Australia",
+    state: "Queensland",
     country: "Australia",
   });
 
@@ -258,6 +282,7 @@ export async function fillSearchAreaFromGoogle(
     50_000,
     Math.max(2_000, input.radiusKm * 1000),
   );
+  const maxDistanceKm = Math.max(input.radiusKm * 1.35, input.radiusKm + 2);
 
   const seen = new Set<string>();
   let pageToken: string | null = resuming
@@ -334,12 +359,23 @@ export async function fillSearchAreaFromGoogle(
           mapping,
           {
             city: locationName,
-            state: "Australia",
+            state: "Queensland",
             country: "Australia",
           },
           4,
         );
         if (!snapshot || seen.has(snapshot.placeId)) {
+          result.skipped += 1;
+          continue;
+        }
+        // Drop far-away namesakes (e.g. Paddington NSW) that bias can still return.
+        const distKm = haversineKm(
+          input.latitude,
+          input.longitude,
+          snapshot.latitude,
+          snapshot.longitude,
+        );
+        if (distKm > maxDistanceKm) {
           result.skipped += 1;
           continue;
         }
