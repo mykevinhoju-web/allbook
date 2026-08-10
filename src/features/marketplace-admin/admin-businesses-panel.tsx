@@ -57,6 +57,16 @@ export function AdminBusinessesPanel() {
     }
   }, [selected?.id, selected?.ownerKeywordLimit]);
 
+  // Live search: typing updates the query after a short pause (Enter/Search still works).
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      const next = draftQ.trim();
+      setPage(1);
+      setQ((prev) => (prev === next ? prev : next));
+    }, 350);
+    return () => window.clearTimeout(handle);
+  }, [draftQ]);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -151,7 +161,7 @@ export function AdminBusinessesPanel() {
           <input
             value={draftQ}
             onChange={(e) => setDraftQ(e.target.value)}
-            placeholder="Search name, suburb, phone…"
+            placeholder="Search business name, suburb, phone…"
             className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm outline-none focus:border-slate-400"
           />
         </label>

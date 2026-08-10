@@ -17,6 +17,32 @@ type AnySupabase = SupabaseClient<Database>;
 const SELECT_COLS =
   "id, name, slug, suburb, city, state, phone, primary_service, rating, review_count, source, claimed, verified, review_status, marketplace_visible, booking_enabled, permanently_closed, google_place_id, imported_at, google_synced_at, updated_at, cover_image, is_synthetic, owner_keyword_limit";
 
+const SEARCH_COLUMNS = [
+  "name",
+  "suburb",
+  "city",
+  "slug",
+  "phone",
+  "address",
+] as const;
+
+/**
+ * Build a PostgREST `or` filter for ilike search.
+ * Values must be double-quoted so spaces / ( ) . do not break parsing.
+ */
+function buildSalonNameOrFilter(raw: string): string | null {
+  const safe = raw
+    .replace(/[%]/g, " ")
+    .replace(/,/g, " ")
+    .replace(/"/g, "")
+    .trim()
+    .replace(/\s+/g, " ");
+  if (!safe) return null;
+
+  const pattern = `"%${safe}%"`;
+  return SEARCH_COLUMNS.map((column) => `${column}.ilike.${pattern}`).join(",");
+}
+
 function mapRow(row: {
   id: string;
   name: string;
@@ -93,13 +119,9 @@ export async function listManagedBusinesses(
     query = query.eq("is_synthetic", false);
   }
 
-  if (q) {
-    const safe = q.replace(/[%_,]/g, " ").trim();
-    if (safe) {
-      query = query.or(
-        `name.ilike.%${safe}%,suburb.ilike.%${safe}%,city.ilike.%${safe}%,slug.ilike.%${safe}%,phone.ilike.%${safe}%`,
-      );
-    }
+  const orFilter = q ? buildSalonNameOrFilter(q) : null;
+  if (orFilter) {
+    query = query.or(orFilter);
   }
 
   if (input.reviewStatus && input.reviewStatus !== "all") {
