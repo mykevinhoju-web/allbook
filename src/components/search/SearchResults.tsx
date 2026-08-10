@@ -45,10 +45,10 @@ export function SearchResults({
     query,
     filters,
     salons,
+    mapSalons,
     total,
     page,
     pageSize,
-    hasMore,
     origin,
     status,
     error,
@@ -66,7 +66,7 @@ export function SearchResults({
     selectSalonFromCard,
     selectSalonFromMarker,
     clearSelection,
-  } = useMap(salons);
+  } = useMap(mapSalons.length > 0 ? mapSalons : salons);
 
   useEffect(() => {
     clearSelection();
@@ -94,14 +94,11 @@ export function SearchResults({
     .filter((d): d is number => typeof d === "number" && Number.isFinite(d));
   const pageMaxDistanceKm =
     pageDistances.length > 0 ? Math.max(...pageDistances) : null;
-  const denserThanRadius =
-    pageMaxDistanceKm != null &&
-    query.radiusKm >= 10 &&
-    pageMaxDistanceKm < query.radiusKm * 0.35 &&
-    (hasMore || page > 1);
 
   function openSalon(id: string) {
-    const salon = salons.find((row) => row.id === id);
+    const salon =
+      mapSalons.find((row) => row.id === id) ??
+      salons.find((row) => row.id === id);
     if (!salon?.slug) return;
     router.push(`/${category.slug}/${encodeURIComponent(salon.slug)}`);
   }
@@ -196,12 +193,9 @@ export function SearchResults({
               <p className="mt-0.5 text-sm text-neutral-500">
                 {status === "ready" ? (
                   <>
-                    {hasMore
-                      ? `${salons.length}+ salons`
-                      : `${total} salon${total === 1 ? "" : "s"}`}
-                    {` within ${query.radiusKm} km`}
+                    {`${total} salon${total === 1 ? "" : "s"} within ${query.radiusKm} km`}
                     {pageMaxDistanceKm != null
-                      ? ` · this page up to ${
+                      ? ` · page ${page} up to ${
                           pageMaxDistanceKm < 10
                             ? pageMaxDistanceKm.toFixed(1)
                             : Math.round(pageMaxDistanceKm)
@@ -215,13 +209,6 @@ export function SearchResults({
               {origin?.formattedAddress ? (
                 <p className="mt-0.5 truncate text-xs text-neutral-400">
                   Near {origin.formattedAddress}
-                </p>
-              ) : null}
-              {status === "ready" && denserThanRadius ? (
-                <p className="mt-1 text-xs text-neutral-500">
-                  Sorted by nearest first — page 1 can look the same after
-                  widening the radius. Open the next pages to see farther
-                  salons inside {query.radiusKm} km.
                 </p>
               ) : null}
             </div>
@@ -281,9 +268,7 @@ export function SearchResults({
                 <Pagination
                   className="mt-6"
                   page={page}
-                  totalPages={
-                    hasMore ? Math.max(totalPages, page + 1) : totalPages
-                  }
+                  totalPages={totalPages}
                   onPageChange={setPage}
                 />
               </>
@@ -305,7 +290,7 @@ export function SearchResults({
                 query.lng ?? "",
                 query.radiusKm,
               ].join("|")}
-              salons={status === "ready" ? salons : []}
+              salons={status === "ready" ? mapSalons : []}
               selectedId={selectedId}
               focusToken={focusToken}
               searchLocation={locationLabel}

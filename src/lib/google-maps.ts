@@ -21,12 +21,40 @@ export type LatLngBoundsLiteral = {
   west: number;
 };
 
-/** Suburb-level zoom — anchors the map on the search location, not page-2 outliers. */
+/**
+ * Bounds for a search radius circle around an origin.
+ * Used so widening 5→50 km actually zooms the marketplace map out.
+ */
+export function boundsForSearchRadius(
+  center: LatLngLiteral,
+  radiusKm: number,
+): LatLngBoundsLiteral {
+  const latDelta = radiusKm / 111.32;
+  const cosLat = Math.max(Math.cos((center.lat * Math.PI) / 180), 0.01);
+  const lngDelta = radiusKm / (111.32 * cosLat);
+  return {
+    north: center.lat + latDelta,
+    south: center.lat - latDelta,
+    east: center.lng + lngDelta,
+    west: center.lng - lngDelta,
+  };
+}
+
+/**
+ * Approximate map zoom for a given search radius (km).
+ */
+export function zoomForSearchRadius(radiusKm: number): number {
+  if (radiusKm <= 5) return 13;
+  if (radiusKm <= 10) return 12;
+  if (radiusKm <= 20) return 11;
+  return 10;
+}
+
+/** Suburb-level zoom fallback when no radius framing is available. */
 export const SUBURB_SEARCH_ZOOM = 14;
 
 /**
- * Bounds around result markers so the map zooms to the cluster,
- * not the full distance-filter circle (e.g. 20 km ≈ all of Brisbane).
+ * Bounds around result markers so the map can fit the pin cluster.
  */
 export function boundsForSalonMarkers(
   salons: Array<{ latitude: number; longitude: number }>,

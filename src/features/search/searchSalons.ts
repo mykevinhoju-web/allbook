@@ -34,8 +34,14 @@ type SearchRpcRow = SalonRow & {
   distance_km: number | null;
 };
 
+/** Max salons loaded for accurate total + map pins within a radius. */
+const SEARCH_RADIUS_RESULT_CAP = 300;
+
 export type SearchSalonsResult = {
+  /** Current list page (nearest-first slice). */
   salons: Salon[];
+  /** Every match inside the radius (capped) — used for map pins + stable total. */
+  mapSalons: Salon[];
   total: number;
   page: number;
   pageSize: number;
@@ -141,7 +147,7 @@ export async function searchSalons(
     const service = createServiceSupabase();
     const coverage = await getSearchAreaCoverage(service, areaKey);
     const needsFill = shouldFillFromGoogle({
-      localCount: result.salons.length + (result.hasMore ? pageSize : 0),
+      localCount: result.total,
       lastFetchedAt: coverage?.lastFetchedAt,
       lastStatus: coverage?.lastStatus,
       hasResumeToken: Boolean(coverage?.resumePageToken),
@@ -184,16 +190,7 @@ async function runLocalSearch(
       ? null
       : filters.location.replace(/[%_,]/g, "");
 
-  const needsPostFilter =
-    filters.verifiedOnly ||
-    filters.openNow ||
-    (filters.minRating != null && filters.minRating > 0);
-
-  const fetchLimit = needsPostFilter
-    ? Math.min(pageSize * 8, 200)
-    : pageSize + 1;
-  const fetchOffset = needsPostFilter ? 0 : offset;
-
+  // Load the full in-radius set (capped) so total + map stay stable across pages.
   const { data, error } = await supabase.rpc("search_marketplace_salons", {
     p_lat: origin?.lat ?? null,
     p_lng: origin?.lng ?? null,
@@ -202,8 +199,8 @@ async function runLocalSearch(
     p_services: services,
     p_suburb: suburbFilter,
     p_sort: filters.sort,
-    p_limit: fetchLimit,
-    p_offset: fetchOffset,
+    p_limit: SEARCH_RADIUS_RESULT_CAP,
+    p_offset: 0,
   });
 
   if (error) {
@@ -243,9 +240,11 @@ async function runLocalSearch(
       })
       .filter((salon) => salon.isOpen);
   } else if (salons.length > 0) {
+    // Opening hours only needed for the visible list page (+ a small buffer).
+    const hoursSlice = salons.slice(offset, offset + pageSize);
     const hoursById = await loadOpeningHours(
       supabase,
-      salons.slice(0, pageSize + 1).map((s) => s.id),
+      hoursSlice.map((s) => s.id),
     );
     salons = salons.map((salon) => ({
       ...salon,
@@ -255,23 +254,13 @@ async function runLocalSearch(
     }));
   }
 
-  let pageRows: Salon[];
-  let total: number;
-  let hasMore: boolean;
-
-  if (needsPostFilter) {
-    total = salons.length;
-    const start = offset;
-    pageRows = salons.slice(start, start + pageSize);
-    hasMore = start + pageSize < total;
-  } else {
-    hasMore = salons.length > pageSize;
-    pageRows = hasMore ? salons.slice(0, pageSize) : salons;
-    total = offset + pageRows.length + (hasMore ? 1 : 0);
-  }
+  const total = salons.length;
+  const pageRows = salons.slice(offset, offset + pageSize);
+  const hasMore = offset + pageSize < total;
 
   return {
     salons: pageRows,
+    mapSalons: salons,
     total,
     page,
     pageSize,
@@ -310,6 +299,7 @@ function emptyResult(
 ): SearchSalonsResult {
   return {
     salons: [],
+    mapSalons: [],
     total: 0,
     page: filters.page,
     pageSize: filters.pageSize,

@@ -11,7 +11,9 @@ import {
   SELECTED_SALON_ZOOM,
   SUBURB_SEARCH_ZOOM,
   boundsForSalonMarkers,
+  boundsForSearchRadius,
   getGoogleMapsBrowserKey,
+  zoomForSearchRadius,
   type LatLngBoundsLiteral,
   type LatLngLiteral,
 } from "@/lib/google-maps";
@@ -28,7 +30,7 @@ type GoogleMapProps = {
   searchLocation?: string;
   /** Resolved search origin from the marketplace search engine (preferred). */
   searchOrigin?: LatLngLiteral | null;
-  /** Distance filter label only — does not widen the map to the full circle. */
+  /** Search radius in km — frames the map to this circle when set with an origin. */
   radiusKm?: number | null;
   onSelect?: (salonId: string) => void;
   className?: string;
@@ -149,8 +151,17 @@ function GoogleMapCanvas({
       };
     }
 
-    // Keep the camera on the searched suburb while paging.
-    // Page 2+ can list farther pins still inside the radius — don't jump the map there.
+    // Frame the chosen search radius so 5→50 km visibly widens the map.
+    if (originCenter && activeRadiusKm != null) {
+      return {
+        center: originCenter,
+        zoom: zoomForSearchRadius(activeRadiusKm),
+        bounds: boundsForSearchRadius(originCenter, activeRadiusKm),
+        maxZoom: zoomForSearchRadius(activeRadiusKm) + 1,
+        minZoom: Math.max(zoomForSearchRadius(activeRadiusKm) - 1, 9),
+      };
+    }
+
     if (originCenter) {
       return {
         center: originCenter,
@@ -159,7 +170,6 @@ function GoogleMapCanvas({
       };
     }
 
-    // No search origin (browse-all): fit whatever markers are on screen.
     if (markerBounds) {
       const center = {
         lat: (markerBounds.north + markerBounds.south) / 2,
@@ -175,7 +185,7 @@ function GoogleMapCanvas({
     }
 
     return { center: DEFAULT_MAP_CENTER, zoom: DEFAULT_MAP_ZOOM, bounds: null };
-  }, [selectedSalon, markerBounds, originCenter]);
+  }, [selectedSalon, markerBounds, originCenter, activeRadiusKm]);
 
   const statusLabel =
     selectedSalon

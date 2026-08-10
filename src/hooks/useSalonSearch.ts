@@ -81,6 +81,9 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
   const [salons, setSalons] = useState<Salon[]>(
     () => initialResult?.salons ?? [],
   );
+  const [mapSalons, setMapSalons] = useState<Salon[]>(
+    () => initialResult?.mapSalons ?? initialResult?.salons ?? [],
+  );
   const [total, setTotal] = useState(() => initialResult?.total ?? 0);
   const [hasMore, setHasMore] = useState(
     () => initialResult?.hasMore ?? false,
@@ -264,9 +267,7 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
       setStatus("loading");
       setError(null);
       setSalons([]);
-      setTotal(0);
-      setHasMore(false);
-      setOrigin(null);
+      // Keep previous map pins until the new payload arrives (avoids flicker on paging).
 
       const params = new URLSearchParams();
       if (effectiveQuery.location) {
@@ -299,6 +300,7 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
 
         if (!response.ok || data.error) {
           setSalons([]);
+          setMapSalons([]);
           setTotal(0);
           setHasMore(false);
           setOrigin(null);
@@ -308,6 +310,7 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
         }
 
         setSalons(data.salons ?? []);
+        setMapSalons(data.mapSalons ?? data.salons ?? []);
         setTotal(data.total ?? data.salons?.length ?? 0);
         setHasMore(Boolean(data.hasMore));
         setPageSize(data.pageSize ?? 20);
@@ -324,6 +327,7 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
         if (aborted) {
           if (timedOut) {
             setSalons([]);
+            setMapSalons([]);
             setTotal(0);
             setHasMore(false);
             setOrigin(null);
@@ -335,6 +339,7 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
         }
 
         setSalons([]);
+        setMapSalons([]);
         setTotal(0);
         setHasMore(false);
         setOrigin(null);
@@ -412,6 +417,7 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
     query: effectiveQuery,
     filters,
     salons,
+    mapSalons,
     total,
     page,
     pageSize,
