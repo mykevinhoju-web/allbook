@@ -266,7 +266,58 @@ async function runLocalSearch(
     }));
   }
 
-  const total = salons.length;
+  const needsFeatureMeta =
+    filters.parkingOnly ||
+    filters.wifiOnly ||
+    filters.kidsOnly ||
+    Boolean(filters.keyword);
+  if (needsFeatureMeta && salons.length > 0) {
+    const featureById = await loadSalonFeatures(
+      supabase,
+      salons.map((s) => s.id),
+    );
+    salons = salons.map((salon) => {
+      const meta = featureById.get(salon.id);
+      return {
+        ...salon,
+        amenities: meta?.amenities ?? salon.amenities ?? [],
+        searchKeywords: meta?.keywords ?? salon.searchKeywords ?? [],
+        serviceTags: meta?.serviceTags ?? salon.serviceTags ?? [],
+      };
+    });
+  }
+
+  if (filters.parkingOnly) {
+    salons = salons.filter((s) => s.amenities?.includes("parking"));
+  }
+  if (filters.wifiOnly) {
+    salons = salons.filter((s) => s.amenities?.includes("wifi"));
+  }
+  if (filters.kidsOnly) {
+    salons = salons.filter((s) => {
+      if ((s.searchKeywords ?? []).some((k) => k.toLowerCase() === "kids")) {
+        return true;
+      }
+      const hay = `${s.name} ${s.suburb}`.toLowerCase();
+      return /\bkids?\b|\bchildren\b|family/.test(hay);
+    });
+  }
+  if (filters.keyword) {
+    const q = filters.keyword.toLowerCase();
+    salons = salons.filter((s) => {
+      const hay = [
+        s.name,
+        s.suburb,
+        ...(s.searchKeywords ?? []),
+        ...(s.serviceTags ?? []),
+        ...(s.amenities ?? []),
+      ]
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
   const inRadius =
     origin == null
       ? salons
@@ -309,6 +360,52 @@ async function loadOpeningHours(
 
   for (const row of data) {
     map.set(row.id, parseOpeningHours(row.opening_hours));
+  }
+  return map;
+}
+
+async function loadSalonFeatures(
+  supabase: AnySupabase,
+  ids: string[],
+): Promise<
+  Map<
+    string,
+    {
+      amenities: NonNullable<Salon["amenities"]>;
+      keywords: string[];
+      serviceTags: string[];
+    }
+  >
+> {
+  const unique = [...new Set(ids)].filter(Boolean);
+  const map = new Map<
+    string,
+    {
+      amenities: NonNullable<Salon["amenities"]>;
+      keywords: string[];
+      serviceTags: string[];
+    }
+  >();
+  if (unique.length === 0) return map;
+
+  // Chunk to stay under PostgREST URL limits for large in-radius sets.
+  const chunkSize = 200;
+  for (let i = 0; i < unique.length; i += chunkSize) {
+    const chunk = unique.slice(i, i + chunkSize);
+    const { data, error } = await supabase
+      .from("salons")
+      .select("id, amenities, search_keywords, service_tags")
+      .in("id", chunk);
+    if (error || !data) continue;
+    for (const row of data) {
+      map.set(row.id, {
+        amenities: (row.amenities ?? []).filter(Boolean) as NonNullable<
+          Salon["amenities"]
+        >,
+        keywords: (row.search_keywords ?? []).filter(Boolean),
+        serviceTags: (row.service_tags ?? []).filter(Boolean),
+      });
+    }
   }
   return map;
 }

@@ -80,6 +80,10 @@ export default async function MarketplaceCategoryPage({
     minRating: first(sp.rating),
     verifiedOnly: first(sp.verified),
     openNow: first(sp.open),
+    parkingOnly: first(sp.parking),
+    wifiOnly: first(sp.wifi),
+    kidsOnly: first(sp.kids),
+    keyword: first(sp.q),
     page: first(sp.page),
   });
 

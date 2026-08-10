@@ -20,6 +20,10 @@ export type FilterPanelValues = {
   minRating: number | null;
   verifiedOnly: boolean;
   openNow: boolean;
+  parkingOnly: boolean;
+  wifiOnly: boolean;
+  kidsOnly: boolean;
+  keyword: string;
 };
 
 type FilterPanelProps = {
@@ -33,7 +37,7 @@ type FilterPanelProps = {
 
 /**
  * Result refinements only — location lives in the top SearchBar.
- * Distance · Rating · Verified · Open now
+ * Distance · Rating · Verified · Open now · Amenities · Keywords
  */
 export function FilterPanel({
   values,
@@ -102,6 +106,38 @@ export function FilterPanel({
         onClick={() => onChange({ openNow: !values.openNow })}
       >
         Open now
+      </ToggleChip>
+
+      <ToggleChip
+        active={values.parkingOnly}
+        onClick={() => onChange({ parkingOnly: !values.parkingOnly })}
+      >
+        Parking
+      </ToggleChip>
+
+      <ToggleChip
+        active={values.wifiOnly}
+        onClick={() => onChange({ wifiOnly: !values.wifiOnly })}
+      >
+        Wi‑Fi
+      </ToggleChip>
+
+      <ToggleChip
+        active={values.kidsOnly}
+        onClick={() => onChange({ kidsOnly: !values.kidsOnly })}
+      >
+        Kids
+      </ToggleChip>
+
+      <ToggleChip
+        active={values.keyword.toLowerCase() === "korean"}
+        onClick={() =>
+          onChange({
+            keyword: values.keyword.toLowerCase() === "korean" ? "" : "korean",
+          })
+        }
+      >
+        Korean
       </ToggleChip>
     </div>
   );

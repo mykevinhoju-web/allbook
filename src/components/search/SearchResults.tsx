@@ -77,6 +77,10 @@ export function SearchResults({
     filters.minRating,
     filters.verifiedOnly,
     filters.openNow,
+    filters.parkingOnly,
+    filters.wifiOnly,
+    filters.kidsOnly,
+    filters.keyword,
     page,
     clearSelection,
   ]);
@@ -219,6 +223,10 @@ export function SearchResults({
                 minRating: filters.minRating,
                 verifiedOnly: filters.verifiedOnly,
                 openNow: filters.openNow,
+                parkingOnly: filters.parkingOnly,
+                wifiOnly: filters.wifiOnly,
+                kidsOnly: filters.kidsOnly,
+                keyword: filters.keyword,
               }}
               onChange={setFilters}
               radiusKm={query.radiusKm}

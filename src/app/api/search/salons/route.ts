@@ -18,6 +18,10 @@ export async function GET(request: Request) {
     minRating: searchParams.get("rating") ?? undefined,
     verifiedOnly: searchParams.get("verified") ?? undefined,
     openNow: searchParams.get("open") ?? undefined,
+    parkingOnly: searchParams.get("parking") ?? undefined,
+    wifiOnly: searchParams.get("wifi") ?? undefined,
+    kidsOnly: searchParams.get("kids") ?? undefined,
+    keyword: searchParams.get("q") ?? undefined,
     page: searchParams.get("page") ?? undefined,
   });
 

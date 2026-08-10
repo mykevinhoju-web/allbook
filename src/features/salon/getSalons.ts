@@ -43,6 +43,8 @@ export function mapSalonRow(row: SalonRow): Salon {
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, ""),
     serviceTags: (row.service_tags ?? []).filter(Boolean),
+    amenities: (row.amenities ?? []).filter(Boolean) as Salon["amenities"],
+    searchKeywords: (row.search_keywords ?? []).filter(Boolean),
   };
 }
 

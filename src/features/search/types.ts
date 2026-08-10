@@ -20,6 +20,11 @@ export type SalonSearchFilters = {
   minRating: number | null;
   verifiedOnly: boolean;
   openNow: boolean;
+  parkingOnly: boolean;
+  wifiOnly: boolean;
+  kidsOnly: boolean;
+  /** Free-text keyword match against search_keywords / name / tags */
+  keyword: string;
   page: number;
   pageSize: number;
 };
@@ -42,6 +47,10 @@ export type SalonSearchFiltersInput = {
   minRating?: number | string | null;
   verifiedOnly?: boolean | string | null;
   openNow?: boolean | string | null;
+  parkingOnly?: boolean | string | null;
+  wifiOnly?: boolean | string | null;
+  kidsOnly?: boolean | string | null;
+  keyword?: string | null;
   page?: number | string | null;
   pageSize?: number | string | null;
 };
@@ -97,6 +106,10 @@ export function normalizeSalonSearchFilters(
     minRating,
     verifiedOnly: asBool(input.verifiedOnly),
     openNow: asBool(input.openNow),
+    parkingOnly: asBool(input.parkingOnly),
+    wifiOnly: asBool(input.wifiOnly),
+    kidsOnly: asBool(input.kidsOnly),
+    keyword: (input.keyword ?? "").trim(),
     page: Math.max(1, Number(input.page) || 1),
     pageSize: Math.max(1, Number(input.pageSize) || SEARCH_PAGE_SIZE),
   };

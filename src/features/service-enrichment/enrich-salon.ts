@@ -1,8 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/types/database";
+import type { AmenityId } from "@/types/salon";
 
 import { collectSalonEvidenceText } from "./collect-evidence";
+import { extractAmenitiesAndKeywords } from "./extract-amenities-keywords";
 import {
   extractServicesFromText,
   mergeServiceDrafts,
@@ -18,6 +20,8 @@ export type EnrichSalonResult = {
   name: string;
   tagsApplied: number;
   servicesInserted: number;
+  amenitiesApplied: number;
+  keywordsApplied: number;
   sources: string[];
   status: "ok" | "skipped" | "failed";
   error?: string;
@@ -31,6 +35,8 @@ type SalonEnrichRow = {
   google_categories: string[] | null;
   primary_service: string | null;
   service_tags: string[] | null;
+  amenities: string[] | null;
+  search_keywords: string[] | null;
   claimed: boolean;
   services_enriched_at: string | null;
 };
@@ -64,7 +70,58 @@ async function applyServiceTags(
     .eq("id", salon.id);
 
   if (error) throw new Error(error.message);
+  salon.service_tags = merged;
   return merged.length;
+}
+
+async function applyAmenitiesAndKeywords(
+  supabase: AnySupabase,
+  salon: SalonEnrichRow,
+  evidenceText: string,
+): Promise<{ amenitiesApplied: number; keywordsApplied: number }> {
+  const extracted = extractAmenitiesAndKeywords(evidenceText, {
+    name: salon.name,
+    serviceTags: salon.service_tags,
+  });
+
+  const amenities = [
+    ...new Set([
+      ...(salon.amenities ?? []).filter(Boolean),
+      ...extracted.amenities,
+    ]),
+  ] as AmenityId[];
+  const keywords = [
+    ...new Set([
+      ...(salon.search_keywords ?? []).filter(Boolean),
+      ...extracted.keywords,
+    ]),
+  ];
+
+  const amenitiesChanged =
+    amenities.length !== (salon.amenities ?? []).length ||
+    amenities.some((a) => !(salon.amenities ?? []).includes(a));
+  const keywordsChanged =
+    keywords.length !== (salon.search_keywords ?? []).length ||
+    keywords.some((k) => !(salon.search_keywords ?? []).includes(k));
+
+  if (!amenitiesChanged && !keywordsChanged) {
+    return { amenitiesApplied: 0, keywordsApplied: 0 };
+  }
+
+  const { error } = await supabase
+    .from("salons")
+    .update({
+      amenities,
+      search_keywords: keywords,
+      updated_at: new Date().toISOString(),
+    } as never)
+    .eq("id", salon.id);
+  if (error) throw new Error(error.message);
+
+  return {
+    amenitiesApplied: amenitiesChanged ? amenities.length : 0,
+    keywordsApplied: keywordsChanged ? keywords.length : 0,
+  };
 }
 
 async function insertServiceDrafts(
@@ -108,9 +165,7 @@ async function insertServiceDrafts(
 }
 
 /**
- * Step 1+2 for one salon: Google tags + text/LLM service drafts.
- * Never overwrites claimed salon menus (skips service insert when claimed
- * and services already exist).
+ * Step 1+2 for one salon: Google tags + text/LLM service drafts + amenities/keywords.
  */
 export async function enrichSalonServices(
   supabase: AnySupabase,
@@ -119,7 +174,7 @@ export async function enrichSalonServices(
   const { data, error } = await supabase
     .from("salons")
     .select(
-      "id, name, website, google_place_id, google_categories, primary_service, service_tags, claimed, services_enriched_at",
+      "id, name, website, google_place_id, google_categories, primary_service, service_tags, amenities, search_keywords, claimed, services_enriched_at",
     )
     .eq("id", salonId)
     .maybeSingle();
@@ -130,6 +185,8 @@ export async function enrichSalonServices(
       name: "",
       tagsApplied: 0,
       servicesInserted: 0,
+      amenitiesApplied: 0,
+      keywordsApplied: 0,
       sources: [],
       status: "failed",
       error: error?.message ?? "Salon not found",
@@ -147,6 +204,17 @@ export async function enrichSalonServices(
       .eq("salon_id", salon.id);
 
     const alreadyHasMenu = (serviceCount ?? 0) > 0;
+    const evidence = await collectSalonEvidenceText({
+      website: salon.website,
+      googlePlaceId: salon.google_place_id,
+    });
+
+    const featureStats = await applyAmenitiesAndKeywords(
+      supabase,
+      salon,
+      evidence.text || salon.name,
+    );
+
     if (salon.claimed && alreadyHasMenu) {
       await supabase
         .from("salons")
@@ -159,15 +227,12 @@ export async function enrichSalonServices(
         name: salon.name,
         tagsApplied,
         servicesInserted: 0,
-        sources: [],
+        amenitiesApplied: featureStats.amenitiesApplied,
+        keywordsApplied: featureStats.keywordsApplied,
+        sources: evidence.sources,
         status: "skipped",
       };
     }
-
-    const evidence = await collectSalonEvidenceText({
-      website: salon.website,
-      googlePlaceId: salon.google_place_id,
-    });
 
     const ruleDrafts = extractServicesFromText(
       evidence.text,
@@ -203,6 +268,8 @@ export async function enrichSalonServices(
       name: salon.name,
       tagsApplied,
       servicesInserted,
+      amenitiesApplied: featureStats.amenitiesApplied,
+      keywordsApplied: featureStats.keywordsApplied,
       sources: evidence.sources,
       status: "ok",
     };
@@ -212,6 +279,8 @@ export async function enrichSalonServices(
       name: salon.name,
       tagsApplied: 0,
       servicesInserted: 0,
+      amenitiesApplied: 0,
+      keywordsApplied: 0,
       sources: [],
       status: "failed",
       error: err instanceof Error ? err.message : "Enrichment failed",

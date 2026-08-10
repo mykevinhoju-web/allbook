@@ -34,6 +34,10 @@ export type SalonSearchUiFilters = {
   minRating: number | null;
   verifiedOnly: boolean;
   openNow: boolean;
+  parkingOnly: boolean;
+  wifiOnly: boolean;
+  kidsOnly: boolean;
+  keyword: string;
 };
 
 const SEARCH_FETCH_TIMEOUT_MS = 20_000;
@@ -65,7 +69,24 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
       searchParams.get("verified") === "true";
     const openNow =
       searchParams.get("open") === "1" || searchParams.get("open") === "true";
-    return { suburb, minRating, verifiedOnly, openNow };
+    const parkingOnly =
+      searchParams.get("parking") === "1" ||
+      searchParams.get("parking") === "true";
+    const wifiOnly =
+      searchParams.get("wifi") === "1" || searchParams.get("wifi") === "true";
+    const kidsOnly =
+      searchParams.get("kids") === "1" || searchParams.get("kids") === "true";
+    const keyword = (searchParams.get("q") ?? "").trim();
+    return {
+      suburb,
+      minRating,
+      verifiedOnly,
+      openNow,
+      parkingOnly,
+      wifiOnly,
+      kidsOnly,
+      keyword,
+    };
   }, [searchParams]);
 
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
@@ -124,6 +145,10 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
       minRating?: number | null;
       verifiedOnly?: boolean;
       openNow?: boolean;
+      parkingOnly?: boolean;
+      wifiOnly?: boolean;
+      kidsOnly?: boolean;
+      keyword?: string;
       radiusKm?: SearchDistanceKm;
       sort?: SearchSort;
       page?: number;
@@ -139,6 +164,16 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
           : filters.verifiedOnly;
       const openNow =
         next.openNow !== undefined ? next.openNow : filters.openNow;
+      const parkingOnly =
+        next.parkingOnly !== undefined
+          ? next.parkingOnly
+          : filters.parkingOnly;
+      const wifiOnly =
+        next.wifiOnly !== undefined ? next.wifiOnly : filters.wifiOnly;
+      const kidsOnly =
+        next.kidsOnly !== undefined ? next.kidsOnly : filters.kidsOnly;
+      const keyword =
+        next.keyword !== undefined ? next.keyword : filters.keyword;
       const radiusKm = next.radiusKm ?? effectiveQuery.radiusKm;
       const sort = next.sort ?? effectiveQuery.sort;
       const nextPage = next.page ?? 1;
@@ -170,6 +205,10 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
       }
       if (verifiedOnly) params.set("verified", "1");
       if (openNow) params.set("open", "1");
+      if (parkingOnly) params.set("parking", "1");
+      if (wifiOnly) params.set("wifi", "1");
+      if (kidsOnly) params.set("kids", "1");
+      if (keyword.trim()) params.set("q", keyword.trim().toLowerCase());
       if (radiusKm !== DEFAULT_SEARCH_DISTANCE_KM) {
         params.set("radius", String(radiusKm));
       }
@@ -296,6 +335,10 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
       }
       if (filters.verifiedOnly) params.set("verified", "1");
       if (filters.openNow) params.set("open", "1");
+      if (filters.parkingOnly) params.set("parking", "1");
+      if (filters.wifiOnly) params.set("wifi", "1");
+      if (filters.kidsOnly) params.set("kids", "1");
+      if (filters.keyword) params.set("q", filters.keyword);
 
       try {
         const response = await fetch(`/api/search/salons?${params}`, {
@@ -380,6 +423,10 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
     filters.minRating,
     filters.verifiedOnly,
     filters.openNow,
+    filters.parkingOnly,
+    filters.wifiOnly,
+    filters.kidsOnly,
+    filters.keyword,
     page,
     retryKey,
   ]);
