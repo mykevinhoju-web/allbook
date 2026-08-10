@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/cron/brisbane-suburb-fill?categories=hair&batchSize=6&radiusKm=8",
-      "schedule": "*/10 * * * *"
+      "schedule": "30 3 * * *"
     }
   ]
 }
