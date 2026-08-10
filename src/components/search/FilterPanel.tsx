@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 import {
   SEARCH_DISTANCE_KM,
   SEARCH_MIN_RATING_OPTIONS,
-  SEARCH_SUBURB_OPTIONS,
   type SearchDistanceKm,
 } from "@/features/search/constants";
 import {
@@ -18,7 +17,6 @@ import {
 import { cn } from "@/lib/utils";
 
 export type FilterPanelValues = {
-  suburb: string;
   minRating: number | null;
   verifiedOnly: boolean;
   openNow: boolean;
@@ -27,14 +25,15 @@ export type FilterPanelValues = {
 type FilterPanelProps = {
   values: FilterPanelValues;
   onChange: (next: Partial<FilterPanelValues>) => void;
-  /** Distance filter around the search origin */
+  /** Distance filter around the (top-bar) search origin */
   radiusKm?: SearchDistanceKm;
   onRadiusChange?: (radiusKm: SearchDistanceKm) => void;
   className?: string;
 };
 
 /**
- * Search filters: Distance · Suburb · Rating · Verified · Open now
+ * Result refinements only — location lives in the top SearchBar.
+ * Distance · Rating · Verified · Open now
  */
 export function FilterPanel({
   values,
@@ -70,26 +69,6 @@ export function FilterPanel({
           </SelectContent>
         </Select>
       ) : null}
-
-      <Select
-        value={values.suburb || "all"}
-        onValueChange={(value) => {
-          if (!value) return;
-          onChange({ suburb: value === "all" ? "" : value });
-        }}
-      >
-        <SelectTrigger className="h-9 w-auto min-w-[132px] rounded-full border-neutral-200 bg-neutral-50 px-3 text-[13px] font-medium">
-          <SelectValue placeholder="Suburb" />
-        </SelectTrigger>
-        <SelectContent className="rounded-2xl">
-          <SelectItem value="all">All suburbs</SelectItem>
-          {SEARCH_SUBURB_OPTIONS.map((suburb) => (
-            <SelectItem key={suburb} value={suburb}>
-              {suburb}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
 
       <Select
         value={String(values.minRating ?? 0)}

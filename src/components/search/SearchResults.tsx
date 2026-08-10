@@ -12,6 +12,7 @@ import {
   type MarketplaceCategory,
 } from "@/features/category";
 import { AllBookLogo } from "@/features/platform-landing/components/allbook-logo";
+import { DEFAULT_SEARCH_DISTANCE_KM } from "@/features/search/constants";
 import { useMap } from "@/hooks/useMap";
 import { useSalonSearch } from "@/hooks/useSalonSearch";
 import type { SearchSalonsResult } from "@/features/search";
@@ -73,7 +74,6 @@ export function SearchResults({
   }, [
     query.location,
     query.radiusKm,
-    filters.suburb,
     filters.minRating,
     filters.verifiedOnly,
     filters.openNow,
@@ -81,13 +81,8 @@ export function SearchResults({
     clearSelection,
   ]);
 
-  const pageTitle = buildCategoryResultsTitle(
-    category,
-    filters.suburb || query.location,
-  );
-  const locationLabel = formatLocationDisplay(
-    filters.suburb || query.location,
-  );
+  const pageTitle = buildCategoryResultsTitle(category, query.location);
+  const locationLabel = formatLocationDisplay(query.location);
   const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1);
   const pageDistances = salons
     .map((s) => s.distanceKm)
@@ -108,7 +103,13 @@ export function SearchResults({
     if (!next || next.slug === category.slug) return;
     const params = new URLSearchParams();
     if (query.location) params.set("location", query.location.toLowerCase());
-    if (filters.suburb) params.set("suburb", filters.suburb);
+    if (query.radiusKm !== DEFAULT_SEARCH_DISTANCE_KM) {
+      params.set("radius", String(query.radiusKm));
+    }
+    if (query.lat != null && query.lng != null) {
+      params.set("lat", String(query.lat));
+      params.set("lng", String(query.lng));
+    }
     const qs = params.toString();
     router.push(`/${next.slug}${qs ? `?${qs}` : ""}`);
   }
@@ -215,7 +216,6 @@ export function SearchResults({
 
             <FilterPanel
               values={{
-                suburb: filters.suburb,
                 minRating: filters.minRating,
                 verifiedOnly: filters.verifiedOnly,
                 openNow: filters.openNow,

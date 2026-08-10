@@ -190,9 +190,16 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
         | string
         | { location: string; lat?: number | null; lng?: number | null },
     ) => {
+      // Location is owned by the top SearchBar — drop the old suburb filter so
+      // results never show a mismatched second place name.
       if (typeof value === "string") {
         clearSavedSearchLocation();
-        pushState({ location: value, clearCoords: true, page: 1 });
+        pushState({
+          location: value,
+          clearCoords: true,
+          suburb: "",
+          page: 1,
+        });
         return;
       }
       if (value.lat != null && value.lng != null) {
@@ -205,6 +212,7 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
           location: value.location,
           lat: value.lat,
           lng: value.lng,
+          suburb: "",
           page: 1,
         });
         return;
@@ -212,6 +220,7 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
       pushState({
         location: value.location,
         clearCoords: true,
+        suburb: "",
         page: 1,
       });
     },
