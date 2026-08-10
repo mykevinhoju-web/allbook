@@ -3,8 +3,10 @@
 import type { ReactNode } from "react";
 
 import {
+  SEARCH_DISTANCE_KM,
   SEARCH_MIN_RATING_OPTIONS,
   SEARCH_SUBURB_OPTIONS,
+  type SearchDistanceKm,
 } from "@/features/search/constants";
 import {
   Select,
@@ -25,16 +27,20 @@ export type FilterPanelValues = {
 type FilterPanelProps = {
   values: FilterPanelValues;
   onChange: (next: Partial<FilterPanelValues>) => void;
+  /** Distance filter around the search origin */
+  radiusKm?: SearchDistanceKm;
+  onRadiusChange?: (radiusKm: SearchDistanceKm) => void;
   className?: string;
 };
 
 /**
- * Search filters: Suburb · Rating · Verified · Open now
- * Reusable across category routes.
+ * Search filters: Distance · Suburb · Rating · Verified · Open now
  */
 export function FilterPanel({
   values,
   onChange,
+  radiusKm,
+  onRadiusChange,
   className,
 }: FilterPanelProps) {
   return (
@@ -44,6 +50,27 @@ export function FilterPanel({
         className,
       )}
     >
+      {onRadiusChange && radiusKm != null ? (
+        <Select
+          value={String(radiusKm)}
+          onValueChange={(value) => {
+            if (!value) return;
+            onRadiusChange(Number(value) as SearchDistanceKm);
+          }}
+        >
+          <SelectTrigger className="h-9 w-auto min-w-[118px] rounded-full border-neutral-200 bg-neutral-50 px-3 text-[13px] font-medium">
+            <SelectValue placeholder="Distance" />
+          </SelectTrigger>
+          <SelectContent className="rounded-2xl">
+            {SEARCH_DISTANCE_KM.map((km) => (
+              <SelectItem key={km} value={String(km)}>
+                Within {km} km
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : null}
+
       <Select
         value={values.suburb || "all"}
         onValueChange={(value) => {
