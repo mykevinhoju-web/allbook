@@ -41,13 +41,15 @@ export function boundsForSearchRadius(
 }
 
 /**
- * Approximate map zoom for a given search radius (km).
+ * Map zoom for a search radius (km).
+ * Tuned for the marketplace results map pane — avoid fitBounds, which
+ * letterboxes a square radius into a wide panel and looks city-wide.
  */
 export function zoomForSearchRadius(radiusKm: number): number {
-  if (radiusKm <= 5) return 13;
-  if (radiusKm <= 10) return 12;
-  if (radiusKm <= 20) return 11;
-  return 10;
+  if (radiusKm <= 5) return 14;
+  if (radiusKm <= 10) return 13;
+  if (radiusKm <= 20) return 12;
+  return 11;
 }
 
 /** Suburb-level zoom fallback when no radius framing is available. */

@@ -11,7 +11,6 @@ import {
   SELECTED_SALON_ZOOM,
   SUBURB_SEARCH_ZOOM,
   boundsForSalonMarkers,
-  boundsForSearchRadius,
   getGoogleMapsBrowserKey,
   zoomForSearchRadius,
   type LatLngBoundsLiteral,
@@ -151,14 +150,14 @@ function GoogleMapCanvas({
       };
     }
 
-    // Frame the chosen search radius so 5→50 km visibly widens the map.
+    // Frame the chosen search radius with center + zoom only.
+    // fitBounds on a square radius inside a wide map pane shows far more
+    // than N km east–west and looks like a 50 km city search.
     if (originCenter && activeRadiusKm != null) {
       return {
         center: originCenter,
         zoom: zoomForSearchRadius(activeRadiusKm),
-        bounds: boundsForSearchRadius(originCenter, activeRadiusKm),
-        maxZoom: zoomForSearchRadius(activeRadiusKm) + 1,
-        minZoom: Math.max(zoomForSearchRadius(activeRadiusKm) - 1, 9),
+        bounds: null,
       };
     }
 

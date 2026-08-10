@@ -264,13 +264,22 @@ async function runLocalSearch(
   }
 
   const total = salons.length;
-  const pageRows = salons.slice(offset, offset + pageSize);
-  const hasMore = offset + pageSize < total;
+  const inRadius =
+    origin == null
+      ? salons
+      : salons.filter(
+          (s) =>
+            s.distanceKm == null ||
+            (Number.isFinite(s.distanceKm) &&
+              s.distanceKm <= filters.radiusKm),
+        );
+  const pageRows = inRadius.slice(offset, offset + pageSize);
+  const hasMore = offset + pageSize < inRadius.length;
 
   return {
     salons: pageRows,
-    mapSalons: salons,
-    total,
+    mapSalons: inRadius,
+    total: inRadius.length,
     page,
     pageSize,
     hasMore,
