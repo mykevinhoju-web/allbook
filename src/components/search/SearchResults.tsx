@@ -55,6 +55,7 @@ export function SearchResults({
     setLocation,
     setFilters,
     setPage,
+    setRadiusKm,
     retry,
     clearFilters,
   } = useSalonSearch({ category, initialResult });
@@ -186,7 +187,6 @@ export function SearchResults({
                 {status === "ready"
                   ? `${total} salon${total === 1 ? "" : "s"}`
                   : "Find and book nearby"}
-                {query.location ? ` · within ${query.radiusKm} km` : null}
               </p>
               {origin?.formattedAddress ? (
                 <p className="mt-0.5 truncate text-xs text-neutral-400">
@@ -203,6 +203,8 @@ export function SearchResults({
                 openNow: filters.openNow,
               }}
               onChange={setFilters}
+              radiusKm={query.radiusKm}
+              onRadiusChange={setRadiusKm}
             />
           </div>
 
