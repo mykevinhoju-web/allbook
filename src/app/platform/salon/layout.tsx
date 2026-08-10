@@ -35,7 +35,11 @@ export default async function SalonOwnerLayout({
   }
 
   if (context.status === "pending_claim") {
-    redirect("/register/pending");
+    redirect(
+      "claimId" in context && context.claimId
+        ? `/register/claim/${context.claimId}`
+        : "/register/pending",
+    );
   }
 
   return (

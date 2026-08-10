@@ -35,7 +35,7 @@ export type OwnerSalonContext =
   | { status: "unauthenticated" }
   | { status: "error"; error: string }
   | { status: "no_salon"; user: User }
-  | { status: "pending_claim"; user: User }
+  | { status: "pending_claim"; user: User; claimId?: string }
   | OwnerSalonOk;
 
 /**
@@ -89,10 +89,23 @@ export async function getOwnerSalonContext(
       .from("salon_claim_requests" as never)
       .select("id" as never)
       .eq("auth_user_id" as never, user.id)
-      .eq("status" as never, "pending")
+      .in("status" as never, [
+        "pending",
+        "email_verified",
+        "business_verification_required",
+        "business_verified",
+        "manual_review",
+        "conflict",
+      ])
+      .order("created_at" as never, { ascending: false })
+      .limit(1)
       .maybeSingle();
     if (pending) {
-      return { status: "pending_claim", user };
+      return {
+        status: "pending_claim",
+        user,
+        claimId: (pending as { id: string }).id,
+      };
     }
     return { status: "no_salon", user };
   }
@@ -166,7 +179,11 @@ export async function requireOwnerSalon(
     redirect("/register");
   }
   if (context.status === "pending_claim") {
-    redirect("/register/pending");
+    redirect(
+      context.claimId
+        ? `/register/claim/${context.claimId}`
+        : "/register/pending",
+    );
   }
 
   return context;

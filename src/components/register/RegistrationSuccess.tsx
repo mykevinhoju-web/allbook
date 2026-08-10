@@ -52,8 +52,8 @@ export function RegistrationSuccess({
         </h1>
         <p className="text-[15px] leading-relaxed text-neutral-600">
           {result.claimedExisting
-            ? "We matched an existing AllBook listing. Reviews and listing details stay on that salon — ownership is attached only after approval. You cannot manage the salon until then."
-            : "Your application was submitted. The salon stays hidden from search and you cannot log in as owner until AllBook approves ownership."}
+            ? "We matched an existing AllBook listing. Next, verify you control the business (website or phone). Google data alone does not prove ownership."
+            : "Your application was submitted. Complete business-control verification to unlock owner access. Until then the listing stays hidden from search if it is brand new."}
         </p>
       </header>
 

@@ -29,6 +29,9 @@ const SALON_SYNC_SELECT = [
   "google_photos",
   "google_business_status",
   "permanently_closed",
+  "profile_authority",
+  "ownership_status",
+  "claimed",
 ].join(", ");
 
 /**

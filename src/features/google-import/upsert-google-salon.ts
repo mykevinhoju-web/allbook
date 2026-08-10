@@ -124,11 +124,12 @@ export async function upsertGoogleSalon(
     const isClaimed = row.claimed || Boolean(ownerRow);
 
     if (isClaimed) {
-      // Google snapshot fields only — never owner catalog / branding / copy.
+      // Owner-authoritative profile — Google metadata only.
       const { error } = await supabase
         .from("salons")
         .update({
           claimed: true,
+          profile_authority: "owner",
           rating: snapshot.rating,
           review_count: snapshot.reviewCount,
           google_categories: snapshot.googleCategories,
@@ -273,6 +274,7 @@ export async function upsertGoogleSalon(
       booking_enabled: false,
       accept_new_customers: true,
       ownership_status: "unclaimed",
+      profile_authority: "catalogue",
       amenities: [],
       service_tags: serviceTags,
       languages: [],

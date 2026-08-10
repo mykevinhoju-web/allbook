@@ -2,6 +2,11 @@ import { hash } from "bcryptjs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { buildSalonPath, resolveCategoryFromService } from "@/features/category";
+import {
+  evaluateClaimRisk,
+  recordClaimEvent,
+  scoreMatchConfidence,
+} from "@/features/claim-verification";
 import type { Database } from "@/types/database";
 import { PLATFORM_SITE_URL } from "@/features/platform-landing/lib/platform-seo";
 
@@ -139,9 +144,54 @@ async function insertClaimRequest(
     matchReasons: string[];
     createdNewSalon: boolean;
     createdAuthUserId: string | null;
+    emailVerifiedAt: string | null;
+    claimantPhone?: string | null;
+    cataloguePhone?: string | null;
+    hasVerifiedOwner?: boolean;
+    priorClaimCount?: number;
+    distinctClaimantCount?: number;
+    recentClaimCount24h?: number;
   },
 ) {
   const passwordHash = await hash(input.password, 10);
+  const matchConfidence = scoreMatchConfidence({
+    reasons: input.matchReasons,
+    hard: input.matchReasons.length > 0,
+  });
+
+  const phoneMismatch = Boolean(
+    input.claimantPhone &&
+      input.cataloguePhone &&
+      input.claimantPhone.replace(/\D/g, "").slice(-9) !==
+        input.cataloguePhone.replace(/\D/g, "").slice(-9),
+  );
+
+  const risk = evaluateClaimRisk({
+    hasVerifiedOwner: Boolean(input.hasVerifiedOwner),
+    priorClaimCount: input.priorClaimCount ?? 0,
+    failedAttempts: 0,
+    distinctClaimantCount: input.distinctClaimantCount ?? 1,
+    recentClaimCount24h: input.recentClaimCount24h ?? 0,
+    phoneMismatch,
+    websiteMismatch: false,
+    claimantDiffers: false,
+    onlyGooglePlaceId:
+      input.matchReasons.length === 1 &&
+      input.matchReasons[0] === "google_place_id",
+    emailOnlyNoBusinessControl: true,
+  });
+
+  const initialStatus = input.hasVerifiedOwner
+    ? "conflict"
+    : input.emailVerifiedAt
+      ? "business_verification_required"
+      : "pending";
+  const verificationState = input.hasVerifiedOwner
+    ? "conflict"
+    : input.emailVerifiedAt
+      ? "email_verified"
+      : "pending";
+
   const { data, error } = await supabase
     .from("salon_claim_requests" as never)
     .insert({
@@ -150,8 +200,20 @@ async function insertClaimRequest(
       full_name: input.ownerName,
       email: input.ownerEmail,
       password_hash: passwordHash,
-      status: "pending",
+      status: initialStatus,
+      verification_state: verificationState,
       match_reasons: input.matchReasons,
+      match_confidence: matchConfidence,
+      match_reasons_detail: input.matchReasons.map((r) => ({ reason: r })),
+      risk_score: risk.score,
+      risk_flags: risk.flags,
+      claimant_phone: input.claimantPhone?.trim() || null,
+      catalogue_phone_match: input.claimantPhone
+        ? !phoneMismatch && Boolean(input.cataloguePhone)
+        : null,
+      account_email_verified_at: input.emailVerifiedAt,
+      postal_fallback_eligible:
+        risk.level === "high" || Boolean(input.hasVerifiedOwner),
       created_new_salon: input.createdNewSalon,
     } as never)
     .select("id" as never)
@@ -169,12 +231,68 @@ async function insertClaimRequest(
     throw new Error(error?.message ?? "Could not submit claim request.");
   }
 
-  // Block sign-in until platform admin approves ownership.
-  await supabase.auth.admin.updateUserById(input.authUserId, {
-    ban_duration: "876000h",
+  const claimId = (data as { id: string }).id;
+
+  await recordClaimEvent(supabase, {
+    claimId,
+    salonId: input.salonId,
+    authUserId: input.authUserId,
+    event: "claim_created",
+    result: initialStatus,
+    details: {
+      matchReasons: input.matchReasons,
+      matchConfidence,
+      createdNewSalon: input.createdNewSalon,
+    },
   });
 
-  return (data as { id: string }).id;
+  if (input.matchReasons.length > 0) {
+    await recordClaimEvent(supabase, {
+      claimId,
+      salonId: input.salonId,
+      authUserId: input.authUserId,
+      event: "business_matched",
+      result: "matched",
+      details: { reasons: input.matchReasons, matchConfidence },
+    });
+  }
+
+  if (input.emailVerifiedAt) {
+    await recordClaimEvent(supabase, {
+      claimId,
+      salonId: input.salonId,
+      authUserId: input.authUserId,
+      event: "email_verified",
+      verificationMethod: "account_email",
+      result: "verified",
+    });
+  }
+
+  if (input.hasVerifiedOwner) {
+    await recordClaimEvent(supabase, {
+      claimId,
+      salonId: input.salonId,
+      authUserId: input.authUserId,
+      event: "conflict_detected",
+      result: "conflict",
+    });
+  }
+
+  if (risk.flags.length > 0) {
+    await recordClaimEvent(supabase, {
+      claimId,
+      salonId: input.salonId,
+      authUserId: input.authUserId,
+      event: "risk_flagged",
+      result: risk.level,
+      details: { flags: risk.flags, score: risk.score },
+    });
+  }
+
+  // Claimants must remain able to sign in to complete business-control verification.
+  // Owner dashboard stays blocked until ownership is verified (no salon_owners yet).
+
+  return claimId;
 }
 
 function buildResult(input: {
@@ -193,11 +311,11 @@ function buildResult(input: {
     categorySlug: input.categorySlug,
     publicPath,
     publicUrl: `${PLATFORM_SITE_URL.replace(/\/$/, "")}${publicPath}`,
-    dashboardPath: "/register/pending",
+    dashboardPath: `/register/claim/${input.claimRequestId}`,
     ownershipStatus: "pending_verification",
     reviewRequired: true,
     claimedExisting: input.claimedExisting,
-    canLogin: false,
+    canLogin: true,
     claimRequestId: input.claimRequestId,
   };
 }
@@ -216,6 +334,7 @@ async function markSalonPendingVerification(
       booking_enabled: false,
       review_status: "pending",
       registration_method: method,
+      profile_authority: "catalogue",
       ...(opts.hideFromSearch ? { marketplace_visible: false } : {}),
       updated_at: new Date().toISOString(),
     })
@@ -271,18 +390,27 @@ export async function createSalonRegistration(
     null;
 
   if (claimTarget) {
-    if (claimTarget.claimed || claimTarget.ownershipStatus === "verified") {
-      throw new Error(
-        "This salon is already claimed by another owner. Contact AllBook support if this is your business.",
-      );
-    }
-    if (claimTarget.ownershipStatus === "pending_verification") {
-      // Allow if no pending claim row yet (legacy), otherwise block.
+    const { data: existingOwners } = await supabase
+      .from("salon_owners")
+      .select("id")
+      .eq("salon_id", claimTarget.id)
+      .limit(1);
+    const hasVerifiedOwner =
+      (existingOwners ?? []).length > 0 ||
+      claimTarget.claimed ||
+      claimTarget.ownershipStatus === "verified";
+
+    if (!hasVerifiedOwner && claimTarget.ownershipStatus === "pending_verification") {
       const { data: existingPending } = await supabase
         .from("salon_claim_requests" as never)
         .select("id" as never)
         .eq("salon_id" as never, claimTarget.id)
-        .eq("status" as never, "pending")
+        .in("status" as never, [
+          "pending",
+          "email_verified",
+          "business_verification_required",
+          "business_verified",
+        ])
         .maybeSingle();
       if (existingPending) {
         throw new Error(
@@ -291,25 +419,42 @@ export async function createSalonRegistration(
       }
     }
 
-    const { data: existingOwners } = await supabase
-      .from("salon_owners")
-      .select("id")
-      .eq("salon_id", claimTarget.id)
-      .limit(1);
-    if ((existingOwners ?? []).length > 0) {
-      throw new Error(
-        "This salon already has an owner account. Contact AllBook support if this is your business.",
-      );
-    }
-
     const { authUserId, createdAuthUserId } = await createAuthUser(
       supabase,
       input,
     );
 
+    const { data: authUser } = await supabase.auth.admin.getUserById(authUserId);
+    const emailVerifiedAt = authUser.user?.email_confirmed_at ?? null;
+
+    const { count: priorClaimCount } = await supabase
+      .from("salon_claim_requests" as never)
+      .select("id" as never, { count: "exact", head: true })
+      .eq("salon_id" as never, claimTarget.id);
+
+    const { data: priorClaimants } = await supabase
+      .from("salon_claim_requests" as never)
+      .select("auth_user_id" as never)
+      .eq("salon_id" as never, claimTarget.id);
+    const distinctClaimantCount = new Set(
+      [
+        ...((priorClaimants as Array<{ auth_user_id: string }> | null) ?? []).map(
+          (r) => r.auth_user_id,
+        ),
+        authUserId,
+      ],
+    ).size;
+
+    const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { count: recentClaimCount24h } = await supabase
+      .from("salon_claim_requests" as never)
+      .select("id" as never, { count: "exact", head: true })
+      .eq("salon_id" as never, claimTarget.id)
+      .gte("created_at" as never, dayAgo);
+
     const { data: salonRow, error: salonLoadError } = await supabase
       .from("salons")
-      .select("id, slug, primary_service")
+      .select("id, slug, primary_service, phone")
       .eq("id", claimTarget.id)
       .maybeSingle();
 
@@ -321,10 +466,13 @@ export async function createSalonRegistration(
     }
 
     try {
-      // Existing catalogue listing stays searchable; claim is pending only.
-      await markSalonPendingVerification(supabase, claimTarget.id, input.method, {
-        hideFromSearch: false,
-      });
+      // Existing catalogue stays searchable. Do not demote a verified owner salon.
+      if (!hasVerifiedOwner) {
+        await markSalonPendingVerification(supabase, claimTarget.id, input.method, {
+          hideFromSearch: false,
+        });
+      }
+
       const claimRequestId = await insertClaimRequest(supabase, {
         salonId: claimTarget.id,
         authUserId,
@@ -334,6 +482,13 @@ export async function createSalonRegistration(
         matchReasons: claimTarget.reasons,
         createdNewSalon: false,
         createdAuthUserId,
+        emailVerifiedAt,
+        claimantPhone: input.profile.phone,
+        cataloguePhone: (salonRow as { phone?: string | null }).phone,
+        hasVerifiedOwner,
+        priorClaimCount: priorClaimCount ?? 0,
+        distinctClaimantCount,
+        recentClaimCount24h: recentClaimCount24h ?? 0,
       });
 
       const resolved =
@@ -439,6 +594,7 @@ export async function createSalonRegistration(
       booking_enabled: false,
       accept_new_customers: true,
       marketplace_visible: false,
+      profile_authority: "catalogue",
       primary_service: category.name,
       starting_price: 0,
       price_min: 0,
@@ -466,6 +622,9 @@ export async function createSalonRegistration(
   }
 
   try {
+    const { data: authUser } = await supabase.auth.admin.getUserById(authUserId);
+    const emailVerifiedAt = authUser.user?.email_confirmed_at ?? null;
+
     const claimRequestId = await insertClaimRequest(supabase, {
       salonId: salon.id,
       authUserId,
@@ -475,6 +634,10 @@ export async function createSalonRegistration(
       matchReasons: [],
       createdNewSalon: true,
       createdAuthUserId,
+      emailVerifiedAt,
+      claimantPhone: input.profile.phone,
+      cataloguePhone: null,
+      hasVerifiedOwner: false,
     });
 
     const { ensureDefaultBookingPolicy } = await import(

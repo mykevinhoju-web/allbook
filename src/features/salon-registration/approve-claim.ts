@@ -31,7 +31,16 @@ export async function approveSalonClaim(
       "id, salon_id, auth_user_id, full_name, email, password_hash, status, created_new_salon" as never,
     )
     .eq("salon_id" as never, input.salonId)
-    .eq("status" as never, "pending")
+    .in("status" as never, [
+      "pending",
+      "email_verified",
+      "business_verification_required",
+      "business_verified",
+      "manual_review",
+      "conflict",
+    ])
+    .order("created_at" as never, { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   if (claimError) return { ok: false, error: claimError.message };
@@ -76,6 +85,7 @@ export async function approveSalonClaim(
     ownership_status: "verified",
     claimed: true,
     verified: true,
+    profile_authority: "owner",
     review_status: "approved" as const,
     reviewed_at: now,
     reviewed_by: input.actor,
@@ -97,8 +107,11 @@ export async function approveSalonClaim(
     .from("salon_claim_requests" as never)
     .update({
       status: "approved",
+      verification_state: "verified",
+      ownership_verified_at: now,
       reviewed_at: now,
       reviewed_by: input.actor,
+      last_verification_method: "manual_review",
       updated_at: now,
     } as never)
     .eq("id" as never, row.id);

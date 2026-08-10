@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       authUserId: existingUser?.id,
     });
 
-    // Pending applicants are banned until admin approval — never create a session yet.
+    // Claimants can sign in to finish business-control verification; owner dashboard stays gated.
     if (!result.canLogin) {
       return NextResponse.json(result, { status: 201 });
     }

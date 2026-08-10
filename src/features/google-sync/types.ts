@@ -59,6 +59,9 @@ export type GoogleSyncSalonRow = {
   google_photos: unknown;
   google_business_status: string | null;
   permanently_closed: boolean;
+  profile_authority?: string | null;
+  ownership_status?: string | null;
+  claimed?: boolean;
 };
 
 /** Google-managed snapshot used for hash + patch (never owner catalog fields). */

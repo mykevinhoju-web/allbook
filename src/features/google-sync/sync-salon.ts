@@ -5,6 +5,7 @@ import {
   PlaceDetailsError,
   sleep,
 } from "@/features/google-import/places-client";
+import { buildGoogleSyncSalonPatch } from "@/features/claim-verification";
 import { recordBusinessEvent } from "@/features/marketplace-review/record-event";
 import type { Database } from "@/types/database";
 
@@ -41,6 +42,9 @@ const SALON_SYNC_SELECT = [
   "google_photos",
   "google_business_status",
   "permanently_closed",
+  "profile_authority",
+  "ownership_status",
+  "claimed",
 ].join(", ");
 
 export async function loadSalonForSync(
@@ -112,38 +116,43 @@ export async function syncSalonFromGoogle(
       heightPx: p.heightPx ?? null,
     }));
 
-    // Google-managed patch only — never description, cover, logo, amenities,
-    // category_id, services, staff, keywords, booking settings, etc.
-    const patch: Database["public"]["Tables"]["salons"]["Update"] = {
-      address: snapshot.address,
-      suburb: snapshot.suburb,
-      city: snapshot.city,
-      state: snapshot.state,
-      postcode: snapshot.postcode,
-      country: snapshot.country,
-      latitude: snapshot.latitude,
-      longitude: snapshot.longitude,
-      phone: snapshot.phone,
-      website: snapshot.website,
-      rating: snapshot.rating,
-      review_count: snapshot.reviewCount,
-      opening_hours: snapshot.openingHours,
-      google_categories: snapshot.googleCategories,
-      google_photos: googlePhotos,
-      google_business_status: snapshot.businessStatus,
-      permanently_closed: snapshot.permanentlyClosed,
-      google_snapshot_hash: nextHash,
-      google_synced_at: now,
-      updated_at: now,
-    };
+    const authority =
+      (salon as { profile_authority?: string }).profile_authority === "owner" ||
+      (salon as { ownership_status?: string }).ownership_status === "verified" ||
+      (salon as { claimed?: boolean }).claimed
+        ? "owner"
+        : "catalogue";
 
-    if (!salon.owner_name_override) {
-      patch.name = snapshot.name;
-    }
+    const patch = buildGoogleSyncSalonPatch({
+      authority,
+      ownerNameOverride: salon.owner_name_override,
+      snapshot: {
+        name: snapshot.name,
+        address: snapshot.address,
+        suburb: snapshot.suburb,
+        city: snapshot.city,
+        state: snapshot.state,
+        postcode: snapshot.postcode,
+        country: snapshot.country,
+        latitude: snapshot.latitude,
+        longitude: snapshot.longitude,
+        phone: snapshot.phone,
+        website: snapshot.website,
+        rating: snapshot.rating,
+        reviewCount: snapshot.reviewCount,
+        openingHours: snapshot.openingHours as Record<string, unknown>,
+        googleCategories: snapshot.googleCategories,
+        googlePhotos,
+        businessStatus: snapshot.businessStatus,
+        permanentlyClosed: snapshot.permanentlyClosed,
+        snapshotHash: nextHash,
+      },
+      nowIso: now,
+    });
 
     const { error } = await supabase
       .from("salons")
-      .update(patch)
+      .update(patch as never)
       .eq("id", salon.id);
 
     if (error) {
