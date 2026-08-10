@@ -78,6 +78,7 @@ export async function getDashboard(
   | { status: "unauthenticated" }
   | { status: "error"; error: string }
   | { status: "no_salon" }
+  | { status: "pending_claim" }
   | { status: "ok"; data: SalonDashboardData }
 > {
   const context = existing ?? (await getOwnerSalonContext());
@@ -90,6 +91,9 @@ export async function getDashboard(
   }
   if (context.status === "no_salon") {
     return { status: "no_salon" };
+  }
+  if (context.status === "pending_claim") {
+    return { status: "pending_claim" };
   }
 
   const supabase = await createClient();

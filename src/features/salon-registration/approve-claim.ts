@@ -72,19 +72,16 @@ export async function approveSalonClaim(
     ban_duration: "none",
   });
 
-  const salonUpdate: Record<string, unknown> = {
+  const salonUpdate = {
     ownership_status: "verified",
     claimed: true,
     verified: true,
-    review_status: "approved",
+    review_status: "approved" as const,
     reviewed_at: now,
     reviewed_by: input.actor,
     updated_at: now,
+    ...(row.created_new_salon ? { marketplace_visible: true } : {}),
   };
-  // Brand-new salons were hidden until approval; catalogue claims stay visible.
-  if (row.created_new_salon) {
-    salonUpdate.marketplace_visible = true;
-  }
 
   const { error: salonError } = await supabase
     .from("salons")
@@ -152,15 +149,13 @@ export async function rejectSalonClaim(
     await supabase.auth.admin.deleteUser(row.auth_user_id);
   }
 
-  const salonUpdate: Record<string, unknown> = {
+  const salonUpdate = {
     ownership_status: row.created_new_salon ? "rejected" : "unclaimed",
     claimed: false,
     booking_enabled: false,
     updated_at: now,
+    ...(row.created_new_salon ? { marketplace_visible: false } : {}),
   };
-  if (row.created_new_salon) {
-    salonUpdate.marketplace_visible = false;
-  }
 
   await supabase.from("salons").update(salonUpdate).eq("id", input.salonId);
 

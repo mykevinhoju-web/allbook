@@ -14,6 +14,10 @@ export default async function SalonOwnerDashboardPage() {
     redirect("/register");
   }
 
+  if (result.status === "pending_claim") {
+    redirect("/register/pending");
+  }
+
   if (result.status === "error") {
     return (
       <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
