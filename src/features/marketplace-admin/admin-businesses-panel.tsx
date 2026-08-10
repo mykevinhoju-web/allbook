@@ -49,6 +49,7 @@ export function AdminBusinessesPanel() {
   const [acting, setActing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [keywordDraft, setKeywordDraft] = useState(String(DEFAULT_OWNER_KEYWORD_LIMIT));
+  const [priorityDraft, setPriorityDraft] = useState("0");
 
   const selected =
     result?.items.find((item) => item.id === selectedId) ?? null;
@@ -56,8 +57,9 @@ export function AdminBusinessesPanel() {
   useEffect(() => {
     if (selected) {
       setKeywordDraft(String(selected.ownerKeywordLimit));
+      setPriorityDraft(String(selected.searchPriority ?? 0));
     }
-  }, [selected?.id, selected?.ownerKeywordLimit]);
+  }, [selected?.id, selected?.ownerKeywordLimit, selected?.searchPriority]);
 
   // Live search: typing updates the query after a short pause (Enter/Search still works).
   useEffect(() => {
@@ -111,6 +113,7 @@ export function AdminBusinessesPanel() {
       reviewStatus?: BusinessManageStatus;
       verified?: boolean;
       ownerKeywordLimit?: number;
+      searchPriority?: number;
       ownershipStatus?:
         | "unclaimed"
         | "pending_verification"
@@ -279,6 +282,11 @@ export function AdminBusinessesPanel() {
                       <div className="min-w-0">
                         <p className="truncate font-medium text-slate-900">
                           {item.name}
+                          {(item.searchPriority ?? 0) > 0 ? (
+                            <span className="ml-2 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
+                              P{item.searchPriority}
+                            </span>
+                          ) : null}
                         </p>
                         <p className="mt-0.5 truncate text-xs text-slate-500">
                           {[item.suburb, item.city].filter(Boolean).join(", ")}{" "}
@@ -501,6 +509,54 @@ export function AdminBusinessesPanel() {
                   ) : (
                     <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-500">
                       Default · {DEFAULT_OWNER_KEYWORD_LIMIT}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Search list priority
+                </h3>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                  Higher numbers appear earlier in the left search list (before
+                  distance / rating). Default is 0. Example: 100 pins near the
+                  top within the search radius.
+                </p>
+                <div className="mt-3 flex flex-wrap items-end gap-2">
+                  <label className="block">
+                    <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                      Priority
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={10000}
+                      disabled={acting}
+                      value={priorityDraft}
+                      onChange={(e) => setPriorityDraft(e.target.value)}
+                      className="h-9 w-24 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-slate-400 disabled:opacity-50"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    disabled={acting}
+                    onClick={() => {
+                      const next = Number(priorityDraft);
+                      if (!Number.isFinite(next)) return;
+                      void patch(selected.id, { searchPriority: next });
+                    }}
+                    className="inline-flex h-9 items-center rounded-full border border-slate-950 bg-slate-950 px-3 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                  >
+                    Save priority
+                  </button>
+                  {(selected.searchPriority ?? 0) > 0 ? (
+                    <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800">
+                      Boosted · {selected.searchPriority}
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+                      Default · 0
                     </span>
                   )}
                 </div>

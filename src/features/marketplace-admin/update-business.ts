@@ -16,7 +16,13 @@ import type { ManagedBusiness, PatchBusinessInput } from "./types";
 type AnySupabase = SupabaseClient<Database>;
 
 const SELECT_COLS =
-  "id, name, slug, suburb, city, state, phone, primary_service, rating, review_count, source, claimed, verified, review_status, marketplace_visible, booking_enabled, permanently_closed, google_place_id, imported_at, google_synced_at, updated_at, cover_image, owner_keyword_limit, ownership_status";
+  "id, name, slug, suburb, city, state, phone, primary_service, rating, review_count, source, claimed, verified, review_status, marketplace_visible, booking_enabled, permanently_closed, google_place_id, imported_at, google_synced_at, updated_at, cover_image, owner_keyword_limit, ownership_status, search_priority";
+
+function parseSearchPriority(value: unknown): number {
+  const n = Math.floor(Number(value));
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.min(n, 10_000);
+}
 
 function mapBusiness(data: {
   id: string;
@@ -43,6 +49,7 @@ function mapBusiness(data: {
   cover_image: string | null;
   owner_keyword_limit?: number | null;
   ownership_status?: string | null;
+  search_priority?: number | null;
 }): ManagedBusiness {
   return {
     id: data.id,
@@ -70,6 +77,7 @@ function mapBusiness(data: {
     ownerKeywordLimit: parseOwnerKeywordLimit(
       data.owner_keyword_limit ?? DEFAULT_OWNER_KEYWORD_LIMIT,
     ),
+    searchPriority: parseSearchPriority(data.search_priority),
     ownershipStatus: data.ownership_status ?? "unclaimed",
   };
 }
@@ -111,6 +119,7 @@ export async function patchManagedBusiness(
     owner_keyword_limit?: number;
     ownership_status?: string;
     claimed?: boolean;
+    search_priority?: number;
   } = { updated_at: now };
   if (patch.bookingEnabled !== undefined) {
     update.booking_enabled = patch.bookingEnabled;
@@ -128,6 +137,9 @@ export async function patchManagedBusiness(
   }
   if (patch.ownerKeywordLimit !== undefined) {
     update.owner_keyword_limit = parseOwnerKeywordLimit(patch.ownerKeywordLimit);
+  }
+  if (patch.searchPriority !== undefined) {
+    update.search_priority = parseSearchPriority(patch.searchPriority);
   }
   if (patch.ownershipStatus !== undefined) {
     if (patch.ownershipStatus === "verified") {
@@ -195,6 +207,7 @@ export async function patchManagedBusiness(
     patch.reviewStatus === undefined &&
     patch.verified === undefined &&
     patch.ownerKeywordLimit === undefined &&
+    patch.searchPriority === undefined &&
     patch.ownershipStatus === undefined
   ) {
     return { ok: false, error: "No changes provided." };

@@ -36,6 +36,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       reviewStatus?: BusinessManageStatus;
       verified?: boolean;
       ownerKeywordLimit?: number;
+      searchPriority?: number;
       ownershipStatus?:
         | "unclaimed"
         | "pending_verification"
@@ -60,6 +61,7 @@ export async function PATCH(request: Request, context: RouteContext) {
         reviewStatus: body.reviewStatus,
         verified: body.verified,
         ownerKeywordLimit: body.ownerKeywordLimit,
+        searchPriority: body.searchPriority,
         ownershipStatus: body.ownershipStatus,
       },
     });

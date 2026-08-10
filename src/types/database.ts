@@ -812,6 +812,7 @@ export type Database = {
           owner_keyword_limit: number;
           ownership_status: string;
           profile_authority: string;
+          search_priority: number;
           search_styles: string[];
           search_brands: string[];
           search_techniques: string[];
@@ -882,6 +883,7 @@ export type Database = {
           owner_keyword_limit?: number;
           ownership_status?: string;
           profile_authority?: string;
+          search_priority?: number;
           search_styles?: string[];
           search_brands?: string[];
           search_techniques?: string[];
@@ -952,6 +954,7 @@ export type Database = {
           owner_keyword_limit?: number;
           ownership_status?: string;
           profile_authority?: string;
+          search_priority?: number;
           search_styles?: string[];
           search_brands?: string[];
           search_techniques?: string[];

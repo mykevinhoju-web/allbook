@@ -30,6 +30,8 @@ export type ManagedBusiness = {
   coverImage: string | null;
   /** Max owner search keywords (default 5; raise for paying salons) */
   ownerKeywordLimit: number;
+  /** Super-admin marketplace list boost (higher = earlier). Default 0. */
+  searchPriority: number;
   ownershipStatus: "unclaimed" | "pending_verification" | "verified" | "rejected" | string;
 };
 
@@ -60,6 +62,8 @@ export type PatchBusinessInput = {
   verified?: boolean;
   /** Paid upgrade: raise keyword slots for this salon only */
   ownerKeywordLimit?: number;
+  /** Super-admin search list priority (higher appears first) */
+  searchPriority?: number;
   /** Approve / reject ownership claim */
   ownershipStatus?: "unclaimed" | "pending_verification" | "verified" | "rejected";
 };
