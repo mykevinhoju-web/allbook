@@ -98,7 +98,15 @@ export function useSalonSearch(options: UseSalonSearchOptions) {
     () => initialResult?.error ?? null,
   );
   const [retryKey, setRetryKey] = useState(0);
-  const skipNextFetch = useRef(Boolean(initialResult && !initialResult.error));
+  // Only skip the first client fetch when SSR already returned rows.
+  // Empty SSR (first-fill / geocode miss) must still refetch on the client.
+  const skipNextFetch = useRef(
+    Boolean(
+      initialResult &&
+        !initialResult.error &&
+        (initialResult.salons?.length ?? 0) > 0,
+    ),
+  );
   /** Ignore stale responses when the user searches again quickly. */
   const fetchGeneration = useRef(0);
   const emptyRetryDoneFor = useRef<string | null>(null);

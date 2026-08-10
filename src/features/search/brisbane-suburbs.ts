@@ -171,3 +171,29 @@ export const BRISBANE_SUBURBS: readonly BrisbaneSuburb[] = [
 export const BRISBANE_SUBURB_NAMES: readonly string[] = [
   ...new Set(BRISBANE_SUBURBS.map((s) => s.name)),
 ].sort((a, b) => a.localeCompare(b));
+
+/**
+ * Resolve a typed location to a known Greater Brisbane suburb centre.
+ * Prefer this over live geocoding for catalogue suburbs (Albion, etc.).
+ */
+export function resolveBrisbaneSuburb(
+  location: string,
+): BrisbaneSuburb | null {
+  const q = location.trim().toLowerCase().replace(/\s+/g, " ");
+  if (!q) return null;
+
+  const exact = BRISBANE_SUBURBS.find((s) => s.name.toLowerCase() === q);
+  if (exact) return exact;
+
+  // "Albion QLD", "albion, brisbane", etc.
+  const stripped = q
+    .replace(/,?\s*(qld|queensland|australia|au)\b/g, "")
+    .replace(/,?\s*brisbane\b/g, "")
+    .trim();
+  if (stripped && stripped !== q) {
+    const match = BRISBANE_SUBURBS.find((s) => s.name.toLowerCase() === stripped);
+    if (match) return match;
+  }
+
+  return null;
+}

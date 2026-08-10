@@ -14,6 +14,7 @@ import {
   serviceToImportCategory,
   shouldFillFromGoogle,
 } from "./auto-google-import";
+import { resolveBrisbaneSuburb } from "./brisbane-suburbs";
 import {
   SEARCH_PAGE_SIZE,
   resolveServiceFilterValues,
@@ -79,6 +80,19 @@ export async function searchSalons(
       lng: filters.longitude,
       formattedAddress: filters.location || undefined,
     };
+  }
+
+  // Known Brisbane suburbs (Albion, etc.) — use catalogue coords first so
+  // search never depends on a flaky/missing Geocoding round-trip.
+  if (!origin && filters.location) {
+    const known = resolveBrisbaneSuburb(filters.location);
+    if (known) {
+      origin = {
+        lat: known.latitude,
+        lng: known.longitude,
+        formattedAddress: `${known.name} QLD ${known.postcode}, Australia`,
+      };
+    }
   }
 
   if (!origin && filters.location) {

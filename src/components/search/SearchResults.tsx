@@ -225,10 +225,13 @@ export function SearchResults({
               </div>
             ) : salons.length === 0 ? (
               <EmptyState
-                discovering={Boolean(
-                  query.location.trim() ||
-                    (query.lat != null && query.lng != null),
-                )}
+                discovering={
+                  status === "ready" &&
+                  Boolean(
+                    query.location.trim() ||
+                      (query.lat != null && query.lng != null),
+                  )
+                }
                 locationLabel={locationLabel}
                 onRetry={retry}
                 onReset={clearFilters}
