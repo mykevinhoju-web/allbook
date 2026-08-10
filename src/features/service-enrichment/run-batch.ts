@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/types/database";
 
+import { ENRICHABLE_PRIMARY_SERVICES } from "./category-taxonomies";
 import { enrichSalonServices, type EnrichSalonResult } from "./enrich-salon";
 
 type AnySupabase = SupabaseClient<Database>;
@@ -20,20 +21,21 @@ export type ServiceEnrichBatchResult = {
 };
 
 /**
- * Enrich next N hair/barber salons missing services_enriched_at.
+ * Enrich next N salons missing services_enriched_at (all beauty categories).
  */
 export async function runServiceEnrichmentBatch(
   supabase: AnySupabase,
   input: { batchSize?: number } = {},
 ): Promise<ServiceEnrichBatchResult> {
   const batchSize = Math.min(20, Math.max(1, input.batchSize ?? 5));
+  const services = [...ENRICHABLE_PRIMARY_SERVICES];
 
   const { data: rows, error } = await supabase
     .from("salons")
     .select("id")
     .eq("marketplace_visible", true)
     .eq("permanently_closed", false)
-    .in("primary_service", ["Hair", "Barber"])
+    .in("primary_service", services)
     .is("services_enriched_at", null)
     .order("review_count", { ascending: false })
     .limit(batchSize);
@@ -64,7 +66,7 @@ export async function runServiceEnrichmentBatch(
     .select("id", { count: "exact", head: true })
     .eq("marketplace_visible", true)
     .eq("permanently_closed", false)
-    .in("primary_service", ["Hair", "Barber"])
+    .in("primary_service", services)
     .is("services_enriched_at", null);
 
   const remainingEstimate = count ?? 0;

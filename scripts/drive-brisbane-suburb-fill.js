@@ -1,8 +1,9 @@
 /**
  * Drive production suburb fill sequentially from the client.
- * Each request fills 1 suburb; we space calls so Places can finish.
+ * Each request fills 1 suburb×category cell; we space calls so Places can finish.
  *
  *   node scripts/drive-brisbane-suburb-fill.js
+ *   FILL_CATEGORIES=barber,nails,spa FILL_ROUNDS=500 node scripts/drive-brisbane-suburb-fill.js
  */
 const fs = require("fs");
 const path = require("path");
@@ -13,12 +14,18 @@ if (!fs.existsSync(tokenPath)) {
   process.exit(1);
 }
 const token = fs.readFileSync(tokenPath, "utf8").trim();
-const total = Number(process.env.FILL_ROUNDS || 160);
+const categories = (
+  process.env.FILL_CATEGORIES || "barber,nails,spa,hair"
+)
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean)
+  .join(",");
+const total = Number(process.env.FILL_ROUNDS || 650);
 const gapMs = Number(process.env.FILL_GAP_MS || 55_000);
 
 async function oneRound(i) {
-  const url =
-    "https://allbook.com.au/api/cron/brisbane-suburb-fill?categories=hair&batchSize=1&radiusKm=8&chain=0";
+  const url = `https://allbook.com.au/api/cron/brisbane-suburb-fill?categories=${encodeURIComponent(categories)}&batchSize=1&radiusKm=8&chain=0`;
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), 90_000);
   try {
@@ -35,11 +42,13 @@ async function oneRound(i) {
       JSON.stringify({
         round: i + 1,
         status: res.status,
+        categories,
         processed: body.result?.processed,
         skippedFresh: body.result?.skippedFresh,
         remaining: body.result?.remaining,
         done: body.result?.done,
         suburb: item?.suburb ?? null,
+        category: item?.category ?? null,
         fillStatus: item?.status ?? null,
         imported: item?.imported ?? null,
         updated: item?.updated ?? null,
@@ -59,6 +68,7 @@ async function oneRound(i) {
 }
 
 (async () => {
+  console.log(JSON.stringify({ starting: true, categories, total, gapMs }));
   for (let i = 0; i < total; i += 1) {
     const done = await oneRound(i);
     if (done) {

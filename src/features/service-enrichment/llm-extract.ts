@@ -1,5 +1,5 @@
 import type { ExtractedServiceDraft } from "./extract-from-text";
-import { HAIR_SERVICE_TAXONOMY } from "./hair-service-taxonomy";
+import { taxonomyForPrimaryService } from "./category-taxonomies";
 
 type LlmServiceItem = {
   name?: string;
@@ -12,12 +12,14 @@ type LlmServiceItem = {
  */
 export async function extractServicesWithLlm(
   text: string,
+  primaryService?: string | null,
 ): Promise<ExtractedServiceDraft[]> {
   const clipped = text.replace(/\s+/g, " ").trim().slice(0, 6000);
   if (!clipped) return [];
 
-  const allowed = HAIR_SERVICE_TAXONOMY.map((t) => t.name);
-  const prompt = `Extract hair/barber services offered by this business.
+  const taxonomy = taxonomyForPrimaryService(primaryService);
+  const allowed = taxonomy.map((t) => t.name);
+  const prompt = `Extract beauty services offered by this business.
 Only return services from this exact list: ${allowed.join(", ")}.
 Return JSON array of {"name":"...","category":"..."}.
 If unsure, return [].
@@ -37,7 +39,7 @@ ${clipped}`;
     return [];
   }
 
-  return parseLlmServices(raw);
+  return parseLlmServices(raw, primaryService);
 }
 
 async function callOpenAi(apiKey: string, prompt: string): Promise<string> {
@@ -79,7 +81,10 @@ async function callGemini(apiKey: string, prompt: string): Promise<string> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0, responseMimeType: "application/json" },
+      generationConfig: {
+        temperature: 0,
+        responseMimeType: "application/json",
+      },
     }),
   });
   if (!response.ok) {
@@ -91,7 +96,10 @@ async function callGemini(apiKey: string, prompt: string): Promise<string> {
   return payload.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 }
 
-function parseLlmServices(raw: string): ExtractedServiceDraft[] {
+function parseLlmServices(
+  raw: string,
+  primaryService?: string | null,
+): ExtractedServiceDraft[] {
   if (!raw.trim()) return [];
   let parsed: unknown;
   try {
@@ -107,7 +115,10 @@ function parseLlmServices(raw: string): ExtractedServiceDraft[] {
       : [];
 
   const byName = new Map(
-    HAIR_SERVICE_TAXONOMY.map((t) => [t.name.toLowerCase(), t]),
+    taxonomyForPrimaryService(primaryService).map((t) => [
+      t.name.toLowerCase(),
+      t,
+    ]),
   );
   const out: ExtractedServiceDraft[] = [];
   for (const item of items) {

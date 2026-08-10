@@ -169,10 +169,16 @@ export async function enrichSalonServices(
       googlePlaceId: salon.google_place_id,
     });
 
-    const ruleDrafts = extractServicesFromText(evidence.text);
+    const ruleDrafts = extractServicesFromText(
+      evidence.text,
+      salon.primary_service,
+    );
     let llmDrafts: ExtractedServiceDraft[] = [];
     try {
-      llmDrafts = await extractServicesWithLlm(evidence.text);
+      llmDrafts = await extractServicesWithLlm(
+        evidence.text,
+        salon.primary_service,
+      );
     } catch {
       llmDrafts = [];
     }
