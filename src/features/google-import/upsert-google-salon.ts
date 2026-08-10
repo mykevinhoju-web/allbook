@@ -273,7 +273,6 @@ export async function upsertGoogleSalon(
       booking_enabled: false,
       accept_new_customers: true,
       ownership_status: "unclaimed",
-      claimed: false,
       amenities: [],
       service_tags: serviceTags,
       languages: [],

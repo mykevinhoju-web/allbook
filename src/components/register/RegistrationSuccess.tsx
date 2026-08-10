@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { CheckCircle2, LayoutDashboard } from "lucide-react";
 
@@ -22,7 +21,6 @@ export function RegistrationSuccess({
   result,
   autoRedirect = true,
 }: RegistrationSuccessProps) {
-  const router = useRouter();
   const dashboardPath = result.dashboardPath || "/platform/salon";
 
   useEffect(() => {
