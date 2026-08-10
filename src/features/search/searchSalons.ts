@@ -35,7 +35,10 @@ type SearchRpcRow = SalonRow & {
 };
 
 /** Max salons loaded for accurate total + map pins within a radius. */
-const SEARCH_RADIUS_RESULT_CAP = 300;
+/** Max rows loaded for accurate in-radius totals (Brisbane-scale). */
+const SEARCH_FETCH_LIMIT = 5000;
+/** Nearest pins drawn on the results map (performance). */
+const SEARCH_MAP_PIN_CAP = 150;
 
 export type SearchSalonsResult = {
   /** Current list page (nearest-first slice). */
@@ -199,7 +202,7 @@ async function runLocalSearch(
       ? null
       : filters.location.replace(/[%_,]/g, "");
 
-  // Load the full in-radius set (capped) so total + map stay stable across pages.
+  // Load the in-radius set (high limit) so totals are real — not stuck at 300.
   const { data, error } = await supabase.rpc("search_marketplace_salons", {
     p_lat: origin?.lat ?? null,
     p_lng: origin?.lng ?? null,
@@ -208,7 +211,7 @@ async function runLocalSearch(
     p_services: services,
     p_suburb: suburbFilter,
     p_sort: filters.sort,
-    p_limit: SEARCH_RADIUS_RESULT_CAP,
+    p_limit: SEARCH_FETCH_LIMIT,
     p_offset: 0,
   });
 
@@ -278,7 +281,7 @@ async function runLocalSearch(
 
   return {
     salons: pageRows,
-    mapSalons: inRadius,
+    mapSalons: inRadius.slice(0, SEARCH_MAP_PIN_CAP),
     total: inRadius.length,
     page,
     pageSize,
