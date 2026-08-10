@@ -147,7 +147,7 @@ export function SalonRegistrationWizard() {
 
       if ("loginRequired" in payload && payload.loginRequired) {
         window.location.assign(
-          `/login?next=${encodeURIComponent("/platform/salon")}`,
+          `/login?next=${encodeURIComponent("/register/pending")}`,
         );
         return;
       }

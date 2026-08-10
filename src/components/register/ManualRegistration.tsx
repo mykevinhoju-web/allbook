@@ -65,9 +65,8 @@ export function ManualRegistration({
       }
       if (data.blocked && data.hardMatches && data.hardMatches.length > 0) {
         setMatches(data.hardMatches);
-        setLocalError(
-          "This looks like a business already on AllBook. Claim that listing instead of creating a duplicate.",
-        );
+        // Continue: server claims the existing listing (no duplicate salon).
+        onContinue();
         return;
       }
       setMatches([]);
@@ -93,9 +92,10 @@ export function ManualRegistration({
           Salon profile
         </h1>
         <p className="max-w-xl text-[15px] leading-relaxed text-neutral-600">
-          Use this only if your salon is not already listed. If name, phone, or
-          address matches an existing AllBook business, registration will be
-          blocked and you will be asked to claim it instead.
+          Use this only if your salon is not already listed. Matching name,
+          phone, or address will submit a claim on the existing listing (reviews
+          kept) instead of creating a duplicate. Approval is required before
+          owner login.
         </p>
       </header>
 
@@ -206,14 +206,18 @@ export function ManualRegistration({
       </div>
 
       {matches.length > 0 ? (
-        <div className="space-y-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
-          <p className="text-sm font-semibold text-rose-900">
-            Existing listings found
+        <div className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-semibold text-amber-950">
+            Existing AllBook listing found
+          </p>
+          <p className="text-[13px] text-amber-900/80">
+            Continuing will claim that listing (reviews kept). No duplicate page
+            is created. Owner login works only after AllBook approval.
           </p>
           {matches.slice(0, 3).map((match) => (
             <div
               key={match.id}
-              className="flex flex-col gap-2 rounded-xl border border-rose-100 bg-white px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-2 rounded-xl border border-amber-100 bg-white px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
                 <p className="text-sm font-medium text-neutral-900">
@@ -233,7 +237,7 @@ export function ManualRegistration({
                   className={registerPrimaryButtonClass}
                   onClick={() => onClaimMatch(match)}
                 >
-                  Claim this business
+                  Use Google claim
                 </button>
               ) : null}
             </div>

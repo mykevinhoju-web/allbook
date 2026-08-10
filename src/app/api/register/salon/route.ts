@@ -44,7 +44,11 @@ export async function POST(request: Request) {
       authUserId: existingUser?.id,
     });
 
-    // Establish cookie session so /platform/salon resolves the new owner immediately.
+    // Pending applicants are banned until admin approval — never create a session yet.
+    if (!result.canLogin) {
+      return NextResponse.json(result, { status: 201 });
+    }
+
     if (existingUser?.id !== result.authUserId) {
       const { error: signInError } = await sessionClient.auth.signInWithPassword({
         email: body.owner.ownerEmail.trim().toLowerCase(),
@@ -53,10 +57,8 @@ export async function POST(request: Request) {
       if (signInError) {
         return NextResponse.json(
           {
-            error:
-              "Salon created, but sign-in failed. Please log in to open your dashboard.",
-            salonId: result.salonId,
-            dashboardPath: result.dashboardPath,
+            ...result,
+            error: "Salon created, but automatic sign-in failed. Please log in.",
             loginRequired: true,
           },
           { status: 201 },

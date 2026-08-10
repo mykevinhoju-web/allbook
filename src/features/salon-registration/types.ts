@@ -64,9 +64,12 @@ export type CreateSalonRegistrationResult = {
   categorySlug: MarketplaceCategorySlug;
   publicPath: string;
   publicUrl: string;
-  /** Owner portal home after registration */
-  dashboardPath: "/platform/salon";
+  /** After submit: pending page until ownership is approved */
+  dashboardPath: "/register/pending" | "/platform/salon";
   ownershipStatus: "pending_verification" | "verified";
   reviewRequired: boolean;
   claimedExisting: boolean;
+  /** False until platform admin approves the claim */
+  canLogin: boolean;
+  claimRequestId?: string;
 };

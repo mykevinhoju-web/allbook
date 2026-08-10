@@ -1,5 +1,6 @@
 export { createEmptyRegistrationDraft, defaultOpeningHours } from "./defaults";
 export { createSalonRegistration } from "./create-salon-registration";
+export { approveSalonClaim, rejectSalonClaim } from "./approve-claim";
 export {
   findCatalogueMatches,
   hardCatalogueMatches,

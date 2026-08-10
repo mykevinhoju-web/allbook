@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { approveSalonClaim, rejectSalonClaim } from "@/features/salon-registration";
 import {
   DEFAULT_OWNER_KEYWORD_LIMIT,
   parseOwnerKeywordLimit,
@@ -126,19 +127,62 @@ export async function patchManagedBusiness(
     update.owner_keyword_limit = parseOwnerKeywordLimit(patch.ownerKeywordLimit);
   }
   if (patch.ownershipStatus !== undefined) {
-    update.ownership_status = patch.ownershipStatus;
     if (patch.ownershipStatus === "verified") {
-      update.claimed = true;
-      update.verified = true;
-      update.review_status = "approved";
-      update.reviewed_at = now;
-      update.reviewed_by = actor;
-    }
-    if (patch.ownershipStatus === "rejected") {
-      update.claimed = false;
-      update.booking_enabled = false;
-      update.reviewed_at = now;
-      update.reviewed_by = actor;
+      const approved = await approveSalonClaim(supabase, {
+        salonId,
+        actor,
+      });
+      if (!approved.ok) {
+        // Fall back to direct status update when no claim row (legacy).
+        update.ownership_status = "verified";
+        update.claimed = true;
+        update.verified = true;
+        update.review_status = "approved";
+        update.reviewed_at = now;
+        update.reviewed_by = actor;
+        update.marketplace_visible = true;
+      } else {
+        const { data: refreshed, error: refreshError } = await supabase
+          .from("salons")
+          .select(SELECT_COLS)
+          .eq("id", salonId)
+          .single();
+        if (refreshError || !refreshed) {
+          return { ok: false, error: refreshError?.message ?? "Refresh failed." };
+        }
+        await recordBusinessEvent(supabase, {
+          salonId,
+          placeId: existing.google_place_id,
+          action: "claimed",
+          actor,
+          details: { source: "platform-businesses", patch },
+        });
+        return { ok: true, business: mapBusiness(refreshed) };
+      }
+    } else if (patch.ownershipStatus === "rejected") {
+      const rejected = await rejectSalonClaim(supabase, {
+        salonId,
+        actor,
+      });
+      if (!rejected.ok) {
+        update.ownership_status = "rejected";
+        update.claimed = false;
+        update.booking_enabled = false;
+        update.reviewed_at = now;
+        update.reviewed_by = actor;
+      } else {
+        const { data: refreshed, error: refreshError } = await supabase
+          .from("salons")
+          .select(SELECT_COLS)
+          .eq("id", salonId)
+          .single();
+        if (refreshError || !refreshed) {
+          return { ok: false, error: refreshError?.message ?? "Refresh failed." };
+        }
+        return { ok: true, business: mapBusiness(refreshed) };
+      }
+    } else {
+      update.ownership_status = patch.ownershipStatus;
     }
   }
 

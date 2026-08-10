@@ -8,6 +8,7 @@ import { PLATFORM_SITE_URL } from "@/features/platform-landing/lib/platform-seo"
 import {
   findCatalogueMatches,
   hardCatalogueMatches,
+  type CatalogueMatch,
 } from "./catalogue-match";
 import { FALLBACK_COVER_IMAGE } from "./defaults";
 import { ensureUniqueSalonSlug, slugifySalonName } from "./slug";
@@ -95,7 +96,7 @@ async function createAuthUser(
 
   const { data: existingOwner } = await supabase
     .from("salon_owners")
-    .select("id, salon_id")
+    .select("id")
     .eq("auth_user_id", authUserId)
     .maybeSingle();
 
@@ -104,14 +105,30 @@ async function createAuthUser(
       await supabase.auth.admin.deleteUser(createdAuthUserId);
     }
     throw new Error(
-      "This account already owns a salon. Open your dashboard instead.",
+      "This account already owns a verified salon. Open your dashboard instead.",
+    );
+  }
+
+  const { data: pendingClaim } = await supabase
+    .from("salon_claim_requests" as never)
+    .select("id" as never)
+    .eq("auth_user_id" as never, authUserId)
+    .eq("status" as never, "pending")
+    .maybeSingle();
+
+  if (pendingClaim) {
+    if (createdAuthUserId) {
+      await supabase.auth.admin.deleteUser(createdAuthUserId);
+    }
+    throw new Error(
+      "You already have a registration under review. Please wait for AllBook approval.",
     );
   }
 
   return { authUserId, createdAuthUserId };
 }
 
-async function attachOwner(
+async function insertClaimRequest(
   supabase: AnySupabase,
   input: {
     salonId: string;
@@ -119,29 +136,45 @@ async function attachOwner(
     ownerName: string;
     ownerEmail: string;
     password: string;
+    matchReasons: string[];
+    createdNewSalon: boolean;
     createdAuthUserId: string | null;
   },
 ) {
   const passwordHash = await hash(input.password, 10);
-  const { error } = await supabase.from("salon_owners").insert({
-    salon_id: input.salonId,
-    full_name: input.ownerName,
-    email: input.ownerEmail,
-    password_hash: passwordHash,
-    auth_user_id: input.authUserId,
-    role: "owner",
-    accepted_terms_at: new Date().toISOString(),
-  });
+  const { data, error } = await supabase
+    .from("salon_claim_requests" as never)
+    .insert({
+      salon_id: input.salonId,
+      auth_user_id: input.authUserId,
+      full_name: input.ownerName,
+      email: input.ownerEmail,
+      password_hash: passwordHash,
+      status: "pending",
+      match_reasons: input.matchReasons,
+      created_new_salon: input.createdNewSalon,
+    } as never)
+    .select("id" as never)
+    .single();
 
-  if (error) {
+  if (error || !data) {
     if (input.createdAuthUserId) {
       await supabase.auth.admin.deleteUser(input.createdAuthUserId);
     }
-    if (/duplicate|unique/i.test(error.message)) {
-      throw new Error("An account with this email already exists.");
+    if (/unique|duplicate/i.test(error?.message ?? "")) {
+      throw new Error(
+        "A claim for this salon (or this email) is already pending review.",
+      );
     }
-    throw new Error(error.message);
+    throw new Error(error?.message ?? "Could not submit claim request.");
   }
+
+  // Block sign-in until platform admin approves ownership.
+  await supabase.auth.admin.updateUserById(input.authUserId, {
+    ban_duration: "876000h",
+  });
+
+  return (data as { id: string }).id;
 }
 
 function buildResult(input: {
@@ -150,6 +183,7 @@ function buildResult(input: {
   slug: string;
   categorySlug: CreateSalonRegistrationResult["categorySlug"];
   claimedExisting: boolean;
+  claimRequestId: string;
 }): CreateSalonRegistrationResult {
   const publicPath = buildSalonPath(input.categorySlug, input.slug);
   return {
@@ -159,18 +193,41 @@ function buildResult(input: {
     categorySlug: input.categorySlug,
     publicPath,
     publicUrl: `${PLATFORM_SITE_URL.replace(/\/$/, "")}${publicPath}`,
-    dashboardPath: "/platform/salon",
+    dashboardPath: "/register/pending",
     ownershipStatus: "pending_verification",
     reviewRequired: true,
     claimedExisting: input.claimedExisting,
+    canLogin: false,
+    claimRequestId: input.claimRequestId,
   };
 }
 
+async function markSalonPendingVerification(
+  supabase: AnySupabase,
+  salonId: string,
+  method: CreateSalonRegistrationInput["method"],
+  opts: { hideFromSearch: boolean },
+) {
+  const { error } = await supabase
+    .from("salons")
+    .update({
+      ownership_status: "pending_verification",
+      claimed: false,
+      booking_enabled: false,
+      review_status: "pending",
+      registration_method: method,
+      ...(opts.hideFromSearch ? { marketplace_visible: false } : {}),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", salonId);
+  if (error) throw new Error(error.message);
+}
+
 /**
- * Marketplace salon registration / claim:
- * - Google place already in catalogue → claim existing (pending verification)
- * - Manual with hard catalogue overlap → blocked (must claim)
- * - Otherwise create salon as pending_verification (booking off until approved)
+ * Marketplace registration / claim application.
+ * - Hard catalogue match → claim EXISTING salon (keep reviews). No new row.
+ * - No match → create hidden salon (not in search) until approved.
+ * - salon_owners is created only after admin approval. Pending applicants cannot manage the salon.
  */
 export async function createSalonRegistration(
   supabase: AnySupabase,
@@ -208,18 +265,10 @@ export async function createSalonRegistration(
   });
   const hard = hardCatalogueMatches(matches);
 
-  // Manual path cannot create a duplicate of a catalogue business.
-  if (input.method === "manual" && hard.length > 0) {
-    const top = hard[0];
-    throw new Error(
-      `This business looks like an existing AllBook listing (“${top.name}” in ${[top.suburb, top.city].filter(Boolean).join(", ")}). Please register with Google / claim that listing instead of creating a new one.`,
-    );
-  }
-
-  // Google (or manual forced claim): attach to existing catalogue salon.
-  const claimTarget =
+  const claimTarget: CatalogueMatch | null =
     hard.find((m) => m.googlePlaceId && placeId && m.googlePlaceId === placeId) ??
-    (input.method === "google" && hard[0] ? hard[0] : null);
+    hard[0] ??
+    null;
 
   if (claimTarget) {
     if (claimTarget.claimed || claimTarget.ownershipStatus === "verified") {
@@ -228,9 +277,18 @@ export async function createSalonRegistration(
       );
     }
     if (claimTarget.ownershipStatus === "pending_verification") {
-      throw new Error(
-        "A claim for this salon is already under review. Please wait for AllBook to finish verification.",
-      );
+      // Allow if no pending claim row yet (legacy), otherwise block.
+      const { data: existingPending } = await supabase
+        .from("salon_claim_requests" as never)
+        .select("id" as never)
+        .eq("salon_id" as never, claimTarget.id)
+        .eq("status" as never, "pending")
+        .maybeSingle();
+      if (existingPending) {
+        throw new Error(
+          "A claim for this salon is already under review. Please wait for AllBook to finish verification.",
+        );
+      }
     }
 
     const { data: existingOwners } = await supabase
@@ -251,7 +309,7 @@ export async function createSalonRegistration(
 
     const { data: salonRow, error: salonLoadError } = await supabase
       .from("salons")
-      .select("id, slug, primary_service, category_id")
+      .select("id, slug, primary_service")
       .eq("id", claimTarget.id)
       .maybeSingle();
 
@@ -262,63 +320,46 @@ export async function createSalonRegistration(
       throw new Error(salonLoadError?.message ?? "Salon not found.");
     }
 
-    const { error: updateError } = await supabase
-      .from("salons")
-      .update({
-        ownership_status: "pending_verification",
-        claimed: false,
-        booking_enabled: false,
-        review_status: "pending",
-        registration_method: input.method,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", claimTarget.id);
-
-    if (updateError) {
-      if (createdAuthUserId) {
-        await supabase.auth.admin.deleteUser(createdAuthUserId);
-      }
-      throw new Error(updateError.message);
-    }
-
     try {
-      await attachOwner(supabase, {
+      // Existing catalogue listing stays searchable; claim is pending only.
+      await markSalonPendingVerification(supabase, claimTarget.id, input.method, {
+        hideFromSearch: false,
+      });
+      const claimRequestId = await insertClaimRequest(supabase, {
         salonId: claimTarget.id,
         authUserId,
         ownerName,
         ownerEmail,
         password,
+        matchReasons: claimTarget.reasons,
+        createdNewSalon: false,
         createdAuthUserId,
       });
+
+      const resolved =
+        resolveCategoryFromService(salonRow.primary_service) ??
+        resolveCategoryFromService("Hair");
+      const resolvedSlug = (categorySlug ||
+        resolved?.slug ||
+        "hair") as CreateSalonRegistrationResult["categorySlug"];
+
+      return buildResult({
+        salonId: claimTarget.id,
+        authUserId,
+        slug: salonRow.slug,
+        categorySlug: resolvedSlug,
+        claimedExisting: true,
+        claimRequestId,
+      });
     } catch (err) {
+      if (createdAuthUserId) {
+        await supabase.auth.admin.deleteUser(createdAuthUserId);
+      }
       throw err;
     }
-
-    const { ensureDefaultBookingPolicy } = await import(
-      "@/features/booking-policy/service"
-    );
-    await ensureDefaultBookingPolicy(supabase, claimTarget.id);
-    const { ensureDefaultSalonSettings } = await import(
-      "@/features/business-settings/service"
-    );
-    await ensureDefaultSalonSettings(supabase, claimTarget.id, ownerEmail);
-
-    const resolved =
-      resolveCategoryFromService(salonRow.primary_service) ??
-      resolveCategoryFromService("Hair");
-    const resolvedSlug =
-      (categorySlug || resolved?.slug || "hair") as CreateSalonRegistrationResult["categorySlug"];
-
-    return buildResult({
-      salonId: claimTarget.id,
-      authUserId,
-      slug: salonRow.slug,
-      categorySlug: resolvedSlug,
-      claimedExisting: true,
-    });
   }
 
-  // Brand-new salon (manual with no overlap, or Google place not yet in catalogue).
+  // Brand-new salon — hidden from marketplace search until ownership is approved.
   const { authUserId, createdAuthUserId } = await createAuthUser(
     supabase,
     input,
@@ -397,6 +438,7 @@ export async function createSalonRegistration(
       ownership_status: "pending_verification",
       booking_enabled: false,
       accept_new_customers: true,
+      marketplace_visible: false,
       primary_service: category.name,
       starting_price: 0,
       price_min: 0,
@@ -408,7 +450,6 @@ export async function createSalonRegistration(
       google_place_id: placeId,
       source: input.method === "google" ? "google" : "owner",
       review_status: "pending",
-      marketplace_visible: true,
       social_instagram: input.details.socialInstagram.trim() || null,
       social_facebook: input.details.socialFacebook.trim() || null,
       social_tiktok: input.details.socialTikTok.trim() || null,
@@ -425,42 +466,45 @@ export async function createSalonRegistration(
   }
 
   try {
-    await attachOwner(supabase, {
+    const claimRequestId = await insertClaimRequest(supabase, {
       salonId: salon.id,
       authUserId,
       ownerName,
       ownerEmail,
       password,
+      matchReasons: [],
+      createdNewSalon: true,
       createdAuthUserId,
+    });
+
+    const { ensureDefaultBookingPolicy } = await import(
+      "@/features/booking-policy/service"
+    );
+    await ensureDefaultBookingPolicy(supabase, salon.id);
+    const { ensureDefaultSalonSettings } = await import(
+      "@/features/business-settings/service"
+    );
+    await ensureDefaultSalonSettings(supabase, salon.id, ownerEmail);
+
+    if (cover) {
+      await supabase.from("salon_images").insert({
+        salon_id: salon.id,
+        url: cover,
+        alt: `${input.profile.businessName} cover`,
+        sort_order: 0,
+      });
+    }
+
+    return buildResult({
+      salonId: salon.id,
+      authUserId,
+      slug: salon.slug,
+      categorySlug,
+      claimedExisting: false,
+      claimRequestId,
     });
   } catch (err) {
     await supabase.from("salons").delete().eq("id", salon.id);
     throw err;
   }
-
-  const { ensureDefaultBookingPolicy } = await import(
-    "@/features/booking-policy/service"
-  );
-  await ensureDefaultBookingPolicy(supabase, salon.id);
-  const { ensureDefaultSalonSettings } = await import(
-    "@/features/business-settings/service"
-  );
-  await ensureDefaultSalonSettings(supabase, salon.id, ownerEmail);
-
-  if (cover) {
-    await supabase.from("salon_images").insert({
-      salon_id: salon.id,
-      url: cover,
-      alt: `${input.profile.businessName} cover`,
-      sort_order: 0,
-    });
-  }
-
-  return buildResult({
-    salonId: salon.id,
-    authUserId,
-    slug: salon.slug,
-    categorySlug,
-    claimedExisting: false,
-  });
 }

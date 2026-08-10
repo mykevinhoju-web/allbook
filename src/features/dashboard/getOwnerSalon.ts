@@ -35,6 +35,7 @@ export type OwnerSalonContext =
   | { status: "unauthenticated" }
   | { status: "error"; error: string }
   | { status: "no_salon"; user: User }
+  | { status: "pending_claim"; user: User }
   | OwnerSalonOk;
 
 /**
@@ -83,13 +84,40 @@ export async function getOwnerSalonContext(
     return { status: "error", error: error.message };
   }
   if (!owner?.salon_id) {
+    // Pending claim applications have auth but no salon_owners yet.
+    const { data: pending } = await client
+      .from("salon_claim_requests" as never)
+      .select("id" as never)
+      .eq("auth_user_id" as never, user.id)
+      .eq("status" as never, "pending")
+      .maybeSingle();
+    if (pending) {
+      return { status: "pending_claim", user };
+    }
     return { status: "no_salon", user };
   }
 
-  const salonRaw = owner.salons as OwnerSalonRow | OwnerSalonRow[] | null;
+  const salonRaw = owner.salons as
+    | (OwnerSalonRow & { ownership_status?: string | null })
+    | (OwnerSalonRow & { ownership_status?: string | null })[]
+    | null;
   const salon = Array.isArray(salonRaw) ? salonRaw[0] : salonRaw;
   if (!salon) {
     return { status: "no_salon", user };
+  }
+
+  // Select ownership_status — re-fetch if missing from join.
+  const { data: ownershipRow } = await client
+    .from("salons")
+    .select("ownership_status")
+    .eq("id", salon.id)
+    .maybeSingle();
+  const ownershipStatus =
+    (ownershipRow as { ownership_status?: string } | null)?.ownership_status ??
+    "unclaimed";
+
+  if (ownershipStatus !== "verified") {
+    return { status: "pending_claim", user };
   }
 
   const category =
@@ -136,6 +164,9 @@ export async function requireOwnerSalon(
   }
   if (context.status === "no_salon") {
     redirect("/register");
+  }
+  if (context.status === "pending_claim") {
+    redirect("/register/pending");
   }
 
   return context;

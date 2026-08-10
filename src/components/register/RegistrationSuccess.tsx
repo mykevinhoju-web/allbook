@@ -21,16 +21,21 @@ export function RegistrationSuccess({
   result,
   autoRedirect = true,
 }: RegistrationSuccessProps) {
-  const dashboardPath = result.dashboardPath || "/platform/salon";
+  const dashboardPath = result.dashboardPath || "/register/pending";
 
   useEffect(() => {
     if (!autoRedirect) return;
-    const delay = result.reviewRequired ? 2800 : 900;
+    const delay = result.reviewRequired || !result.canLogin ? 3200 : 900;
     const timer = window.setTimeout(() => {
       window.location.assign(dashboardPath);
     }, delay);
     return () => window.clearTimeout(timer);
-  }, [autoRedirect, dashboardPath, result.reviewRequired]);
+  }, [
+    autoRedirect,
+    dashboardPath,
+    result.reviewRequired,
+    result.canLogin,
+  ]);
 
   return (
     <div className="mx-auto max-w-lg space-y-8 text-center">
@@ -40,19 +45,15 @@ export function RegistrationSuccess({
 
       <header className="space-y-3">
         <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-neutral-500">
-          Step 6 of 6 · Done
+          Step 6 of 6 · Submitted
         </p>
         <h1 className="font-serif text-3xl tracking-tight text-neutral-950 sm:text-4xl">
-          {result.reviewRequired
-            ? "Submitted for verification"
-            : "Your salon is ready"}
+          Waiting for AllBook approval
         </h1>
         <p className="text-[15px] leading-relaxed text-neutral-600">
-          {result.reviewRequired
-            ? result.claimedExisting
-              ? "Your claim is pending AllBook review. You can open the dashboard, but online booking stays off until ownership is approved."
-              : "Your salon was created and is pending AllBook review. Online booking stays off until ownership is approved."
-            : "Opening your dashboard…"}
+          {result.claimedExisting
+            ? "We matched an existing AllBook listing. Reviews and listing details stay on that salon — ownership is attached only after approval. You cannot manage the salon until then."
+            : "Your application was submitted. The salon stays hidden from search and you cannot log in as owner until AllBook approves ownership."}
         </p>
       </header>
 
@@ -71,7 +72,7 @@ export function RegistrationSuccess({
           className={`${registerPrimaryButtonClass} inline-flex`}
         >
           <LayoutDashboard className="mr-2 size-4" />
-          Go to dashboard
+          View pending status
         </Link>
         <Link
           href={result.publicPath}

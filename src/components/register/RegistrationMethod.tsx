@@ -40,7 +40,7 @@ export function RegistrationMethod({ onSelect }: RegistrationMethodProps) {
         <MethodCard
           icon={<MapPin className="size-6" strokeWidth={1.6} />}
           title="Find My Salon on Google"
-          description="Claim an existing catalogue listing. Best if your salon is already on Google."
+          description="Claim an existing catalogue listing. Best if your salon is already on Google. Approval required before you can manage it."
           buttonLabel="Continue with Google"
           accent="from-[#E8F0FE] to-white"
           onClick={() => onSelect("google")}
@@ -48,7 +48,7 @@ export function RegistrationMethod({ onSelect }: RegistrationMethodProps) {
         <MethodCard
           icon={<PenLine className="size-6" strokeWidth={1.6} />}
           title="Register Manually"
-          description="Only if you are not already listed. Overlaps with an existing salon will be blocked."
+          description="If details match an existing listing, we claim that salon instead of creating a duplicate. New salons stay hidden until approved."
           buttonLabel="Register Manually"
           accent="from-[#F3F0EA] to-white"
           onClick={() => onSelect("manual")}
