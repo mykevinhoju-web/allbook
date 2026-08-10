@@ -1,6 +1,9 @@
 "use client";
 
+import { useState } from "react";
+
 import { MARKETPLACE_CATEGORIES } from "@/features/category";
+import type { CatalogueMatch } from "@/features/salon-registration";
 import type { RegistrationProfile } from "@/features/salon-registration";
 
 import {
@@ -15,6 +18,8 @@ type ManualRegistrationProps = {
   onChange: (next: RegistrationProfile) => void;
   onBack: () => void;
   onContinue: () => void;
+  /** Switch wizard to Google claim using a catalogue match */
+  onClaimMatch?: (match: CatalogueMatch) => void;
   error?: string | null;
 };
 
@@ -23,11 +28,60 @@ export function ManualRegistration({
   onChange,
   onBack,
   onContinue,
+  onClaimMatch,
   error,
 }: ManualRegistrationProps) {
+  const [checking, setChecking] = useState(false);
+  const [matches, setMatches] = useState<CatalogueMatch[]>([]);
+  const [localError, setLocalError] = useState<string | null>(null);
+
   function patch(partial: Partial<RegistrationProfile>) {
     onChange({ ...value, ...partial });
   }
+
+  async function handleContinue() {
+    setLocalError(null);
+    setChecking(true);
+    try {
+      const res = await fetch("/api/register/catalogue-match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessName: value.businessName,
+          phone: value.phone,
+          address: value.address,
+          suburb: value.suburb,
+          postcode: value.postcode,
+          website: value.website,
+        }),
+      });
+      const data = (await res.json()) as {
+        blocked?: boolean;
+        hardMatches?: CatalogueMatch[];
+        error?: string;
+      };
+      if (!res.ok) {
+        throw new Error(data.error || "Could not check existing listings.");
+      }
+      if (data.blocked && data.hardMatches && data.hardMatches.length > 0) {
+        setMatches(data.hardMatches);
+        setLocalError(
+          "This looks like a business already on AllBook. Claim that listing instead of creating a duplicate.",
+        );
+        return;
+      }
+      setMatches([]);
+      onContinue();
+    } catch (err) {
+      setLocalError(
+        err instanceof Error ? err.message : "Could not check existing listings.",
+      );
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  const showError = localError || error;
 
   return (
     <div className="space-y-8">
@@ -39,8 +93,9 @@ export function ManualRegistration({
           Salon profile
         </h1>
         <p className="max-w-xl text-[15px] leading-relaxed text-neutral-600">
-          Tell customers who you are and where to find you. Required fields are
-          marked.
+          Use this only if your salon is not already listed. If name, phone, or
+          address matches an existing AllBook business, registration will be
+          blocked and you will be asked to claim it instead.
         </p>
       </header>
 
@@ -148,37 +203,47 @@ export function ManualRegistration({
             placeholder="Share your vibe, specialties, and what guests can expect."
           />
         </RegisterField>
-        <RegisterField
-          label="Business Logo"
-          htmlFor="m-logo"
-          hint="Paste an image URL for now. Upload comes later."
-        >
-          <input
-            id="m-logo"
-            className={registerFieldClass}
-            value={value.logo}
-            onChange={(e) => patch({ logo: e.target.value })}
-            placeholder="https://"
-          />
-        </RegisterField>
-        <RegisterField
-          label="Cover Image"
-          htmlFor="m-cover"
-          hint="Paste an image URL for now. Upload comes later."
-        >
-          <input
-            id="m-cover"
-            className={registerFieldClass}
-            value={value.coverImage}
-            onChange={(e) => patch({ coverImage: e.target.value })}
-            placeholder="https://"
-          />
-        </RegisterField>
       </div>
 
-      {error ? (
+      {matches.length > 0 ? (
+        <div className="space-y-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+          <p className="text-sm font-semibold text-rose-900">
+            Existing listings found
+          </p>
+          {matches.slice(0, 3).map((match) => (
+            <div
+              key={match.id}
+              className="flex flex-col gap-2 rounded-xl border border-rose-100 bg-white px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div>
+                <p className="text-sm font-medium text-neutral-900">
+                  {match.name}
+                </p>
+                <p className="text-[12px] text-neutral-500">
+                  {[match.suburb, match.city].filter(Boolean).join(", ")}
+                  {match.phone ? ` · ${match.phone}` : ""}
+                </p>
+                <p className="mt-0.5 text-[11px] text-neutral-400">
+                  Matched on {match.reasons.join(", ").replaceAll("_", " ")}
+                </p>
+              </div>
+              {onClaimMatch ? (
+                <button
+                  type="button"
+                  className={registerPrimaryButtonClass}
+                  onClick={() => onClaimMatch(match)}
+                >
+                  Claim this business
+                </button>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {showError ? (
         <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-800">
-          {error}
+          {showError}
         </p>
       ) : null}
 
@@ -186,8 +251,13 @@ export function ManualRegistration({
         <button type="button" className={registerSecondaryButtonClass} onClick={onBack}>
           Back
         </button>
-        <button type="button" className={registerPrimaryButtonClass} onClick={onContinue}>
-          Continue
+        <button
+          type="button"
+          className={registerPrimaryButtonClass}
+          disabled={checking}
+          onClick={() => void handleContinue()}
+        >
+          {checking ? "Checking…" : "Continue"}
         </button>
       </div>
     </div>

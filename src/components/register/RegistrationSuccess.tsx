@@ -27,11 +27,12 @@ export function RegistrationSuccess({
 
   useEffect(() => {
     if (!autoRedirect) return;
+    const delay = result.reviewRequired ? 2800 : 900;
     const timer = window.setTimeout(() => {
-      router.replace(dashboardPath);
-    }, 900);
+      window.location.assign(dashboardPath);
+    }, delay);
     return () => window.clearTimeout(timer);
-  }, [autoRedirect, dashboardPath, router]);
+  }, [autoRedirect, dashboardPath, result.reviewRequired]);
 
   return (
     <div className="mx-auto max-w-lg space-y-8 text-center">
@@ -44,10 +45,16 @@ export function RegistrationSuccess({
           Step 6 of 6 · Done
         </p>
         <h1 className="font-serif text-3xl tracking-tight text-neutral-950 sm:text-4xl">
-          Your salon is ready
+          {result.reviewRequired
+            ? "Submitted for verification"
+            : "Your salon is ready"}
         </h1>
         <p className="text-[15px] leading-relaxed text-neutral-600">
-          Opening your dashboard…
+          {result.reviewRequired
+            ? result.claimedExisting
+              ? "Your claim is pending AllBook review. You can open the dashboard, but online booking stays off until ownership is approved."
+              : "Your salon was created and is pending AllBook review. Online booking stays off until ownership is approved."
+            : "Opening your dashboard…"}
         </p>
       </header>
 

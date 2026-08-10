@@ -22,16 +22,25 @@ export function RegistrationMethod({ onSelect }: RegistrationMethodProps) {
           How would you like to register?
         </h1>
         <p className="max-w-xl text-[15px] leading-relaxed text-neutral-600">
-          Import your salon from Google in seconds, or build your profile from
-          scratch. You can edit everything before publishing.
+          Prefer finding your salon on Google if it already exists. New listings
+          and ownership claims are reviewed by AllBook before booking goes live.
         </p>
       </header>
+
+      <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-[13px] leading-relaxed text-sky-950">
+        <p className="font-semibold">Verification & review</p>
+        <p className="mt-1">
+          After you submit, ownership stays <strong>pending</strong> until
+          AllBook verifies the business. Online booking stays off until
+          approved.
+        </p>
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <MethodCard
           icon={<MapPin className="size-6" strokeWidth={1.6} />}
           title="Find My Salon on Google"
-          description="Import your business information automatically."
+          description="Claim an existing catalogue listing. Best if your salon is already on Google."
           buttonLabel="Continue with Google"
           accent="from-[#E8F0FE] to-white"
           onClick={() => onSelect("google")}
@@ -39,7 +48,7 @@ export function RegistrationMethod({ onSelect }: RegistrationMethodProps) {
         <MethodCard
           icon={<PenLine className="size-6" strokeWidth={1.6} />}
           title="Register Manually"
-          description="Create a new salon profile manually."
+          description="Only if you are not already listed. Overlaps with an existing salon will be blocked."
           buttonLabel="Register Manually"
           accent="from-[#F3F0EA] to-white"
           onClick={() => onSelect("manual")}

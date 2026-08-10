@@ -15,7 +15,7 @@ import type {
 type AnySupabase = SupabaseClient<Database>;
 
 const SELECT_COLS =
-  "id, name, slug, suburb, city, state, phone, primary_service, rating, review_count, source, claimed, verified, review_status, marketplace_visible, booking_enabled, permanently_closed, google_place_id, imported_at, google_synced_at, updated_at, cover_image, is_synthetic, owner_keyword_limit";
+  "id, name, slug, suburb, city, state, phone, primary_service, rating, review_count, source, claimed, verified, review_status, marketplace_visible, booking_enabled, permanently_closed, google_place_id, imported_at, google_synced_at, updated_at, cover_image, is_synthetic, owner_keyword_limit, ownership_status";
 
 const SEARCH_COLUMNS = [
   "name",
@@ -67,6 +67,7 @@ function mapRow(row: {
   updated_at: string;
   cover_image: string | null;
   owner_keyword_limit?: number | null;
+  ownership_status?: string | null;
 }): ManagedBusiness {
   return {
     id: row.id,
@@ -94,6 +95,7 @@ function mapRow(row: {
     ownerKeywordLimit: parseOwnerKeywordLimit(
       row.owner_keyword_limit ?? DEFAULT_OWNER_KEYWORD_LIMIT,
     ),
+    ownershipStatus: row.ownership_status ?? "unclaimed",
   };
 }
 
@@ -133,6 +135,16 @@ export async function listManagedBusinesses(
 
   if (input.visible === "yes") query = query.eq("marketplace_visible", true);
   if (input.visible === "no") query = query.eq("marketplace_visible", false);
+
+  if (input.ownership === "pending") {
+    query = query.eq("ownership_status", "pending_verification");
+  }
+  if (input.ownership === "verified") {
+    query = query.eq("ownership_status", "verified");
+  }
+  if (input.ownership === "unclaimed") {
+    query = query.eq("ownership_status", "unclaimed");
+  }
 
   if (input.source?.trim()) {
     const source = input.source.trim() as

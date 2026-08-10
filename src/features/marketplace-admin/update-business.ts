@@ -12,7 +12,7 @@ import type { ManagedBusiness, PatchBusinessInput } from "./types";
 type AnySupabase = SupabaseClient<Database>;
 
 const SELECT_COLS =
-  "id, name, slug, suburb, city, state, phone, primary_service, rating, review_count, source, claimed, verified, review_status, marketplace_visible, booking_enabled, permanently_closed, google_place_id, imported_at, google_synced_at, updated_at, cover_image, owner_keyword_limit";
+  "id, name, slug, suburb, city, state, phone, primary_service, rating, review_count, source, claimed, verified, review_status, marketplace_visible, booking_enabled, permanently_closed, google_place_id, imported_at, google_synced_at, updated_at, cover_image, owner_keyword_limit, ownership_status";
 
 function mapBusiness(data: {
   id: string;
@@ -38,6 +38,7 @@ function mapBusiness(data: {
   updated_at: string;
   cover_image: string | null;
   owner_keyword_limit?: number | null;
+  ownership_status?: string | null;
 }): ManagedBusiness {
   return {
     id: data.id,
@@ -65,6 +66,7 @@ function mapBusiness(data: {
     ownerKeywordLimit: parseOwnerKeywordLimit(
       data.owner_keyword_limit ?? DEFAULT_OWNER_KEYWORD_LIMIT,
     ),
+    ownershipStatus: data.ownership_status ?? "unclaimed",
   };
 }
 
@@ -85,7 +87,7 @@ export async function patchManagedBusiness(
   const { data: existing, error: loadError } = await supabase
     .from("salons")
     .select(
-      "id, google_place_id, booking_enabled, marketplace_visible, review_status, owner_keyword_limit",
+      "id, google_place_id, booking_enabled, marketplace_visible, review_status, owner_keyword_limit, ownership_status, claimed",
     )
     .eq("id", salonId)
     .maybeSingle();
@@ -103,6 +105,8 @@ export async function patchManagedBusiness(
     reviewed_by?: string;
     verified?: boolean;
     owner_keyword_limit?: number;
+    ownership_status?: string;
+    claimed?: boolean;
   } = { updated_at: now };
   if (patch.bookingEnabled !== undefined) {
     update.booking_enabled = patch.bookingEnabled;
@@ -121,13 +125,30 @@ export async function patchManagedBusiness(
   if (patch.ownerKeywordLimit !== undefined) {
     update.owner_keyword_limit = parseOwnerKeywordLimit(patch.ownerKeywordLimit);
   }
+  if (patch.ownershipStatus !== undefined) {
+    update.ownership_status = patch.ownershipStatus;
+    if (patch.ownershipStatus === "verified") {
+      update.claimed = true;
+      update.verified = true;
+      update.review_status = "approved";
+      update.reviewed_at = now;
+      update.reviewed_by = actor;
+    }
+    if (patch.ownershipStatus === "rejected") {
+      update.claimed = false;
+      update.booking_enabled = false;
+      update.reviewed_at = now;
+      update.reviewed_by = actor;
+    }
+  }
 
   if (
     patch.bookingEnabled === undefined &&
     patch.marketplaceVisible === undefined &&
     patch.reviewStatus === undefined &&
     patch.verified === undefined &&
-    patch.ownerKeywordLimit === undefined
+    patch.ownerKeywordLimit === undefined &&
+    patch.ownershipStatus === undefined
   ) {
     return { ok: false, error: "No changes provided." };
   }

@@ -272,6 +272,8 @@ export async function upsertGoogleSalon(
       marketplace_visible: true,
       booking_enabled: false,
       accept_new_customers: true,
+      ownership_status: "unclaimed",
+      claimed: false,
       amenities: [],
       service_tags: serviceTags,
       languages: [],

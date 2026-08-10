@@ -27,6 +27,7 @@ import type {
 
 type BookingFilter = "all" | "on" | "off";
 type VisibleFilter = "all" | "yes" | "no";
+type OwnershipFilter = "all" | "pending" | "verified" | "unclaimed";
 
 /**
  * Platform-admin directory: browse all marketplace businesses and toggle
@@ -40,6 +41,7 @@ export function AdminBusinessesPanel() {
   >("all");
   const [booking, setBooking] = useState<BookingFilter>("all");
   const [visible, setVisible] = useState<VisibleFilter>("all");
+  const [ownership, setOwnership] = useState<OwnershipFilter>("all");
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<ListBusinessesResult | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -76,6 +78,7 @@ export function AdminBusinessesPanel() {
       if (reviewStatus !== "all") params.set("reviewStatus", reviewStatus);
       if (booking !== "all") params.set("booking", booking);
       if (visible !== "all") params.set("visible", visible);
+      if (ownership !== "all") params.set("ownership", ownership);
       params.set("page", String(page));
       params.set("pageSize", "40");
 
@@ -94,7 +97,7 @@ export function AdminBusinessesPanel() {
     } finally {
       setLoading(false);
     }
-  }, [q, reviewStatus, booking, visible, page]);
+  }, [q, reviewStatus, booking, visible, ownership, page]);
 
   useEffect(() => {
     void load();
@@ -108,6 +111,11 @@ export function AdminBusinessesPanel() {
       reviewStatus?: BusinessManageStatus;
       verified?: boolean;
       ownerKeywordLimit?: number;
+      ownershipStatus?:
+        | "unclaimed"
+        | "pending_verification"
+        | "verified"
+        | "rejected";
     },
   ) {
     setActing(true);
@@ -203,6 +211,19 @@ export function AdminBusinessesPanel() {
           <option value="all">Visibility: all</option>
           <option value="yes">Visible</option>
           <option value="no">Hidden</option>
+        </select>
+        <select
+          value={ownership}
+          onChange={(e) => {
+            setPage(1);
+            setOwnership(e.target.value as OwnershipFilter);
+          }}
+          className="h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm"
+        >
+          <option value="all">Ownership: all</option>
+          <option value="pending">Pending verification</option>
+          <option value="verified">Verified</option>
+          <option value="unclaimed">Unclaimed</option>
         </select>
         <button
           type="submit"
@@ -329,8 +350,43 @@ export function AdminBusinessesPanel() {
                   {selected.source} · {selected.reviewStatus}
                   {selected.claimed ? " · claimed" : " · unclaimed"}
                   {selected.verified ? " · verified" : ""}
+                  {" · ownership: "}
+                  {selected.ownershipStatus}
                 </p>
               </div>
+
+              {selected.ownershipStatus === "pending_verification" ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <p className="text-sm font-semibold text-amber-950">
+                    Ownership pending verification
+                  </p>
+                  <p className="mt-1 text-xs text-amber-900/80">
+                    Approve only if you are confident this applicant owns the
+                    business. Booking stays off until you enable it separately.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <ActionButton
+                      disabled={acting}
+                      primary
+                      label="Approve ownership"
+                      onClick={() =>
+                        void patch(selected.id, {
+                          ownershipStatus: "verified",
+                        })
+                      }
+                    />
+                    <ActionButton
+                      disabled={acting}
+                      label="Reject claim"
+                      onClick={() =>
+                        void patch(selected.id, {
+                          ownershipStatus: "rejected",
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              ) : null}
 
               <dl className="grid grid-cols-2 gap-3 text-sm">
                 <Stat label="Rating" value={selected.rating.toFixed(1)} />

@@ -53,6 +53,15 @@ export async function GET(request: Request) {
       reviewStatus,
       booking,
       visible,
+      ownership: (() => {
+        const raw = searchParams.get("ownership") ?? "all";
+        return raw === "pending" ||
+          raw === "verified" ||
+          raw === "unclaimed" ||
+          raw === "all"
+          ? raw
+          : "all";
+      })(),
       source: searchParams.get("source") ?? undefined,
       page: Number(searchParams.get("page") ?? 1),
       pageSize: Number(searchParams.get("pageSize") ?? 40),

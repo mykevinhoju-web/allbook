@@ -30,6 +30,7 @@ export type ManagedBusiness = {
   coverImage: string | null;
   /** Max owner search keywords (default 5; raise for paying salons) */
   ownerKeywordLimit: number;
+  ownershipStatus: "unclaimed" | "pending_verification" | "verified" | "rejected" | string;
 };
 
 export type ListBusinessesInput = {
@@ -37,6 +38,7 @@ export type ListBusinessesInput = {
   reviewStatus?: BusinessManageStatus | "all";
   booking?: "all" | "on" | "off";
   visible?: "all" | "yes" | "no";
+  ownership?: "all" | "pending" | "verified" | "unclaimed";
   source?: string;
   includeSynthetic?: boolean;
   page?: number;
@@ -58,4 +60,6 @@ export type PatchBusinessInput = {
   verified?: boolean;
   /** Paid upgrade: raise keyword slots for this salon only */
   ownerKeywordLimit?: number;
+  /** Approve / reject ownership claim */
+  ownershipStatus?: "unclaimed" | "pending_verification" | "verified" | "rejected";
 };

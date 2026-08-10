@@ -148,10 +148,19 @@ function GoogleRegistrationInner({
           Find your salon
         </h1>
         <p className="max-w-xl text-[15px] leading-relaxed text-neutral-600">
-          Search Google Places, then review and edit every field before you
-          continue.
+          Search Google Places to claim your listing. AllBook will review
+          ownership before online booking is enabled.
         </p>
       </header>
+
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] leading-relaxed text-amber-950">
+        <p className="font-semibold">What happens next</p>
+        <ul className="mt-1 list-disc space-y-0.5 pl-4">
+          <li>We match your Google place to the AllBook catalogue when possible.</li>
+          <li>Your claim stays pending until AllBook verifies ownership.</li>
+          <li>If phone/email proof is unavailable, a manual review is required.</li>
+        </ul>
+      </div>
 
       <div className="rounded-[24px] border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
         <RegisterField

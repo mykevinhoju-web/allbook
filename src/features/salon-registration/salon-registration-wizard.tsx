@@ -17,6 +17,7 @@ import {
   createEmptyRegistrationDraft,
   validateOwner,
   validateProfile,
+  type CatalogueMatch,
   type CreateSalonRegistrationResult,
   type RegistrationMethod as Method,
   type SalonRegistrationDraft,
@@ -52,6 +53,24 @@ export function SalonRegistrationWizard() {
 
   function selectMethod(method: Exclude<Method, "admin">) {
     setDraft((prev) => ({ ...prev, method }));
+    setError(null);
+    setStep("profile");
+  }
+
+  function claimCatalogueMatch(match: CatalogueMatch) {
+    setDraft((prev) => ({
+      ...prev,
+      method: "google",
+      profile: {
+        ...prev.profile,
+        businessName: match.name,
+        address: match.address ?? prev.profile.address,
+        suburb: match.suburb ?? prev.profile.suburb,
+        phone: match.phone ?? prev.profile.phone,
+        googlePlaceId: match.googlePlaceId,
+        categorySlug: prev.profile.categorySlug || "hair",
+      },
+    }));
     setError(null);
     setStep("profile");
   }
@@ -140,8 +159,6 @@ export function SalonRegistrationWizard() {
       const ok = payload as CreateSalonRegistrationResult;
       setResult(ok);
       setStep("success");
-      // Hard navigation ensures auth cookies are applied for the dashboard.
-      window.location.assign(ok.dashboardPath || "/platform/salon");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create salon.");
     } finally {
@@ -216,6 +233,7 @@ export function SalonRegistrationWizard() {
                 setStep("method");
               }}
               onContinue={continueFromProfile}
+              onClaimMatch={claimCatalogueMatch}
               error={error}
             />
           ) : null}

@@ -66,4 +66,7 @@ export type CreateSalonRegistrationResult = {
   publicUrl: string;
   /** Owner portal home after registration */
   dashboardPath: "/platform/salon";
+  ownershipStatus: "pending_verification" | "verified";
+  reviewRequired: boolean;
+  claimedExisting: boolean;
 };
