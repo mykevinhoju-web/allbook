@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import {
+  DEFAULT_OWNER_KEYWORD_LIMIT,
+  parseOwnerKeywordLimit,
+} from "@/features/business";
 import type { Database } from "@/types/database";
 
 import type {
@@ -11,7 +15,7 @@ import type {
 type AnySupabase = SupabaseClient<Database>;
 
 const SELECT_COLS =
-  "id, name, slug, suburb, city, state, phone, primary_service, rating, review_count, source, claimed, verified, review_status, marketplace_visible, booking_enabled, permanently_closed, google_place_id, imported_at, google_synced_at, updated_at, cover_image, is_synthetic";
+  "id, name, slug, suburb, city, state, phone, primary_service, rating, review_count, source, claimed, verified, review_status, marketplace_visible, booking_enabled, permanently_closed, google_place_id, imported_at, google_synced_at, updated_at, cover_image, is_synthetic, owner_keyword_limit";
 
 function mapRow(row: {
   id: string;
@@ -36,6 +40,7 @@ function mapRow(row: {
   google_synced_at: string | null;
   updated_at: string;
   cover_image: string | null;
+  owner_keyword_limit?: number | null;
 }): ManagedBusiness {
   return {
     id: row.id,
@@ -60,6 +65,9 @@ function mapRow(row: {
     googleSyncedAt: row.google_synced_at,
     updatedAt: row.updated_at,
     coverImage: row.cover_image,
+    ownerKeywordLimit: parseOwnerKeywordLimit(
+      row.owner_keyword_limit ?? DEFAULT_OWNER_KEYWORD_LIMIT,
+    ),
   };
 }
 

@@ -4,7 +4,7 @@ export {
   getOwnerKeywordLimit,
   normalizeOwnerKeywords,
   parseOwnerKeywordLimit,
-  setOwnerKeywordLimit,
+  setSalonOwnerKeywordLimit,
 } from "./owner-keywords";
 export { getBusiness } from "./getBusiness";
 export { updateBusiness, validateBusinessInput } from "./updateBusiness";

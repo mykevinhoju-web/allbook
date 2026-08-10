@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import {
+  DEFAULT_OWNER_KEYWORD_LIMIT,
+  parseOwnerKeywordLimit,
+} from "@/features/business";
 import { recordBusinessEvent } from "@/features/marketplace-review/record-event";
 import type { Database } from "@/types/database";
 
@@ -8,10 +12,64 @@ import type { ManagedBusiness, PatchBusinessInput } from "./types";
 type AnySupabase = SupabaseClient<Database>;
 
 const SELECT_COLS =
-  "id, name, slug, suburb, city, state, phone, primary_service, rating, review_count, source, claimed, verified, review_status, marketplace_visible, booking_enabled, permanently_closed, google_place_id, imported_at, google_synced_at, updated_at, cover_image";
+  "id, name, slug, suburb, city, state, phone, primary_service, rating, review_count, source, claimed, verified, review_status, marketplace_visible, booking_enabled, permanently_closed, google_place_id, imported_at, google_synced_at, updated_at, cover_image, owner_keyword_limit";
+
+function mapBusiness(data: {
+  id: string;
+  name: string;
+  slug: string;
+  suburb: string | null;
+  city: string;
+  state: string;
+  phone: string | null;
+  primary_service: string | null;
+  rating: number;
+  review_count: number;
+  source: string;
+  claimed: boolean;
+  verified: boolean;
+  review_status: ManagedBusiness["reviewStatus"];
+  marketplace_visible: boolean;
+  booking_enabled: boolean;
+  permanently_closed: boolean;
+  google_place_id: string | null;
+  imported_at: string | null;
+  google_synced_at: string | null;
+  updated_at: string;
+  cover_image: string | null;
+  owner_keyword_limit?: number | null;
+}): ManagedBusiness {
+  return {
+    id: data.id,
+    name: data.name,
+    slug: data.slug,
+    suburb: data.suburb,
+    city: data.city,
+    state: data.state,
+    phone: data.phone,
+    primaryService: data.primary_service,
+    rating: data.rating,
+    reviewCount: data.review_count,
+    source: data.source,
+    claimed: data.claimed,
+    verified: data.verified,
+    reviewStatus: data.review_status,
+    marketplaceVisible: data.marketplace_visible,
+    bookingEnabled: data.booking_enabled,
+    permanentlyClosed: data.permanently_closed,
+    googlePlaceId: data.google_place_id,
+    importedAt: data.imported_at,
+    googleSyncedAt: data.google_synced_at,
+    updatedAt: data.updated_at,
+    coverImage: data.cover_image,
+    ownerKeywordLimit: parseOwnerKeywordLimit(
+      data.owner_keyword_limit ?? DEFAULT_OWNER_KEYWORD_LIMIT,
+    ),
+  };
+}
 
 /**
- * Platform-admin patch for marketplace visibility + online booking flag.
+ * Platform-admin patch for marketplace visibility, booking, and paid keyword slots.
  */
 export async function patchManagedBusiness(
   supabase: AnySupabase,
@@ -26,7 +84,9 @@ export async function patchManagedBusiness(
 
   const { data: existing, error: loadError } = await supabase
     .from("salons")
-    .select("id, google_place_id, booking_enabled, marketplace_visible, review_status")
+    .select(
+      "id, google_place_id, booking_enabled, marketplace_visible, review_status, owner_keyword_limit",
+    )
     .eq("id", salonId)
     .maybeSingle();
 
@@ -42,6 +102,7 @@ export async function patchManagedBusiness(
     reviewed_at?: string;
     reviewed_by?: string;
     verified?: boolean;
+    owner_keyword_limit?: number;
   } = { updated_at: now };
   if (patch.bookingEnabled !== undefined) {
     update.booking_enabled = patch.bookingEnabled;
@@ -57,12 +118,16 @@ export async function patchManagedBusiness(
   if (patch.verified !== undefined) {
     update.verified = patch.verified;
   }
+  if (patch.ownerKeywordLimit !== undefined) {
+    update.owner_keyword_limit = parseOwnerKeywordLimit(patch.ownerKeywordLimit);
+  }
 
   if (
     patch.bookingEnabled === undefined &&
     patch.marketplaceVisible === undefined &&
     patch.reviewStatus === undefined &&
-    patch.verified === undefined
+    patch.verified === undefined &&
+    patch.ownerKeywordLimit === undefined
   ) {
     return { ok: false, error: "No changes provided." };
   }
@@ -90,35 +155,13 @@ export async function patchManagedBusiness(
         booking_enabled: existing.booking_enabled,
         marketplace_visible: existing.marketplace_visible,
         review_status: existing.review_status,
+        owner_keyword_limit: existing.owner_keyword_limit,
       },
     },
   });
 
   return {
     ok: true,
-    business: {
-      id: data.id,
-      name: data.name,
-      slug: data.slug,
-      suburb: data.suburb,
-      city: data.city,
-      state: data.state,
-      phone: data.phone,
-      primaryService: data.primary_service,
-      rating: data.rating,
-      reviewCount: data.review_count,
-      source: data.source,
-      claimed: data.claimed,
-      verified: data.verified,
-      reviewStatus: data.review_status,
-      marketplaceVisible: data.marketplace_visible,
-      bookingEnabled: data.booking_enabled,
-      permanentlyClosed: data.permanently_closed,
-      googlePlaceId: data.google_place_id,
-      importedAt: data.imported_at,
-      googleSyncedAt: data.google_synced_at,
-      updatedAt: data.updated_at,
-      coverImage: data.cover_image,
-    },
+    business: mapBusiness(data),
   };
 }

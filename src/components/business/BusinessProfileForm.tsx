@@ -136,7 +136,7 @@ export function BusinessProfileForm({
 
       <Section
         title="Search keywords"
-        description="Help customers find you on AllBook. These appear in marketplace search filters."
+        description="Help customers find you on AllBook. Free accounts get a limited number of keywords — ask AllBook if you need more paid slots."
       >
         <OwnerKeywordsEditor
           value={value.ownerKeywords}

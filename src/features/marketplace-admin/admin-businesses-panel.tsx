@@ -12,6 +12,10 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
+import {
+  DEFAULT_OWNER_KEYWORD_LIMIT,
+  MAX_OWNER_KEYWORD_LIMIT,
+} from "@/features/business";
 import { buildSalonPathFromService } from "@/features/category";
 import { cn } from "@/lib/utils";
 
@@ -42,9 +46,16 @@ export function AdminBusinessesPanel() {
   const [loading, setLoading] = useState(false);
   const [acting, setActing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [keywordDraft, setKeywordDraft] = useState(String(DEFAULT_OWNER_KEYWORD_LIMIT));
 
   const selected =
     result?.items.find((item) => item.id === selectedId) ?? null;
+
+  useEffect(() => {
+    if (selected) {
+      setKeywordDraft(String(selected.ownerKeywordLimit));
+    }
+  }, [selected?.id, selected?.ownerKeywordLimit]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -86,6 +97,7 @@ export function AdminBusinessesPanel() {
       marketplaceVisible?: boolean;
       reviewStatus?: BusinessManageStatus;
       verified?: boolean;
+      ownerKeywordLimit?: number;
     },
   ) {
     setActing(true);
@@ -378,6 +390,54 @@ export function AdminBusinessesPanel() {
                     }
                   />
                 ) : null}
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Search keywords (paid upgrade)
+                </h3>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                  Free default is {DEFAULT_OWNER_KEYWORD_LIMIT}. Raise this only
+                  for salons that paid for extra keyword slots — not for every
+                  business.
+                </p>
+                <div className="mt-3 flex flex-wrap items-end gap-2">
+                  <label className="block">
+                    <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                      Keyword limit
+                    </span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={MAX_OWNER_KEYWORD_LIMIT}
+                      disabled={acting}
+                      value={keywordDraft}
+                      onChange={(e) => setKeywordDraft(e.target.value)}
+                      className="h-9 w-24 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-slate-400 disabled:opacity-50"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    disabled={acting}
+                    onClick={() => {
+                      const next = Number(keywordDraft);
+                      if (!Number.isFinite(next)) return;
+                      void patch(selected.id, { ownerKeywordLimit: next });
+                    }}
+                    className="inline-flex h-9 items-center rounded-full border border-slate-950 bg-slate-950 px-3 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                  >
+                    Save limit
+                  </button>
+                  {selected.ownerKeywordLimit > DEFAULT_OWNER_KEYWORD_LIMIT ? (
+                    <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
+                      Paid slots · {selected.ownerKeywordLimit}
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+                      Default · {DEFAULT_OWNER_KEYWORD_LIMIT}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4 text-sm">

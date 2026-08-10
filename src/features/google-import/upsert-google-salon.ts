@@ -277,6 +277,7 @@ export async function upsertGoogleSalon(
       languages: [],
       search_keywords: [],
       owner_keywords: [],
+      owner_keyword_limit: 5,
       search_styles: [],
       search_brands: [],
       search_techniques: [],

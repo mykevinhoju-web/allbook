@@ -15,7 +15,10 @@ export function normalizeOwnerKeywords(
   input: string[] | null | undefined,
   limit = DEFAULT_OWNER_KEYWORD_LIMIT,
 ): string[] {
-  const capped = Math.max(0, Math.min(MAX_OWNER_KEYWORD_LIMIT, Math.floor(limit)));
+  const capped = Math.max(
+    0,
+    Math.min(MAX_OWNER_KEYWORD_LIMIT, Math.floor(limit)),
+  );
   const out: string[] = [];
   const seen = new Set<string>();
 
@@ -42,41 +45,43 @@ export function parseOwnerKeywordLimit(value: unknown): number {
 }
 
 /**
- * Read platform-wide max owner keywords (default 5).
+ * Per-salon keyword cap. Default 5; platform admin raises for paying salons.
  */
 export async function getOwnerKeywordLimit(
   supabase: AnySupabase,
+  salonId: string,
 ): Promise<number> {
+  const id = salonId?.trim();
+  if (!id) return DEFAULT_OWNER_KEYWORD_LIMIT;
+
   const { data, error } = await supabase
-    .from("platform_settings")
-    .select("value")
-    .eq("group_key", "marketplace")
-    .eq("setting_key", "owner_keyword_limit")
+    .from("salons")
+    .select("owner_keyword_limit")
+    .eq("id", id)
     .maybeSingle();
 
   if (error || data == null) return DEFAULT_OWNER_KEYWORD_LIMIT;
-  return parseOwnerKeywordLimit(data.value);
+  return parseOwnerKeywordLimit(
+    (data as { owner_keyword_limit?: number | null }).owner_keyword_limit,
+  );
 }
 
 /**
- * Super-admin: set max owner keywords per salon.
+ * Super-admin: set keyword limit for one salon (paid upgrade).
  */
-export async function setOwnerKeywordLimit(
+export async function setSalonOwnerKeywordLimit(
   supabase: AnySupabase,
+  salonId: string,
   limit: number,
 ): Promise<{ limit: number; error: string | null }> {
   const next = parseOwnerKeywordLimit(limit);
-  const { error } = await supabase.from("platform_settings").upsert(
-    {
-      group_key: "marketplace",
-      setting_key: "owner_keyword_limit",
-      value: next,
-      description:
-        "Max owner-managed search keywords per salon. Platform admin can raise this later.",
+  const { error } = await supabase
+    .from("salons")
+    .update({
+      owner_keyword_limit: next,
       updated_at: new Date().toISOString(),
-    },
-    { onConflict: "group_key,setting_key" },
-  );
+    })
+    .eq("id", salonId);
 
   if (error) return { limit: next, error: error.message };
   return { limit: next, error: null };

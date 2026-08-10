@@ -28,6 +28,8 @@ export type ManagedBusiness = {
   googleSyncedAt: string | null;
   updatedAt: string;
   coverImage: string | null;
+  /** Max owner search keywords (default 5; raise for paying salons) */
+  ownerKeywordLimit: number;
 };
 
 export type ListBusinessesInput = {
@@ -54,4 +56,6 @@ export type PatchBusinessInput = {
   marketplaceVisible?: boolean;
   reviewStatus?: BusinessManageStatus;
   verified?: boolean;
+  /** Paid upgrade: raise keyword slots for this salon only */
+  ownerKeywordLimit?: number;
 };

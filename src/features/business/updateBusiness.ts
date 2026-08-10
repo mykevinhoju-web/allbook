@@ -50,7 +50,7 @@ export async function updateBusiness(
   salonId: string,
   input: BusinessProfileInput,
 ): Promise<{ business: BusinessProfile | null; error: string | null }> {
-  const ownerKeywordLimit = await getOwnerKeywordLimit(supabase);
+  const ownerKeywordLimit = await getOwnerKeywordLimit(supabase, salonId);
   const validationError = validateBusinessInput(input, ownerKeywordLimit);
   if (validationError) {
     return { business: null, error: validationError };

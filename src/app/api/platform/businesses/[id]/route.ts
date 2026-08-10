@@ -35,6 +35,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       marketplaceVisible?: boolean;
       reviewStatus?: BusinessManageStatus;
       verified?: boolean;
+      ownerKeywordLimit?: number;
     };
 
     if (
@@ -53,6 +54,7 @@ export async function PATCH(request: Request, context: RouteContext) {
         marketplaceVisible: body.marketplaceVisible,
         reviewStatus: body.reviewStatus,
         verified: body.verified,
+        ownerKeywordLimit: body.ownerKeywordLimit,
       },
     });
 
