@@ -34,6 +34,10 @@ export default async function SalonOwnerLayout({
     redirect("/register");
   }
 
+  if (context.status === "pending_claim") {
+    redirect("/register/pending");
+  }
+
   return (
     <SalonDashboardShell session={context.session}>{children}</SalonDashboardShell>
   );
