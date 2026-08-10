@@ -80,7 +80,7 @@ async function handle(request: Request) {
     body.radiusKm ?? url.searchParams.get("radiusKm") ?? 8,
   );
   const batchSize = Number(
-    body.batchSize ?? url.searchParams.get("batchSize") ?? 6,
+    body.batchSize ?? url.searchParams.get("batchSize") ?? 2,
   );
   const force =
     body.force === true ||

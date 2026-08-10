@@ -13,7 +13,7 @@ import { BRISBANE_SUBURBS } from "./brisbane-suburbs";
 type AnySupabase = SupabaseClient<Database>;
 
 export const BRISBANE_SUBURB_FILL_DEFAULT_RADIUS_KM = 8;
-export const BRISBANE_SUBURB_FILL_DEFAULT_BATCH = 6;
+export const BRISBANE_SUBURB_FILL_DEFAULT_BATCH = 2;
 export const BRISBANE_SUBURB_FILL_CATEGORIES = [
   "hair",
   "nails",
