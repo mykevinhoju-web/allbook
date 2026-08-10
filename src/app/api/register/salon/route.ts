@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { createSalonRegistration } from "@/features/salon-registration";
+import { createSalonRegistration } from "@/features/salon-registration/create-salon-registration";
 import type { CreateSalonRegistrationInput } from "@/features/salon-registration";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceSupabase } from "@/lib/supabase/service";

@@ -4,21 +4,23 @@ import type { Database } from "@/types/database";
 
 import { recordClaimEvent } from "./audit";
 import {
-  generateNumericOtp,
-  generateVerificationToken,
-  hashVerificationToken,
   maskPhone,
   maskWebsite,
   MAX_VERIFICATION_ATTEMPTS,
   PHONE_OTP_TTL_MS,
   phonesLikelyMatch,
   POSTAL_CODE_TTL_MS,
-  tokensEqual,
   WEBSITE_TOKEN_TTL_MS,
   websiteChallengeInstructions,
   type ClaimVerificationMethod,
 } from "./core";
 import { bumpFailedAttempt, evaluateAndFinalizeClaim } from "./finalize";
+import {
+  generateNumericOtp,
+  generateVerificationToken,
+  hashVerificationToken,
+  tokensEqual,
+} from "./tokens";
 
 type AnySupabase = SupabaseClient<Database>;
 

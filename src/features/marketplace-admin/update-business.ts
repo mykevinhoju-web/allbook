@@ -1,6 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { approveSalonClaim, rejectSalonClaim } from "@/features/salon-registration";
+import {
+  approveSalonClaim,
+  rejectSalonClaim,
+} from "@/features/salon-registration/approve-claim";
 import {
   DEFAULT_OWNER_KEYWORD_LIMIT,
   parseOwnerKeywordLimit,

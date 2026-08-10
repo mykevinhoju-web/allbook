@@ -1,32 +1,16 @@
-export { recordClaimEvent } from "./audit";
+/** Client-safe claim verification helpers (no Node crypto). */
 export {
-  startWebsiteVerification,
-  confirmWebsiteVerificationWithToken,
-  startPhoneVerification,
-  confirmPhoneVerification,
-  requestPostalVerification,
-  confirmPostalVerification,
-  smsConfigured,
-  postalConfigured,
-} from "./challenges";
-export {
-  hashVerificationToken,
-  generateVerificationToken,
-  generateNumericOtp,
-  tokensEqual,
-  phonesLikelyMatch,
-  scoreMatchConfidence,
-  evaluateClaimRisk,
-  decideOwnership,
   availableVerificationMethods,
   buildGoogleSyncSalonPatch,
+  decideOwnership,
+  evaluateClaimRisk,
   OWNER_PROTECTED_SALON_FIELDS,
+  phonesLikelyMatch,
+  scoreMatchConfidence,
   websiteChallengeInstructions,
-  type ClaimVerificationState,
-  type ClaimVerificationMethod,
   type ClaimAuditEvent,
-  type RiskFlag,
+  type ClaimVerificationMethod,
+  type ClaimVerificationState,
   type OwnershipDecision,
+  type RiskFlag,
 } from "./core";
-export { evaluateAndFinalizeClaim, bumpFailedAttempt } from "./finalize";
-export { getClaimVerificationStatus } from "./status";

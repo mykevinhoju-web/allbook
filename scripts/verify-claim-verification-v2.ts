@@ -9,14 +9,30 @@ import {
   buildGoogleSyncSalonPatch,
   decideOwnership,
   evaluateClaimRisk,
-  generateNumericOtp,
-  generateVerificationToken,
-  hashVerificationToken,
   phonesLikelyMatch,
   scoreMatchConfidence,
-  tokensEqual,
   websiteChallengeInstructions,
 } from "../src/features/claim-verification/core";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+
+function hashVerificationToken(token: string): string {
+  return createHash("sha256").update(token, "utf8").digest("hex");
+}
+function generateVerificationToken(bytes = 24): string {
+  return randomBytes(bytes).toString("base64url");
+}
+function generateNumericOtp(digits = 6): string {
+  const max = 10 ** digits;
+  const n = randomBytes(4).readUInt32BE(0) % max;
+  return String(n).padStart(digits, "0");
+}
+function tokensEqual(aHash: string, bPlainOrHash: string): boolean {
+  const bHash = hashVerificationToken(bPlainOrHash);
+  const a = Buffer.from(aHash, "utf8");
+  const b = Buffer.from(bHash, "utf8");
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
 
 // 1+2 decision: email + business control + match → verified
 {

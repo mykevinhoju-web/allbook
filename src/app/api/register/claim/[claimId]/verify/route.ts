@@ -7,7 +7,7 @@ import {
   requestPostalVerification,
   startPhoneVerification,
   startWebsiteVerification,
-} from "@/features/claim-verification";
+} from "@/features/claim-verification/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceSupabase } from "@/lib/supabase/service";
 

@@ -4,9 +4,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildSalonPath, resolveCategoryFromService } from "@/features/category";
 import {
   evaluateClaimRisk,
-  recordClaimEvent,
   scoreMatchConfidence,
 } from "@/features/claim-verification";
+import { recordClaimEvent } from "@/features/claim-verification/server";
 import type { Database } from "@/types/database";
 import { PLATFORM_SITE_URL } from "@/features/platform-landing/lib/platform-seo";
 

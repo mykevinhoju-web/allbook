@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getClaimVerificationStatus } from "@/features/claim-verification";
+import { getClaimVerificationStatus } from "@/features/claim-verification/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceSupabase } from "@/lib/supabase/service";
 
