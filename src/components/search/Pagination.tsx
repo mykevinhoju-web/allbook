@@ -9,21 +9,40 @@ type PaginationProps = {
   totalPages: number;
   onPageChange: (page: number) => void;
   className?: string;
+  /** How many page buttons to show at once. Default 5. */
+  windowSize?: number;
 };
+
+function visiblePageWindow(
+  page: number,
+  totalPages: number,
+  windowSize: number,
+): number[] {
+  const size = Math.max(1, windowSize);
+  const windowIndex = Math.floor((page - 1) / size);
+  const start = windowIndex * size + 1;
+  const end = Math.min(totalPages, start + size - 1);
+  const pages: number[] = [];
+  for (let p = start; p <= end; p += 1) pages.push(p);
+  return pages;
+}
 
 export function Pagination({
   page,
   totalPages,
   onPageChange,
   className,
+  windowSize = 5,
 }: PaginationProps) {
   if (totalPages <= 1) return null;
 
-  const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+  const pages = visiblePageWindow(page, totalPages, windowSize);
+  const windowStart = pages[0] ?? 1;
+  const windowEnd = pages[pages.length - 1] ?? 1;
 
   return (
     <nav
-      className={cn("flex items-center justify-center gap-2", className)}
+      className={cn("flex flex-wrap items-center justify-center gap-2", className)}
       aria-label="Pagination"
     >
       <button
@@ -35,6 +54,12 @@ export function Pagination({
       >
         <ChevronLeft className="size-4" />
       </button>
+
+      {windowStart > 1 ? (
+        <span className="px-1 text-xs font-medium text-[#9AA0B5]" aria-hidden>
+          …
+        </span>
+      ) : null}
 
       {pages.map((p) => (
         <button
@@ -52,6 +77,12 @@ export function Pagination({
           {p}
         </button>
       ))}
+
+      {windowEnd < totalPages ? (
+        <span className="px-1 text-xs font-medium text-[#9AA0B5]" aria-hidden>
+          …
+        </span>
+      ) : null}
 
       <button
         type="button"
