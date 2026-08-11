@@ -1176,6 +1176,391 @@ export type Database = {
           },
         ];
       };
+      marketplace_partners: {
+        Row: {
+          id: string;
+          salon_id: string | null;
+          auth_user_id: string;
+          partner_type: "business_linked" | "independent";
+          status: "invited" | "pending" | "active" | "suspended";
+          display_name: string;
+          bio: string | null;
+          phone: string | null;
+          email: string | null;
+          verified_at: string | null;
+          is_demo: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          salon_id?: string | null;
+          auth_user_id: string;
+          partner_type: "business_linked" | "independent";
+          status?: "invited" | "pending" | "active" | "suspended";
+          display_name: string;
+          bio?: string | null;
+          phone?: string | null;
+          email?: string | null;
+          verified_at?: string | null;
+          is_demo?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          salon_id?: string | null;
+          auth_user_id?: string;
+          partner_type?: "business_linked" | "independent";
+          status?: "invited" | "pending" | "active" | "suspended";
+          display_name?: string;
+          bio?: string | null;
+          phone?: string | null;
+          email?: string | null;
+          verified_at?: string | null;
+          is_demo?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_partners_salon_id_fkey";
+            columns: ["salon_id"];
+            isOneToOne: true;
+            referencedRelation: "salons";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      partner_services: {
+        Row: {
+          id: string;
+          partner_id: string;
+          category_slug: string;
+          name: string;
+          description: string | null;
+          pricing_type: "fixed" | "hourly" | "from" | "quote";
+          price_cents: number | null;
+          price_max_cents: number | null;
+          currency: string;
+          duration_minutes: number | null;
+          travel_fee_cents: number | null;
+          min_notice_minutes: number | null;
+          attributes: Json;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          partner_id: string;
+          category_slug: string;
+          name: string;
+          description?: string | null;
+          pricing_type: "fixed" | "hourly" | "from" | "quote";
+          price_cents?: number | null;
+          price_max_cents?: number | null;
+          currency?: string;
+          duration_minutes?: number | null;
+          travel_fee_cents?: number | null;
+          min_notice_minutes?: number | null;
+          attributes?: Json;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          partner_id?: string;
+          category_slug?: string;
+          name?: string;
+          description?: string | null;
+          pricing_type?: "fixed" | "hourly" | "from" | "quote";
+          price_cents?: number | null;
+          price_max_cents?: number | null;
+          currency?: string;
+          duration_minutes?: number | null;
+          travel_fee_cents?: number | null;
+          min_notice_minutes?: number | null;
+          attributes?: Json;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "partner_services_partner_id_fkey";
+            columns: ["partner_id"];
+            isOneToOne: false;
+            referencedRelation: "marketplace_partners";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      partner_service_areas: {
+        Row: {
+          id: string;
+          partner_id: string;
+          service_id: string | null;
+          mode: "suburb" | "radius" | "postcodes";
+          suburb_id: string | null;
+          center_lat: number | null;
+          center_lng: number | null;
+          radius_km: number | null;
+          postcodes: string[] | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          partner_id: string;
+          service_id?: string | null;
+          mode: "suburb" | "radius" | "postcodes";
+          suburb_id?: string | null;
+          center_lat?: number | null;
+          center_lng?: number | null;
+          radius_km?: number | null;
+          postcodes?: string[] | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          partner_id?: string;
+          service_id?: string | null;
+          mode?: "suburb" | "radius" | "postcodes";
+          suburb_id?: string | null;
+          center_lat?: number | null;
+          center_lng?: number | null;
+          radius_km?: number | null;
+          postcodes?: string[] | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "partner_service_areas_partner_id_fkey";
+            columns: ["partner_id"];
+            isOneToOne: false;
+            referencedRelation: "marketplace_partners";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "partner_service_areas_service_id_fkey";
+            columns: ["service_id"];
+            isOneToOne: false;
+            referencedRelation: "partner_services";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "partner_service_areas_suburb_id_fkey";
+            columns: ["suburb_id"];
+            isOneToOne: false;
+            referencedRelation: "suburbs";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      partner_availability_rules: {
+        Row: {
+          id: string;
+          partner_id: string;
+          timezone: string;
+          weekly_windows: Json;
+          blackouts: Json;
+          capacity_per_slot: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          partner_id: string;
+          timezone?: string;
+          weekly_windows?: Json;
+          blackouts?: Json;
+          capacity_per_slot?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          partner_id?: string;
+          timezone?: string;
+          weekly_windows?: Json;
+          blackouts?: Json;
+          capacity_per_slot?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "partner_availability_rules_partner_id_fkey";
+            columns: ["partner_id"];
+            isOneToOne: true;
+            referencedRelation: "marketplace_partners";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      service_requests: {
+        Row: {
+          id: string;
+          raw_query: string | null;
+          structured: Json;
+          service_category: string | null;
+          service_slug: string | null;
+          location_label: string | null;
+          suburb_id: string | null;
+          preferred_date: string | null;
+          preferred_time: string | null;
+          budget_cents_max: number | null;
+          urgency: "low" | "normal" | "high";
+          status:
+            | "draft"
+            | "open"
+            | "matched"
+            | "accepted"
+            | "closed"
+            | "cancelled";
+          is_demo: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          raw_query?: string | null;
+          structured?: Json;
+          service_category?: string | null;
+          service_slug?: string | null;
+          location_label?: string | null;
+          suburb_id?: string | null;
+          preferred_date?: string | null;
+          preferred_time?: string | null;
+          budget_cents_max?: number | null;
+          urgency?: "low" | "normal" | "high";
+          status?:
+            | "draft"
+            | "open"
+            | "matched"
+            | "accepted"
+            | "closed"
+            | "cancelled";
+          is_demo?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          raw_query?: string | null;
+          structured?: Json;
+          service_category?: string | null;
+          service_slug?: string | null;
+          location_label?: string | null;
+          suburb_id?: string | null;
+          preferred_date?: string | null;
+          preferred_time?: string | null;
+          budget_cents_max?: number | null;
+          urgency?: "low" | "normal" | "high";
+          status?:
+            | "draft"
+            | "open"
+            | "matched"
+            | "accepted"
+            | "closed"
+            | "cancelled";
+          is_demo?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "service_requests_suburb_id_fkey";
+            columns: ["suburb_id"];
+            isOneToOne: false;
+            referencedRelation: "suburbs";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      request_matches: {
+        Row: {
+          id: string;
+          request_id: string;
+          partner_id: string;
+          partner_service_id: string | null;
+          score: number;
+          score_breakdown: Json;
+          status:
+            | "suggested"
+            | "notified"
+            | "accepted"
+            | "declined"
+            | "expired";
+          exclusion_reason: string | null;
+          quoted_price_cents: number | null;
+          is_demo: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          request_id: string;
+          partner_id: string;
+          partner_service_id?: string | null;
+          score?: number;
+          score_breakdown?: Json;
+          status?:
+            | "suggested"
+            | "notified"
+            | "accepted"
+            | "declined"
+            | "expired";
+          exclusion_reason?: string | null;
+          quoted_price_cents?: number | null;
+          is_demo?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          request_id?: string;
+          partner_id?: string;
+          partner_service_id?: string | null;
+          score?: number;
+          score_breakdown?: Json;
+          status?:
+            | "suggested"
+            | "notified"
+            | "accepted"
+            | "declined"
+            | "expired";
+          exclusion_reason?: string | null;
+          quoted_price_cents?: number | null;
+          is_demo?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "request_matches_request_id_fkey";
+            columns: ["request_id"];
+            isOneToOne: false;
+            referencedRelation: "service_requests";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "request_matches_partner_id_fkey";
+            columns: ["partner_id"];
+            isOneToOne: false;
+            referencedRelation: "marketplace_partners";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "request_matches_partner_service_id_fkey";
+            columns: ["partner_service_id"];
+            isOneToOne: false;
+            referencedRelation: "partner_services";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       salon_owners: {
         Row: {
           id: string;
@@ -2593,6 +2978,14 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      load_marketplace_matching_catalog: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      resolve_suburb_by_name: {
+        Args: { p_name: string };
+        Returns: Array<{ id: string; name: string; postcode: string | null }>;
+      };
       search_marketplace_salons: {
         Args: {
           p_lat?: number | null;

@@ -2,6 +2,7 @@ import {
   Building2,
   ClipboardCheck,
   Download,
+  Handshake,
   LayoutDashboard,
   RefreshCw,
   Settings,
@@ -21,6 +22,11 @@ export const platformNavItems: PlatformNavItem[] = [
     title: "Businesses",
     href: "/platform/businesses",
     icon: Store,
+  },
+  {
+    title: "Partners",
+    href: "/platform/partners",
+    icon: Handshake,
   },
   {
     title: "Import",
