@@ -19,6 +19,7 @@ export type MarketplacePartner = {
   phone: string | null;
   email: string | null;
   verifiedAt: string | null;
+  isDemo: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -32,6 +33,7 @@ export type PublicMarketplacePartner = {
   displayName: string;
   bio: string | null;
   verifiedAt: string | null;
+  isDemo: boolean;
 };
 
 export type PartnerService = {

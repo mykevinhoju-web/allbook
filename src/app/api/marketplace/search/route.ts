@@ -71,6 +71,7 @@ export async function POST(request: Request) {
       latitude: m.partner.latitude ?? null,
       longitude: m.partner.longitude ?? null,
       amenities: m.partner.amenities ?? [],
+      isDemo: m.partner.isDemo === true,
     }));
 
     return NextResponse.json({

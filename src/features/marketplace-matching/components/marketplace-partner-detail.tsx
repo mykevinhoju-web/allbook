@@ -11,6 +11,7 @@ type DetailPayload = {
     partnerType: string;
     linkedBusiness: boolean;
     salonId: string | null;
+    isDemo?: boolean;
   };
   services: Array<{
     id: string;
@@ -81,9 +82,16 @@ export function MarketplacePartnerDetail({ partnerId }: { partnerId: string }) {
           ← Back to search
         </Link>
         <header className="space-y-2">
-          <h1 className="font-serif text-3xl text-stone-900">
-            {partner.displayName}
-          </h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="font-serif text-3xl text-stone-900">
+              {partner.displayName}
+            </h1>
+            {partner.isDemo ? (
+              <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
+                Sample business
+              </span>
+            ) : null}
+          </div>
           <p className="text-sm text-stone-600">
             {partner.bio || "Marketplace Partner"}
           </p>

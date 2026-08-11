@@ -24,7 +24,7 @@ export type StructuredServiceRequest = {
   urgency?: "low" | "normal" | "high";
   /**
    * Canonical amenity flags that must all be present on the partner.
-   * e.g. disability_accessible | kids_care | parking
+   * e.g. wheelchair_accessible | kids_friendly | parking_available | large_dogs
    */
   requiredAmenities?: string[];
 };

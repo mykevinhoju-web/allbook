@@ -21,6 +21,7 @@ function samplePartner(
     phone: "+61400000000",
     email: "secret@example.com",
     verifiedAt: null,
+    isDemo: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...overrides,

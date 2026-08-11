@@ -15,19 +15,27 @@ import type { ParseResult, RequestParser } from "./types";
 type ServiceKind =
   | "lawn_mowing"
   | "house_cleaning"
+  | "manicure"
   | "nail_trim"
   | "mobile_car_wash"
   | "dog_grooming"
   | "electrical"
-  | "hair_cut";
+  | "haircut";
 
 type DayHint = "tomorrow" | "today" | "saturday" | "sunday" | "weekend" | null;
+
+const BRIDGEMAN_DEFAULT_SERVICES = new Set<ServiceKind>([
+  "haircut",
+  "manicure",
+  "lawn_mowing",
+  "dog_grooming",
+]);
 
 function detectService(text: string): ServiceKind | null {
   if (
     /hair\s*cut|haircut|hair\s*salon|barber|hair_cut|hair\s*dress/.test(text)
   ) {
-    return "hair_cut";
+    return "haircut";
   }
   if (
     /lawn\s*mow|mow\s*(my\s*)?lawn|lawn_care|lawn_mowing|lawn\s*care/.test(
@@ -39,7 +47,10 @@ function detectService(text: string): ServiceKind | null {
   if (/house\s*clean|home\s*clean|cleaning|house_cleaning/.test(text)) {
     return "house_cleaning";
   }
-  if (/nail\s*trim|nail\s*service|manicure|nails?\b|nail_trim/.test(text)) {
+  if (/manicure/.test(text)) {
+    return "manicure";
+  }
+  if (/nail\s*trim|nail\s*service|nails?\b|nail_trim/.test(text)) {
     return "nail_trim";
   }
   if (
@@ -47,7 +58,7 @@ function detectService(text: string): ServiceKind | null {
   ) {
     return "mobile_car_wash";
   }
-  if (/dog\s*groom|pet\s*groom|dog_grooming/.test(text)) {
+  if (/dog\s*groom|pet\s*groom|groom\s*(my\s*)?dog|dog_grooming/.test(text)) {
     return "dog_grooming";
   }
   if (/electrician|electrical|electric\s*work/.test(text)) {
@@ -71,19 +82,67 @@ function detectLocation(
   return null;
 }
 
-function detectRequiredAmenities(text: string): string[] {
+/**
+ * Structured attribute flags (canonical English keys).
+ * Matching reads marketplace_partners.amenities text[].
+ */
+function detectRequiredAmenities(
+  text: string,
+  service: ServiceKind | null,
+  dayHint: DayHint,
+): string[] {
   const flags: string[] = [];
+
   if (
-    /disability|wheelchair|accessible|accessib|disabled\s*access/.test(text)
+    /wheelchair|disability\s*access|disabled\s*access|wheelchair_accessible/.test(
+      text,
+    )
   ) {
-    flags.push("disability_accessible");
+    flags.push("wheelchair_accessible");
   }
-  if (/kids?\s*care|child\s*care|children|kids?\s*friendly|family/.test(text)) {
-    flags.push("kids_care");
+
+  if (
+    /kids?\s*friendly|for\s*(my\s*)?(child|kid|children)|kids?\s*care|child\s*care/.test(
+      text,
+    )
+  ) {
+    flags.push("kids_friendly");
   }
-  if (/\bparking\b|\bpark\b/.test(text)) {
-    flags.push("parking");
+  if (/\bparking\b|parking_available|park\s*available/.test(text)) {
+    flags.push("parking_available");
   }
+  if (/pet\s*safe/.test(text)) {
+    flags.push("pet_safe");
+  }
+  if (/same[\s-]?day/.test(text)) {
+    flags.push("same_day_service");
+  }
+  if (/weekend\s*available|weekend_available/.test(text)) {
+    flags.push("weekend_available");
+  }
+  if (/large\s*dog|big\s*dog|large_dogs/.test(text)) {
+    flags.push("large_dogs");
+  }
+  if (/small\s*dog|puppy|small_dogs/.test(text)) {
+    flags.push("small_dogs");
+  }
+  if (
+    /mobile\s*service|come\s*to\s*(my\s*)?home|at\s*home|house\s*call|mobile_service/.test(
+      text,
+    )
+  ) {
+    flags.push("mobile_service");
+  }
+
+  // Lawn "today" → require same_day_service attribute (SEARCH 8)
+  if (
+    dayHint === "today" &&
+    service === "lawn_mowing" &&
+    !flags.includes("same_day_service")
+  ) {
+    flags.push("same_day_service");
+  }
+
   return flags;
 }
 
@@ -132,10 +191,10 @@ function serviceMeta(kind: ServiceKind): {
         defaultDay: 1,
         defaultTime: "14:00",
       };
-    case "hair_cut":
+    case "haircut":
       return {
         serviceCategory: "hair",
-        serviceSlug: "hair_cut",
+        serviceSlug: "haircut",
         defaultDay: 3,
         defaultTime: "14:00",
       };
@@ -143,8 +202,14 @@ function serviceMeta(kind: ServiceKind): {
       return {
         serviceCategory: "cleaning",
         serviceSlug: "house_cleaning",
-        // Demo ABC Cleaning: Tue/Thu — Tuesday so budget filter is testable
         defaultDay: 2,
+        defaultTime: "14:00",
+      };
+    case "manicure":
+      return {
+        serviceCategory: "nail",
+        serviceSlug: "manicure",
+        defaultDay: 3,
         defaultTime: "14:00",
       };
     case "nail_trim":
@@ -163,7 +228,7 @@ function serviceMeta(kind: ServiceKind): {
       };
     case "dog_grooming":
       return {
-        serviceCategory: "pet",
+        serviceCategory: "dog_grooming",
         serviceSlug: "dog_grooming",
         defaultDay: 1,
         defaultTime: "14:00",
@@ -191,12 +256,6 @@ function toIsoDate(d: Date): string {
 
 /**
  * Phase 1 Demo Parser — English (AU) pattern rules only (no LLM).
- *
- * Canonical taxonomy / structured output is always English
- * (e.g. lawn_mowing, house_cleaning). Localized UI copy may come later;
- * this parser must not emit Korean (or other) canonical values.
- *
- * Swap later for AiRequestParser implementing the same RequestParser interface.
  */
 export class DemoRequestParser implements RequestParser {
   readonly id = "demo-parser-v1";
@@ -208,7 +267,8 @@ export class DemoRequestParser implements RequestParser {
         ok: false,
         error: "Please describe what you need help with.",
         hints: [
-          "I need someone tomorrow at 2pm in Aspley to mow my lawn for under $80.",
+          "I need a haircut in Bridgeman Downs under $40.",
+          "I need dog grooming for a large dog in Bridgeman Downs.",
         ],
       };
     }
@@ -219,7 +279,11 @@ export class DemoRequestParser implements RequestParser {
     const budgetCentsMax = detectBudgetCents(text);
     const preferredTime = detectTime(normalized);
     const dayHint = detectDayHint(normalized);
-    const requiredAmenities = detectRequiredAmenities(normalized);
+    const requiredAmenities = detectRequiredAmenities(
+      normalized,
+      service,
+      dayHint,
+    );
     const urgency = /\b(asap|urgent|urgently)\b/.test(normalized)
       ? "high"
       : "normal";
@@ -228,11 +292,12 @@ export class DemoRequestParser implements RequestParser {
       return {
         ok: false,
         error:
-          "Could not detect a supported service yet (demo parser). Try haircut, lawn mowing, cleaning, nail service, or car wash.",
+          "Could not detect a supported service yet (demo parser). Try haircut, manicure, lawn mowing, or dog grooming.",
         hints: [
-          "I need a haircut in Bridgeman Downs tomorrow at 2pm.",
-          "I need someone tomorrow at 2pm in Aspley to mow my lawn for under $80.",
-          "Looking for a nail service in Chermside for under $30.",
+          "I need a haircut in Bridgeman Downs under $40.",
+          "I need a manicure in Bridgeman Downs under $45.",
+          "I need lawn mowing in Bridgeman Downs under $80.",
+          "I need dog grooming for a large dog in Bridgeman Downs.",
         ],
       };
     }
@@ -250,7 +315,6 @@ export class DemoRequestParser implements RequestParser {
       const tom = addDays(now, 1);
       preferredDay = tom.getDay();
       preferredDate = toIsoDate(tom);
-      // Lawn partners are Mon–Fri; if tomorrow is weekend, roll to next Monday for demo reliability.
       if (
         service === "lawn_mowing" &&
         (preferredDay === 0 || preferredDay === 6)
@@ -284,13 +348,16 @@ export class DemoRequestParser implements RequestParser {
       notes.push(`No time mentioned; demo default ${time}.`);
     }
 
-    const locationLabel = location?.label ?? (service === "hair_cut" ? "Bridgeman Downs" : "Aspley");
+    const useBridgemanDefault = BRIDGEMAN_DEFAULT_SERVICES.has(service);
+    const locationLabel =
+      location?.label ??
+      (useBridgemanDefault ? "Bridgeman Downs" : "Aspley");
     const suburbId =
       location?.suburbId ??
-      (service === "hair_cut" ? BRIDGEMAN_DOWNS_SUBURB_ID : ASPLEY_SUBURB_ID);
+      (useBridgemanDefault ? BRIDGEMAN_DOWNS_SUBURB_ID : ASPLEY_SUBURB_ID);
     if (!location) {
       notes.push(
-        service === "hair_cut"
+        useBridgemanDefault
           ? "No suburb detected; demo default Bridgeman Downs."
           : "No suburb detected; demo default Aspley.",
       );
@@ -329,6 +396,5 @@ export const demoRequestParser: RequestParser = new DemoRequestParser();
 
 /** Active parser used by Marketplace search APIs. */
 export function getActiveRequestParser(): RequestParser {
-  // Future: if (process.env.MARKETPLACE_AI_PARSER === 'true') return aiRequestParser
   return demoRequestParser;
 }

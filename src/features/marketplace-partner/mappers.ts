@@ -25,6 +25,7 @@ export function mapPartner(row: PartnerRow): MarketplacePartner {
     phone: row.phone,
     email: row.email,
     verifiedAt: row.verified_at,
+    isDemo: row.is_demo === true,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -43,6 +44,7 @@ export function toPublicPartner(
     displayName: partner.displayName,
     bio: partner.bio,
     verifiedAt: partner.verifiedAt,
+    isDemo: partner.isDemo,
   };
 }
 

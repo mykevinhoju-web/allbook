@@ -6,12 +6,18 @@ import { useMemo, useState } from "react";
 import { PartnerResultsMap } from "@/features/marketplace-matching/components/partner-results-map";
 
 const EXAMPLES = [
-  "I need a haircut in Bridgeman Downs tomorrow at 2pm.",
-  "Looking for a disability accessible haircut in Bridgeman Downs.",
-  "Haircut in Bridgeman Downs with kids care.",
+  "I need a haircut in Bridgeman Downs under $40.",
+  "I need a haircut in Bridgeman Downs for my child.",
+  "I need a haircut in Bridgeman Downs and I need wheelchair access.",
   "I need a haircut in Bridgeman Downs with parking.",
-  "I need someone tomorrow at 2pm in Aspley to mow my lawn for under $80.",
-  "Looking for a nail service in Chermside for under $30.",
+  "I need a manicure in Bridgeman Downs under $45.",
+  "I need a manicure in Bridgeman Downs with wheelchair access.",
+  "I need lawn mowing in Bridgeman Downs under $80.",
+  "I need someone to mow my lawn today.",
+  "I need dog grooming for a large dog in Bridgeman Downs.",
+  "I need dog grooming for a small dog in Bridgeman Downs.",
+  "I need someone to come to my home and groom my dog.",
+  "I need dog grooming in Bridgeman Downs under $50.",
 ] as const;
 
 type MatchCard = {
@@ -30,6 +36,7 @@ type MatchCard = {
   latitude?: number | null;
   longitude?: number | null;
   amenities?: string[];
+  isDemo?: boolean;
 };
 
 type SearchResponse = {
@@ -64,14 +71,29 @@ function formatTimeLabel(time: string) {
 
 function amenityLabel(flag: string) {
   switch (flag) {
+    case "wheelchair_accessible":
     case "disability_accessible":
-      return "Disability accessible";
+      return "Wheelchair accessible";
+    case "kids_friendly":
     case "kids_care":
-      return "Kids care";
+      return "Kids friendly";
+    case "parking_available":
     case "parking":
-      return "Parking";
+      return "Parking available";
+    case "pet_safe":
+      return "Pet safe";
+    case "same_day_service":
+      return "Same-day service";
+    case "weekend_available":
+      return "Weekend available";
+    case "small_dogs":
+      return "Small dogs";
+    case "large_dogs":
+      return "Large dogs";
+    case "mobile_service":
+      return "Mobile service";
     default:
-      return flag;
+      return flag.replace(/_/g, " ");
   }
 }
 
@@ -80,7 +102,7 @@ function amenityLabel(flag: string) {
  */
 export function MarketplaceSearchPage() {
   const [query, setQuery] = useState(
-    "I need a haircut in Bridgeman Downs tomorrow at 2pm.",
+    "I need a haircut in Bridgeman Downs under $40.",
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -162,7 +184,7 @@ export function MarketplaceSearchPage() {
             rows={3}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="e.g. I need a haircut in Bridgeman Downs tomorrow at 2pm."
+            placeholder="e.g. I need a haircut in Bridgeman Downs under $40."
             className="w-full resize-y rounded-2xl border border-stone-200 bg-stone-50/80 px-4 py-3 text-base text-stone-900 outline-none ring-emerald-700/30 placeholder:text-stone-400 focus:ring-2"
           />
           <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -271,9 +293,16 @@ export function MarketplaceSearchPage() {
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <h3 className="text-lg font-semibold text-stone-900">
-                                {m.displayName}
-                              </h3>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="text-lg font-semibold text-stone-900">
+                                  {m.displayName}
+                                </h3>
+                                {m.isDemo ? (
+                                  <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
+                                    DEMO
+                                  </span>
+                                ) : null}
+                              </div>
                               <p className="mt-1 text-sm text-stone-600">
                                 {m.serviceName}
                               </p>

@@ -52,6 +52,36 @@ function normalizeToken(value: string): string {
     .replace(/^_|_$/g, "");
 }
 
+/** Generic slug synonym groups — not category-specific search functions. */
+const SERVICE_SYNONYM_GROUPS: string[][] = [
+  ["haircut", "hair_cut"],
+  ["manicure", "nail_trim"],
+  ["lawn_mowing", "lawn_care", "lawn_mow"],
+  ["dog_grooming", "pet_grooming"],
+];
+
+function synonymSet(token: string): Set<string> {
+  const out = new Set<string>([token]);
+  for (const group of SERVICE_SYNONYM_GROUPS) {
+    if (group.includes(token)) {
+      for (const item of group) out.add(item);
+    }
+  }
+  return out;
+}
+
+function tokensOverlap(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  if (a.includes(b) || b.includes(a)) return true;
+  const left = synonymSet(a);
+  const right = synonymSet(b);
+  for (const t of left) {
+    if (right.has(t)) return true;
+  }
+  return false;
+}
+
 /**
  * Service match is a hard filter.
  * Accepts category_slug equality OR name/slug overlap (lawn_mowing ↔ Lawn Mowing).
@@ -66,9 +96,12 @@ export function serviceMatchesRequest(
   const svcCat = normalizeToken(service.categorySlug);
   const svcName = normalizeToken(service.name);
 
-  if (svcCat === category || svcCat === slug) return true;
-  if (svcName === slug || svcName === category) return true;
-  if (svcName.includes(slug) || slug.includes(svcName)) return true;
+  if (tokensOverlap(svcCat, category) || tokensOverlap(svcCat, slug)) {
+    return true;
+  }
+  if (tokensOverlap(svcName, slug) || tokensOverlap(svcName, category)) {
+    return true;
+  }
   return false;
 }
 
