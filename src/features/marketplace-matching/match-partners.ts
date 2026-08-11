@@ -143,6 +143,16 @@ export function budgetAllowsService(
   return { ok: true };
 }
 
+/** Partner must include every required canonical amenity flag. */
+export function amenitiesMatchRequest(
+  partner: MatchingPartner,
+  requiredAmenities?: string[],
+): boolean {
+  if (!requiredAmenities?.length) return true;
+  const have = new Set(partner.amenities ?? []);
+  return requiredAmenities.every((flag) => have.has(flag));
+}
+
 /**
  * Scoring (deterministic, no AI):
  * - Hard matches already required: service + area + availability + budget
@@ -156,8 +166,9 @@ export function budgetAllowsService(
 export function scoreMatch(args: {
   service: MatchingService;
   budgetCentsMax: number | null;
+  requiredAmenities?: string[];
 }): { score: number; breakdown: ScoreBreakdown } {
-  const { service, budgetCentsMax } = args;
+  const { service, budgetCentsMax, requiredAmenities } = args;
   const price = service.priceCents;
   let priceScore = 0.5;
   if (budgetCentsMax && budgetCentsMax > 0 && price != null) {
@@ -169,6 +180,7 @@ export function scoreMatch(args: {
   const budgetMatch =
     budgetCentsMax == null ||
     (price != null && price <= budgetCentsMax);
+  const amenityRequested = Boolean(requiredAmenities?.length);
 
   const score =
     50 +
@@ -183,6 +195,7 @@ export function scoreMatch(args: {
       area_match: true,
       availability_match: true,
       budget_match: budgetMatch,
+      amenity_match: amenityRequested,
       price_score: Number(priceScore.toFixed(4)),
       pricing_type: service.pricingType,
       price_cents: price,
@@ -224,6 +237,25 @@ export function normalizeCatalogPartner(raw: Record<string, unknown>): MatchingP
     partnerType: String(raw.partner_type ?? raw.partnerType ?? ""),
     status: String(raw.status ?? ""),
     isDemo: Boolean(raw.is_demo ?? raw.isDemo),
+    bio:
+      raw.bio == null
+        ? null
+        : String(raw.bio),
+    address:
+      raw.address == null
+        ? null
+        : String(raw.address),
+    latitude:
+      raw.latitude == null
+        ? null
+        : Number(raw.latitude),
+    longitude:
+      raw.longitude == null
+        ? null
+        : Number(raw.longitude),
+    amenities: Array.isArray(raw.amenities)
+      ? (raw.amenities as string[])
+      : [],
     services: servicesRaw.map((s) => {
       const row = s as Record<string, unknown>;
       return {
@@ -248,6 +280,10 @@ export function normalizeCatalogPartner(raw: Record<string, unknown>): MatchingP
             ? null
             : Number(row.duration_minutes ?? row.durationMinutes),
         isActive: Boolean(row.is_active ?? row.isActive ?? true),
+        attributes:
+          row.attributes && typeof row.attributes === "object"
+            ? (row.attributes as Record<string, unknown>)
+            : null,
       };
     }),
     areas: areasRaw.map((a) => {
@@ -386,6 +422,21 @@ export function matchPartners(args: {
         continue;
       }
 
+      if (!amenitiesMatchRequest(partner, args.request.requiredAmenities)) {
+        excluded.push({
+          partner,
+          service,
+          exclusionReason: "amenity_mismatch",
+          scoreBreakdown: {
+            service_match: true,
+            area_match: true,
+            availability_match: true,
+            amenity_match: false,
+          },
+        });
+        continue;
+      }
+
       const budget = budgetAllowsService(service, args.request.budgetCentsMax);
       if (!budget.ok) {
         excluded.push({
@@ -407,6 +458,7 @@ export function matchPartners(args: {
       const { score, breakdown } = scoreMatch({
         service,
         budgetCentsMax: args.request.budgetCentsMax,
+        requiredAmenities: args.request.requiredAmenities,
       });
 
       matches.push({

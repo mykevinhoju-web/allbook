@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     const matches = result.matches.map((m) => ({
       partnerId: m.partner.id,
       displayName: m.partner.displayName,
-      bio: null as string | null,
+      bio: m.partner.bio ?? null,
       serviceName: m.service.name,
       categorySlug: m.service.categorySlug,
       priceCents: m.service.priceCents,
@@ -67,6 +67,10 @@ export async function POST(request: Request) {
       preferredTime: parsed.request.preferredTime,
       preferredDate: parsed.request.preferredDate,
       detailPath: `/marketplace/partners/${m.partner.id}`,
+      address: m.partner.address ?? null,
+      latitude: m.partner.latitude ?? null,
+      longitude: m.partner.longitude ?? null,
+      amenities: m.partner.amenities ?? [],
     }));
 
     return NextResponse.json({

@@ -1189,6 +1189,10 @@ export type Database = {
           email: string | null;
           verified_at: string | null;
           is_demo: boolean;
+          address: string | null;
+          latitude: number | null;
+          longitude: number | null;
+          amenities: string[];
           created_at: string;
           updated_at: string;
         };
@@ -1204,6 +1208,10 @@ export type Database = {
           email?: string | null;
           verified_at?: string | null;
           is_demo?: boolean;
+          address?: string | null;
+          latitude?: number | null;
+          longitude?: number | null;
+          amenities?: string[];
           created_at?: string;
           updated_at?: string;
         };
@@ -1219,6 +1227,10 @@ export type Database = {
           email?: string | null;
           verified_at?: string | null;
           is_demo?: boolean;
+          address?: string | null;
+          latitude?: number | null;
+          longitude?: number | null;
+          amenities?: string[];
           created_at?: string;
           updated_at?: string;
         };

@@ -1,5 +1,6 @@
 import {
   ASPLEY_SUBURB_ID,
+  BRIDGEMAN_DOWNS_SUBURB_ID,
   CHERMSIDE_SUBURB_ID,
   upcomingWeekday,
 } from "../demo-seed-data";
@@ -17,11 +18,17 @@ type ServiceKind =
   | "nail_trim"
   | "mobile_car_wash"
   | "dog_grooming"
-  | "electrical";
+  | "electrical"
+  | "hair_cut";
 
 type DayHint = "tomorrow" | "today" | "saturday" | "sunday" | "weekend" | null;
 
 function detectService(text: string): ServiceKind | null {
+  if (
+    /hair\s*cut|haircut|hair\s*salon|barber|hair_cut|hair\s*dress/.test(text)
+  ) {
+    return "hair_cut";
+  }
   if (
     /lawn\s*mow|mow\s*(my\s*)?lawn|lawn_care|lawn_mowing|lawn\s*care/.test(
       text,
@@ -58,7 +65,26 @@ function detectLocation(
   if (/\bchermside\b/i.test(text)) {
     return { label: "Chermside", suburbId: CHERMSIDE_SUBURB_ID };
   }
+  if (/\bbridgeman\s*downs\b/i.test(text)) {
+    return { label: "Bridgeman Downs", suburbId: BRIDGEMAN_DOWNS_SUBURB_ID };
+  }
   return null;
+}
+
+function detectRequiredAmenities(text: string): string[] {
+  const flags: string[] = [];
+  if (
+    /disability|wheelchair|accessible|accessib|disabled\s*access/.test(text)
+  ) {
+    flags.push("disability_accessible");
+  }
+  if (/kids?\s*care|child\s*care|children|kids?\s*friendly|family/.test(text)) {
+    flags.push("kids_care");
+  }
+  if (/\bparking\b|\bpark\b/.test(text)) {
+    flags.push("parking");
+  }
+  return flags;
 }
 
 function detectBudgetCents(text: string): number | null {
@@ -104,6 +130,13 @@ function serviceMeta(kind: ServiceKind): {
         serviceCategory: "lawn_care",
         serviceSlug: "lawn_mowing",
         defaultDay: 1,
+        defaultTime: "14:00",
+      };
+    case "hair_cut":
+      return {
+        serviceCategory: "hair",
+        serviceSlug: "hair_cut",
+        defaultDay: 3,
         defaultTime: "14:00",
       };
     case "house_cleaning":
@@ -186,6 +219,7 @@ export class DemoRequestParser implements RequestParser {
     const budgetCentsMax = detectBudgetCents(text);
     const preferredTime = detectTime(normalized);
     const dayHint = detectDayHint(normalized);
+    const requiredAmenities = detectRequiredAmenities(normalized);
     const urgency = /\b(asap|urgent|urgently)\b/.test(normalized)
       ? "high"
       : "normal";
@@ -194,10 +228,10 @@ export class DemoRequestParser implements RequestParser {
       return {
         ok: false,
         error:
-          "Could not detect a supported service yet (demo parser). Try lawn mowing, cleaning, nail service, or car wash.",
+          "Could not detect a supported service yet (demo parser). Try haircut, lawn mowing, cleaning, nail service, or car wash.",
         hints: [
+          "I need a haircut in Bridgeman Downs tomorrow at 2pm.",
           "I need someone tomorrow at 2pm in Aspley to mow my lawn for under $80.",
-          "I need house cleaning in Aspley for under $80.",
           "Looking for a nail service in Chermside for under $30.",
         ],
       };
@@ -250,10 +284,19 @@ export class DemoRequestParser implements RequestParser {
       notes.push(`No time mentioned; demo default ${time}.`);
     }
 
-    const locationLabel = location?.label ?? "Aspley";
-    const suburbId = location?.suburbId ?? ASPLEY_SUBURB_ID;
+    const locationLabel = location?.label ?? (service === "hair_cut" ? "Bridgeman Downs" : "Aspley");
+    const suburbId =
+      location?.suburbId ??
+      (service === "hair_cut" ? BRIDGEMAN_DOWNS_SUBURB_ID : ASPLEY_SUBURB_ID);
     if (!location) {
-      notes.push("No suburb detected; demo default Aspley.");
+      notes.push(
+        service === "hair_cut"
+          ? "No suburb detected; demo default Bridgeman Downs."
+          : "No suburb detected; demo default Aspley.",
+      );
+    }
+    if (requiredAmenities.length) {
+      notes.push(`Required amenities: ${requiredAmenities.join(", ")}`);
     }
 
     const request: StructuredServiceRequest = {
@@ -267,6 +310,7 @@ export class DemoRequestParser implements RequestParser {
       preferredTime: time,
       budgetCentsMax,
       urgency,
+      requiredAmenities,
     };
 
     return {

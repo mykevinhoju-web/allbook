@@ -21,6 +21,7 @@ export function summarizeNoMatches(
     area_mismatch: "No providers in this area",
     availability_mismatch: "No availability at this time",
     budget_mismatch: "Price exceeds your budget",
+    amenity_mismatch: "Amenity requirements not met",
     service_mismatch: "Service not currently available",
     other: "Other requirement mismatches",
   };
@@ -43,6 +44,7 @@ function classifyExclusion(row: ExcludedCandidate): string {
   const r = row.exclusionReason;
   if (r === "area_mismatch") return "area_mismatch";
   if (r === "availability_mismatch") return "availability_mismatch";
+  if (r === "amenity_mismatch") return "amenity_mismatch";
   if (r === "service_mismatch" || r === "service_inactive") {
     return "service_mismatch";
   }
@@ -57,6 +59,7 @@ export function matchExplanation(breakdown: {
   area_match?: boolean;
   availability_match?: boolean;
   budget_match?: boolean;
+  amenity_match?: boolean;
 }): string[] {
   const lines: string[] = [];
   if (breakdown.service_match) lines.push("Matches your service");
@@ -65,5 +68,6 @@ export function matchExplanation(breakdown: {
     lines.push("Available at requested time");
   }
   if (breakdown.budget_match) lines.push("Within your budget");
+  if (breakdown.amenity_match) lines.push("Matches your amenity needs");
   return lines;
 }

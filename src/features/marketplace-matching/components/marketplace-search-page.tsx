@@ -1,18 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+
+import { PartnerResultsMap } from "@/features/marketplace-matching/components/partner-results-map";
 
 const EXAMPLES = [
+  "I need a haircut in Bridgeman Downs tomorrow at 2pm.",
+  "Looking for a disability accessible haircut in Bridgeman Downs.",
+  "Haircut in Bridgeman Downs with kids care.",
+  "I need a haircut in Bridgeman Downs with parking.",
   "I need someone tomorrow at 2pm in Aspley to mow my lawn for under $80.",
-  "Looking for dog grooming available today",
-  "Nail service near Aspley for under $30",
-  "Need a house cleaner available this weekend",
-  "I need an electrician ASAP",
-  "I need house cleaning in Aspley for under $80.",
   "Looking for a nail service in Chermside for under $30.",
-  "I want a car wash in Aspley on Saturday at 2pm for under $70.",
-  "I need lawn mowing in Chermside for under $80.",
 ] as const;
 
 type MatchCard = {
@@ -27,6 +26,10 @@ type MatchCard = {
   preferredTime: string;
   preferredDate?: string | null;
   detailPath: string;
+  address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  amenities?: string[];
 };
 
 type SearchResponse = {
@@ -44,11 +47,6 @@ type SearchResponse = {
     headline: string;
     reasons: Array<{ code: string; label: string; count: number }>;
   } | null;
-  excluded?: Array<{
-    displayName: string;
-    exclusionReason: string;
-    serviceName: string | null;
-  }>;
 };
 
 function formatMoney(cents: number | null, pricingType: string) {
@@ -64,19 +62,50 @@ function formatTimeLabel(time: string) {
   return `${hour12}:${String(m ?? 0).padStart(2, "0")} ${suffix}`;
 }
 
+function amenityLabel(flag: string) {
+  switch (flag) {
+    case "disability_accessible":
+      return "Disability accessible";
+    case "kids_care":
+      return "Kids care";
+    case "parking":
+      return "Parking";
+    default:
+      return flag;
+  }
+}
+
 /**
- * Customer Marketplace search — “what do you need help with?”
- * Demo parser + rule-based matching (no AI).
+ * Customer Marketplace search — list (left) + map (right).
  */
 export function MarketplaceSearchPage() {
   const [query, setQuery] = useState(
-    "I need someone tomorrow at 2pm in Aspley to mow my lawn for under $80.",
+    "I need a haircut in Bridgeman Downs tomorrow at 2pm.",
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hints, setHints] = useState<string[]>([]);
   const [result, setResult] = useState<SearchResponse | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showDev, setShowDev] = useState(false);
+
+  const pins = useMemo(() => {
+    return (result?.matches ?? [])
+      .filter(
+        (m) =>
+          m.latitude != null &&
+          m.longitude != null &&
+          Number.isFinite(m.latitude) &&
+          Number.isFinite(m.longitude),
+      )
+      .map((m) => ({
+        id: m.partnerId,
+        name: m.displayName,
+        latitude: m.latitude as number,
+        longitude: m.longitude as number,
+        priceLabel: formatMoney(m.priceCents, m.pricingType),
+      }));
+  }, [result?.matches]);
 
   async function search() {
     setBusy(true);
@@ -91,6 +120,7 @@ export function MarketplaceSearchPage() {
       const data = (await response.json()) as SearchResponse;
       if (response.status === 422) {
         setResult(null);
+        setSelectedId(null);
         setError(data.error || "Could not understand that request yet.");
         setHints(data.hints ?? []);
         return;
@@ -99,8 +129,10 @@ export function MarketplaceSearchPage() {
         throw new Error(data.error || "Search failed.");
       }
       setResult(data);
+      setSelectedId(data.matches?.[0]?.partnerId ?? null);
     } catch (err) {
       setResult(null);
+      setSelectedId(null);
       setError(err instanceof Error ? err.message : "Search failed.");
     } finally {
       setBusy(false);
@@ -109,17 +141,16 @@ export function MarketplaceSearchPage() {
 
   return (
     <div className="min-h-svh bg-[radial-gradient(ellipse_at_top,_#f7f3ea_0%,_#eef2f0_45%,_#e8ece9_100%)]">
-      <div className="mx-auto max-w-3xl px-4 py-10 md:py-16">
+      <div className="mx-auto max-w-6xl px-4 py-8 md:py-12">
         <p className="mb-3 text-xs font-medium uppercase tracking-[0.14em] text-emerald-900/70">
           AllBook Marketplace · Phase 1 demo
         </p>
         <h1 className="max-w-xl font-serif text-4xl leading-tight tracking-tight text-stone-900 md:text-5xl">
           What do you need help with?
         </h1>
-        <p className="mt-3 max-w-xl text-base text-stone-600">
-          Describe the job in plain language. We match Partners who already
-          publish their own services, prices, areas, and availability — not
-          Google listings.
+        <p className="mt-3 max-w-2xl text-base text-stone-600">
+          Describe the job in plain language. Results show matching Partners on
+          the left and on the map.
         </p>
 
         <div className="mt-8 rounded-3xl border border-stone-200/80 bg-white/90 p-4 shadow-[0_20px_60px_-40px_rgba(28,25,23,0.45)] backdrop-blur md:p-5">
@@ -128,10 +159,10 @@ export function MarketplaceSearchPage() {
           </label>
           <textarea
             id="marketplace-query"
-            rows={4}
+            rows={3}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="e.g. I need someone tomorrow at 2pm in Aspley to mow my lawn for under $80."
+            placeholder="e.g. I need a haircut in Bridgeman Downs tomorrow at 2pm."
             className="w-full resize-y rounded-2xl border border-stone-200 bg-stone-50/80 px-4 py-3 text-base text-stone-900 outline-none ring-emerald-700/30 placeholder:text-stone-400 focus:ring-2"
           />
           <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -159,6 +190,7 @@ export function MarketplaceSearchPage() {
                 onClick={() => {
                   setQuery(example);
                   setResult(null);
+                  setSelectedId(null);
                   setError(null);
                 }}
                 className="max-w-full rounded-full border border-stone-300/90 bg-white/70 px-3 py-1.5 text-left text-xs text-stone-700 transition hover:border-emerald-800/40 hover:bg-white"
@@ -191,10 +223,13 @@ export function MarketplaceSearchPage() {
         ) : null}
 
         {result?.ok ? (
-          <section className="mt-10 space-y-4">
+          <section className="mt-8 space-y-4">
             <div className="flex items-end justify-between gap-3">
               <h2 className="text-xl font-semibold text-stone-900">
                 Available Partners
+                {result.matches?.length
+                  ? ` (${result.matches.length})`
+                  : ""}
               </h2>
               <button
                 type="button"
@@ -219,52 +254,84 @@ export function MarketplaceSearchPage() {
             ) : null}
 
             {result.matches && result.matches.length > 0 ? (
-              <ul className="space-y-4">
-                {result.matches.map((m) => (
-                  <li
-                    key={`${m.partnerId}-${m.serviceName}`}
-                    className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-lg font-semibold text-stone-900">
-                          {m.displayName}
-                        </h3>
-                        <p className="mt-1 text-sm text-stone-600">
-                          {m.serviceName}
-                        </p>
-                        <p className="mt-2 text-base font-medium text-stone-900">
-                          {formatMoney(m.priceCents, m.pricingType)}
-                          <span className="ml-2 text-xs font-normal uppercase tracking-wide text-stone-500">
-                            {m.pricingType}
-                          </span>
-                        </p>
-                        <p className="mt-1 text-sm text-stone-600">
-                          {m.locationLabel}
-                          {" · "}
-                          Available
-                          {m.preferredDate ? ` ${m.preferredDate}` : ""} at{" "}
-                          {formatTimeLabel(m.preferredTime)}
-                        </p>
-                        <ul className="mt-3 space-y-1 text-sm text-emerald-900">
-                          {m.explanations.map((line) => (
-                            <li key={line}>✓ {line}</li>
-                          ))}
-                        </ul>
-                        <p className="mt-2 text-xs text-stone-400">
-                          Match score {m.score}
-                        </p>
-                      </div>
-                      <Link
-                        href={m.detailPath}
-                        className="rounded-xl border border-stone-300 px-3 py-2 text-sm text-stone-800 hover:bg-stone-50"
-                      >
-                        View details
-                      </Link>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-start">
+                <ul className="space-y-3">
+                  {result.matches.map((m) => {
+                    const active = m.partnerId === selectedId;
+                    return (
+                      <li key={`${m.partnerId}-${m.serviceName}`}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedId(m.partnerId)}
+                          className={`w-full rounded-3xl border p-4 text-left transition ${
+                            active
+                              ? "border-emerald-800 bg-white shadow-md ring-1 ring-emerald-800/20"
+                              : "border-stone-200 bg-white/90 hover:border-stone-300"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <h3 className="text-lg font-semibold text-stone-900">
+                                {m.displayName}
+                              </h3>
+                              <p className="mt-1 text-sm text-stone-600">
+                                {m.serviceName}
+                              </p>
+                              <p className="mt-2 text-base font-medium text-stone-900">
+                                {formatMoney(m.priceCents, m.pricingType)}
+                                <span className="ml-2 text-xs font-normal uppercase tracking-wide text-stone-500">
+                                  {m.pricingType}
+                                </span>
+                              </p>
+                              <p className="mt-1 text-sm text-stone-600">
+                                {m.address || m.locationLabel}
+                              </p>
+                              <p className="mt-1 text-sm text-stone-600">
+                                Available
+                                {m.preferredDate ? ` ${m.preferredDate}` : ""} at{" "}
+                                {formatTimeLabel(m.preferredTime)}
+                              </p>
+                              {m.amenities?.length ? (
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                  {m.amenities.map((a) => (
+                                    <span
+                                      key={a}
+                                      className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-900"
+                                    >
+                                      {amenityLabel(a)}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : null}
+                              <ul className="mt-3 space-y-1 text-sm text-emerald-900">
+                                {m.explanations.map((line) => (
+                                  <li key={line}>✓ {line}</li>
+                                ))}
+                              </ul>
+                            </div>
+                            <Link
+                              href={m.detailPath}
+                              onClick={(e) => e.stopPropagation()}
+                              className="shrink-0 rounded-xl border border-stone-300 px-3 py-2 text-sm text-stone-800 hover:bg-stone-50"
+                            >
+                              View details
+                            </Link>
+                          </div>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                <div className="sticky top-4 h-[min(70vh,640px)]">
+                  <PartnerResultsMap
+                    pins={pins}
+                    selectedId={selectedId}
+                    onSelect={setSelectedId}
+                    className="h-full"
+                  />
+                </div>
+              </div>
             ) : (
               <div className="rounded-3xl border border-dashed border-stone-300 bg-white/70 px-5 py-8">
                 <p className="font-medium text-stone-900">

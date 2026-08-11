@@ -60,6 +60,7 @@ function partner(input: {
     partnerType: "independent",
     status: "active",
     isDemo: true,
+    amenities: [],
     services: [
       {
         id: serviceId,

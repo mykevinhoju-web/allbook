@@ -22,6 +22,11 @@ export type StructuredServiceRequest = {
   preferredTime: string;
   budgetCentsMax: number | null;
   urgency?: "low" | "normal" | "high";
+  /**
+   * Canonical amenity flags that must all be present on the partner.
+   * e.g. disability_accessible | kids_care | parking
+   */
+  requiredAmenities?: string[];
 };
 
 export type MatchingService = {
@@ -35,6 +40,7 @@ export type MatchingService = {
   currency: string;
   durationMinutes: number | null;
   isActive: boolean;
+  attributes?: Record<string, unknown> | null;
 };
 
 export type MatchingArea = {
@@ -63,6 +69,11 @@ export type MatchingPartner = {
   partnerType: string;
   status: string;
   isDemo: boolean;
+  bio?: string | null;
+  address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  amenities: string[];
   services: MatchingService[];
   areas: MatchingArea[];
   availability: MatchingAvailability | null;
@@ -73,6 +84,7 @@ export type ScoreBreakdown = {
   area_match: boolean;
   availability_match: boolean;
   budget_match: boolean;
+  amenity_match: boolean;
   price_score: number;
   pricing_type: string;
   price_cents: number | null;

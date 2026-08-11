@@ -14,6 +14,7 @@ export {
 } from "./demo-guard";
 export {
   areaMatchesRequest,
+  amenitiesMatchRequest,
   availabilityMatchesRequest,
   budgetAllowsService,
   matchPartners,
@@ -30,6 +31,7 @@ export {
 } from "./run-match";
 export {
   ASPLEY_SUBURB_ID,
+  BRIDGEMAN_DOWNS_SUBURB_ID,
   CHERMSIDE_SUBURB_ID,
   DEMO_PARTNERS,
   upcomingWeekday,

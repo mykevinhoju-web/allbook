@@ -7,6 +7,8 @@ export const DEMO_PARTNER_EMAIL_DOMAIN = "allbook.demo";
 
 export const ASPLEY_SUBURB_ID = "6b42bb67-8b42-4ce1-a07f-2702eeb58451";
 export const CHERMSIDE_SUBURB_ID = "159084d9-9ac3-4fb3-9a43-7fc502d06698";
+export const BRIDGEMAN_DOWNS_SUBURB_ID =
+  "7e2a60cc-92b9-4a3b-8b40-d365c1df8e05";
 
 export type DemoPartnerSeed = {
   key: string;
