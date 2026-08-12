@@ -61,6 +61,8 @@ export interface BookingFormValues {
   paymentMethod: InternalPaymentMethod | "";
   /** Special admin-only action: allow starting immediately (not 5-min step). */
   allowImmediateStart: boolean;
+  /** Off-site service — no treatment room. */
+  outCall: boolean;
 }
 
 export const defaultBookingFormValues: BookingFormValues = {
@@ -75,6 +77,7 @@ export const defaultBookingFormValues: BookingFormValues = {
   customerEmail: "",
   paymentMethod: "",
   allowImmediateStart: false,
+  outCall: false,
 };
 
 export interface BookingTimeSlotOption {
@@ -514,12 +517,15 @@ export function BookingFormSheet({
                       allowImmediateStart: false,
                     })
                   }
-                  className={theme.field}
+                  disabled={values.outCall}
+                  className={cn(theme.field, values.outCall && "opacity-50")}
                 >
                   <option value="">
-                    {suggestedAutoRoomName
-                      ? `Auto-assign (${suggestedAutoRoomName})`
-                      : "Auto-assign (first free room)"}
+                    {values.outCall
+                      ? "Not needed for out call"
+                      : suggestedAutoRoomName
+                        ? `Auto-assign (${suggestedAutoRoomName})`
+                        : "Auto-assign (first free room)"}
                   </option>
                   {(
                     roomStatuses ??
@@ -541,11 +547,36 @@ export function BookingFormSheet({
                   ))}
                 </select>
                 <p className="text-xs text-stone-500">
-                  {values.startsAt
-                    ? "Unavailable rooms are disabled for the selected time."
-                    : "Pick a time to see which rooms are free."}
+                  {values.outCall
+                    ? "Out call is off-site — no treatment room is assigned."
+                    : values.startsAt
+                      ? "Unavailable rooms are disabled for the selected time."
+                      : "Pick a time to see which rooms are free."}
                 </p>
               </FormField>
+
+              <label className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white px-3 py-3">
+                <input
+                  type="checkbox"
+                  checked={values.outCall}
+                  onChange={(event) =>
+                    onChange({
+                      ...values,
+                      outCall: event.target.checked,
+                      roomId: event.target.checked ? "" : values.roomId,
+                    })
+                  }
+                  className="size-5 accent-[#8A6A3A]"
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-stone-900">
+                    Out call booking
+                  </span>
+                  <span className="block text-xs text-stone-500">
+                    Off-site service — stays on the staff line, no room
+                  </span>
+                </span>
+              </label>
             </div>
 
             <div className={cn(theme.panel, "space-y-4")}>

@@ -12,9 +12,13 @@ import {
 import {
   isInternalPaymentMethod,
   parsePaymentMethodFromNotes,
-  stripPaymentMethodNote,
   withPaymentMethodNote,
 } from "@/features/booking/lib/internal-payment-method";
+import {
+  isOutCallBooking,
+  visibleBookingNotes,
+  withOutCallNote,
+} from "@/features/booking/lib/booking-outcall";
 import {
   hasRoomBookingConflict,
   hasStaffBookingConflict,
@@ -118,8 +122,9 @@ function mapBooking(row: {
     customerPhone: row.customer_phone,
     customerPostcode: row.customer_postcode,
     customerEmail: row.customer_email,
-    notes: stripPaymentMethodNote(row.notes) || null,
+    notes: visibleBookingNotes(row.notes),
     paymentMethod: parsePaymentMethodFromNotes(row.notes),
+    outCall: isOutCallBooking(row.notes),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -218,6 +223,8 @@ export async function POST(request: Request) {
       paymentMethod?: string;
       /** When true, bypass the 5-minute-step constraint (used by internal "Now" button). */
       allowImmediateStart?: boolean;
+      /** Off-site service — skip treatment room assignment. */
+      outCall?: boolean;
     };
 
     if (!body.staffId || !body.startsAt || !body.durationMinutes) {
@@ -310,16 +317,19 @@ export async function POST(request: Request) {
       );
     }
 
-    const roomId =
-      body.roomId ??
-      (await assignAvailableRoom(
-        supabase,
-        tenant.id,
-        startsAt.toISOString(),
-        endsAt.toISOString(),
-      ));
+    const outCall = Boolean(body.outCall);
 
-    if (!roomId) {
+    const roomId = outCall
+      ? null
+      : (body.roomId ??
+        (await assignAvailableRoom(
+          supabase,
+          tenant.id,
+          startsAt.toISOString(),
+          endsAt.toISOString(),
+        )));
+
+    if (!outCall && !roomId) {
       return NextResponse.json(
         { error: "No treatment room available for this time slot." },
         { status: 409 },
@@ -327,13 +337,14 @@ export async function POST(request: Request) {
     }
 
     if (
-      await hasRoomBookingConflict(
+      roomId &&
+      (await hasRoomBookingConflict(
         supabase,
         tenant.id,
         roomId,
         startsAt.toISOString(),
         endsAt.toISOString(),
-      )
+      ))
     ) {
       return NextResponse.json(
         { error: "This room is already booked for that time slot." },
@@ -341,7 +352,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (body.roomId) {
+    if (body.roomId && !outCall) {
       const { data: roomRow } = await supabase
         .from("rooms")
         .select("id")
@@ -375,7 +386,10 @@ export async function POST(request: Request) {
         customer_phone: customerPhone,
         customer_postcode: customerPostcode,
         customer_email: body.customerEmail?.trim() ?? null,
-        notes: withPaymentMethodNote(paymentMethod, body.notes),
+        notes: withPaymentMethodNote(
+          paymentMethod,
+          outCall ? withOutCallNote(body.notes) : body.notes,
+        ),
       })
       .select(
         "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, status, checked_out_at, checked_in_at, customer_name, customer_phone, customer_postcode, customer_email, notes, created_at, updated_at, staff(name), rooms(name)",

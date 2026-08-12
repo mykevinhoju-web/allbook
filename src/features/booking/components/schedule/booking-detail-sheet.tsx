@@ -104,6 +104,7 @@ export function BookingDetailSheet({
 
   const canChangeRoom =
     Boolean(booking) &&
+    !booking!.outCall &&
     booking!.status !== "cancelled" &&
     booking!.status !== "completed";
 
@@ -316,7 +317,12 @@ export function BookingDetailSheet({
               <DetailRow label="Phone" value={booking.customerPhone} />
               <DetailRow label="Email" value={booking.customerEmail} />
               <DetailRow label="Postcode" value={booking.customerPostcode} />
-              <DetailRow label="Room" value={booking.roomName ?? "—"} />
+              <DetailRow
+                label="Room"
+                value={
+                  booking.outCall ? "Out call" : (booking.roomName ?? "—")
+                }
+              />
               <DetailRow
                 label="Service"
                 value={formatDurationLabel(booking.durationMinutes)}

@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 
 import {
   parsePaymentMethodFromNotes,
-  stripPaymentMethodNote,
 } from "@/features/booking/lib/internal-payment-method";
+import {
+  isOutCallBooking,
+  visibleBookingNotes,
+} from "@/features/booking/lib/booking-outcall";
 import {
   isBookingOverlapConstraintError,
   isRoomOverlapConstraintError,
@@ -61,8 +64,9 @@ function mapBooking(row: {
     customerPhone: row.customer_phone,
     customerPostcode: row.customer_postcode,
     customerEmail: row.customer_email,
-    notes: stripPaymentMethodNote(row.notes) || null,
+    notes: visibleBookingNotes(row.notes),
     paymentMethod: parsePaymentMethodFromNotes(row.notes),
+    outCall: isOutCallBooking(row.notes),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

@@ -67,6 +67,12 @@ function bookingBlockTone(index: number) {
   return BOOKING_BLOCK_PALETTE[index % BOOKING_BLOCK_PALETTE.length]!;
 }
 
+const OUTCALL_BLOCK_TONE = {
+  idle: "border-fuchsia-600/70 bg-fuchsia-300 text-fuchsia-950",
+  active: "border-fuchsia-700 bg-fuchsia-400 text-fuchsia-950",
+  muted: "text-fuchsia-900/85",
+} as const;
+
 type DayBlock = 0 | 1 | 2 | 3;
 
 function addDaysIso(date: string, days: number): string {
@@ -552,7 +558,9 @@ export function StaffGuideTimeline({
                           Boolean(booking.checkedOutAt) ||
                           booking.status === "completed";
                         const selected = selectedBookingId === booking.id;
-                        const tone = bookingBlockTone(bookingIndex);
+                        const tone = booking.outCall
+                          ? OUTCALL_BLOCK_TONE
+                          : bookingBlockTone(bookingIndex);
                         return (
                           <button
                             key={booking.id}
@@ -583,9 +591,11 @@ export function StaffGuideTimeline({
                               {formatAmPmTime(booking.startsAt)}~
                               {formatAmPmTime(booking.endsAt)} ·{" "}
                               {formatDurationLabel(booking.durationMinutes)}
-                              {booking.roomName
-                                ? ` · ${booking.roomName}`
-                                : ""}
+                              {booking.outCall
+                                ? " · Out call"
+                                : booking.roomName
+                                  ? ` · ${booking.roomName}`
+                                  : ""}
                             </p>
                           </button>
                         );

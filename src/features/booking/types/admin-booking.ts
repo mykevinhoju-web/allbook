@@ -20,6 +20,8 @@ export interface AdminBooking {
   paymentMethod?: "cash" | "card" | null;
   /** Extra staff joined on this booking (excludes primary). */
   additionalStaff?: { id: string; name: string }[];
+  /** Off-site service — no treatment room. */
+  outCall?: boolean;
 }
 
 export interface AdminRoom {

@@ -225,9 +225,9 @@ export function BookingScheduleContent() {
       durationMinutes: form.durationMinutes,
       date,
       timeZone: tenant.settings.timezone,
-      roomId: form.roomId || undefined,
+      roomId: form.outCall ? undefined : form.roomId || undefined,
       roomBookings: selectedRoomBookings,
-      rooms,
+      rooms: form.outCall ? [] : rooms,
       allRoomBookings,
     });
 
@@ -343,7 +343,8 @@ export function BookingScheduleContent() {
             tenant.settings.timezone,
           ),
           durationMinutes,
-          roomId: form.roomId || undefined,
+          roomId: form.outCall ? undefined : form.roomId || undefined,
+          outCall: form.outCall,
           customerName: formatCustomerBookingName(
             form.customerFirstName,
             form.customerLastName,
@@ -374,7 +375,12 @@ export function BookingScheduleContent() {
         : null;
 
       toast.success("Booking created", {
-        description: [priceLabel, data.booking?.roomName]
+        description: [
+          priceLabel,
+          data.booking?.outCall
+            ? "Out call"
+            : data.booking?.roomName,
+        ]
           .filter(Boolean)
           .join(" · "),
       });
