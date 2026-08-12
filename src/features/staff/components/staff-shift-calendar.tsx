@@ -255,11 +255,14 @@ export function StaffShiftCalendar({
 
   const [focusedDate, setFocusedDate] = useState(() => {
     const dates = sortedShiftPlanDates(shiftPlan);
-    return dates.find((date) => date >= today) ?? dates[0] ?? today;
+    // Never open on a past day — fall back to today when nothing upcoming.
+    return dates.find((date) => date >= today) ?? today;
   });
 
   const [visibleMonth, setVisibleMonth] = useState(() =>
-    parseDateInput(focusedDate),
+    parseDateInput(
+      sortedShiftPlanDates(shiftPlan).find((date) => date >= today) ?? today,
+    ),
   );
 
   const focusedShift = useMemo(
@@ -326,7 +329,7 @@ export function StaffShiftCalendar({
 
     const remaining = sortedShiftPlanDates(nextPlan);
     const nextFocus =
-      remaining.find((date) => date >= today) ?? remaining[0] ?? today;
+      remaining.find((date) => date >= today) ?? today;
     focusDate(nextFocus);
   };
 

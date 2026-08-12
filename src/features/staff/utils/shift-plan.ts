@@ -239,7 +239,9 @@ export function primaryShiftWindowFromPlan(
   if (dates.length === 0) return null;
 
   const today = todayDateInZone(timeZone, now);
-  const target = plan[today] ? today : dates.find((date) => date >= today) ?? dates[0];
+  const target =
+    plan[today] ? today : dates.find((date) => date >= today) ?? null;
+  if (!target) return null;
   const entry = plan[target];
   if (!entry) return null;
 
