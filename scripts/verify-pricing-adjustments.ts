@@ -13,6 +13,7 @@ const adjustments: PricingAdjustments = {
   nightSurchargeCents: 2000,
   discountCents: 1000,
   discountApplyInternal: true,
+  discountExternalCents: 500,
   discountApplyExternal: false,
 };
 
@@ -37,6 +38,16 @@ const nightExternal = applyPricingAdjustments({
 assert(nightExternal.nightSurchargeCents === 2000, "night surcharge applied");
 assert(nightExternal.discountCents === 0, "external discount off");
 assert(nightExternal.totalCents === 7500, "55+20=75");
+
+const nightExternalOn = applyPricingAdjustments({
+  baseCents: 5500,
+  startsAtIso: nightStart,
+  timeZone: tz,
+  channel: "external",
+  adjustments: { ...adjustments, discountApplyExternal: true },
+});
+assert(nightExternalOn.discountCents === 500, "external uses its own amount");
+assert(nightExternalOn.totalCents === 7000, "55+20-5=70");
 
 const nightInternalCash = applyPricingAdjustments({
   baseCents: 5500,
