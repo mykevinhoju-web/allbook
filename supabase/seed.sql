@@ -25,7 +25,7 @@ values (
   true,
   jsonb_build_object(
     'adminModules', jsonb_build_object(
-      'customers', false,
+      'customers', true,
       'gallery', false,
       'settings', false
     )
