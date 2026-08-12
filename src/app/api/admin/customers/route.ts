@@ -62,8 +62,8 @@ export async function GET(request: Request) {
     const view = parseView(searchParams.get("view"));
     const today = todayDateInZone(timeZone);
 
-    let date = searchParams.get("date")?.trim() || today;
-    let month = searchParams.get("month")?.trim() || today.slice(0, 7);
+    const date = searchParams.get("date")?.trim() || today;
+    const month = searchParams.get("month")?.trim() || today.slice(0, 7);
 
     if (view === "daily" && !isValidReportDate(date)) {
       return NextResponse.json(
