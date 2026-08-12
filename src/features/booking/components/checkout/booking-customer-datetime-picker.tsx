@@ -44,6 +44,8 @@ interface BookingCustomerDateTimePickerProps {
   autoSelectFirst?: boolean;
   /** Minimum lead time (minutes) for available slots. Default keeps existing behavior (5). */
   earliestLeadMinutes?: number;
+  /** Optional action rendered to the right of the "Start time" label. */
+  startTimeRightActions?: React.ReactNode;
 }
 
 function FieldSelect({
@@ -98,6 +100,7 @@ export function BookingCustomerDateTimePicker({
   roomPreview = null,
   autoSelectFirst = true,
   earliestLeadMinutes = 5,
+  startTimeRightActions = null,
 }: BookingCustomerDateTimePickerProps) {
   const today = todayDateInZone(timeZone);
   const dateOptions = useMemo(
@@ -318,9 +321,10 @@ export function BookingCustomerDateTimePicker({
             </div>
           ) : (
             <div>
-              <p className="mb-2 text-xs font-medium text-stone-500">
-                Start time
-              </p>
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <p className="text-xs font-medium text-stone-500">Start time</p>
+                {startTimeRightActions}
+              </div>
               <div className="flex items-center gap-2">
                 <FieldSelect
                   aria-label="AM or PM"

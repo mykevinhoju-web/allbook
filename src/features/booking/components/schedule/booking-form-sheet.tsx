@@ -330,12 +330,13 @@ export function BookingFormSheet({
       ? "Select service above first"
       : timeSlotsHint;
 
-  const isToday = date === todayDateInZone(timeZone);
+  const today = todayDateInZone(timeZone);
+  const isPastDate = date < today;
   const nowDisabled =
     !values.staffId ||
     !values.durationMinutes ||
     timeSlotsLoading ||
-    !isToday ||
+    isPastDate ||
     slotOptions.length === 0;
 
   const chooseNowSlot = () => {
@@ -454,22 +455,6 @@ export function BookingFormSheet({
               </FormField>
             </div>
 
-            <div className="flex items-center justify-end">
-              <button
-                type="button"
-                disabled={nowDisabled}
-                onClick={chooseNowSlot}
-                className={cn(
-                  "h-11 rounded-xl border px-4 text-sm font-semibold transition",
-                  nowDisabled
-                    ? "border-stone-200 bg-white text-stone-400 opacity-70"
-                    : "border-[#8A6A3A] bg-[#8A6A3A]/10 text-stone-900 ring-1 ring-[#8A6A3A]/15 hover:brightness-[0.98]",
-                )}
-              >
-                [Now]
-              </button>
-            </div>
-
             <BookingCustomerDateTimePicker
               date={date}
               onDateChange={(nextDate) => {
@@ -486,6 +471,21 @@ export function BookingFormSheet({
               roomPreview={selectedRoomName ?? suggestedAutoRoomName}
               autoSelectFirst={!timePickerDisabled}
               earliestLeadMinutes={0}
+              startTimeRightActions={
+                <button
+                  type="button"
+                  disabled={nowDisabled}
+                  onClick={chooseNowSlot}
+                  className={cn(
+                    "h-9 shrink-0 rounded-xl border px-3 text-xs font-semibold transition",
+                    nowDisabled
+                      ? "border-stone-200 bg-white text-stone-400 opacity-70"
+                      : "border-[#8A6A3A] bg-[#8A6A3A]/10 text-stone-900 ring-1 ring-[#8A6A3A]/15 hover:brightness-[0.98]",
+                  )}
+                >
+                  Now
+                </button>
+              }
             />
 
             <div className={cn(theme.panel, "space-y-3")}>
