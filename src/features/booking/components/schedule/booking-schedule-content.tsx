@@ -36,7 +36,6 @@ import {
   isValidServiceDuration,
   todayDateInZone,
 } from "../../lib/schedule-utils";
-import { useTenant } from "@/features/tenants";
 import type { AdminBooking } from "../../types/admin-booking";
 import {
   BookingFormSheet,
