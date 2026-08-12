@@ -580,6 +580,7 @@ export function StaffGuideTimeline({
                           >
                             <p className="truncate text-sm font-semibold leading-tight md:text-[15px]">
                               {booking.customerName?.trim() || "Guest"}
+                              {booking.outCall ? " · Out call" : ""}
                               {done && !active ? " · Done" : ""}
                             </p>
                             <p
