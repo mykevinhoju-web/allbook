@@ -31,6 +31,8 @@ const report = aggregateRevenueReport(
       priceCents: 10000,
       status: "confirmed",
       customerName: "Jane",
+      cashCents: 10000,
+      cardCents: 0,
     },
     {
       id: "b2",
@@ -40,6 +42,8 @@ const report = aggregateRevenueReport(
       priceCents: 5000,
       status: "confirmed",
       customerName: null,
+      cashCents: 2000,
+      cardCents: 3000,
     },
     {
       id: "b3",
@@ -49,16 +53,22 @@ const report = aggregateRevenueReport(
       priceCents: 8000,
       status: "completed",
       customerName: "Sam",
+      cashCents: 0,
+      cardCents: 8000,
     },
   ],
   "Australia/Sydney",
 );
 
 assert.equal(report.grandTotalCents, 23000);
+assert.equal(report.cashTotalCents, 12000);
+assert.equal(report.cardTotalCents, 11000);
 assert.equal(report.bookingCount, 3);
 assert.equal(report.byStaff.length, 2);
 assert.equal(report.byStaff[0]?.staffName, "Amy");
 assert.equal(report.byStaff[0]?.totalCents, 15000);
+assert.equal(report.byStaff[0]?.cashCents, 12000);
+assert.equal(report.byStaff[0]?.cardCents, 3000);
 assert.equal(report.byStaff[0]?.daily.length, 1);
 assert.equal(report.byStaff[0]?.daily[0]?.date, "2026-07-08");
 assert.equal(report.byStaff[0]?.daily[0]?.bookings.length, 2);
