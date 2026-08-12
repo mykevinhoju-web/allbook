@@ -227,8 +227,9 @@ export function BookingScheduleContent() {
       timeZone: tenant.settings.timezone,
       roomId: form.outCall ? undefined : form.roomId || undefined,
       roomBookings: selectedRoomBookings,
-      rooms: form.outCall ? [] : rooms,
+      rooms,
       allRoomBookings,
+      skipRoomAvailability: form.outCall,
     });
 
   const resolvedStartsAt = useMemo(() => {
@@ -255,6 +256,7 @@ export function BookingScheduleContent() {
   }, [resolvedStartsAt, form.durationMinutes, rooms, allRoomBookings]);
 
   const suggestedAutoRoomName = useMemo(() => {
+    if (form.outCall) return null;
     if (!resolvedStartsAt || !form.durationMinutes || form.roomId) return null;
     const startMs = new Date(resolvedStartsAt).getTime();
     const endMs = startMs + Number(form.durationMinutes) * 60_000;
@@ -265,6 +267,7 @@ export function BookingScheduleContent() {
   }, [
     resolvedStartsAt,
     form.durationMinutes,
+    form.outCall,
     form.roomId,
     rooms,
     allRoomBookings,

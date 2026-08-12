@@ -485,7 +485,11 @@ export function BookingFormSheet({
               }
               loading={timeSlotsLoading}
               hint={timePickerHint}
-              roomPreview={selectedRoomName ?? suggestedAutoRoomName}
+              roomPreview={
+                values.outCall
+                  ? null
+                  : (selectedRoomName ?? suggestedAutoRoomName)
+              }
               autoSelectFirst={!timePickerDisabled}
               earliestLeadMinutes={0}
               startTimeRightActions={

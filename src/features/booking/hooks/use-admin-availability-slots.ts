@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   hasAnyRoomAvailable,
@@ -18,6 +18,11 @@ const EMPTY_ROOM_BOOKINGS: { startsAt: string; endsAt: string }[] = [];
 const EMPTY_ROOMS: RoomOption[] = [];
 const EMPTY_ALL_ROOM_BOOKINGS: RoomSlotBooking[] = [];
 
+interface StaffSlot {
+  startsAt: string;
+  label: string;
+}
+
 interface UseAdminAvailabilitySlotsArgs {
   staffId: string;
   durationMinutes: string;
@@ -30,6 +35,8 @@ interface UseAdminAvailabilitySlotsArgs {
   rooms?: RoomOption[];
   /** All room bookings on the selected day (for auto-assign). */
   allRoomBookings?: RoomSlotBooking[];
+  /** Out call: keep staff times, ignore room occupancy. */
+  skipRoomAvailability?: boolean;
 }
 
 export function useAdminAvailabilitySlots({
@@ -41,24 +48,23 @@ export function useAdminAvailabilitySlots({
   roomBookings = EMPTY_ROOM_BOOKINGS,
   rooms = EMPTY_ROOMS,
   allRoomBookings = EMPTY_ALL_ROOM_BOOKINGS,
+  skipRoomAvailability = false,
 }: UseAdminAvailabilitySlotsArgs) {
-  const [timeSlotOptions, setTimeSlotOptions] = useState<
-    BookingTimeSlotOption[]
-  >([]);
+  const [rawSlots, setRawSlots] = useState<StaffSlot[]>([]);
   const [timeSlotsLoading, setTimeSlotsLoading] = useState(false);
-  const [timeSlotsHint, setTimeSlotsHint] = useState<string | null>(null);
+  const [fetchHint, setFetchHint] = useState<string | null>(null);
 
   useEffect(() => {
     if (!staffId || !durationMinutes || !date) {
-      setTimeSlotOptions([]);
-      setTimeSlotsHint(null);
+      setRawSlots([]);
+      setFetchHint(null);
       setTimeSlotsLoading(false);
       return;
     }
 
     let cancelled = false;
     setTimeSlotsLoading(true);
-    setTimeSlotsHint(null);
+    setFetchHint(null);
 
     void (async () => {
       try {
@@ -69,7 +75,7 @@ export function useAdminAvailabilitySlots({
         });
         const response = await fetch(`/api/booking/availability?${params}`);
         const data = (await response.json()) as {
-          slots?: { startsAt: string; label: string }[];
+          slots?: StaffSlot[];
           reason?: string | null;
           error?: string;
         };
@@ -77,72 +83,17 @@ export function useAdminAvailabilitySlots({
         if (cancelled) return;
 
         if (!response.ok) {
-          setTimeSlotOptions([]);
-          setTimeSlotsHint(data.error ?? "Could not load times.");
+          setRawSlots([]);
+          setFetchHint(data.error ?? "Could not load times.");
           return;
         }
 
-        const durationMs = Number(durationMinutes) * 60_000;
-        const earliestMs = Date.now() + 5 * 60_000;
-        const options = (data.slots ?? [])
-          .filter((slot) => {
-            const start = new Date(slot.startsAt).getTime();
-            if (start < earliestMs) return false;
-
-            const localDate = isoToDatetimeLocal(slot.startsAt, timeZone).slice(
-              0,
-              10,
-            );
-            if (localDate !== date) return false;
-
-            const end = start + durationMs;
-
-            if (roomId) {
-              return !roomBookings.some((booking) => {
-                const bookingStart = new Date(booking.startsAt).getTime();
-                const bookingEnd = new Date(booking.endsAt).getTime();
-                return start < bookingEnd && end > bookingStart;
-              });
-            }
-
-            if (rooms.length > 0 && allRoomBookings.length >= 0) {
-              return hasAnyRoomAvailable(rooms, start, end, allRoomBookings);
-            }
-
-            return true;
-          })
-          .map((slot) => {
-            const start = new Date(slot.startsAt).getTime();
-            const end = start + durationMs;
-            const suggestedRoom =
-              !roomId && rooms.length > 0
-                ? pickFirstAvailableRoom(rooms, start, end, allRoomBookings)
-                : null;
-
-            return {
-              value: slot.startsAt,
-              label: slot.label,
-              groupTime: isoToDatetimeLocal(slot.startsAt, timeZone).slice(
-                11,
-                16,
-              ),
-              suggestedRoomName: suggestedRoom?.name,
-            };
-          });
-
-        setTimeSlotOptions(options);
-        setTimeSlotsHint(
-          options.length === 0
-            ? roomId
-              ? "No open times for this staff and room."
-              : (data.reason ??
-                "No open times — staff or all rooms may be booked.")
-            : null,
-        );
+        setRawSlots(data.slots ?? []);
+        setFetchHint(data.reason ?? null);
       } catch {
         if (!cancelled) {
-          setTimeSlotOptions([]);
-          setTimeSlotsHint("Could not load times.");
+          setRawSlots([]);
+          setFetchHint("Could not load times.");
         }
       } finally {
         if (!cancelled) setTimeSlotsLoading(false);
@@ -152,8 +103,60 @@ export function useAdminAvailabilitySlots({
     return () => {
       cancelled = true;
     };
+  }, [staffId, durationMinutes, date]);
+
+  const timeSlotOptions = useMemo(() => {
+    if (rawSlots.length === 0) return [];
+
+    const durationMs = Number(durationMinutes) * 60_000;
+    const earliestMs = Date.now() + 5 * 60_000;
+
+    return rawSlots
+      .filter((slot) => {
+        const start = new Date(slot.startsAt).getTime();
+        if (start < earliestMs) return false;
+
+        const localDate = isoToDatetimeLocal(slot.startsAt, timeZone).slice(
+          0,
+          10,
+        );
+        if (localDate !== date) return false;
+
+        if (skipRoomAvailability) return true;
+
+        const end = start + durationMs;
+
+        if (roomId) {
+          return !roomBookings.some((booking) => {
+            const bookingStart = new Date(booking.startsAt).getTime();
+            const bookingEnd = new Date(booking.endsAt).getTime();
+            return start < bookingEnd && end > bookingStart;
+          });
+        }
+
+        if (rooms.length > 0) {
+          return hasAnyRoomAvailable(rooms, start, end, allRoomBookings);
+        }
+
+        return true;
+      })
+      .map((slot) => {
+        const start = new Date(slot.startsAt).getTime();
+        const end = start + durationMs;
+        const suggestedRoom =
+          !skipRoomAvailability && !roomId && rooms.length > 0
+            ? pickFirstAvailableRoom(rooms, start, end, allRoomBookings)
+            : null;
+
+        return {
+          value: slot.startsAt,
+          label: slot.label,
+          groupTime: isoToDatetimeLocal(slot.startsAt, timeZone).slice(11, 16),
+          suggestedRoomName: suggestedRoom?.name,
+        };
+      });
   }, [
-    staffId,
+    rawSlots,
     durationMinutes,
     date,
     timeZone,
@@ -161,6 +164,25 @@ export function useAdminAvailabilitySlots({
     roomBookings,
     rooms,
     allRoomBookings,
+    skipRoomAvailability,
+  ]);
+
+  const timeSlotsHint = useMemo(() => {
+    if (timeSlotsLoading) return null;
+    if (fetchHint && rawSlots.length === 0) return fetchHint;
+    if (timeSlotOptions.length > 0) return null;
+    if (skipRoomAvailability) {
+      return fetchHint ?? "No open times for this staff.";
+    }
+    if (roomId) return "No open times for this staff and room.";
+    return fetchHint ?? "No open times — staff or all rooms may be booked.";
+  }, [
+    timeSlotsLoading,
+    fetchHint,
+    rawSlots.length,
+    timeSlotOptions.length,
+    skipRoomAvailability,
+    roomId,
   ]);
 
   return { timeSlotOptions, timeSlotsLoading, timeSlotsHint };

@@ -68,9 +68,9 @@ function bookingBlockTone(index: number) {
 }
 
 const OUTCALL_BLOCK_TONE = {
-  idle: "border-fuchsia-600/70 bg-fuchsia-300 text-fuchsia-950",
-  active: "border-fuchsia-700 bg-fuchsia-400 text-fuchsia-950",
-  muted: "text-fuchsia-900/85",
+  idle: "border-purple-600/70 bg-purple-300 text-purple-950",
+  active: "border-purple-700 bg-purple-400 text-purple-950",
+  muted: "text-purple-900/85",
 } as const;
 
 type DayBlock = 0 | 1 | 2 | 3;
