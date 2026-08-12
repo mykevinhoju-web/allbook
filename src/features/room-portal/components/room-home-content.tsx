@@ -222,6 +222,9 @@ export function RoomHomeContent() {
     () => tenant.settings.currency || "AUD",
   );
   const autoEndingRef = useRef<string | null>(null);
+  const endSoonAlarmedRef = useRef<string | null>(null);
+  const endAlarmedRef = useRef<string | null>(null);
+  const endAlarmIntervalRef = useRef<number | null>(null);
   /** Keep shared visit UI while the primary booking is still in service. */
   const visitAnchorIdRef = useRef<string | null>(null);
 
@@ -810,6 +813,17 @@ export function RoomHomeContent() {
     async (booking: AdminBooking, reason: "manual" | "auto") => {
       if (autoEndingRef.current === booking.id && reason === "auto") return;
       if (reason === "auto") autoEndingRef.current = booking.id;
+      // Stop repeating alarms immediately when the tablet ends the service.
+      if (endAlarmIntervalRef.current != null) {
+        window.clearInterval(endAlarmIntervalRef.current);
+        endAlarmIntervalRef.current = null;
+      }
+      if (endAlarmedRef.current === booking.id) {
+        endAlarmedRef.current = null;
+      }
+      if (endSoonAlarmedRef.current === booking.id) {
+        endSoonAlarmedRef.current = null;
+      }
       setActionId(booking.id);
       const pairPrimaryId = parsePairBookingId(booking.notes);
       const endingCompanion = Boolean(pairPrimaryId);
@@ -891,15 +905,55 @@ export function RoomHomeContent() {
   );
 
   useEffect(() => {
-    if (!myActiveBooking || myRemainingMs === null) return;
-    if (myRemainingMs > 0) {
-      if (autoEndingRef.current === myActiveBooking.id) {
-        autoEndingRef.current = null;
+    const END_SOON_MS = 5 * 60_000;
+    const END_REPEAT_EVERY_MS = 60_000;
+
+    if (!myActiveBooking || myRemainingMs === null) {
+      if (endAlarmIntervalRef.current != null) {
+        window.clearInterval(endAlarmIntervalRef.current);
+        endAlarmIntervalRef.current = null;
       }
+      endAlarmedRef.current = null;
+      endSoonAlarmedRef.current = null;
       return;
     }
-    void endService(myActiveBooking, "auto");
-  }, [myActiveBooking, myRemainingMs, endService]);
+
+    const bookingId = myActiveBooking.id;
+
+    // Service still running: clear any repeating end alarms.
+    if (myRemainingMs > 0) {
+      if (endAlarmIntervalRef.current != null) {
+        window.clearInterval(endAlarmIntervalRef.current);
+        endAlarmIntervalRef.current = null;
+      }
+      endAlarmedRef.current = null;
+
+      // Fire the "5 minutes left" alarm once.
+      if (myRemainingMs <= END_SOON_MS) {
+        if (endSoonAlarmedRef.current !== bookingId) {
+          endSoonAlarmedRef.current = bookingId;
+          void playServiceEndAlarm(1);
+        }
+      } else {
+        // If time extended beyond 5 minutes again, allow the warning to fire later.
+        if (endSoonAlarmedRef.current === bookingId) {
+          endSoonAlarmedRef.current = null;
+        }
+      }
+
+      return;
+    }
+
+    // Time is up: keep ringing until the tablet ends the service manually.
+    if (endAlarmedRef.current !== bookingId) {
+      endAlarmedRef.current = bookingId;
+      endSoonAlarmedRef.current = bookingId;
+      void playServiceEndAlarm(3);
+      endAlarmIntervalRef.current = window.setInterval(() => {
+        void playServiceEndAlarm(2);
+      }, END_REPEAT_EVERY_MS);
+    }
+  }, [myActiveBooking, myRemainingMs]);
 
   const requestExtend = async (bookingId: string, minutes: number) => {
     setActionId(`extend-${bookingId}-${minutes}`);
