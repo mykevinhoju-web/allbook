@@ -4,6 +4,12 @@ import { NextResponse } from "next/server";
 import { assignAvailableRoom } from "@/features/booking/lib/assign-room";
 import { ensurePrimaryBookingStaff } from "@/features/booking/lib/booking-staffs";
 import {
+  formatAuPostcodeInput,
+  isValidAuMobile,
+  isValidAuPostcode,
+  normalizeAuMobile,
+} from "@/features/booking/lib/au-contact";
+import {
   isInternalPaymentMethod,
   parsePaymentMethodFromNotes,
   stripPaymentMethodNote,
@@ -226,6 +232,23 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!isValidAuMobile(body.customerPhone)) {
+      return NextResponse.json(
+        { error: "Enter a valid Australian mobile (04XX XXX XXX)." },
+        { status: 400 },
+      );
+    }
+
+    if (!body.customerPostcode?.trim() || !isValidAuPostcode(body.customerPostcode)) {
+      return NextResponse.json(
+        { error: "Enter a valid Queensland postcode (4XXX)." },
+        { status: 400 },
+      );
+    }
+
+    const customerPhone = normalizeAuMobile(body.customerPhone);
+    const customerPostcode = formatAuPostcodeInput(body.customerPostcode);
+
     if (!isInternalPaymentMethod(body.paymentMethod)) {
       return NextResponse.json(
         { error: "Select cash or card payment." },
@@ -344,8 +367,8 @@ export async function POST(request: Request) {
         // Counts toward revenue; no Stripe checkout for walk-in cash/card.
         payment_status: "not_required",
         customer_name: body.customerName.trim(),
-        customer_phone: body.customerPhone.trim(),
-        customer_postcode: body.customerPostcode?.trim() ?? null,
+        customer_phone: customerPhone,
+        customer_postcode: customerPostcode,
         customer_email: body.customerEmail?.trim() ?? null,
         notes: withPaymentMethodNote(paymentMethod, body.notes),
       })

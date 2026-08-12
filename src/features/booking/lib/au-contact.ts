@@ -1,10 +1,11 @@
 /** Australian mobile: 04XXXXXXXX (10 digits). */
 const AU_MOBILE_DIGITS = /^04\d{8}$/;
 
-/** Australian postcodes are four digits from 0200–9999. */
-const AU_POSTCODE = /^(0[2-9]\d{2}|[1-9]\d{3})$/;
+/** Queensland postcodes start with 4 (4XXX). */
+const AU_QLD_POSTCODE = /^4\d{3}$/;
 
 export const AU_MOBILE_PREFIX = "04";
+export const AU_POSTCODE_PREFIX = "4";
 
 export function digitsOnly(value: string): string {
   return value.replace(/\D/g, "");
@@ -35,9 +36,14 @@ export function isValidAuMobile(value: string): boolean {
 }
 
 export function formatAuPostcodeInput(raw: string): string {
-  return digitsOnly(raw).slice(0, 4);
+  let digits = digitsOnly(raw);
+  if (!digits.startsWith(AU_POSTCODE_PREFIX)) {
+    const rest = digits.replace(/^4?/, "");
+    digits = `${AU_POSTCODE_PREFIX}${rest}`;
+  }
+  return digits.slice(0, 4);
 }
 
 export function isValidAuPostcode(value: string): boolean {
-  return AU_POSTCODE.test(digitsOnly(value));
+  return AU_QLD_POSTCODE.test(digitsOnly(value));
 }

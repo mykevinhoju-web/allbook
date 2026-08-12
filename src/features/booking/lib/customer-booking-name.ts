@@ -1,11 +1,16 @@
-/** Customer booking name: First Name + Second Name (family name). */
+/** Customer booking name: first name + one-letter family initial (e.g. Lee → L). */
+
+export function formatCustomerSecondNameInput(raw: string): string {
+  const letter = raw.replace(/[^A-Za-z]/g, "").slice(0, 1);
+  return letter.toUpperCase();
+}
 
 export function formatCustomerBookingName(
   firstName: string,
   secondName: string,
 ): string {
   const first = firstName.trim().replace(/\s+/g, " ");
-  const second = secondName.trim().replace(/\s+/g, " ");
+  const second = formatCustomerSecondNameInput(secondName);
   return `${first} ${second}`.trim();
 }
 
@@ -14,6 +19,6 @@ export function isValidCustomerBookingNameParts(
   secondName: string,
 ): boolean {
   const first = firstName.trim();
-  const second = secondName.trim();
-  return first.length >= 1 && second.length >= 1;
+  const second = formatCustomerSecondNameInput(secondName);
+  return first.length >= 1 && second.length === 1;
 }

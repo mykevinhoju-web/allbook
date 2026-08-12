@@ -17,6 +17,7 @@ import {
 import { bookingCustomerTheme as theme } from "../lib/booking-customer-theme";
 import {
   formatCustomerBookingName,
+  formatCustomerSecondNameInput,
   isValidCustomerBookingNameParts,
 } from "../lib/customer-booking-name";
 import {
@@ -280,18 +281,25 @@ export function PlatformDemoCheckout({
                   onChange={(event) => setCustomerFirstName(event.target.value)}
                   className={theme.field}
                   autoComplete="given-name"
+                  placeholder="First name"
                 />
               </div>
               <div>
                 <label htmlFor="demo-second" className={theme.label}>
-                  Last name
+                  Initial
                 </label>
                 <Input
                   id="demo-second"
                   value={customerSecondName}
-                  onChange={(event) => setCustomerSecondName(event.target.value)}
+                  onChange={(event) =>
+                    setCustomerSecondName(
+                      formatCustomerSecondNameInput(event.target.value),
+                    )
+                  }
                   className={theme.field}
                   autoComplete="family-name"
+                  placeholder="L"
+                  maxLength={1}
                 />
               </div>
             </div>
@@ -307,8 +315,15 @@ export function PlatformDemoCheckout({
                 onChange={(event) =>
                   setCustomerPhone(formatAuMobileInput(event.target.value))
                 }
+                onBlur={() => {
+                  setCustomerPhone((current) =>
+                    formatAuMobileInput(current || AU_MOBILE_PREFIX),
+                  );
+                }}
                 className={theme.field}
-                autoComplete="tel"
+                autoComplete="tel-national"
+                placeholder="04XX XXX XXX"
+                maxLength={12}
               />
             </div>
 

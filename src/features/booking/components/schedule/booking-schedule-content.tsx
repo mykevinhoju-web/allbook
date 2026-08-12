@@ -46,6 +46,12 @@ import {
   formatCustomerBookingName,
   isValidCustomerBookingNameParts,
 } from "../../lib/customer-booking-name";
+import {
+  formatAuPostcodeInput,
+  isValidAuMobile,
+  isValidAuPostcode,
+  normalizeAuMobile,
+} from "../../lib/au-contact";
 import { BookingDetailSheet } from "./booking-detail-sheet";
 import { StaffGuideTimeline } from "./staff-guide-timeline";
 
@@ -280,8 +286,6 @@ export function BookingScheduleContent() {
       roomId: partial?.roomId ?? "",
       customerFirstName: "",
       customerLastName: "",
-      customerPhone: "",
-      customerPostcode: "",
       customerEmail: "",
     });
     setShowCreate(true);
@@ -297,10 +301,19 @@ export function BookingScheduleContent() {
       !isValidCustomerBookingNameParts(
         form.customerFirstName,
         form.customerLastName,
-      ) ||
-      !form.customerPhone.trim()
+      )
     ) {
-      toast.error("First name, last name, and phone are required");
+      toast.error("First name and family initial are required");
+      return;
+    }
+
+    if (!isValidAuMobile(form.customerPhone)) {
+      toast.error("Enter a valid Australian mobile (04XX XXX XXX)");
+      return;
+    }
+
+    if (!isValidAuPostcode(form.customerPostcode)) {
+      toast.error("Enter a valid Queensland postcode (4XXX)");
       return;
     }
 
@@ -335,8 +348,8 @@ export function BookingScheduleContent() {
             form.customerFirstName,
             form.customerLastName,
           ),
-          customerPhone: form.customerPhone.trim(),
-          customerPostcode: form.customerPostcode.trim() || undefined,
+          customerPhone: normalizeAuMobile(form.customerPhone),
+          customerPostcode: formatAuPostcodeInput(form.customerPostcode),
           customerEmail: form.customerEmail.trim() || undefined,
           paymentMethod: form.paymentMethod,
         }),

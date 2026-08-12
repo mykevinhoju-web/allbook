@@ -21,6 +21,10 @@ import {
   type PricingAdjustments,
 } from "@/features/services/lib/pricing-adjustments";
 import type { InternalPaymentMethod } from "@/features/booking/lib/internal-payment-method";
+import {
+  AU_MOBILE_PREFIX,
+  AU_POSTCODE_PREFIX,
+} from "@/features/booking/lib/au-contact";
 
 import { bookingCustomerTheme as theme } from "../../lib/booking-customer-theme";
 import {
@@ -36,6 +40,7 @@ import {
   isIsoDateTime,
 } from "../../lib/schedule-utils";
 import { BookingCustomerDateTimePicker } from "../checkout/booking-customer-datetime-picker";
+import { BookingCustomerContactFields } from "../checkout/booking-customer-contact-fields";
 
 /** Switch to searchable scroll list once the chip grid would get tall. */
 const STAFF_CHIP_MAX = 6;
@@ -60,8 +65,8 @@ export const defaultBookingFormValues: BookingFormValues = {
   roomId: "",
   customerFirstName: "",
   customerLastName: "",
-  customerPhone: "",
-  customerPostcode: "",
+  customerPhone: AU_MOBILE_PREFIX,
+  customerPostcode: AU_POSTCODE_PREFIX,
   customerEmail: "",
   paymentMethod: "",
 };
@@ -486,61 +491,26 @@ export function BookingFormSheet({
             </div>
 
             <div className={cn(theme.panel, "space-y-4")}>
-              <div className="space-y-1">
-                <FieldLabel required>Customer name</FieldLabel>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    value={values.customerFirstName}
-                    onChange={(event) =>
-                      update("customerFirstName", event.target.value)
-                    }
-                    className={theme.field}
-                    placeholder="First name"
-                    autoCapitalize="words"
-                    autoComplete="given-name"
-                    aria-label="First name"
-                    required
-                  />
-                  <Input
-                    value={values.customerLastName}
-                    onChange={(event) =>
-                      update("customerLastName", event.target.value)
-                    }
-                    className={theme.field}
-                    placeholder="Last name"
-                    autoCapitalize="words"
-                    autoComplete="family-name"
-                    aria-label="Last name"
-                    required
-                  />
-                </div>
-              </div>
-
-              <label className="block space-y-1">
-                <FieldLabel required>Phone</FieldLabel>
-                <Input
-                  type="tel"
-                  value={values.customerPhone}
-                  onChange={(event) =>
-                    update("customerPhone", event.target.value)
-                  }
-                  className={theme.field}
-                  placeholder="04xx xxx xxx"
-                  required
-                />
-              </label>
-
-              <label className="block space-y-1">
-                <FieldLabel>Postcode</FieldLabel>
-                <Input
-                  value={values.customerPostcode}
-                  onChange={(event) =>
-                    update("customerPostcode", event.target.value)
-                  }
-                  className={theme.field}
-                  placeholder="2000"
-                />
-              </label>
+              <BookingCustomerContactFields
+                values={{
+                  firstName: values.customerFirstName,
+                  secondName: values.customerLastName,
+                  phone: values.customerPhone,
+                  postcode: values.customerPostcode,
+                }}
+                onChange={(next) =>
+                  onChange({
+                    ...values,
+                    customerFirstName: next.firstName,
+                    customerLastName: next.secondName,
+                    customerPhone: next.phone,
+                    customerPostcode: next.postcode,
+                  })
+                }
+                fieldClass={theme.field}
+                labelClass={theme.label}
+                helperTextClass="text-xs text-stone-500"
+              />
 
               <label className="block space-y-1">
                 <FieldLabel>Email</FieldLabel>

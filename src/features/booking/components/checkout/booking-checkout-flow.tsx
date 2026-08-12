@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, ChevronLeft } from "lucide-react";
 
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useOptionalTenant } from "@/features/tenants";
 import {
@@ -27,6 +26,7 @@ import {
   todayDateInZone,
 } from "../../lib/schedule-utils";
 import { BookingCustomerDateTimePicker } from "./booking-customer-datetime-picker";
+import { BookingCustomerContactFields } from "./booking-customer-contact-fields";
 import { StripePaymentForm } from "./stripe-payment-form";
 import { StaffPhotoGallery } from "./staff-photo-gallery";
 import { bookingCustomerTheme as theme } from "../../lib/booking-customer-theme";
@@ -35,12 +35,13 @@ import {
   isValidCustomerBookingNameParts,
 } from "../../lib/customer-booking-name";
 import {
-  AU_MOBILE_PREFIX,
-  formatAuMobileInput,
-  formatAuPostcodeInput,
+  defaultBookingCustomerContact,
+} from "./booking-customer-contact-fields";
+import {
   isValidAuMobile,
   isValidAuPostcode,
   normalizeAuMobile,
+  formatAuPostcodeInput,
 } from "../../lib/au-contact";
 
 type Step = "form" | "payment" | "done";
@@ -103,10 +104,17 @@ export function BookingCheckoutFlow({
   const [slots, setSlots] = useState<SlotOption[]>([]);
   const [slotsReason, setSlotsReason] = useState<string | null>(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
-  const [customerFirstName, setCustomerFirstName] = useState("");
-  const [customerSecondName, setCustomerSecondName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState(AU_MOBILE_PREFIX);
-  const [customerPostcode, setCustomerPostcode] = useState("");
+  const defaultContact = defaultBookingCustomerContact();
+  const [customerFirstName, setCustomerFirstName] = useState(
+    defaultContact.firstName,
+  );
+  const [customerSecondName, setCustomerSecondName] = useState(
+    defaultContact.secondName,
+  );
+  const [customerPhone, setCustomerPhone] = useState(defaultContact.phone);
+  const [customerPostcode, setCustomerPostcode] = useState(
+    defaultContact.postcode,
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formHint, setFormHint] = useState<string | null>(null);
@@ -286,7 +294,7 @@ export function BookingCheckoutFlow({
     if (
       !isValidCustomerBookingNameParts(customerFirstName, customerSecondName)
     ) {
-      setFormHint("Enter your first name and second name.");
+      setFormHint("Enter your first name and family initial.");
       return;
     }
     if (!isValidAuMobile(customerPhone)) {
@@ -294,7 +302,7 @@ export function BookingCheckoutFlow({
       return;
     }
     if (!isValidAuPostcode(customerPostcode)) {
-      setFormHint("Enter a valid 4-digit Australian postcode.");
+      setFormHint("Enter a valid Queensland postcode (4XXX).");
       return;
     }
 
@@ -541,86 +549,27 @@ export function BookingCheckoutFlow({
                 {/* Hide staff booking times from customer booking UI. */}
                 {null}
 
-                <div className="space-y-1">
-                  <label className={labelClass}>Name</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input
-                      value={customerFirstName}
-                      onChange={(event) => {
-                        setCustomerFirstName(event.target.value);
-                        setFormHint(null);
-                        setError(null);
-                      }}
-                      className={fieldClass}
-                      placeholder="First Name"
-                      autoCapitalize="words"
-                      autoComplete="given-name"
-                      aria-label="First Name"
-                    />
-                    <Input
-                      value={customerSecondName}
-                      onChange={(event) => {
-                        setCustomerSecondName(event.target.value);
-                        setFormHint(null);
-                        setError(null);
-                      }}
-                      className={fieldClass}
-                      placeholder="Second Name"
-                      autoCapitalize="words"
-                      autoComplete="family-name"
-                      aria-label="Second Name"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className={labelClass}>Phone</label>
-                  <Input
-                    value={customerPhone}
-                    onChange={(event) => {
-                      setCustomerPhone(formatAuMobileInput(event.target.value));
-                      setFormHint(null);
-                      setError(null);
-                    }}
-                    onBlur={() => {
-                      setCustomerPhone((current) =>
-                        formatAuMobileInput(current || AU_MOBILE_PREFIX),
-                      );
-                    }}
-                    className={fieldClass}
-                    placeholder="04XX XXX XXX"
-                    inputMode="tel"
-                    autoComplete="tel-national"
-                    maxLength={12}
-                    aria-label="Australian mobile number"
-                  />
-                  <p className={cn(theme.helperText, "mt-1 px-0.5")}>
-                    Australian mobile — starts with 04
-                  </p>
-                </div>
-
-                <div>
-                  <label className={labelClass}>Post code</label>
-                  <Input
-                    value={customerPostcode}
-                    onChange={(event) => {
-                      setCustomerPostcode(
-                        formatAuPostcodeInput(event.target.value),
-                      );
-                      setFormHint(null);
-                      setError(null);
-                    }}
-                    className={fieldClass}
-                    placeholder="2000"
-                    inputMode="numeric"
-                    autoComplete="postal-code"
-                    maxLength={4}
-                    aria-label="Australian postcode"
-                  />
-                  <p className={cn(theme.helperText, "mt-1 px-0.5")}>
-                    4-digit Australian postcode
-                  </p>
-                </div>
+                <BookingCustomerContactFields
+                  values={{
+                    firstName: customerFirstName,
+                    secondName: customerSecondName,
+                    phone: customerPhone,
+                    postcode: customerPostcode,
+                  }}
+                  onChange={(next) => {
+                    setCustomerFirstName(next.firstName);
+                    setCustomerSecondName(next.secondName);
+                    setCustomerPhone(next.phone);
+                    setCustomerPostcode(next.postcode);
+                  }}
+                  fieldClass={fieldClass}
+                  labelClass={labelClass}
+                  helperTextClass={theme.helperText}
+                  onFieldChange={() => {
+                    setFormHint(null);
+                    setError(null);
+                  }}
+                />
 
                 <div className={theme.priceBox}>
                   <p className={theme.priceLabel}>

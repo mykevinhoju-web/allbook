@@ -62,7 +62,7 @@ export async function POST(request: Request) {
 
     if (!body.customerPostcode?.trim() || !isValidAuPostcode(body.customerPostcode)) {
       return NextResponse.json(
-        { error: "Enter a valid 4-digit Australian postcode." },
+        { error: "Enter a valid Queensland postcode (4XXX)." },
         { status: 400 },
       );
     }
