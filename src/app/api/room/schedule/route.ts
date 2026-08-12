@@ -105,7 +105,13 @@ export async function GET(request: Request) {
     const date = searchParams.get("date") ?? todayDateInZone(timeZone);
 
     const supabase = createServiceSupabase();
-    await autoCheckoutExpiredBookings(supabase, { tenantId: tenant.id });
+    // Don't auto-complete checked-in bookings immediately when a room tablet
+    // is actively showing the service UI. Give staff time to press
+    // "End service" after the end alarm starts.
+    await autoCheckoutExpiredBookings(supabase, {
+      tenantId: tenant.id,
+      graceMs: 10 * 60_000,
+    });
 
     const staffToken = readCookieFromRequest(
       request,
