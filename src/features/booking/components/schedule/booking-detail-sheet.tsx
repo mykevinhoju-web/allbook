@@ -308,7 +308,14 @@ export function BookingDetailSheet({
             <div className={cn(theme.panel, "px-4 py-1")}>
               <DetailRow label="Time" value={formatBookingSummary(booking)} />
               {hideStaffField ? null : (
-                <DetailRow label="Staff" value={booking.staffName} />
+                <DetailRow
+                  label="Staff"
+                  value={
+                    booking.otherStaff
+                      ? `Other Staff${booking.otherStaffName ? ` · ${booking.otherStaffName}` : ""}`
+                      : booking.staffName
+                  }
+                />
               )}
               <DetailRow
                 label="Customer"

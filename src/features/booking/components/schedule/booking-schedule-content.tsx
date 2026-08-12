@@ -27,6 +27,10 @@ import { useBookingRealtime } from "../../lib/booking-schedule-realtime";
 import { useBookingAlerts } from "../../context/booking-alert-provider";
 import { useAdminAvailabilitySlots } from "../../hooks/use-admin-availability-slots";
 import {
+  OTHER_STAFF_SENTINEL,
+  isOtherStaffGuestAttributes,
+} from "../../lib/booking-other-staff";
+import {
   getRoomAvailabilityAtTime,
   pickFirstAvailableRoom,
   toRoomSlotBookings,
@@ -157,6 +161,7 @@ export function BookingScheduleContent() {
       staff.filter(
         (member) =>
           member.status === "active" &&
+          !isOtherStaffGuestAttributes(member.attributes) &&
           isStaffWorkingOnDate(
             member.status,
             parseDaySchedule(member.attributes.daySchedule),
@@ -230,6 +235,7 @@ export function BookingScheduleContent() {
       rooms,
       allRoomBookings,
       skipRoomAvailability: form.outCall,
+      openAllDaySlots: form.staffId === OTHER_STAFF_SENTINEL,
     });
 
   const resolvedStartsAt = useMemo(() => {
@@ -295,8 +301,15 @@ export function BookingScheduleContent() {
   };
 
   const createBooking = async () => {
+    const isOtherStaff = form.staffId === OTHER_STAFF_SENTINEL;
+
     if (!form.staffId || !form.startsAt || !form.durationMinutes) {
       toast.error("Staff, start time, and service are required");
+      return;
+    }
+
+    if (isOtherStaff && !form.otherStaffName.trim()) {
+      toast.error("Enter the other staff name");
       return;
     }
 
@@ -339,7 +352,11 @@ export function BookingScheduleContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          staffId: form.staffId,
+          staffId: isOtherStaff ? undefined : form.staffId,
+          otherStaff: isOtherStaff,
+          otherStaffName: isOtherStaff
+            ? form.otherStaffName.trim()
+            : undefined,
           startsAt: resolveBookingStartsAt(
             date,
             form.startsAt,
@@ -380,15 +397,17 @@ export function BookingScheduleContent() {
       toast.success("Booking created", {
         description: [
           priceLabel,
-          data.booking?.outCall
-            ? "Out call"
-            : data.booking?.roomName,
+          data.booking?.otherStaff
+            ? `Other Staff${data.booking.otherStaffName ? ` · ${data.booking.otherStaffName}` : ""}`
+            : data.booking?.outCall
+              ? "Out call"
+              : data.booking?.roomName,
         ]
           .filter(Boolean)
           .join(" · "),
       });
 
-      if (data.booking?.staffName) {
+      if (data.booking?.staffName && !data.booking?.otherStaff) {
         notifyBooking(data.booking.staffName);
       }
 

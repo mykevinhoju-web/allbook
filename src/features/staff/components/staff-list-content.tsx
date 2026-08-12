@@ -27,6 +27,7 @@ import { StaffTable } from "./staff-table";
 import { StaffMobileList } from "./staff-mobile-list";
 import { fetchAdminApi } from "@/features/admin/lib/admin-api-client";
 import { useBookingRealtime } from "@/features/booking/lib/booking-schedule-realtime";
+import { isOtherStaffGuestAttributes } from "@/features/booking/lib/booking-other-staff";
 import { useStaffPresenceRealtime } from "../lib/staff-presence-realtime";
 
 interface BookingSummary {
@@ -133,7 +134,9 @@ export function StaffListContent() {
   const rows: AdminStaffRow[] = useMemo(() => {
     const now = Date.now();
 
-    return staff.map((member) => {
+    return staff
+      .filter((member) => !isOtherStaffGuestAttributes(member.attributes))
+      .map((member) => {
       const upcoming = bookings
         .filter(
           (booking) =>

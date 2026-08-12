@@ -20,6 +20,12 @@ import {
   withOutCallNote,
 } from "@/features/booking/lib/booking-outcall";
 import {
+  ensureOtherStaffMember,
+  isOtherStaffBooking,
+  parseOtherStaffName,
+  withOtherStaffNote,
+} from "@/features/booking/lib/booking-other-staff";
+import {
   hasRoomBookingConflict,
   hasStaffBookingConflict,
 } from "@/features/booking/lib/staff-conflict";
@@ -105,10 +111,12 @@ function mapBooking(row: {
     ? row.rooms[0]?.name
     : row.rooms?.name;
 
+  const otherStaffName = parseOtherStaffName(row.notes);
+
   return {
     id: row.id,
     staffId: row.staff_id,
-    staffName: staffName ?? "Staff",
+    staffName: otherStaffName ?? staffName ?? "Staff",
     roomId: row.room_id,
     roomName: roomName ?? null,
     startsAt: row.starts_at,
@@ -125,6 +133,8 @@ function mapBooking(row: {
     notes: visibleBookingNotes(row.notes),
     paymentMethod: parsePaymentMethodFromNotes(row.notes),
     outCall: isOutCallBooking(row.notes),
+    otherStaff: isOtherStaffBooking(row.notes),
+    otherStaffName,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -225,9 +235,29 @@ export async function POST(request: Request) {
       allowImmediateStart?: boolean;
       /** Off-site service — skip treatment room assignment. */
       outCall?: boolean;
+      /** External staff — name entered in admin form. */
+      otherStaff?: boolean;
+      otherStaffName?: string;
     };
 
-    if (!body.staffId || !body.startsAt || !body.durationMinutes) {
+    const otherStaff = Boolean(body.otherStaff);
+    const otherStaffName = body.otherStaffName?.trim() ?? "";
+
+    if (!body.startsAt || !body.durationMinutes) {
+      return NextResponse.json(
+        { error: "startsAt and durationMinutes are required." },
+        { status: 400 },
+      );
+    }
+
+    if (otherStaff) {
+      if (!otherStaffName) {
+        return NextResponse.json(
+          { error: "Enter the other staff name." },
+          { status: 400 },
+        );
+      }
+    } else if (!body.staffId) {
       return NextResponse.json(
         { error: "staffId, startsAt, and durationMinutes are required." },
         { status: 400 },
@@ -302,11 +332,31 @@ export async function POST(request: Request) {
 
     const endsAt = new Date(startsAt.getTime() + durationMinutes * 60_000);
 
-    if (
+    let staffId = body.staffId!;
+    if (otherStaff) {
+      try {
+        const guest = await ensureOtherStaffMember(
+          supabase,
+          tenant.id,
+          otherStaffName,
+        );
+        staffId = guest.id;
+      } catch (error) {
+        return NextResponse.json(
+          {
+            error:
+              error instanceof Error
+                ? error.message
+                : "Could not save other staff.",
+          },
+          { status: 503 },
+        );
+      }
+    } else if (
       await hasStaffBookingConflict(
         supabase,
         tenant.id,
-        body.staffId,
+        staffId,
         startsAt.toISOString(),
         endsAt.toISOString(),
       )
@@ -373,7 +423,7 @@ export async function POST(request: Request) {
       .from("bookings")
       .insert({
         tenant_id: tenant.id,
-        staff_id: body.staffId,
+        staff_id: staffId,
         room_id: roomId,
         starts_at: startsAt.toISOString(),
         ends_at: endsAt.toISOString(),
@@ -388,7 +438,12 @@ export async function POST(request: Request) {
         customer_email: body.customerEmail?.trim() ?? null,
         notes: withPaymentMethodNote(
           paymentMethod,
-          outCall ? withOutCallNote(body.notes) : body.notes,
+          (() => {
+            let notes = body.notes ?? null;
+            if (outCall) notes = withOutCallNote(notes);
+            if (otherStaff) notes = withOtherStaffNote(otherStaffName, notes);
+            return notes;
+          })(),
         ),
       })
       .select(
@@ -418,7 +473,7 @@ export async function POST(request: Request) {
       await ensurePrimaryBookingStaff(supabase, {
         tenantId: tenant.id,
         bookingId: (data as { id: string }).id,
-        staffId: body.staffId,
+        staffId,
       });
     } catch (staffError) {
       await supabase
@@ -440,6 +495,7 @@ export async function POST(request: Request) {
 
     // Notifications run after the response so booking latency stays low at scale.
     after(async () => {
+      if (otherStaff) return;
       await supabase.from("booking_alert_events").insert({
         tenant_slug: tenant.slug,
         staff_id: created.staffId,

@@ -8,6 +8,10 @@ import {
   visibleBookingNotes,
 } from "@/features/booking/lib/booking-outcall";
 import {
+  isOtherStaffBooking,
+  parseOtherStaffName,
+} from "@/features/booking/lib/booking-other-staff";
+import {
   isBookingOverlapConstraintError,
   isRoomOverlapConstraintError,
   validateBookingUpdate,
@@ -48,10 +52,12 @@ function mapBooking(row: {
     ? row.rooms[0]?.name
     : row.rooms?.name;
 
+  const otherStaffName = parseOtherStaffName(row.notes);
+
   return {
     id: row.id,
     staffId: row.staff_id,
-    staffName: staffName ?? "Staff",
+    staffName: otherStaffName ?? staffName ?? "Staff",
     roomId: row.room_id,
     roomName: roomName ?? null,
     startsAt: row.starts_at,
@@ -67,6 +73,8 @@ function mapBooking(row: {
     notes: visibleBookingNotes(row.notes),
     paymentMethod: parsePaymentMethodFromNotes(row.notes),
     outCall: isOutCallBooking(row.notes),
+    otherStaff: isOtherStaffBooking(row.notes),
+    otherStaffName,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

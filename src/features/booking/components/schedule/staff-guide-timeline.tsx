@@ -19,6 +19,7 @@ import {
   formatDurationLabel,
   todayDateInZone,
 } from "../../lib/schedule-utils";
+import { isOtherStaffGuestAttributes } from "../../lib/booking-other-staff";
 import type { AdminBooking } from "../../types/admin-booking";
 import { isBookingCheckedIn } from "../../lib/booking-check-in";
 
@@ -71,6 +72,12 @@ const OUTCALL_BLOCK_TONE = {
   idle: "border-purple-600/70 bg-purple-300 text-purple-950",
   active: "border-purple-700 bg-purple-400 text-purple-950",
   muted: "text-purple-900/85",
+} as const;
+
+const OTHER_STAFF_BLOCK_TONE = {
+  idle: "border-orange-600/70 bg-orange-300 text-orange-950",
+  active: "border-orange-700 bg-orange-400 text-orange-950",
+  muted: "text-orange-900/85",
 } as const;
 
 type DayBlock = 0 | 1 | 2 | 3;
@@ -513,8 +520,9 @@ export function StaffGuideTimeline({
                         {member.name}
                       </p>
                       <p className="truncate text-[11px] text-muted-foreground md:text-xs">
-                        {rowBookings.length} booking
-                        {rowBookings.length === 1 ? "" : "s"}
+                        {isOtherStaffGuestAttributes(member.attributes)
+                          ? "Other Staff"
+                          : `${rowBookings.length} booking${rowBookings.length === 1 ? "" : "s"}`}
                       </p>
                     </div>
                     <div className="relative min-w-0 flex-1 bg-muted/15">
@@ -560,7 +568,9 @@ export function StaffGuideTimeline({
                         const selected = selectedBookingId === booking.id;
                         const tone = booking.outCall
                           ? OUTCALL_BLOCK_TONE
-                          : bookingBlockTone(bookingIndex);
+                          : booking.otherStaff
+                            ? OTHER_STAFF_BLOCK_TONE
+                            : bookingBlockTone(bookingIndex);
                         return (
                           <button
                             key={booking.id}
@@ -595,14 +605,18 @@ export function StaffGuideTimeline({
                                 ? ` · ${booking.roomName}`
                                 : ""}
                             </p>
-                            {booking.outCall ? (
+                            {booking.outCall || booking.otherStaff ? (
                               <p
                                 className={cn(
                                   "mt-auto truncate text-[10px] font-medium leading-none",
                                   tone.muted,
                                 )}
                               >
-                                out call
+                                {booking.outCall && booking.otherStaff
+                                  ? "out call · Other Staff"
+                                  : booking.outCall
+                                    ? "out call"
+                                    : "Other Staff"}
                               </p>
                             ) : null}
                           </button>

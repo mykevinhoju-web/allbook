@@ -22,6 +22,10 @@ export interface AdminBooking {
   additionalStaff?: { id: string; name: string }[];
   /** Off-site service — no treatment room. */
   outCall?: boolean;
+  /** External / guest staff (not on regular roster). */
+  otherStaff?: boolean;
+  /** Display name entered for other staff. */
+  otherStaffName?: string | null;
 }
 
 export interface AdminRoom {

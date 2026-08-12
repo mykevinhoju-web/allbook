@@ -33,6 +33,7 @@ import {
   adminBookingSheetHandleClassName,
   adminBookingSheetScrollClassName,
 } from "../../lib/admin-booking-sheet";
+import { OTHER_STAFF_SENTINEL } from "../../lib/booking-other-staff";
 import type { RoomAvailabilityStatus } from "../../lib/room-availability";
 import {
   buildStartsAtIso,
@@ -63,6 +64,8 @@ export interface BookingFormValues {
   allowImmediateStart: boolean;
   /** Off-site service — no treatment room. */
   outCall: boolean;
+  /** External staff name when staffId is OTHER_STAFF_SENTINEL. */
+  otherStaffName: string;
 }
 
 export const defaultBookingFormValues: BookingFormValues = {
@@ -78,6 +81,7 @@ export const defaultBookingFormValues: BookingFormValues = {
   paymentMethod: "",
   allowImmediateStart: false,
   outCall: false,
+  otherStaffName: "",
 };
 
 export interface BookingTimeSlotOption {
@@ -158,18 +162,22 @@ function StaffPicker({
   onSelect: (staffId: string) => void;
 }) {
   const [query, setQuery] = useState("");
-  const useSearch = options.length > STAFF_CHIP_MAX;
+  const withOther = useMemo(
+    () => [...options, { id: OTHER_STAFF_SENTINEL, name: "Other Staff" }],
+    [options],
+  );
+  const useSearch = withOther.length > STAFF_CHIP_MAX;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return options;
-    return options.filter((member) => member.name.toLowerCase().includes(q));
-  }, [options, query]);
+    if (!q) return withOther;
+    return withOther.filter((member) => member.name.toLowerCase().includes(q));
+  }, [withOther, query]);
 
   if (!useSearch) {
     return (
       <div className="grid grid-cols-2 gap-2">
-        {options.map((member) => {
+        {withOther.map((member) => {
           const selected = value === member.id;
           return (
             <button
@@ -276,12 +284,14 @@ export function BookingFormSheet({
   // Drop a staff selection that is no longer in the options (e.g. shift ended).
   useEffect(() => {
     if (!open || !values.staffId) return;
+    if (values.staffId === OTHER_STAFF_SENTINEL) return;
     if (staffOptions.some((member) => member.id === values.staffId)) return;
     onChange({
       ...values,
       staffId: "",
       startsAt: "",
       allowImmediateStart: false,
+      otherStaffName: "",
     });
     // Only re-run when the selected id or option list changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- avoid loop on values object identity
@@ -370,7 +380,12 @@ export function BookingFormSheet({
     : null;
 
   const selectedStaffName =
-    staffOptions.find((member) => member.id === values.staffId)?.name ?? null;
+    values.staffId === OTHER_STAFF_SENTINEL
+      ? values.otherStaffName.trim() || "Other Staff"
+      : (staffOptions.find((member) => member.id === values.staffId)?.name ??
+        null);
+
+  const isOtherStaff = values.staffId === OTHER_STAFF_SENTINEL;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -401,30 +416,52 @@ export function BookingFormSheet({
           <div ref={scrollRef} className={adminBookingSheetScrollClassName}>
             <div className={cn(theme.panel, "space-y-4")}>
               <FormField label="Staff" required>
-                {staffOptions.length === 0 ? (
+                {staffOptions.length === 0 && !isOtherStaff ? (
                   <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                    No staff have a shift on this day. Add shifts under Staff,
-                    then try again.
+                    No staff have a shift on this day. Choose Other Staff, or
+                    add shifts under Staff.
                   </p>
-                ) : (
-                  <>
-                    <StaffPicker
-                      options={staffOptions}
-                      value={values.staffId}
-                      onSelect={(staffId) =>
+                ) : null}
+                <StaffPicker
+                  options={staffOptions}
+                  value={values.staffId}
+                  onSelect={(staffId) =>
+                    onChange({
+                      ...values,
+                      staffId,
+                      startsAt: "",
+                      allowImmediateStart: false,
+                      otherStaffName:
+                        staffId === OTHER_STAFF_SENTINEL
+                          ? values.otherStaffName
+                          : "",
+                    })
+                  }
+                />
+                {isOtherStaff ? (
+                  <div className="mt-3 space-y-1">
+                    <FieldLabel required>Other staff name</FieldLabel>
+                    <Input
+                      value={values.otherStaffName}
+                      onChange={(event) =>
                         onChange({
                           ...values,
-                          staffId,
-                          startsAt: "",
-                          allowImmediateStart: false,
+                          otherStaffName: event.target.value,
                         })
                       }
+                      placeholder="Enter staff name"
+                      className="h-11 rounded-xl border-stone-200 bg-white"
+                      autoComplete="off"
                     />
-                    <p className="mt-2 text-xs leading-relaxed text-stone-500">
-                      Only staff with a shift on this day (and not yet finished)
-                      are listed.
+                    <p className="text-xs text-stone-500">
+                      External staff — any time from now is available.
                     </p>
-                  </>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs leading-relaxed text-stone-500">
+                    Only staff with a shift on this day (and not yet finished)
+                    are listed.
+                  </p>
                 )}
               </FormField>
 

@@ -1,4 +1,5 @@
 import { stripPaymentMethodNote } from "./internal-payment-method";
+import { stripOtherStaffNote } from "./booking-other-staff";
 
 const OUTCALL_MARKER_RE = /\[outcall\]/i;
 
@@ -19,6 +20,8 @@ export function stripOutCallNote(notes?: string | null): string {
 }
 
 export function visibleBookingNotes(notes?: string | null): string | null {
-  const cleaned = stripOutCallNote(stripPaymentMethodNote(notes)).trim();
+  const cleaned = stripOtherStaffNote(
+    stripOutCallNote(stripPaymentMethodNote(notes)),
+  ).trim();
   return cleaned || null;
 }

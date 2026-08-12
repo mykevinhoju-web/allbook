@@ -10,7 +10,10 @@ import {
 } from "../lib/room-availability";
 import {
   DEFAULT_BOOKING_TIMEZONE,
+  datetimeLocalToIso,
+  formatAmPmTime,
   isoToDatetimeLocal,
+  todayDateInZone,
 } from "../lib/schedule-utils";
 import type { BookingTimeSlotOption } from "../components/schedule/booking-form-sheet";
 
@@ -21,6 +24,59 @@ const EMPTY_ALL_ROOM_BOOKINGS: RoomSlotBooking[] = [];
 interface StaffSlot {
   startsAt: string;
   label: string;
+}
+
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+/** Every 5 minutes from current time (today) or day start (future) through 23:55. */
+function buildOpenDaySlots(
+  date: string,
+  timeZone: string,
+  durationMinutes: number,
+): StaffSlot[] {
+  const durationMs = durationMinutes * 60_000;
+  const today = todayDateInZone(timeZone);
+  const dayEndMs = new Date(
+    datetimeLocalToIso(`${date}T23:59`, timeZone),
+  ).getTime();
+
+  let hour = 0;
+  let minute = 0;
+
+  if (date === today) {
+    const nowLocal = isoToDatetimeLocal(new Date().toISOString(), timeZone);
+    hour = Number(nowLocal.slice(11, 13));
+    minute = Number(nowLocal.slice(14, 16));
+    // Round up to next 5-minute step (allow current minute if already on step).
+    const rem = minute % 5;
+    if (rem !== 0) {
+      minute += 5 - rem;
+      if (minute >= 60) {
+        hour += 1;
+        minute = 0;
+      }
+    }
+  }
+
+  if (hour > 23) return [];
+
+  const slots: StaffSlot[] = [];
+  for (let h = hour; h <= 23; h++) {
+    const startMinute = h === hour ? minute : 0;
+    for (let m = startMinute; m < 60; m += 5) {
+      const local = `${date}T${pad2(h)}:${pad2(m)}`;
+      const startsAt = datetimeLocalToIso(local, timeZone);
+      const startMs = new Date(startsAt).getTime();
+      if (startMs + durationMs > dayEndMs + 60_000) continue;
+      slots.push({
+        startsAt,
+        label: formatAmPmTime(startsAt),
+      });
+    }
+  }
+  return slots;
 }
 
 interface UseAdminAvailabilitySlotsArgs {
@@ -37,6 +93,8 @@ interface UseAdminAvailabilitySlotsArgs {
   allRoomBookings?: RoomSlotBooking[];
   /** Out call: keep staff times, ignore room occupancy. */
   skipRoomAvailability?: boolean;
+  /** Other staff: open all remaining times from now (no roster). */
+  openAllDaySlots?: boolean;
 }
 
 export function useAdminAvailabilitySlots({
@@ -49,6 +107,7 @@ export function useAdminAvailabilitySlots({
   rooms = EMPTY_ROOMS,
   allRoomBookings = EMPTY_ALL_ROOM_BOOKINGS,
   skipRoomAvailability = false,
+  openAllDaySlots = false,
 }: UseAdminAvailabilitySlotsArgs) {
   const [rawSlots, setRawSlots] = useState<StaffSlot[]>([]);
   const [timeSlotsLoading, setTimeSlotsLoading] = useState(false);
@@ -57,6 +116,15 @@ export function useAdminAvailabilitySlots({
   useEffect(() => {
     if (!staffId || !durationMinutes || !date) {
       setRawSlots([]);
+      setFetchHint(null);
+      setTimeSlotsLoading(false);
+      return;
+    }
+
+    if (openAllDaySlots) {
+      setRawSlots(
+        buildOpenDaySlots(date, timeZone, Number(durationMinutes) || 30),
+      );
       setFetchHint(null);
       setTimeSlotsLoading(false);
       return;
@@ -103,13 +171,15 @@ export function useAdminAvailabilitySlots({
     return () => {
       cancelled = true;
     };
-  }, [staffId, durationMinutes, date]);
+  }, [staffId, durationMinutes, date, timeZone, openAllDaySlots]);
 
   const timeSlotOptions = useMemo(() => {
     if (rawSlots.length === 0) return [];
 
     const durationMs = Number(durationMinutes) * 60_000;
-    const earliestMs = Date.now() + 5 * 60_000;
+    const earliestMs = openAllDaySlots
+      ? Date.now() - 60_000
+      : Date.now() + 5 * 60_000;
 
     return rawSlots
       .filter((slot) => {
@@ -165,12 +235,18 @@ export function useAdminAvailabilitySlots({
     rooms,
     allRoomBookings,
     skipRoomAvailability,
+    openAllDaySlots,
   ]);
 
   const timeSlotsHint = useMemo(() => {
     if (timeSlotsLoading) return null;
     if (fetchHint && rawSlots.length === 0) return fetchHint;
     if (timeSlotOptions.length > 0) return null;
+    if (openAllDaySlots) {
+      return skipRoomAvailability
+        ? "No open times left today."
+        : "No open times — all rooms may be booked.";
+    }
     if (skipRoomAvailability) {
       return fetchHint ?? "No open times for this staff.";
     }
@@ -182,6 +258,7 @@ export function useAdminAvailabilitySlots({
     rawSlots.length,
     timeSlotOptions.length,
     skipRoomAvailability,
+    openAllDaySlots,
     roomId,
   ]);
 
