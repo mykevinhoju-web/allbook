@@ -42,6 +42,8 @@ interface BookingCustomerDateTimePickerProps {
   roomPreview?: string | null;
   /** When slots load with no selection, pick the earliest available start. */
   autoSelectFirst?: boolean;
+  /** Minimum lead time (minutes) for available slots. Default keeps existing behavior (5). */
+  earliestLeadMinutes?: number;
 }
 
 function FieldSelect({
@@ -95,6 +97,7 @@ export function BookingCustomerDateTimePicker({
   emptyMessage = "No open slots available.",
   roomPreview = null,
   autoSelectFirst = true,
+  earliestLeadMinutes = 5,
 }: BookingCustomerDateTimePickerProps) {
   const today = todayDateInZone(timeZone);
   const dateOptions = useMemo(
@@ -114,8 +117,15 @@ export function BookingCustomerDateTimePicker({
   );
 
   const clocks = useMemo(
-    () => buildSlotClocks(slotOptions, date, timeZone),
-    [slotOptions, date, timeZone],
+    () =>
+      buildSlotClocks(
+        slotOptions,
+        date,
+        timeZone,
+        new Date(),
+        earliestLeadMinutes,
+      ),
+    [slotOptions, date, timeZone, earliestLeadMinutes],
   );
   const clocksId = useMemo(
     () => clocks.map((clock) => clock.iso).join("|"),

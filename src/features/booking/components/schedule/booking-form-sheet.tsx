@@ -38,6 +38,7 @@ import {
   buildStartsAtIso,
   formatAmPmTime,
   isIsoDateTime,
+  todayDateInZone,
 } from "../../lib/schedule-utils";
 import { BookingCustomerDateTimePicker } from "../checkout/booking-customer-datetime-picker";
 import { BookingCustomerContactFields } from "../checkout/booking-customer-contact-fields";
@@ -329,6 +330,31 @@ export function BookingFormSheet({
       ? "Select service above first"
       : timeSlotsHint;
 
+  const isToday = date === todayDateInZone(timeZone);
+  const nowDisabled =
+    !values.staffId ||
+    !values.durationMinutes ||
+    timeSlotsLoading ||
+    !isToday ||
+    slotOptions.length === 0;
+
+  const chooseNowSlot = () => {
+    if (nowDisabled) return;
+
+    const nowMs = Date.now();
+    const withIso = [...slotOptions]
+      .map((slot) => {
+        const iso = isIsoDateTime(slot.value)
+          ? slot.value
+          : buildStartsAtIso(date, slot.value);
+        return { slot, iso, isoMs: new Date(iso).getTime() };
+      })
+      .sort((a, b) => a.isoMs - b.isoMs);
+
+    const next = withIso.find((row) => row.isoMs >= nowMs) ?? withIso[0];
+    update("startsAt", next.iso);
+  };
+
   const selectedRoomName = values.roomId
     ? (roomOptions.find((room) => room.id === values.roomId)?.name ?? null)
     : null;
@@ -428,6 +454,22 @@ export function BookingFormSheet({
               </FormField>
             </div>
 
+            <div className="flex items-center justify-end">
+              <button
+                type="button"
+                disabled={nowDisabled}
+                onClick={chooseNowSlot}
+                className={cn(
+                  "h-11 rounded-xl border px-4 text-sm font-semibold transition",
+                  nowDisabled
+                    ? "border-stone-200 bg-white text-stone-400 opacity-70"
+                    : "border-[#8A6A3A] bg-[#8A6A3A]/10 text-stone-900 ring-1 ring-[#8A6A3A]/15 hover:brightness-[0.98]",
+                )}
+              >
+                [Now]
+              </button>
+            </div>
+
             <BookingCustomerDateTimePicker
               date={date}
               onDateChange={(nextDate) => {
@@ -443,6 +485,7 @@ export function BookingFormSheet({
               hint={timePickerHint}
               roomPreview={selectedRoomName ?? suggestedAutoRoomName}
               autoSelectFirst={!timePickerDisabled}
+              earliestLeadMinutes={0}
             />
 
             <div className={cn(theme.panel, "space-y-3")}>

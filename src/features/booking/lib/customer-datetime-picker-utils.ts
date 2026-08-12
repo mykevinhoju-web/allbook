@@ -125,8 +125,9 @@ export function buildSlotClocks(
   date: string,
   timeZone: string,
   now: Date = new Date(),
+  earliestLeadMinutes = 5,
 ): SlotClockParts[] {
-  const earliestMs = now.getTime() + 5 * 60_000;
+  const earliestMs = now.getTime() + earliestLeadMinutes * 60_000;
 
   return slotOptions
     .map((slot) => parseSlotClock(date, slot.value, timeZone))
