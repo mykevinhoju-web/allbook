@@ -9,11 +9,13 @@ export type BookingPriceChannel = "internal" | "external";
 export interface PricingAdjustments {
   /** Extra fee when booking starts in the night window (cents). 0 = off. */
   nightSurchargeCents: number;
-  /** Flat discount (cents). 0 = off. */
+  /** Flat discount for internal cash walk-ins (cents). 0 = off. */
   discountCents: number;
-  /** Apply discount on admin cash walk-in bookings (not card). */
+  /** Apply internal discount on admin cash walk-in bookings (not card). */
   discountApplyInternal: boolean;
-  /** Apply discount on customer online bookings. */
+  /** Flat discount for customer online bookings (cents). 0 = off. */
+  discountExternalCents: number;
+  /** Apply external discount on customer online bookings. */
   discountApplyExternal: boolean;
 }
 
@@ -21,8 +23,14 @@ export const DEFAULT_PRICING_ADJUSTMENTS: PricingAdjustments = {
   nightSurchargeCents: 0,
   discountCents: 0,
   discountApplyInternal: false,
+  discountExternalCents: 0,
   discountApplyExternal: false,
 };
+
+function nonNegativeCents(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? Math.round(n) : 0;
+}
 
 export function parsePricingAdjustments(
   raw: unknown,
@@ -30,19 +38,20 @@ export function parsePricingAdjustments(
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
   const input = raw as Record<string, unknown>;
 
-  const nightSurchargeCents = Number(input.nightSurchargeCents);
-  const discountCents = Number(input.discountCents);
+  const discountCents = nonNegativeCents(input.discountCents);
+  const hasExternalAmount = input.discountExternalCents !== undefined;
+  // Older tenants shared one amount for both channels — copy when migrating.
+  const discountExternalCents = hasExternalAmount
+    ? nonNegativeCents(input.discountExternalCents)
+    : Boolean(input.discountApplyExternal)
+      ? discountCents
+      : 0;
 
   return {
-    nightSurchargeCents:
-      Number.isFinite(nightSurchargeCents) && nightSurchargeCents >= 0
-        ? Math.round(nightSurchargeCents)
-        : 0,
-    discountCents:
-      Number.isFinite(discountCents) && discountCents >= 0
-        ? Math.round(discountCents)
-        : 0,
+    nightSurchargeCents: nonNegativeCents(input.nightSurchargeCents),
+    discountCents,
     discountApplyInternal: Boolean(input.discountApplyInternal),
+    discountExternalCents,
     discountApplyExternal: Boolean(input.discountApplyExternal),
   };
 }
@@ -78,7 +87,7 @@ export function applyPricingAdjustments(args: {
   adjustments: PricingAdjustments;
   /**
    * Internal bookings: discount only for cash.
-   * Ignored for external (uses discountApplyExternal).
+   * Ignored for external (uses discountApplyExternal + discountExternalCents).
    */
   paymentMethod?: "cash" | "card" | null;
 }): BookingPriceBreakdown {
@@ -89,14 +98,21 @@ export function applyPricingAdjustments(args: {
       ? adjustments.nightSurchargeCents
       : 0;
 
-  const discountAllowed =
-    args.channel === "external"
-      ? adjustments.discountApplyExternal
-      : adjustments.discountApplyInternal && args.paymentMethod === "cash";
-  const discountCents =
-    discountAllowed && adjustments.discountCents > 0
-      ? adjustments.discountCents
-      : 0;
+  let discountCents = 0;
+  if (args.channel === "external") {
+    if (
+      adjustments.discountApplyExternal &&
+      adjustments.discountExternalCents > 0
+    ) {
+      discountCents = adjustments.discountExternalCents;
+    }
+  } else if (
+    adjustments.discountApplyInternal &&
+    args.paymentMethod === "cash" &&
+    adjustments.discountCents > 0
+  ) {
+    discountCents = adjustments.discountCents;
+  }
 
   const totalCents = Math.max(
     0,

@@ -47,6 +47,7 @@ export function ServicePricingContent() {
   const [currency, setCurrency] = useState("AUD");
   const [nightSurcharge, setNightSurcharge] = useState("");
   const [discount, setDiscount] = useState("");
+  const [discountExternal, setDiscountExternal] = useState("");
   const [discountApplyInternal, setDiscountApplyInternal] = useState(false);
   const [discountApplyExternal, setDiscountApplyExternal] = useState(false);
 
@@ -76,6 +77,9 @@ export function ServicePricingContent() {
         data.pricingAdjustments ?? DEFAULT_PRICING_ADJUSTMENTS;
       setNightSurcharge(dollarsInputFromCents(adjustments.nightSurchargeCents));
       setDiscount(dollarsInputFromCents(adjustments.discountCents));
+      setDiscountExternal(
+        dollarsInputFromCents(adjustments.discountExternalCents),
+      );
       setDiscountApplyInternal(adjustments.discountApplyInternal);
       setDiscountApplyExternal(adjustments.discountApplyExternal);
 
@@ -134,7 +138,12 @@ export function ServicePricingContent() {
     }
 
     if (discount.trim() && Number(discount) < 0) {
-      toast.error("Discount cannot be negative.");
+      toast.error("Internal discount cannot be negative.");
+      return;
+    }
+
+    if (discountExternal.trim() && Number(discountExternal) < 0) {
+      toast.error("External discount cannot be negative.");
       return;
     }
 
@@ -142,6 +151,7 @@ export function ServicePricingContent() {
       nightSurchargeCents: centsFromDollarsInput(nightSurcharge),
       discountCents: centsFromDollarsInput(discount),
       discountApplyInternal,
+      discountExternalCents: centsFromDollarsInput(discountExternal),
       discountApplyExternal,
     };
 
@@ -292,46 +302,76 @@ export function ServicePricingContent() {
       <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft sm:p-6">
         <h2 className="text-sm font-semibold text-foreground">Discount</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Flat amount subtracted from the booking total. Internal discount
-          applies to cash walk-ins only (not card).
+          Internal and external discounts are separate amounts. Internal applies
+          to cash walk-ins only (not card).
         </p>
-        <div className="mt-4 max-w-xs space-y-1">
-          <label
-            htmlFor="discount-amount"
-            className="text-xs font-medium text-muted-foreground"
-          >
-            Discount ({currency})
-          </label>
-          <Input
-            id="discount-amount"
-            type="number"
-            min={0}
-            step="0.01"
-            placeholder="e.g. 10"
-            value={discount}
-            onChange={(event) => setDiscount(event.target.value)}
-            className="h-11 rounded-xl"
-          />
-        </div>
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:gap-6">
-          <label className="flex items-center gap-2 text-sm text-foreground">
-            <input
-              type="checkbox"
-              className="size-4 rounded border-border"
-              checked={discountApplyInternal}
-              onChange={(event) => setDiscountApplyInternal(event.target.checked)}
-            />
-            Internal cash (admin / walk-in)
-          </label>
-          <label className="flex items-center gap-2 text-sm text-foreground">
-            <input
-              type="checkbox"
-              className="size-4 rounded border-border"
-              checked={discountApplyExternal}
-              onChange={(event) => setDiscountApplyExternal(event.target.checked)}
-            />
-            External (customer online)
-          </label>
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="space-y-3 rounded-xl border border-border/50 p-3">
+            <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <input
+                type="checkbox"
+                className="size-4 rounded border-border"
+                checked={discountApplyInternal}
+                onChange={(event) =>
+                  setDiscountApplyInternal(event.target.checked)
+                }
+              />
+              Internal cash (admin / walk-in)
+            </label>
+            <div className="space-y-1">
+              <label
+                htmlFor="discount-internal-amount"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                Discount ({currency})
+              </label>
+              <Input
+                id="discount-internal-amount"
+                type="number"
+                min={0}
+                step="0.01"
+                placeholder="e.g. 10"
+                value={discount}
+                onChange={(event) => setDiscount(event.target.value)}
+                className="h-11 rounded-xl"
+                disabled={!discountApplyInternal}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-3 rounded-xl border border-border/50 p-3">
+            <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <input
+                type="checkbox"
+                className="size-4 rounded border-border"
+                checked={discountApplyExternal}
+                onChange={(event) =>
+                  setDiscountApplyExternal(event.target.checked)
+                }
+              />
+              External (customer online)
+            </label>
+            <div className="space-y-1">
+              <label
+                htmlFor="discount-external-amount"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                Discount ({currency})
+              </label>
+              <Input
+                id="discount-external-amount"
+                type="number"
+                min={0}
+                step="0.01"
+                placeholder="e.g. 5"
+                value={discountExternal}
+                onChange={(event) => setDiscountExternal(event.target.value)}
+                className="h-11 rounded-xl"
+                disabled={!discountApplyExternal}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -361,7 +401,9 @@ export function ServicePricingContent() {
               </li>
             ))}
         </ul>
-        {(nightSurcharge.trim() || discount.trim()) && (
+        {(nightSurcharge.trim() ||
+          discount.trim() ||
+          discountExternal.trim()) && (
           <ul className="mt-3 space-y-1 border-t border-border/40 pt-3">
             {nightSurcharge.trim() ? (
               <li>
@@ -372,22 +414,18 @@ export function ServicePricingContent() {
                 )}
               </li>
             ) : null}
-            {discount.trim() ? (
+            {discountApplyInternal && discount.trim() ? (
               <li>
-                Discount: −
+                Internal cash discount: −
                 {formatPriceFromCents(centsFromDollarsInput(discount), currency)}
-                {(discountApplyInternal || discountApplyExternal) && (
-                  <span>
-                    {" "}
-                    (
-                    {[
-                      discountApplyInternal ? "internal" : null,
-                      discountApplyExternal ? "external" : null,
-                    ]
-                      .filter(Boolean)
-                      .join(", ")}
-                    )
-                  </span>
+              </li>
+            ) : null}
+            {discountApplyExternal && discountExternal.trim() ? (
+              <li>
+                External online discount: −
+                {formatPriceFromCents(
+                  centsFromDollarsInput(discountExternal),
+                  currency,
                 )}
               </li>
             ) : null}
