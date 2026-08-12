@@ -299,7 +299,7 @@ export function BookingFormSheet({
     }
   }, [open]);
 
-  // Returning guest: lookup by phone and autofill name / postcode / email.
+  // Any previously saved phone: lookup and autofill name / postcode / email.
   useEffect(() => {
     if (!open) return;
     const phone = values.customerPhone;
@@ -355,8 +355,8 @@ export function BookingFormSheet({
           });
           setPhoneHint(
             guest.name
-              ? `Returning guest — filled from ${guest.name}`
-              : "Returning guest — details filled",
+              ? `Saved contact — filled from ${guest.name}`
+              : "Saved contact — details filled",
           );
         } catch {
           if (!cancelled) setPhoneHint(null);

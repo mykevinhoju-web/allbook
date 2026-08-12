@@ -114,7 +114,7 @@ export function BookingCustomerContactFields({
       />
       {phoneLookingUp ? (
         <p className={cn(helperTextClass ?? "text-xs text-stone-500", "mt-1 px-0.5")}>
-          Looking up returning guest…
+          Looking up saved contact…
         </p>
       ) : phoneHint ? (
         <p className={cn(helperTextClass ?? "text-xs text-stone-500", "mt-1 px-0.5")}>
@@ -123,7 +123,9 @@ export function BookingCustomerContactFields({
       ) : helperTextClass ? (
         <p className={cn(helperTextClass, "mt-1 px-0.5")}>
           Australian mobile — starts with 04
-          {phoneFirst ? ". Returning guests autofill name & postcode." : ""}
+          {phoneFirst
+            ? ". Any saved phone autofills name & postcode."
+            : ""}
         </p>
       ) : null}
     </div>
