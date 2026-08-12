@@ -14,7 +14,6 @@ import {
 } from "@/features/booking/lib/schedule-utils";
 import { computeScheduleGridWindow } from "@/features/booking/lib/schedule-grid-utils";
 import {
-  filterActiveRoomBookings,
   getCurrentRoomBooking,
   isBookingOccupyingRoom,
   isBookingUpcoming,
@@ -103,14 +102,14 @@ export function RoomsScheduleContent() {
 
   useBookingRealtime(tenant.id, load);
 
-  const activeBookings = useMemo(
-    () => filterActiveRoomBookings(bookings, now),
-    [bookings, now],
+  const dayBookings = useMemo(
+    () => bookings.filter((booking) => booking.status !== "cancelled"),
+    [bookings],
   );
 
   const bookingsByRoom = useMemo(() => {
     const map = new Map<string, AdminBooking[]>();
-    for (const booking of activeBookings) {
+    for (const booking of dayBookings) {
       if (!booking.roomId) continue;
       const list = map.get(booking.roomId) ?? [];
       list.push(booking);

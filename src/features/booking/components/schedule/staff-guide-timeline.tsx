@@ -534,6 +534,9 @@ export function StaffGuideTimeline({
                             100,
                         );
                         const active = isBookingCheckedIn(booking);
+                        const done =
+                          Boolean(booking.checkedOutAt) ||
+                          booking.status === "completed";
                         const selected = selectedBookingId === booking.id;
                         const tone = bookingBlockTone(bookingIndex);
                         return (
@@ -545,6 +548,7 @@ export function StaffGuideTimeline({
                               "absolute inset-y-0 z-[1] overflow-hidden rounded-none border border-y-0 border-l px-2 py-1.5 text-left transition hover:brightness-[0.97] active:brightness-[0.94]",
                               "border-r-2",
                               active ? tone.active : tone.idle,
+                              done && !active && "opacity-70",
                               selected && "z-[2] ring-2 ring-inset ring-primary",
                             )}
                             style={{
@@ -554,6 +558,7 @@ export function StaffGuideTimeline({
                           >
                             <p className="truncate text-sm font-semibold leading-tight md:text-[15px]">
                               {booking.customerName?.trim() || "Guest"}
+                              {done && !active ? " · Done" : ""}
                             </p>
                             <p
                               className={cn(

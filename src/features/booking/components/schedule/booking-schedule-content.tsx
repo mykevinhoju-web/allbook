@@ -36,8 +36,7 @@ import {
   isValidServiceDuration,
   todayDateInZone,
 } from "../../lib/schedule-utils";
-import { filterActiveRoomBookings } from "../../lib/room-occupancy";
-import { useNowTick } from "@/hooks/use-now-tick";
+import { useTenant } from "@/features/tenants";
 import type { AdminBooking } from "../../types/admin-booking";
 import {
   BookingFormSheet,
@@ -55,7 +54,6 @@ export function BookingScheduleContent() {
   const tenant = useTenant();
   const searchParams = useSearchParams();
   const { notifyBooking } = useBookingAlerts();
-  const now = useNowTick(60_000);
   const [date, setDate] = useState(() =>
     todayDateInZone(tenant.settings.timezone),
   );
@@ -131,8 +129,8 @@ export function BookingScheduleContent() {
   });
 
   const visibleBookings = useMemo(
-    () => filterActiveRoomBookings(bookings, now),
-    [bookings, now],
+    () => bookings.filter((booking) => booking.status !== "cancelled"),
+    [bookings],
   );
 
   const setScheduleDate = (next: string) => {

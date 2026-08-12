@@ -137,7 +137,7 @@ export async function POST(
       .from("bookings")
       .update({
         checked_out_at: checkedOutAt,
-        ends_at: checkedOutAt,
+        // Keep purchased/scheduled ends_at so history stays on the day schedule.
         status: "completed",
         updated_at: checkedOutAt,
       })

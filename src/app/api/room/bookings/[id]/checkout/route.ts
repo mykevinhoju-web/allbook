@@ -96,7 +96,7 @@ export async function POST(
       .from("bookings")
       .update({
         checked_out_at: checkedOutAt,
-        ends_at: checkedOutAt,
+        // Keep purchased/scheduled ends_at so the booking remains on the day schedule.
         status: "completed",
         room_id: roomSession.roomId,
         updated_at: checkedOutAt,

@@ -10,8 +10,6 @@ import type { StaffRecord } from "@/features/staff/types";
 import type { AdminBooking } from "@/features/booking/types/admin-booking";
 import { useBookingRealtime } from "@/features/booking/lib/booking-schedule-realtime";
 import { todayDateInZone } from "@/features/booking/lib/schedule-utils";
-import { filterActiveRoomBookings } from "@/features/booking/lib/room-occupancy";
-import { useNowTick } from "@/hooks/use-now-tick";
 
 /**
  * Sample preview of the production 6-hour block schedule.
@@ -20,7 +18,6 @@ import { useNowTick } from "@/hooks/use-now-tick";
 export function BookingGuideScheduleSample() {
   const tenant = useTenant();
   const timeZone = tenant.settings.timezone || "Australia/Sydney";
-  const now = useNowTick(60_000);
   const [date, setDate] = useState(() => todayDateInZone(timeZone));
   const [staff, setStaff] = useState<StaffRecord[]>([]);
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
@@ -67,7 +64,7 @@ export function BookingGuideScheduleSample() {
     })();
   });
 
-  const visible = filterActiveRoomBookings(bookings, now);
+  const visible = bookings.filter((booking) => booking.status !== "cancelled");
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
