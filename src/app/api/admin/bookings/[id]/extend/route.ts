@@ -11,7 +11,10 @@ import {
 } from "@/features/booking/lib/staff-conflict";
 import { isRoomOverlapConstraintError } from "@/features/booking/lib/validate-booking-update";
 import { computeBookingPriceCents } from "@/features/services/server/get-service-price";
-import { parsePaymentMethodFromNotes } from "@/features/booking/lib/internal-payment-method";
+import {
+  parsePaymentMethodFromNotes,
+  paymentMethodForPricing,
+} from "@/features/booking/lib/internal-payment-method";
 import {
   createServiceSupabase,
 } from "@/lib/admin/tenant-context";
@@ -230,7 +233,9 @@ export async function POST(
         timeZone: tenant.settings.timezone || "Australia/Sydney",
         channel: isInternal ? "internal" : "external",
         adjustments: tenant.settings.pricingAdjustments,
-        paymentMethod: isInternal ? paymentMethod : null,
+        paymentMethod: isInternal
+          ? paymentMethodForPricing(paymentMethod)
+          : null,
       });
       priceCents = priced?.totalCents ?? 0;
     } catch {

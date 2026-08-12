@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import {
   parsePaymentMethodFromNotes,
   parseSplitCashCentsFromNotes,
+  paymentMethodForPricing,
 } from "@/features/booking/lib/internal-payment-method";
 import {
   isOutCallBooking,
@@ -186,7 +187,9 @@ export async function PATCH(
         timeZone: tenant.settings.timezone || "Australia/Sydney",
         channel: "internal",
         adjustments: tenant.settings.pricingAdjustments,
-        paymentMethod: parsePaymentMethodFromNotes(existing.notes),
+        paymentMethod: paymentMethodForPricing(
+          parsePaymentMethodFromNotes(existing.notes),
+        ),
       });
 
       if (priced === null) {
