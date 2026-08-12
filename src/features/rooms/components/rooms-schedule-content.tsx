@@ -124,7 +124,7 @@ export function RoomsScheduleContent() {
       );
     }
     return map;
-  }, [activeBookings]);
+  }, [dayBookings]);
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
