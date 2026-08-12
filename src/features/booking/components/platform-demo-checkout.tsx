@@ -286,7 +286,7 @@ export function PlatformDemoCheckout({
               </div>
               <div>
                 <label htmlFor="demo-second" className={theme.label}>
-                  Initial
+                  Lastname
                 </label>
                 <Input
                   id="demo-second"

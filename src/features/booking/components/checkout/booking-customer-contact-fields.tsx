@@ -71,16 +71,16 @@ export function BookingCustomerContactFields({
               })
             }
             className={fieldClass}
-            placeholder="L"
+            placeholder="Lastname"
             autoCapitalize="characters"
             autoComplete="family-name"
-            aria-label="Family initial"
+            aria-label="Lastname (one letter)"
             maxLength={1}
           />
         </div>
         {helperTextClass ? (
           <p className={cn(helperTextClass, "mt-1 px-0.5")}>
-            Family initial — one letter only (e.g. Lee → L)
+            Lastname initial — one letter only (e.g. Lee → L)
           </p>
         ) : null}
       </div>
