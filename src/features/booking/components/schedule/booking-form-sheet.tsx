@@ -21,6 +21,7 @@ import {
   type PricingAdjustments,
 } from "@/features/services/lib/pricing-adjustments";
 import type { InternalPaymentMethod } from "@/features/booking/lib/internal-payment-method";
+import { paymentMethodForPricing } from "@/features/booking/lib/internal-payment-method";
 import {
   AU_MOBILE_PREFIX,
   AU_POSTCODE_PREFIX,
@@ -65,6 +66,8 @@ export interface BookingFormValues {
   customerPostcode: string;
   customerEmail: string;
   paymentMethod: InternalPaymentMethod | "";
+  /** Dollars input for Split cash portion (converted on submit). */
+  splitCashAmount: string;
   /** Special admin-only action: allow starting immediately (not 5-min step). */
   allowImmediateStart: boolean;
   /** Off-site service — no treatment room. */
@@ -84,6 +87,7 @@ export const defaultBookingFormValues: BookingFormValues = {
   customerPostcode: AU_POSTCODE_PREFIX,
   customerEmail: "",
   paymentMethod: "",
+  splitCashAmount: "",
   allowImmediateStart: false,
   outCall: false,
   otherStaffName: "",
@@ -428,14 +432,27 @@ export function BookingFormSheet({
         timeZone,
         channel: "internal",
         adjustments: pricingAdjustments,
-        paymentMethod:
-          values.paymentMethod === "cash" || values.paymentMethod === "card"
-            ? values.paymentMethod
-            : null,
+        paymentMethod: paymentMethodForPricing(
+          values.paymentMethod || null,
+        ),
       })
     : null;
 
   const displayPriceCents = priceBreakdown?.totalCents ?? null;
+  const splitCashCentsPreview = (() => {
+    if (values.paymentMethod !== "split" || displayPriceCents == null) {
+      return null;
+    }
+    const cash = Math.round(Number(values.splitCashAmount || 0) * 100);
+    if (!Number.isFinite(cash) || cash <= 0 || cash >= displayPriceCents) {
+      return null;
+    }
+    return cash;
+  })();
+  const splitCardCentsPreview =
+    splitCashCentsPreview != null && displayPriceCents != null
+      ? displayPriceCents - splitCashCentsPreview
+      : null;
 
   const durationMinutes = Number(values.durationMinutes) || 0;
   const timePickerDisabled = !values.staffId || !values.durationMinutes;
@@ -800,6 +817,8 @@ export function BookingFormSheet({
                   [
                     { value: "cash" as const, label: "Cash" },
                     { value: "card" as const, label: "Card" },
+                    { value: "split" as const, label: "Split" },
+                    { value: "pre" as const, label: "Pre" },
                   ] as const
                 ).map((option) => {
                   const selected = values.paymentMethod === option.value;
@@ -807,7 +826,16 @@ export function BookingFormSheet({
                     <button
                       key={option.value}
                       type="button"
-                      onClick={() => update("paymentMethod", option.value)}
+                      onClick={() =>
+                        onChange({
+                          ...values,
+                          paymentMethod: option.value,
+                          splitCashAmount:
+                            option.value === "split"
+                              ? values.splitCashAmount
+                              : "",
+                        })
+                      }
                       className={cn(
                         "min-h-11 rounded-xl border text-sm font-semibold transition",
                         selected
@@ -820,6 +848,37 @@ export function BookingFormSheet({
                   );
                 })}
               </div>
+
+              {values.paymentMethod === "split" ? (
+                <div className="mt-3 space-y-2 rounded-xl border border-stone-200 bg-white px-3 py-3">
+                  <label className="block space-y-1">
+                    <span className="text-xs font-medium text-stone-500">
+                      Cash amount ({currency})
+                    </span>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="1"
+                      inputMode="decimal"
+                      placeholder="e.g. 20"
+                      value={values.splitCashAmount}
+                      onChange={(event) =>
+                        update("splitCashAmount", event.target.value)
+                      }
+                      className="h-11 rounded-xl border-stone-200"
+                    />
+                  </label>
+                  <p className="text-xs text-stone-500">
+                    {splitCashCentsPreview != null &&
+                    splitCardCentsPreview != null
+                      ? `Card pays ${formatPriceFromCents(splitCardCentsPreview, currency)} · no cash discount`
+                      : displayPriceCents != null
+                        ? `Enter cash less than ${formatPriceFromCents(displayPriceCents, currency)} · remainder on card`
+                        : "Enter cash amount · remainder on card"}
+                  </p>
+                </div>
+              ) : null}
+
               {values.paymentMethod === "cash" &&
               pricingAdjustments.discountApplyInternal &&
               pricingAdjustments.discountCents > 0 ? (
@@ -830,9 +889,13 @@ export function BookingFormSheet({
                 <p className="mt-2 text-xs text-stone-500">
                   Card · recorded for sales, no payment terminal
                 </p>
-              ) : (
+              ) : values.paymentMethod === "pre" ? (
                 <p className="mt-2 text-xs text-stone-500">
-                  Select cash or card · no payment screen
+                  Pre booking · pay later · shows gray until confirmed
+                </p>
+              ) : values.paymentMethod === "split" ? null : (
+                <p className="mt-2 text-xs text-stone-500">
+                  Select payment · no payment screen
                 </p>
               )}
             </div>

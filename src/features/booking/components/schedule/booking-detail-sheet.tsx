@@ -9,10 +9,15 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Input } from "@/components/ui/input";
 import { formatPriceFromCents } from "@/features/services";
 import { cn } from "@/lib/utils";
 
 import { fetchAdminApi } from "@/features/admin/lib/admin-api-client";
+import {
+  formatPaymentMethodLabel,
+  type SettledInternalPaymentMethod,
+} from "../../lib/internal-payment-method";
 import { bookingCustomerTheme as theme } from "../../lib/booking-customer-theme";
 import {
   adminBookingSheetBodyClassName,
@@ -55,6 +60,7 @@ interface BookingDetailSheetProps {
   onCheckedOut?: () => void;
   onRoomChanged?: (booking: AdminBooking) => void;
   onCancelled?: () => void;
+  onPaymentConfirmed?: (booking: AdminBooking) => void;
   fetchApi?: BookingFetch;
   allowCancel?: boolean;
   hideStaffField?: boolean;
@@ -88,6 +94,7 @@ export function BookingDetailSheet({
   onCheckedOut,
   onRoomChanged,
   onCancelled,
+  onPaymentConfirmed,
   fetchApi = fetchAdminApi,
   allowCancel = true,
   hideStaffField = false,
@@ -97,9 +104,15 @@ export function BookingDetailSheet({
   const [savingRoom, setSavingRoom] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [extending, setExtending] = useState<number | null>(null);
+  const [confirmMethod, setConfirmMethod] =
+    useState<SettledInternalPaymentMethod | "">("");
+  const [confirmSplitCash, setConfirmSplitCash] = useState("");
+  const [confirmingPayment, setConfirmingPayment] = useState(false);
 
   useEffect(() => {
     setRoomId(booking?.roomId ?? "");
+    setConfirmMethod("");
+    setConfirmSplitCash("");
   }, [booking?.id, booking?.roomId]);
 
   const canChangeRoom =
@@ -283,6 +296,61 @@ export function BookingDetailSheet({
     }
   };
 
+  const confirmPayment = async () => {
+    if (!booking || !confirmMethod || confirmingPayment) return;
+
+    const splitCashCents =
+      confirmMethod === "split"
+        ? Math.round(Number(confirmSplitCash || 0) * 100)
+        : undefined;
+
+    if (
+      confirmMethod === "split" &&
+      (!splitCashCents ||
+        splitCashCents <= 0 ||
+        splitCashCents >= booking.priceCents)
+    ) {
+      toast.error("Enter a cash amount less than the total");
+      return;
+    }
+
+    setConfirmingPayment(true);
+    try {
+      const response = await fetchApi(
+        `/api/admin/bookings/${booking.id}/confirm-payment`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            paymentMethod: confirmMethod,
+            splitCashCents,
+          }),
+        },
+      );
+      const data = (await response.json()) as {
+        booking?: AdminBooking;
+        error?: string;
+      };
+
+      if (!response.ok) {
+        toast.error("Could not confirm payment", {
+          description: data.error ?? "Try again.",
+        });
+        return;
+      }
+
+      toast.success("Payment confirmed");
+      if (data.booking) onPaymentConfirmed?.(data.booking);
+      onOpenChange(false);
+    } catch {
+      toast.error("Could not confirm payment", {
+        description: "Network error. Try again.",
+      });
+    } finally {
+      setConfirmingPayment(false);
+    }
+  };
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" showCloseButton className={adminBookingSheetClassName}>
@@ -335,6 +403,14 @@ export function BookingDetailSheet({
                 value={formatDurationLabel(booking.durationMinutes)}
               />
               <DetailRow label="Price" value={priceLabel} />
+              <DetailRow
+                label="Payment"
+                value={formatPaymentMethodLabel(
+                  booking.paymentMethod,
+                  booking.splitCashCents,
+                  booking.priceCents,
+                )}
+              />
               <DetailRow label="Status" value={booking.status} />
               <DetailRow
                 label="Starts"
@@ -402,6 +478,73 @@ export function BookingDetailSheet({
               >
                 Enter room
               </AppButton>
+            ) : null}
+
+            {booking.paymentStatus === "unpaid" ||
+            booking.paymentMethod === "pre" ? (
+              <div className={cn(theme.panel, "space-y-3")}>
+                <p className="text-sm font-semibold text-stone-900">
+                  Confirm payment
+                </p>
+                <p className="text-xs text-stone-500">
+                  Pre booking — choose how the guest paid to add it to revenue.
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      { value: "cash" as const, label: "Cash" },
+                      { value: "card" as const, label: "Card" },
+                      { value: "split" as const, label: "Split" },
+                    ] as const
+                  ).map((option) => {
+                    const selected = confirmMethod === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => {
+                          setConfirmMethod(option.value);
+                          if (option.value !== "split") setConfirmSplitCash("");
+                        }}
+                        className={cn(
+                          "min-h-10 rounded-xl border text-sm font-semibold transition",
+                          selected
+                            ? "border-[#8A6A3A] bg-[#8A6A3A]/10 text-stone-900 ring-2 ring-[#8A6A3A]/25"
+                            : "border-stone-200 bg-white text-stone-700",
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {confirmMethod === "split" ? (
+                  <label className="block space-y-1">
+                    <span className="text-xs font-medium text-stone-500">
+                      Cash amount ({currency})
+                    </span>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="1"
+                      value={confirmSplitCash}
+                      onChange={(event) =>
+                        setConfirmSplitCash(event.target.value)
+                      }
+                      placeholder="e.g. 20"
+                      className="h-11 rounded-xl border-stone-200"
+                    />
+                  </label>
+                ) : null}
+                <AppButton
+                  type="button"
+                  className={cn(theme.goldButton, "w-full")}
+                  disabled={!confirmMethod || confirmingPayment}
+                  onClick={() => void confirmPayment()}
+                >
+                  {confirmingPayment ? "Confirming…" : "Confirm payment"}
+                </AppButton>
+              </div>
             ) : null}
 
             {canExtend ? (

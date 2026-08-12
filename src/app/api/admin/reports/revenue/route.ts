@@ -14,6 +14,7 @@ import {
   isOtherStaffBooking,
   parseOtherStaffName,
 } from "@/features/booking/lib/booking-other-staff";
+import { splitRevenueCents } from "@/features/booking/lib/internal-payment-method";
 import {
   createServiceSupabase,
 } from "@/lib/admin/tenant-context";
@@ -28,6 +29,7 @@ function mapRow(row: {
   starts_at: string;
   price_cents: number;
   status: string;
+  payment_status: string;
   customer_name: string | null;
   notes: string | null;
   staff?: { name: string } | { name: string }[] | null;
@@ -36,30 +38,37 @@ function mapRow(row: {
     ? row.staff[0]?.name
     : row.staff?.name;
 
-  if (isOtherStaffBooking(row.notes)) {
-    const otherName =
-      parseOtherStaffName(row.notes) ?? staffName?.trim() ?? null;
-    return {
-      id: row.id,
-      staffId: row.staff_id,
-      staffName: otherName
-        ? `Other Staff · ${otherName}`
-        : "Other Staff",
-      startsAt: row.starts_at,
-      priceCents: row.price_cents,
-      status: row.status,
-      customerName: row.customer_name,
-    };
-  }
+  const { cashCents, cardCents } = splitRevenueCents({
+    priceCents: row.price_cents,
+    paymentStatus: row.payment_status,
+    notes: row.notes,
+  });
 
-  return {
+  const base = {
     id: row.id,
     staffId: row.staff_id,
-    staffName: staffName ?? "Staff",
     startsAt: row.starts_at,
     priceCents: row.price_cents,
     status: row.status,
     customerName: row.customer_name,
+    cashCents,
+    cardCents,
+  };
+
+  if (isOtherStaffBooking(row.notes)) {
+    const otherName =
+      parseOtherStaffName(row.notes) ?? staffName?.trim() ?? null;
+    return {
+      ...base,
+      staffName: otherName
+        ? `Other Staff · ${otherName}`
+        : "Other Staff",
+    };
+  }
+
+  return {
+    ...base,
+    staffName: staffName ?? "Staff",
   };
 }
 
@@ -104,7 +113,7 @@ export async function GET(request: Request) {
     let query = supabase
       .from("bookings")
       .select(
-        "id, staff_id, starts_at, price_cents, status, customer_name, notes, staff(name)",
+        "id, staff_id, starts_at, price_cents, status, payment_status, customer_name, notes, staff(name)",
       )
       .eq("tenant_id", tenant.id)
       .neq("status", "cancelled")

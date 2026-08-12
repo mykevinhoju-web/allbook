@@ -80,6 +80,12 @@ const OTHER_STAFF_BLOCK_TONE = {
   muted: "text-orange-900/85",
 } as const;
 
+const PRE_BLOCK_TONE = {
+  idle: "border-stone-400/70 bg-stone-300 text-stone-900",
+  active: "border-stone-500 bg-stone-400 text-stone-950",
+  muted: "text-stone-700/85",
+} as const;
+
 type DayBlock = 0 | 1 | 2 | 3;
 
 function addDaysIso(date: string, days: number): string {
@@ -566,11 +572,15 @@ export function StaffGuideTimeline({
                           Boolean(booking.checkedOutAt) ||
                           booking.status === "completed";
                         const selected = selectedBookingId === booking.id;
-                        const tone = booking.outCall
-                          ? OUTCALL_BLOCK_TONE
-                          : booking.otherStaff
-                            ? OTHER_STAFF_BLOCK_TONE
-                            : bookingBlockTone(bookingIndex);
+                        const tone =
+                          booking.paymentMethod === "pre" ||
+                          booking.paymentStatus === "unpaid"
+                            ? PRE_BLOCK_TONE
+                            : booking.outCall
+                              ? OUTCALL_BLOCK_TONE
+                              : booking.otherStaff
+                                ? OTHER_STAFF_BLOCK_TONE
+                                : bookingBlockTone(bookingIndex);
                         return (
                           <button
                             key={booking.id}
@@ -605,18 +615,26 @@ export function StaffGuideTimeline({
                                 ? ` · ${booking.roomName}`
                                 : ""}
                             </p>
-                            {booking.outCall || booking.otherStaff ? (
+                            {booking.outCall ||
+                            booking.otherStaff ||
+                            booking.paymentMethod === "pre" ||
+                            booking.paymentStatus === "unpaid" ? (
                               <p
                                 className={cn(
                                   "mt-auto truncate text-[10px] font-medium leading-none",
                                   tone.muted,
                                 )}
                               >
-                                {booking.outCall && booking.otherStaff
-                                  ? "out call · Other Staff"
-                                  : booking.outCall
-                                    ? "out call"
-                                    : "Other Staff"}
+                                {[
+                                  booking.paymentMethod === "pre" ||
+                                  booking.paymentStatus === "unpaid"
+                                    ? "pre"
+                                    : null,
+                                  booking.outCall ? "out call" : null,
+                                  booking.otherStaff ? "Other Staff" : null,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
                               </p>
                             ) : null}
                           </button>

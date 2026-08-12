@@ -7,6 +7,8 @@ import {
 } from "@/features/booking/lib/booking-extend";
 import {
   isInternalPaymentMethod,
+  parseSplitCashCentsFromNotes,
+  paymentMethodForPricing,
   parsePaymentMethodFromNotes,
   withPaymentMethodNote,
   type InternalPaymentMethod,
@@ -216,7 +218,7 @@ export async function applyBookingExtend(options: {
       timeZone,
       channel: isInternal ? "internal" : "external",
       adjustments: pricingAdjustments,
-      paymentMethod: isInternal ? method : null,
+      paymentMethod: isInternal ? paymentMethodForPricing(method) : null,
     });
     if (priced && priced.totalCents > 0) priceCents = priced.totalCents;
   } catch {
@@ -225,7 +227,13 @@ export async function applyBookingExtend(options: {
 
   const notes =
     method && existing.payment_status === "not_required"
-      ? withPaymentMethodNote(method, existing.notes)
+      ? withPaymentMethodNote(
+          method,
+          existing.notes,
+          method === "split"
+            ? parseSplitCashCentsFromNotes(existing.notes)
+            : null,
+        )
       : existing.notes;
 
   const { data, error } = await supabase

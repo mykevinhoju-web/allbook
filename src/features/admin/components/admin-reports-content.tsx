@@ -29,6 +29,8 @@ type RevenueResponse = {
   from: string;
   to: string;
   grandTotalCents: number;
+  cashTotalCents: number;
+  cardTotalCents: number;
   bookingCount: number;
   byStaff: RevenueStaffReport[];
   dailyTotals: RevenueDailyTotal[];
@@ -181,7 +183,8 @@ function StaffSection({
             </p>
             <p className="text-xs text-muted-foreground">
               {staff.bookingCount} booking{staff.bookingCount === 1 ? "" : "s"} ·{" "}
-              {staff.daily.length} day{staff.daily.length === 1 ? "" : "s"}
+              cash {formatPriceFromCents(staff.cashCents, currency)} · card{" "}
+              {formatPriceFromCents(staff.cardCents, currency)}
             </p>
           </div>
         </div>
@@ -377,7 +380,7 @@ export function AdminReportsContent() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-soft sm:col-span-2">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -403,14 +406,37 @@ export function AdminReportsContent() {
           </div>
         </div>
         <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-soft">
-          <p className="text-sm text-muted-foreground">Bookings</p>
+          <p className="text-sm text-muted-foreground">Cash</p>
           <p className="mt-1 text-3xl font-semibold tabular-nums">
-            {loading && !report ? "—" : (report?.bookingCount ?? 0)}
+            {loading && !report
+              ? "—"
+              : formatPriceFromCents(report?.cashTotalCents ?? 0, currency)}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Non-cancelled · service price
+            Walk-in cash + split cash
           </p>
         </div>
+        <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-soft">
+          <p className="text-sm text-muted-foreground">Card / online</p>
+          <p className="mt-1 text-3xl font-semibold tabular-nums">
+            {loading && !report
+              ? "—"
+              : formatPriceFromCents(report?.cardTotalCents ?? 0, currency)}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Card, split card, online
+          </p>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-border/50 bg-card p-4 shadow-soft">
+        <p className="text-sm text-muted-foreground">Bookings</p>
+        <p className="mt-1 text-2xl font-semibold tabular-nums">
+          {loading && !report ? "—" : (report?.bookingCount ?? 0)}
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Paid / recorded · excludes unpaid Pre bookings
+        </p>
       </section>
 
       {loading && !report ? (

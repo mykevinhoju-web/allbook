@@ -333,9 +333,22 @@ export function BookingScheduleContent() {
       return;
     }
 
-    if (form.paymentMethod !== "cash" && form.paymentMethod !== "card") {
-      toast.error("Select cash or card payment");
+    if (
+      form.paymentMethod !== "cash" &&
+      form.paymentMethod !== "card" &&
+      form.paymentMethod !== "split" &&
+      form.paymentMethod !== "pre"
+    ) {
+      toast.error("Select a payment method");
       return;
+    }
+
+    if (form.paymentMethod === "split") {
+      const cash = Math.round(Number(form.splitCashAmount || 0) * 100);
+      if (!Number.isFinite(cash) || cash <= 0) {
+        toast.error("Enter the cash amount for Split");
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -347,6 +360,11 @@ export function BookingScheduleContent() {
         toast.error("Select a valid service duration");
         return;
       }
+
+      const splitCashCents =
+        form.paymentMethod === "split"
+          ? Math.round(Number(form.splitCashAmount || 0) * 100)
+          : undefined;
 
       const response = await fetchAdminApi("/api/admin/bookings", {
         method: "POST",
@@ -373,6 +391,7 @@ export function BookingScheduleContent() {
           customerPostcode: formatAuPostcodeInput(form.customerPostcode),
           customerEmail: form.customerEmail.trim() || undefined,
           paymentMethod: form.paymentMethod,
+          splitCashCents,
           allowImmediateStart: form.allowImmediateStart,
         }),
       });
@@ -464,6 +483,10 @@ export function BookingScheduleContent() {
         }}
         onCancelled={() => {
           setSelectedBooking(null);
+          void loadSchedule({ soft: true });
+        }}
+        onPaymentConfirmed={(updated) => {
+          setSelectedBooking(updated);
           void loadSchedule({ soft: true });
         }}
       />

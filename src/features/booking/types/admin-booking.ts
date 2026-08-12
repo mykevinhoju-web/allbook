@@ -16,8 +16,12 @@ export interface AdminBooking {
   customerPostcode: string | null;
   customerEmail: string | null;
   notes: string | null;
-  /** Admin walk-in: cash (discount eligible) or card (no discount). */
-  paymentMethod?: "cash" | "card" | null;
+  /** Admin walk-in payment: cash, card, split, or unpaid pre booking. */
+  paymentMethod?: "cash" | "card" | "split" | "pre" | null;
+  /** Cash portion in cents when paymentMethod is split. */
+  splitCashCents?: number | null;
+  /** Stripe / walk-in payment status (pre bookings use unpaid). */
+  paymentStatus?: string | null;
   /** Extra staff joined on this booking (excludes primary). */
   additionalStaff?: { id: string; name: string }[];
   /** Off-site service — no treatment room. */

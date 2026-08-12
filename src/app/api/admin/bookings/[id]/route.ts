@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
   parsePaymentMethodFromNotes,
+  parseSplitCashCentsFromNotes,
 } from "@/features/booking/lib/internal-payment-method";
 import {
   isOutCallBooking,
@@ -40,6 +41,7 @@ function mapBooking(row: {
   customer_postcode: string | null;
   customer_email: string | null;
   notes: string | null;
+  payment_status?: string | null;
   created_at: string;
   updated_at: string;
   staff?: { name: string } | { name: string }[] | null;
@@ -53,6 +55,7 @@ function mapBooking(row: {
     : row.rooms?.name;
 
   const otherStaffName = parseOtherStaffName(row.notes);
+  const paymentMethod = parsePaymentMethodFromNotes(row.notes);
 
   return {
     id: row.id,
@@ -71,7 +74,9 @@ function mapBooking(row: {
     customerPostcode: row.customer_postcode,
     customerEmail: row.customer_email,
     notes: visibleBookingNotes(row.notes),
-    paymentMethod: parsePaymentMethodFromNotes(row.notes),
+    paymentMethod,
+    splitCashCents: parseSplitCashCentsFromNotes(row.notes),
+    paymentStatus: row.payment_status ?? null,
     outCall: isOutCallBooking(row.notes),
     otherStaff: isOtherStaffBooking(row.notes),
     otherStaffName,
@@ -200,7 +205,7 @@ export async function PATCH(
       .eq("tenant_id", tenant.id)
       .eq("id", id)
       .select(
-        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, status, checked_out_at, customer_name, customer_phone, customer_postcode, customer_email, notes, created_at, updated_at, staff(name), rooms(name)",
+        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, status, checked_out_at, customer_name, customer_phone, customer_postcode, customer_email, notes, payment_status, created_at, updated_at, staff(name), rooms(name)",
       )
       .maybeSingle();
 

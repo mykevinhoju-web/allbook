@@ -6,6 +6,8 @@ export type RevenueBookingRow = {
   priceCents: number;
   status: string;
   customerName: string | null;
+  cashCents: number;
+  cardCents: number;
 };
 
 export type RevenueBookingDetail = {
@@ -26,12 +28,16 @@ export type RevenueStaffReport = {
   staffId: string;
   staffName: string;
   totalCents: number;
+  cashCents: number;
+  cardCents: number;
   bookingCount: number;
   daily: RevenueDailyTotal[];
 };
 
 export type RevenueReport = {
   grandTotalCents: number;
+  cashTotalCents: number;
+  cardTotalCents: number;
   bookingCount: number;
   byStaff: RevenueStaffReport[];
   dailyTotals: RevenueDailyTotal[];
@@ -178,6 +184,8 @@ export function aggregateRevenueReport(
       staffId: string;
       staffName: string;
       totalCents: number;
+      cashCents: number;
+      cardCents: number;
       bookingCount: number;
       daily: Map<string, RevenueDailyTotal>;
     }
@@ -185,9 +193,13 @@ export function aggregateRevenueReport(
   const dailyMap = new Map<string, RevenueDailyTotal>();
 
   let grandTotalCents = 0;
+  let cashTotalCents = 0;
+  let cardTotalCents = 0;
 
   for (const booking of bookings) {
     const cents = Math.max(0, booking.priceCents || 0);
+    const cashCents = Math.max(0, booking.cashCents || 0);
+    const cardCents = Math.max(0, booking.cardCents || 0);
     const date = dateInTimeZone(booking.startsAt, timeZone);
     const detail: RevenueBookingDetail = {
       id: booking.id,
@@ -197,11 +209,15 @@ export function aggregateRevenueReport(
     };
 
     grandTotalCents += cents;
+    cashTotalCents += cashCents;
+    cardTotalCents += cardCents;
     bumpDaily(dailyMap, date, cents, detail);
 
     const existing = staffMap.get(booking.staffId);
     if (existing) {
       existing.totalCents += cents;
+      existing.cashCents += cashCents;
+      existing.cardCents += cardCents;
       existing.bookingCount += 1;
       bumpDaily(existing.daily, date, cents, detail);
     } else {
@@ -211,6 +227,8 @@ export function aggregateRevenueReport(
         staffId: booking.staffId,
         staffName: booking.staffName || "Staff",
         totalCents: cents,
+        cashCents,
+        cardCents,
         bookingCount: 1,
         daily,
       });
@@ -233,6 +251,8 @@ export function aggregateRevenueReport(
       staffId: staff.staffId,
       staffName: staff.staffName,
       totalCents: staff.totalCents,
+      cashCents: staff.cashCents,
+      cardCents: staff.cardCents,
       bookingCount: staff.bookingCount,
       daily: sortDaily([...staff.daily.values()]),
     }))
@@ -246,6 +266,8 @@ export function aggregateRevenueReport(
 
   return {
     grandTotalCents,
+    cashTotalCents,
+    cardTotalCents,
     bookingCount: bookings.length,
     byStaff,
     dailyTotals,

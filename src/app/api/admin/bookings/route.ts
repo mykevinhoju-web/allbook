@@ -12,6 +12,10 @@ import {
 import {
   isInternalPaymentMethod,
   parsePaymentMethodFromNotes,
+  parseSplitCashCentsFromNotes,
+  paymentMethodForPricing,
+  paymentStatusForMethod,
+  validateSplitCashCents,
   withPaymentMethodNote,
 } from "@/features/booking/lib/internal-payment-method";
 import {
@@ -99,6 +103,7 @@ function mapBooking(row: {
   customer_postcode: string | null;
   customer_email: string | null;
   notes: string | null;
+  payment_status?: string | null;
   created_at: string;
   updated_at: string;
   staff?: { name: string } | { name: string }[] | null;
@@ -112,6 +117,7 @@ function mapBooking(row: {
     : row.rooms?.name;
 
   const otherStaffName = parseOtherStaffName(row.notes);
+  const paymentMethod = parsePaymentMethodFromNotes(row.notes);
 
   return {
     id: row.id,
@@ -131,7 +137,9 @@ function mapBooking(row: {
     customerPostcode: row.customer_postcode,
     customerEmail: row.customer_email,
     notes: visibleBookingNotes(row.notes),
-    paymentMethod: parsePaymentMethodFromNotes(row.notes),
+    paymentMethod,
+    splitCashCents: parseSplitCashCentsFromNotes(row.notes),
+    paymentStatus: row.payment_status ?? null,
     outCall: isOutCallBooking(row.notes),
     otherStaff: isOtherStaffBooking(row.notes),
     otherStaffName,
@@ -180,7 +188,7 @@ export async function GET(request: Request) {
     let query = supabase
       .from("bookings")
       .select(
-        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, status, checked_out_at, checked_in_at, customer_name, customer_phone, customer_postcode, customer_email, notes, created_at, updated_at, staff(name), rooms(name)",
+        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, status, checked_out_at, checked_in_at, customer_name, customer_phone, customer_postcode, customer_email, notes, payment_status, created_at, updated_at, staff(name), rooms(name)",
       )
       .eq("tenant_id", tenant.id)
       .neq("status", "cancelled")
@@ -231,6 +239,8 @@ export async function POST(request: Request) {
       status?: BookingStatus;
       roomId?: string | null;
       paymentMethod?: string;
+      /** Cash portion in cents when paymentMethod is split. */
+      splitCashCents?: number;
       /** When true, bypass the 5-minute-step constraint (used by internal "Now" button). */
       allowImmediateStart?: boolean;
       /** Off-site service — skip treatment room assignment. */
@@ -290,7 +300,7 @@ export async function POST(request: Request) {
 
     if (!isInternalPaymentMethod(body.paymentMethod)) {
       return NextResponse.json(
-        { error: "Select cash or card payment." },
+        { error: "Select a payment method." },
         { status: 400 },
       );
     }
@@ -307,7 +317,7 @@ export async function POST(request: Request) {
       timeZone,
       channel: "internal",
       adjustments: tenant.settings.pricingAdjustments,
-      paymentMethod,
+      paymentMethod: paymentMethodForPricing(paymentMethod),
     });
 
     if (priced === null) {
@@ -317,6 +327,20 @@ export async function POST(request: Request) {
       );
     }
     const priceCents = priced.totalCents;
+
+    let splitCashCents: number | null = null;
+    if (paymentMethod === "split") {
+      splitCashCents = validateSplitCashCents(body.splitCashCents, priceCents);
+      if (splitCashCents == null) {
+        return NextResponse.json(
+          {
+            error:
+              "Enter a cash amount greater than 0 and less than the total for Split.",
+          },
+          { status: 400 },
+        );
+      }
+    }
 
     const startsAt = new Date(body.startsAt);
 
@@ -430,8 +454,8 @@ export async function POST(request: Request) {
         duration_minutes: durationMinutes,
         price_cents: priceCents,
         status: body.status ?? "confirmed",
-        // Counts toward revenue; no Stripe checkout for walk-in cash/card.
-        payment_status: "not_required",
+        // Pre bookings stay unpaid until admin confirms payment.
+        payment_status: paymentStatusForMethod(paymentMethod),
         customer_name: body.customerName.trim(),
         customer_phone: customerPhone,
         customer_postcode: customerPostcode,
@@ -444,10 +468,11 @@ export async function POST(request: Request) {
             if (otherStaff) notes = withOtherStaffNote(otherStaffName, notes);
             return notes;
           })(),
+          splitCashCents,
         ),
       })
       .select(
-        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, status, checked_out_at, checked_in_at, customer_name, customer_phone, customer_postcode, customer_email, notes, created_at, updated_at, staff(name), rooms(name)",
+        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, status, checked_out_at, checked_in_at, customer_name, customer_phone, customer_postcode, customer_email, notes, payment_status, created_at, updated_at, staff(name), rooms(name)",
       )
       .single();
 

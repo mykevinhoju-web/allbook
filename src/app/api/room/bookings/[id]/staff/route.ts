@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { isBookingCheckedIn } from "@/features/booking/lib/booking-check-in";
 import { ensurePrimaryBookingStaff } from "@/features/booking/lib/booking-staffs";
 import {
-  isInternalPaymentMethod,
+  isCashOrCardMethod,
   withPaymentMethodNote,
 } from "@/features/booking/lib/internal-payment-method";
 import {
@@ -71,7 +71,7 @@ export async function POST(
       );
     }
 
-    if (!isInternalPaymentMethod(body.paymentMethod)) {
+    if (!isCashOrCardMethod(body.paymentMethod)) {
       return NextResponse.json(
         { error: "Select cash or card payment." },
         { status: 400 },

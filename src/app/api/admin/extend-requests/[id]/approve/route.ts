@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import {
-  isInternalPaymentMethod,
+  isCashOrCardMethod,
 } from "@/features/booking/lib/internal-payment-method";
 import { applyBookingExtend } from "@/features/booking/server/apply-booking-extend";
 import { createServiceSupabase } from "@/lib/admin/tenant-context";
@@ -20,7 +20,7 @@ export async function POST(
     const { id } = await params;
     const body = (await request.json()) as { paymentMethod?: string };
 
-    if (!isInternalPaymentMethod(body.paymentMethod)) {
+    if (!isCashOrCardMethod(body.paymentMethod)) {
       return NextResponse.json(
         { error: "Select cash or card payment." },
         { status: 400 },
