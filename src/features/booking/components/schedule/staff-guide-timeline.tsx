@@ -567,7 +567,7 @@ export function StaffGuideTimeline({
                             type="button"
                             onClick={() => onBookingSelect(booking)}
                             className={cn(
-                              "absolute inset-y-0 z-[1] overflow-hidden rounded-none border border-y-0 border-l px-2 py-1.5 text-left transition hover:brightness-[0.97] active:brightness-[0.94]",
+                              "absolute inset-y-0 z-[1] flex flex-col overflow-hidden rounded-none border border-y-0 border-l px-2 py-1.5 text-left transition hover:brightness-[0.97] active:brightness-[0.94]",
                               "border-r-2",
                               active ? tone.active : tone.idle,
                               done && !active && "opacity-70",
@@ -580,7 +580,6 @@ export function StaffGuideTimeline({
                           >
                             <p className="truncate text-sm font-semibold leading-tight md:text-[15px]">
                               {booking.customerName?.trim() || "Guest"}
-                              {booking.outCall ? " · Out call" : ""}
                               {done && !active ? " · Done" : ""}
                             </p>
                             <p
@@ -592,12 +591,20 @@ export function StaffGuideTimeline({
                               {formatAmPmTime(booking.startsAt)}~
                               {formatAmPmTime(booking.endsAt)} ·{" "}
                               {formatDurationLabel(booking.durationMinutes)}
-                              {booking.outCall
-                                ? " · Out call"
-                                : booking.roomName
-                                  ? ` · ${booking.roomName}`
-                                  : ""}
+                              {!booking.outCall && booking.roomName
+                                ? ` · ${booking.roomName}`
+                                : ""}
                             </p>
+                            {booking.outCall ? (
+                              <p
+                                className={cn(
+                                  "mt-auto truncate text-[10px] font-medium leading-none",
+                                  tone.muted,
+                                )}
+                              >
+                                out call
+                              </p>
+                            ) : null}
                           </button>
                         );
                       })}
