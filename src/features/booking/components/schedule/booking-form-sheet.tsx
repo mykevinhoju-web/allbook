@@ -352,8 +352,14 @@ export function BookingFormSheet({
 
     const nowLocal = toDatetimeLocalValue(new Date(), timeZone);
     const nowIso = datetimeLocalToIso(nowLocal, timeZone);
-    update("startsAt", nowIso);
-    update("allowImmediateStart", true);
+    if (date !== today) {
+      onDateChange?.(today);
+    }
+    onChange({
+      ...values,
+      startsAt: nowIso,
+      allowImmediateStart: true,
+    });
   };
 
   const selectedRoomName = values.roomId
@@ -467,7 +473,13 @@ export function BookingFormSheet({
               durationMinutes={durationMinutes || 30}
               slotOptions={slotOptions}
               selectedValue={values.startsAt}
-              onSelect={(value) => update("startsAt", value)}
+              onSelect={(value) =>
+                onChange({
+                  ...values,
+                  startsAt: value,
+                  allowImmediateStart: false,
+                })
+              }
               loading={timeSlotsLoading}
               hint={timePickerHint}
               roomPreview={selectedRoomName ?? suggestedAutoRoomName}

@@ -18,12 +18,14 @@ import {
   daysForMonth,
   findSlotIso,
   padMinute,
+  parseSlotClock,
   uniqueMonths,
   type DayPeriod,
 } from "../../lib/customer-datetime-picker-utils";
 import { bookingCustomerTheme as theme } from "../../lib/booking-customer-theme";
 import {
   formatScheduleDate,
+  isoToDatetimeLocal,
   todayDateInZone,
 } from "../../lib/schedule-utils";
 import type { BookingTimeSlotOption } from "../schedule/booking-form-sheet";
@@ -136,14 +138,32 @@ export function BookingCustomerDateTimePicker({
   );
 
   const periods = useMemo(() => availablePeriods(clocks), [clocks]);
-  const hours = useMemo(
-    () => availableHours(clocks, period),
-    [clocks, period],
-  );
-  const minutes = useMemo(
-    () => availableMinutes(clocks, period, hour12),
-    [clocks, period, hour12],
-  );
+  const hours = useMemo(() => {
+    const list = availableHours(clocks, period);
+    if (typeof hour12 === "number" && !list.includes(hour12)) {
+      return [...list, hour12].sort((a, b) => a - b);
+    }
+    return list;
+  }, [clocks, period, hour12]);
+  const minutes = useMemo(() => {
+    const list = availableMinutes(clocks, period, hour12);
+    if (typeof minute === "number" && !list.includes(minute)) {
+      return [...list, minute].sort((a, b) => a - b);
+    }
+    return list;
+  }, [clocks, period, hour12, minute]);
+
+  const clockFromSelected = (value: string) => {
+    const fromSlots = clocks.find((clock) => clock.iso === value);
+    if (fromSlots) return fromSlots;
+    try {
+      const parsed = parseSlotClock(date, value, timeZone);
+      const localDate = isoToDatetimeLocal(parsed.iso, timeZone).slice(0, 10);
+      return localDate === date ? parsed : null;
+    } catch {
+      return null;
+    }
+  };
 
   useEffect(() => {
     if (!dateOptions.some((option) => option.value === date)) {
@@ -163,19 +183,20 @@ export function BookingCustomerDateTimePicker({
       return;
     }
 
-    const match = clocks.find((clock) => clock.iso === selectedValue);
+    const match = clockFromSelected(selectedValue);
     if (!match) return;
     setPeriod(match.period);
     setHour12(match.hour12);
     setMinute(match.minute);
-  }, [selectedValue, clocks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedValue, clocks, date, timeZone]);
 
   useEffect(() => {
     if (!selectedValue) return;
-    const stillValid = clocks.some((clock) => clock.iso === selectedValue);
-    if (!stillValid) onSelect("");
+    if (clockFromSelected(selectedValue)) return;
+    onSelect("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clocks, selectedValue]);
+  }, [clocks, selectedValue, date, timeZone]);
 
   // Auto-pick earliest open start so hour+minute are never half-selected.
   useEffect(() => {
@@ -267,7 +288,12 @@ export function BookingCustomerDateTimePicker({
         <p className={cn(theme.label, "mb-2 px-0.5")}>
           Date & time · {formatDurationSummary(durationMinutes)}
         </p>
-        <div className={cn(theme.emptyState, "py-4")}>Loading times…</div>
+        <div className={cn(theme.emptyState, "py-4")}>
+          Loading times…
+          {startTimeRightActions ? (
+            <div className="mt-3 flex justify-end">{startTimeRightActions}</div>
+          ) : null}
+        </div>
       </section>
     );
   }
@@ -310,7 +336,7 @@ export function BookingCustomerDateTimePicker({
             </div>
           </div>
 
-          {slotOptions.length === 0 ? (
+          {slotOptions.length === 0 && !selectedValue ? (
             <div
               className={cn(
                 theme.emptyState,
@@ -318,6 +344,11 @@ export function BookingCustomerDateTimePicker({
               )}
             >
               <p>{hint ?? emptyMessage}</p>
+              {startTimeRightActions ? (
+                <div className="mt-3 flex justify-end">
+                  {startTimeRightActions}
+                </div>
+              ) : null}
             </div>
           ) : (
             <div>
