@@ -12,7 +12,7 @@ import {
 } from "@/features/admin/lib/revenue-report";
 import {
   isOtherStaffBooking,
-  OTHER_STAFF_SENTINEL,
+  parseOtherStaffName,
 } from "@/features/booking/lib/booking-other-staff";
 import {
   createServiceSupabase,
@@ -37,10 +37,14 @@ function mapRow(row: {
     : row.staff?.name;
 
   if (isOtherStaffBooking(row.notes)) {
+    const otherName =
+      parseOtherStaffName(row.notes) ?? staffName?.trim() ?? null;
     return {
       id: row.id,
-      staffId: OTHER_STAFF_SENTINEL,
-      staffName: "Other Staff",
+      staffId: row.staff_id,
+      staffName: otherName
+        ? `Other Staff · ${otherName}`
+        : "Other Staff",
       startsAt: row.starts_at,
       priceCents: row.price_cents,
       status: row.status,
