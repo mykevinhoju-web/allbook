@@ -259,6 +259,12 @@ export function StaffGuideTimeline({
       .filter((member) => member.status === "active")
       .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
 
+    const bookedTodayIds = new Set(
+      bookings
+        .filter((booking) => booking.status !== "cancelled")
+        .map((booking) => booking.staffId),
+    );
+
     const working = active.filter((member) =>
       isStaffWorkingOnDate(
         member.status,
@@ -269,8 +275,16 @@ export function StaffGuideTimeline({
       ),
     );
 
-    return working.length > 0 ? working : active;
-  }, [staff, date, timeZone]);
+    const base = working.length > 0 ? working : active;
+    const baseIds = new Set(base.map((member) => member.id));
+
+    // Room joins can add bookings for staff not marked working today — still show their row.
+    const joinedOnly = active.filter(
+      (member) => bookedTodayIds.has(member.id) && !baseIds.has(member.id),
+    );
+
+    return [...base, ...joinedOnly];
+  }, [staff, date, timeZone, bookings]);
 
   const bookingsByStaff = useMemo(() => {
     const map = new Map<string, AdminBooking[]>();

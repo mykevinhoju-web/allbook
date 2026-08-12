@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/types/database";
 
-/** Max staff assigned to one booking (primary + one join). */
+/** Max staff rows on booking_staffs for one booking record (primary only; joins use separate bookings). */
 export const MAX_BOOKING_STAFF = 2;
 
 export async function ensurePrimaryBookingStaff(

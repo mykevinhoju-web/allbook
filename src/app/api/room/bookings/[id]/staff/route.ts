@@ -7,6 +7,10 @@ import {
   withPaymentMethodNote,
 } from "@/features/booking/lib/internal-payment-method";
 import {
+  pairBookingNote,
+  parsePairBookingId,
+} from "@/features/booking/lib/booking-pair";
+import {
   findRoomActiveService,
   hasRoomBookingConflict,
   hasStaffBookingConflict,
@@ -31,13 +35,7 @@ import {
 const PAIR_PREFIX = "[pair:";
 
 function pairNote(primaryBookingId: string): string {
-  return `${PAIR_PREFIX}${primaryBookingId}]`;
-}
-
-function parsePairBookingId(notes?: string | null): string | null {
-  if (!notes) return null;
-  const match = notes.match(/\[pair:([0-9a-f-]{36})\]/i);
-  return match?.[1] ?? null;
+  return pairBookingNote(primaryBookingId);
 }
 
 /**
@@ -193,16 +191,25 @@ export async function POST(
 
     const { data: pairRows } = await supabase
       .from("bookings")
-      .select("id, notes")
+      .select("id, notes, staff_id")
       .eq("tenant_id", tenant.id)
       .neq("status", "cancelled")
       .like("notes", `%${PAIR_PREFIX}${primaryBookingId}]%`);
 
+    const existingCompanions = (pairRows ?? []).filter(
+      (row) => parsePairBookingId(row.notes) === primaryBookingId,
+    );
+
+    if (existingCompanions.some((row) => row.staff_id === joinStaffId)) {
+      return NextResponse.json(
+        { error: "That staff is already in this visit." },
+        { status: 400 },
+      );
+    }
+
     const pairExcludeIds = [
       primaryBookingId,
-      ...((pairRows ?? [])
-        .filter((row) => parsePairBookingId(row.notes) === primaryBookingId)
-        .map((row) => row.id)),
+      ...existingCompanions.map((row) => row.id),
     ];
 
     // Same visit may share the room; block any unrelated in-progress service.

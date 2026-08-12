@@ -11,6 +11,7 @@ import {
   isBookingCheckedIn,
 } from "@/features/booking/lib/booking-check-in";
 import { getAvailableExtendMinutes } from "@/features/booking/lib/booking-extend";
+import { parsePairBookingId } from "@/features/booking/lib/booking-pair";
 import {
   playServiceEndAlarm,
   unlockBookingAudio,
@@ -180,12 +181,6 @@ function staffBookingsTodayTitle(name: string): string {
   return `${possessive} bookings today`;
 }
 
-function parsePairBookingId(notes?: string | null): string | null {
-  if (!notes) return null;
-  const match = notes.match(/\[pair:([0-9a-f-]{36})\]/i);
-  return match?.[1] ?? null;
-}
-
 export function RoomHomeContent() {
   const router = useRouter();
   const tenant = useTenant();
@@ -286,7 +281,12 @@ export function RoomHomeContent() {
     };
     if (!response.ok) return null;
     const primary = data.primary ?? null;
-    const nextCompanions = data.companions ?? [];
+    const seen = new Set<string>();
+    const nextCompanions = (data.companions ?? []).filter((row) => {
+      if (seen.has(row.id)) return false;
+      seen.add(row.id);
+      return true;
+    });
     setVisitPrimary(primary);
     setCompanions(nextCompanions);
     if (primary) {
@@ -563,7 +563,7 @@ export function RoomHomeContent() {
   const createCompanionBooking = async () => {
     if (!activeBooking || !isVisitPrimaryViewer) return;
     if (joinPin.length !== 4) {
-      toast.error("Enter the second staff PIN");
+      toast.error("Enter the staff PIN");
       return;
     }
     if (!joinDuration) {
@@ -1054,7 +1054,7 @@ export function RoomHomeContent() {
                     <div className="space-y-4 rounded-2xl border border-border bg-card p-4">
                       <div className="flex items-center justify-between gap-3">
                         <p className="text-sm font-semibold text-foreground">
-                          Second staff booking
+                          Join staff booking
                         </p>
                         <button
                           type="button"
@@ -1170,7 +1170,7 @@ export function RoomHomeContent() {
                         }
                         onClick={() => void createCompanionBooking()}
                       >
-                        {joinLoading ? "Creating..." : "Create second booking"}
+                        {joinLoading ? "Creating..." : "Create booking"}
                       </AppButton>
                     </div>
                   ) : (
@@ -1184,7 +1184,7 @@ export function RoomHomeContent() {
                         setJoinPayment("");
                       }}
                     >
-                      Add second staff
+                      Add staff
                     </AppButton>
                   )}
                 </div>
@@ -1332,13 +1332,13 @@ export function RoomHomeContent() {
             ) : (
               <div className="rounded-3xl border border-dashed border-border bg-muted/40 px-5 py-5 md:px-6">
                 <p className="text-base font-semibold text-foreground md:text-lg">
-                  Start service to add a second staff
+                  Start service to add staff
                 </p>
                 <p className="mt-2 text-sm text-muted-foreground md:text-base">
                   Tap <span className="font-semibold text-foreground">Enter</span>{" "}
-                  on your booking. After check-in, create a second booking with
-                  another staff PIN, service length, and cash/card — guest
-                  details are copied automatically.
+                  on your booking. After check-in, add more staff with their
+                  PIN, service length, and cash/card — guest details are copied
+                  automatically.
                 </p>
               </div>
             )}
