@@ -9,6 +9,10 @@ import {
 } from "@/features/admin/lib/dashboard-stats";
 import { todayDateInZone } from "@/features/admin/lib/revenue-report";
 import {
+  isOtherStaffBooking,
+  OTHER_STAFF_SENTINEL,
+} from "@/features/booking/lib/booking-other-staff";
+import {
   createServiceSupabase,
 } from "@/lib/admin/tenant-context";
 import {
@@ -22,11 +26,22 @@ function mapBooking(row: {
   staff_id: string;
   starts_at: string;
   price_cents: number;
+  notes: string | null;
   staff?: { name: string } | { name: string }[] | null;
 }): DashboardBookingRow {
   const staffName = Array.isArray(row.staff)
     ? row.staff[0]?.name
     : row.staff?.name;
+
+  if (isOtherStaffBooking(row.notes)) {
+    return {
+      id: row.id,
+      staffId: OTHER_STAFF_SENTINEL,
+      staffName: "Other Staff",
+      startsAt: row.starts_at,
+      priceCents: row.price_cents,
+    };
+  }
 
   return {
     id: row.id,
@@ -55,7 +70,7 @@ export async function GET(request: Request) {
     const [bookingsResult, staffResult] = await Promise.all([
       supabase
         .from("bookings")
-        .select("id, staff_id, starts_at, price_cents, staff(name)")
+        .select("id, staff_id, starts_at, price_cents, notes, staff(name)")
         .eq("tenant_id", tenant.id)
         .neq("status", "cancelled")
         .gte("starts_at", rangeStart)

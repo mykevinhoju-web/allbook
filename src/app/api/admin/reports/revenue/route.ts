@@ -11,6 +11,10 @@ import {
   type RevenueBookingRow,
 } from "@/features/admin/lib/revenue-report";
 import {
+  isOtherStaffBooking,
+  OTHER_STAFF_SENTINEL,
+} from "@/features/booking/lib/booking-other-staff";
+import {
   createServiceSupabase,
 } from "@/lib/admin/tenant-context";
 import {
@@ -25,11 +29,24 @@ function mapRow(row: {
   price_cents: number;
   status: string;
   customer_name: string | null;
+  notes: string | null;
   staff?: { name: string } | { name: string }[] | null;
 }): RevenueBookingRow {
   const staffName = Array.isArray(row.staff)
     ? row.staff[0]?.name
     : row.staff?.name;
+
+  if (isOtherStaffBooking(row.notes)) {
+    return {
+      id: row.id,
+      staffId: OTHER_STAFF_SENTINEL,
+      staffName: "Other Staff",
+      startsAt: row.starts_at,
+      priceCents: row.price_cents,
+      status: row.status,
+      customerName: row.customer_name,
+    };
+  }
 
   return {
     id: row.id,
@@ -83,7 +100,7 @@ export async function GET(request: Request) {
     let query = supabase
       .from("bookings")
       .select(
-        "id, staff_id, starts_at, price_cents, status, customer_name, staff(name)",
+        "id, staff_id, starts_at, price_cents, status, customer_name, notes, staff(name)",
       )
       .eq("tenant_id", tenant.id)
       .neq("status", "cancelled")
