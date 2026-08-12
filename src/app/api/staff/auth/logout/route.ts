@@ -5,6 +5,7 @@ import { createServiceSupabase } from "@/lib/supabase/service";
 import { markStaffSessionOffline } from "@/features/staff/lib/staff-presence";
 import {
   getStaffSessionCookieName,
+  getStaffSessionCookieOptions,
   verifyStaffSession,
 } from "@/lib/staff-session";
 import { readCookieFromRequest } from "@/lib/cookies/read-request-cookie";
@@ -24,7 +25,11 @@ export async function POST(request: Request) {
     }
 
     const response = NextResponse.json({ ok: true });
-    response.cookies.delete(getStaffSessionCookieName());
+    const options = {
+      ...getStaffSessionCookieOptions(request.headers.get("host")),
+      maxAge: 0,
+    };
+    response.cookies.set(getStaffSessionCookieName(), "", options);
     return response;
   } catch (error) {
     if (error instanceof TenantContextError) {

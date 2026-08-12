@@ -16,7 +16,10 @@ import {
 import {
   ADMIN_SESSION_COOKIE,
   STAFF_SESSION_COOKIE,
+  getSessionCookieOptions,
 } from "@/lib/app-session";
+import { verifyAdminSession } from "@/lib/admin-session";
+import { verifyStaffSession } from "@/lib/staff-session";
 import { resolvePlatformAdminAccess } from "@/features/platform/server/platform-admin-middleware";
 import {
   isMarketplacePreviewProtectedPath,
@@ -68,6 +71,68 @@ async function applyTenantCookie(
     if (isPlatformApexPublicPath(path)) {
       response.cookies.delete(TENANT_SLUG_COOKIE);
     }
+  }
+}
+
+/**
+ * Cookie presence alone is not enough — expired / wrong-tenant / bad-signature
+ * cookies must not count as logged-in (that caused /admin ↔ /admin/login loops).
+ */
+async function resolveAppSessions(
+  request: NextRequest,
+  tenantSlug: string | null,
+) {
+  const adminRaw = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+  const staffRaw = request.cookies.get(STAFF_SESSION_COOKIE)?.value;
+
+  let adminOk = false;
+  let staffOk = false;
+  let clearAdmin = false;
+  let clearStaff = false;
+
+  if (adminRaw) {
+    const admin = await verifyAdminSession(adminRaw);
+    if (admin && (!tenantSlug || admin.tenantSlug === tenantSlug)) {
+      adminOk = true;
+    } else {
+      clearAdmin = true;
+    }
+  }
+
+  if (staffRaw) {
+    const staff = await verifyStaffSession(staffRaw);
+    if (staff && (!tenantSlug || staff.tenantSlug === tenantSlug)) {
+      staffOk = true;
+    } else {
+      clearStaff = true;
+    }
+  }
+
+  return { adminOk, staffOk, clearAdmin, clearStaff };
+}
+
+function clearInvalidSessionCookies(
+  response: NextResponse,
+  host: string,
+  clearAdmin: boolean,
+  clearStaff: boolean,
+) {
+  if (!clearAdmin && !clearStaff) return;
+  const options = {
+    ...getSessionCookieOptions(host),
+    maxAge: 0,
+  };
+  if (clearAdmin) {
+    response.cookies.set(ADMIN_SESSION_COOKIE, "", options);
+  }
+  if (clearStaff) {
+    response.cookies.set(STAFF_SESSION_COOKIE, "", options);
+  }
+}
+
+function copyCookies(from: NextResponse, to: NextResponse) {
+  for (const cookie of from.cookies.getAll()) {
+    to.cookies.set(cookie);
   }
 }
 
@@ -147,18 +212,37 @@ export async function middleware(request: NextRequest) {
 
   await applyTenantCookie(response, request, tenantSlug, host);
 
-  const adminToken = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
-  const staffToken = request.cookies.get(STAFF_SESSION_COOKIE)?.value;
-  const isAuthed = Boolean(adminToken || staffToken);
+  const needsAppAuthCheck =
+    effectivePathname.startsWith("/admin") ||
+    effectivePathname.startsWith("/staff");
+
+  let adminOk = false;
+  let staffOk = false;
+
+  if (needsAppAuthCheck) {
+    const sessions = await resolveAppSessions(request, tenantSlug);
+    adminOk = sessions.adminOk;
+    staffOk = sessions.staffOk;
+    clearInvalidSessionCookies(
+      response,
+      host,
+      sessions.clearAdmin,
+      sessions.clearStaff,
+    );
+  }
+
+  const isAuthed = adminOk || staffOk;
 
   if (
     effectivePathname === "/admin/login" ||
     effectivePathname === "/staff/login"
   ) {
     if (isAuthed) {
-      const target = staffToken && !adminToken ? "/staff" : "/admin";
+      const target = staffOk && !adminOk ? "/staff" : "/admin";
       const dest = tenantSlug && platform ? `/${tenantSlug}${target}` : target;
-      return NextResponse.redirect(new URL(dest, request.url));
+      const redirect = NextResponse.redirect(new URL(dest, request.url));
+      copyCookies(response, redirect);
+      return redirect;
     }
     return response;
   }
@@ -167,12 +251,14 @@ export async function middleware(request: NextRequest) {
     effectivePathname.startsWith("/staff") &&
     effectivePathname !== "/staff/login"
   ) {
-    if (!staffToken) {
+    if (!staffOk) {
       const login =
         tenantSlug && platform
           ? `/${tenantSlug}/staff/login`
           : "/staff/login";
-      return NextResponse.redirect(new URL(login, request.url));
+      const redirect = NextResponse.redirect(new URL(login, request.url));
+      copyCookies(response, redirect);
+      return redirect;
     }
     return response;
   }
@@ -180,7 +266,9 @@ export async function middleware(request: NextRequest) {
   if (effectivePathname.startsWith("/admin") && !isAuthed) {
     const login =
       tenantSlug && platform ? `/${tenantSlug}/admin/login` : "/admin/login";
-    return NextResponse.redirect(new URL(login, request.url));
+    const redirect = NextResponse.redirect(new URL(login, request.url));
+    copyCookies(response, redirect);
+    return redirect;
   }
 
   // /platform/salon/* — authenticated salon owners (layout enforces ownership).

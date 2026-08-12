@@ -35,6 +35,13 @@ export function AdminLayoutGate({ children }: AdminLayoutGateProps) {
       if (cancelled) return;
 
       if (!data.user) {
+        // Drop stale cookies so middleware does not bounce login → /admin.
+        await fetch("/api/admin/auth/logout", { method: "POST" }).catch(
+          () => {},
+        );
+        await fetch("/api/staff/auth/logout", { method: "POST" }).catch(
+          () => {},
+        );
         router.replace("/admin/login");
         return;
       }
