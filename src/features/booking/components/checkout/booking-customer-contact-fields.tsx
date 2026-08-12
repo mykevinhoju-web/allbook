@@ -34,6 +34,10 @@ type BookingCustomerContactFieldsProps = {
   labelClass: string;
   helperTextClass?: string;
   onFieldChange?: () => void;
+  /** Internal booking: phone before name for returning-guest lookup. */
+  phoneFirst?: boolean;
+  phoneHint?: string | null;
+  phoneLookingUp?: boolean;
 };
 
 export function BookingCustomerContactFields({
@@ -43,101 +47,133 @@ export function BookingCustomerContactFields({
   labelClass,
   helperTextClass,
   onFieldChange,
+  phoneFirst = false,
+  phoneHint = null,
+  phoneLookingUp = false,
 }: BookingCustomerContactFieldsProps) {
   const patch = (partial: Partial<BookingCustomerContactValues>) => {
     onChange({ ...values, ...partial });
     onFieldChange?.();
   };
 
+  const nameFields = (
+    <div className="space-y-1">
+      <label className={labelClass}>Name</label>
+      <div className="grid grid-cols-2 gap-2">
+        <Input
+          value={values.firstName}
+          onChange={(event) => patch({ firstName: event.target.value })}
+          className={fieldClass}
+          placeholder="First name"
+          autoCapitalize="words"
+          autoComplete="given-name"
+          aria-label="First name"
+        />
+        <Input
+          value={values.secondName}
+          onChange={(event) =>
+            patch({
+              secondName: formatCustomerSecondNameInput(event.target.value),
+            })
+          }
+          className={fieldClass}
+          placeholder="Lastname"
+          autoCapitalize="characters"
+          autoComplete="family-name"
+          aria-label="Lastname (one letter)"
+          maxLength={1}
+        />
+      </div>
+      {helperTextClass ? (
+        <p className={cn(helperTextClass, "mt-1 px-0.5")}>
+          Lastname initial — one letter only (e.g. Lee → L)
+        </p>
+      ) : null}
+    </div>
+  );
+
+  const phoneField = (
+    <div>
+      <label className={labelClass}>Phone</label>
+      <Input
+        value={values.phone}
+        onChange={(event) =>
+          patch({ phone: formatAuMobileInput(event.target.value) })
+        }
+        onBlur={() => {
+          patch({
+            phone: formatAuMobileInput(values.phone || AU_MOBILE_PREFIX),
+          });
+        }}
+        className={fieldClass}
+        placeholder="04XX XXX XXX"
+        inputMode="tel"
+        autoComplete="tel-national"
+        maxLength={12}
+        aria-label="Australian mobile number"
+      />
+      {phoneLookingUp ? (
+        <p className={cn(helperTextClass ?? "text-xs text-stone-500", "mt-1 px-0.5")}>
+          Looking up returning guest…
+        </p>
+      ) : phoneHint ? (
+        <p className={cn(helperTextClass ?? "text-xs text-stone-500", "mt-1 px-0.5")}>
+          {phoneHint}
+        </p>
+      ) : helperTextClass ? (
+        <p className={cn(helperTextClass, "mt-1 px-0.5")}>
+          Australian mobile — starts with 04
+          {phoneFirst ? ". Returning guests autofill name & postcode." : ""}
+        </p>
+      ) : null}
+    </div>
+  );
+
+  const postcodeField = (
+    <div>
+      <label className={labelClass}>Postcode</label>
+      <Input
+        value={values.postcode}
+        onChange={(event) =>
+          patch({ postcode: formatAuPostcodeInput(event.target.value) })
+        }
+        onBlur={() => {
+          patch({
+            postcode: formatAuPostcodeInput(
+              values.postcode || AU_POSTCODE_PREFIX,
+            ),
+          });
+        }}
+        className={fieldClass}
+        placeholder="4XXX"
+        inputMode="numeric"
+        autoComplete="postal-code"
+        maxLength={4}
+        aria-label="Queensland postcode"
+      />
+      {helperTextClass ? (
+        <p className={cn(helperTextClass, "mt-1 px-0.5")}>
+          Queensland postcode — starts with 4
+        </p>
+      ) : null}
+    </div>
+  );
+
+  if (phoneFirst) {
+    return (
+      <>
+        {phoneField}
+        {nameFields}
+        {postcodeField}
+      </>
+    );
+  }
+
   return (
     <>
-      <div className="space-y-1">
-        <label className={labelClass}>Name</label>
-        <div className="grid grid-cols-2 gap-2">
-          <Input
-            value={values.firstName}
-            onChange={(event) => patch({ firstName: event.target.value })}
-            className={fieldClass}
-            placeholder="First name"
-            autoCapitalize="words"
-            autoComplete="given-name"
-            aria-label="First name"
-          />
-          <Input
-            value={values.secondName}
-            onChange={(event) =>
-              patch({
-                secondName: formatCustomerSecondNameInput(event.target.value),
-              })
-            }
-            className={fieldClass}
-            placeholder="Lastname"
-            autoCapitalize="characters"
-            autoComplete="family-name"
-            aria-label="Lastname (one letter)"
-            maxLength={1}
-          />
-        </div>
-        {helperTextClass ? (
-          <p className={cn(helperTextClass, "mt-1 px-0.5")}>
-            Lastname initial — one letter only (e.g. Lee → L)
-          </p>
-        ) : null}
-      </div>
-
-      <div>
-        <label className={labelClass}>Phone</label>
-        <Input
-          value={values.phone}
-          onChange={(event) =>
-            patch({ phone: formatAuMobileInput(event.target.value) })
-          }
-          onBlur={() => {
-            patch({
-              phone: formatAuMobileInput(values.phone || AU_MOBILE_PREFIX),
-            });
-          }}
-          className={fieldClass}
-          placeholder="04XX XXX XXX"
-          inputMode="tel"
-          autoComplete="tel-national"
-          maxLength={12}
-          aria-label="Australian mobile number"
-        />
-        {helperTextClass ? (
-          <p className={cn(helperTextClass, "mt-1 px-0.5")}>
-            Australian mobile — starts with 04
-          </p>
-        ) : null}
-      </div>
-
-      <div>
-        <label className={labelClass}>Postcode</label>
-        <Input
-          value={values.postcode}
-          onChange={(event) =>
-            patch({ postcode: formatAuPostcodeInput(event.target.value) })
-          }
-          onBlur={() => {
-            patch({
-              postcode: formatAuPostcodeInput(
-                values.postcode || AU_POSTCODE_PREFIX,
-              ),
-            });
-          }}
-          className={fieldClass}
-          placeholder="4XXX"
-          inputMode="numeric"
-          autoComplete="postal-code"
-          maxLength={4}
-          aria-label="Queensland postcode"
-        />
-        {helperTextClass ? (
-          <p className={cn(helperTextClass, "mt-1 px-0.5")}>
-            Queensland postcode — starts with 4
-          </p>
-        ) : null}
-      </div>
+      {nameFields}
+      {phoneField}
+      {postcodeField}
     </>
   );
 }

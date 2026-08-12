@@ -24,7 +24,12 @@ import type { InternalPaymentMethod } from "@/features/booking/lib/internal-paym
 import {
   AU_MOBILE_PREFIX,
   AU_POSTCODE_PREFIX,
+  formatAuMobileInput,
+  formatAuPostcodeInput,
+  isValidAuMobile,
+  normalizeAuMobile,
 } from "@/features/booking/lib/au-contact";
+import { fetchAdminApi } from "@/features/admin/lib/admin-api-client";
 
 import { bookingCustomerTheme as theme } from "../../lib/booking-customer-theme";
 import {
@@ -271,6 +276,11 @@ export function BookingFormSheet({
   submitting = false,
 }: BookingFormSheetProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const valuesRef = useRef(values);
+  const lastLookupPhoneRef = useRef<string>("");
+  const [phoneLookingUp, setPhoneLookingUp] = useState(false);
+  const [phoneHint, setPhoneHint] = useState<string | null>(null);
+  valuesRef.current = values;
 
   useEffect(() => {
     if (!open) return;
@@ -280,6 +290,88 @@ export function BookingFormSheet({
     });
     return () => window.cancelAnimationFrame(id);
   }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      lastLookupPhoneRef.current = "";
+      setPhoneHint(null);
+      setPhoneLookingUp(false);
+    }
+  }, [open]);
+
+  // Returning guest: lookup by phone and autofill name / postcode / email.
+  useEffect(() => {
+    if (!open) return;
+    const phone = values.customerPhone;
+    if (!isValidAuMobile(phone)) {
+      setPhoneHint(null);
+      setPhoneLookingUp(false);
+      return;
+    }
+
+    const normalized = normalizeAuMobile(phone);
+    if (lastLookupPhoneRef.current === normalized) return;
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      setPhoneLookingUp(true);
+      void (async () => {
+        try {
+          const response = await fetchAdminApi(
+            `/api/admin/customers/lookup?phone=${encodeURIComponent(normalized)}`,
+          );
+          const data = (await response.json()) as {
+            customer?: {
+              firstName: string;
+              secondName: string;
+              email: string | null;
+              postcode: string | null;
+              name: string | null;
+            } | null;
+          };
+
+          if (cancelled) return;
+          lastLookupPhoneRef.current = normalized;
+
+          if (!response.ok || !data.customer) {
+            setPhoneHint(null);
+            return;
+          }
+
+          const guest = data.customer;
+          const current = valuesRef.current;
+          // Skip if the user already moved on to a different phone.
+          if (normalizeAuMobile(current.customerPhone) !== normalized) return;
+
+          onChange({
+            ...current,
+            customerPhone: formatAuMobileInput(normalized),
+            customerFirstName: guest.firstName || current.customerFirstName,
+            customerLastName: guest.secondName || current.customerLastName,
+            customerPostcode: guest.postcode
+              ? formatAuPostcodeInput(guest.postcode)
+              : current.customerPostcode,
+            customerEmail: guest.email || current.customerEmail,
+          });
+          setPhoneHint(
+            guest.name
+              ? `Returning guest — filled from ${guest.name}`
+              : "Returning guest — details filled",
+          );
+        } catch {
+          if (!cancelled) setPhoneHint(null);
+        } finally {
+          if (!cancelled) setPhoneLookingUp(false);
+        }
+      })();
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- lookup only when phone/open changes
+  }, [open, values.customerPhone]);
 
   // Drop a staff selection that is no longer in the options (e.g. shift ended).
   useEffect(() => {
@@ -622,21 +714,31 @@ export function BookingFormSheet({
 
             <div className={cn(theme.panel, "space-y-4")}>
               <BookingCustomerContactFields
+                phoneFirst
+                phoneLookingUp={phoneLookingUp}
+                phoneHint={phoneHint}
                 values={{
                   firstName: values.customerFirstName,
                   secondName: values.customerLastName,
                   phone: values.customerPhone,
                   postcode: values.customerPostcode,
                 }}
-                onChange={(next) =>
+                onChange={(next) => {
+                  const phoneChanged =
+                    normalizeAuMobile(next.phone) !==
+                    normalizeAuMobile(values.customerPhone);
+                  if (phoneChanged) {
+                    lastLookupPhoneRef.current = "";
+                    setPhoneHint(null);
+                  }
                   onChange({
                     ...values,
                     customerFirstName: next.firstName,
                     customerLastName: next.secondName,
                     customerPhone: next.phone,
                     customerPostcode: next.postcode,
-                  })
-                }
+                  });
+                }}
                 fieldClass={theme.field}
                 labelClass={theme.label}
                 helperTextClass="text-xs text-stone-500"

@@ -22,3 +22,30 @@ export function isValidCustomerBookingNameParts(
   const second = formatCustomerSecondNameInput(secondName);
   return first.length >= 1 && second.length === 1;
 }
+
+/** Split stored "First L" booking name back into form parts. */
+export function parseCustomerBookingName(fullName: string | null | undefined): {
+  firstName: string;
+  secondName: string;
+} {
+  const trimmed = fullName?.trim().replace(/\s+/g, " ") ?? "";
+  if (!trimmed) return { firstName: "", secondName: "" };
+
+  const parts = trimmed.split(" ");
+  if (parts.length === 1) {
+    return { firstName: parts[0]!, secondName: "" };
+  }
+
+  const last = parts[parts.length - 1]!;
+  if (last.length === 1 && /[A-Za-z]/.test(last)) {
+    return {
+      firstName: parts.slice(0, -1).join(" "),
+      secondName: last.toUpperCase(),
+    };
+  }
+
+  return {
+    firstName: parts.slice(0, -1).join(" "),
+    secondName: formatCustomerSecondNameInput(last),
+  };
+}
