@@ -216,6 +216,8 @@ export async function POST(request: Request) {
       status?: BookingStatus;
       roomId?: string | null;
       paymentMethod?: string;
+      /** When true, bypass the 5-minute-step constraint (used by internal "Now" button). */
+      allowImmediateStart?: boolean;
     };
 
     if (!body.staffId || !body.startsAt || !body.durationMinutes) {
@@ -281,7 +283,10 @@ export async function POST(request: Request) {
 
     const startsAt = new Date(body.startsAt);
 
-    if (!isStartTimeOnFiveMinuteSlot(startsAt.toISOString())) {
+    if (
+      !body.allowImmediateStart &&
+      !isStartTimeOnFiveMinuteSlot(startsAt.toISOString())
+    ) {
       return NextResponse.json(
         { error: "Start time must be on a 5-minute step (e.g. 10:00, 10:05)." },
         { status: 400 },

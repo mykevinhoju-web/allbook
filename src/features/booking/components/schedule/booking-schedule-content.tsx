@@ -352,6 +352,7 @@ export function BookingScheduleContent() {
           customerPostcode: formatAuPostcodeInput(form.customerPostcode),
           customerEmail: form.customerEmail.trim() || undefined,
           paymentMethod: form.paymentMethod,
+          allowImmediateStart: form.allowImmediateStart,
         }),
       });
 

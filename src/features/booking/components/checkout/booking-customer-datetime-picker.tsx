@@ -321,10 +321,9 @@ export function BookingCustomerDateTimePicker({
             </div>
           ) : (
             <div>
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <p className="text-xs font-medium text-stone-500">Start time</p>
-                {startTimeRightActions}
-              </div>
+              <p className="mb-2 text-xs font-medium text-stone-500">
+                Start time
+              </p>
               <div className="flex items-center gap-2">
                 <FieldSelect
                   aria-label="AM or PM"
@@ -373,6 +372,7 @@ export function BookingCustomerDateTimePicker({
                     </option>
                   ))}
                 </FieldSelect>
+                {startTimeRightActions}
               </div>
               <p className="mt-2 text-xs text-stone-500">
                 Shown as PM 4 : 35 — hour change selects the first open minute.

@@ -38,6 +38,8 @@ import {
   buildStartsAtIso,
   formatAmPmTime,
   isIsoDateTime,
+  datetimeLocalToIso,
+  toDatetimeLocalValue,
   todayDateInZone,
 } from "../../lib/schedule-utils";
 import { BookingCustomerDateTimePicker } from "../checkout/booking-customer-datetime-picker";
@@ -57,6 +59,8 @@ export interface BookingFormValues {
   customerPostcode: string;
   customerEmail: string;
   paymentMethod: InternalPaymentMethod | "";
+  /** Special admin-only action: allow starting immediately (not 5-min step). */
+  allowImmediateStart: boolean;
 }
 
 export const defaultBookingFormValues: BookingFormValues = {
@@ -70,6 +74,7 @@ export const defaultBookingFormValues: BookingFormValues = {
   customerPostcode: AU_POSTCODE_PREFIX,
   customerEmail: "",
   paymentMethod: "",
+  allowImmediateStart: false,
 };
 
 export interface BookingTimeSlotOption {
@@ -269,7 +274,12 @@ export function BookingFormSheet({
   useEffect(() => {
     if (!open || !values.staffId) return;
     if (staffOptions.some((member) => member.id === values.staffId)) return;
-    onChange({ ...values, staffId: "", startsAt: "" });
+    onChange({
+      ...values,
+      staffId: "",
+      startsAt: "",
+      allowImmediateStart: false,
+    });
     // Only re-run when the selected id or option list changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- avoid loop on values object identity
   }, [open, staffOptions, values.staffId]);
@@ -335,25 +345,15 @@ export function BookingFormSheet({
   const nowDisabled =
     !values.staffId ||
     !values.durationMinutes ||
-    timeSlotsLoading ||
-    isPastDate ||
-    slotOptions.length === 0;
+    isPastDate;
 
   const chooseNowSlot = () => {
     if (nowDisabled) return;
 
-    const nowMs = Date.now();
-    const withIso = [...slotOptions]
-      .map((slot) => {
-        const iso = isIsoDateTime(slot.value)
-          ? slot.value
-          : buildStartsAtIso(date, slot.value);
-        return { slot, iso, isoMs: new Date(iso).getTime() };
-      })
-      .sort((a, b) => a.isoMs - b.isoMs);
-
-    const next = withIso.find((row) => row.isoMs >= nowMs) ?? withIso[0];
-    update("startsAt", next.iso);
+    const nowLocal = toDatetimeLocalValue(new Date(), timeZone);
+    const nowIso = datetimeLocalToIso(nowLocal, timeZone);
+    update("startsAt", nowIso);
+    update("allowImmediateStart", true);
   };
 
   const selectedRoomName = values.roomId
@@ -407,6 +407,7 @@ export function BookingFormSheet({
                           ...values,
                           staffId,
                           startsAt: "",
+                          allowImmediateStart: false,
                         })
                       }
                     />
@@ -432,6 +433,7 @@ export function BookingFormSheet({
                             ...values,
                             durationMinutes: value,
                             startsAt: "",
+                            allowImmediateStart: false,
                           })
                         }
                         className={cn(
@@ -459,7 +461,7 @@ export function BookingFormSheet({
               date={date}
               onDateChange={(nextDate) => {
                 onDateChange?.(nextDate);
-                onChange({ ...values, startsAt: "" });
+                onChange({ ...values, startsAt: "", allowImmediateStart: false });
               }}
               timeZone={timeZone}
               durationMinutes={durationMinutes || 30}
@@ -477,7 +479,7 @@ export function BookingFormSheet({
                   disabled={nowDisabled}
                   onClick={chooseNowSlot}
                   className={cn(
-                    "h-9 shrink-0 rounded-xl border px-3 text-xs font-semibold transition",
+                    "h-[3.25rem] shrink-0 rounded-xl border px-3 text-xs font-semibold transition",
                     nowDisabled
                       ? "border-stone-200 bg-white text-stone-400 opacity-70"
                       : "border-[#8A6A3A] bg-[#8A6A3A]/10 text-stone-900 ring-1 ring-[#8A6A3A]/15 hover:brightness-[0.98]",
@@ -497,6 +499,7 @@ export function BookingFormSheet({
                       ...values,
                       roomId: event.target.value,
                       startsAt: "",
+                      allowImmediateStart: false,
                     })
                   }
                   className={theme.field}
