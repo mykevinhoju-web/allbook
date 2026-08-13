@@ -1,52 +1,21 @@
-import { compare, hash } from "bcryptjs";
+import { hash } from "bcryptjs";
 import { NextResponse } from "next/server";
 
 import {
   requireTenantFromRequest,
   TenantContextError,
 } from "@/lib/admin/tenant-context";
+import { verifyAdminPassword } from "@/lib/admin/verify-admin-password";
+import {
+  getAdminReportsUnlockCookieName,
+  getAdminReportsUnlockCookieOptions,
+} from "@/lib/admin-reports-unlock";
 import {
   getAdminSessionCookieName,
   getAdminSessionCookieOptions,
   signAdminSession,
 } from "@/lib/admin-session";
 import { createServiceSupabase } from "@/lib/supabase/service";
-
-async function verifyAdminPassword(
-  tenantId: string,
-  loginId: string,
-  password: string,
-): Promise<{ adminId: string; loginId: string } | null> {
-  const supabase = createServiceSupabase();
-
-  const { data: account } = await supabase
-    .from("admin_accounts")
-    .select("id, login_id, password_hash")
-    .eq("tenant_id", tenantId)
-    .eq("login_id", loginId)
-    .maybeSingle();
-
-  if (account) {
-    const ok = await compare(password, account.password_hash);
-    if (ok) {
-      return { adminId: account.id, loginId: account.login_id };
-    }
-    return null;
-  }
-
-  const envLoginId = process.env.ADMIN_LOGIN_ID?.trim();
-  const envPassword = process.env.ADMIN_PASSWORD;
-  if (
-    envLoginId &&
-    envPassword &&
-    loginId === envLoginId &&
-    password === envPassword
-  ) {
-    return { adminId: "env-admin", loginId: envLoginId };
-  }
-
-  return null;
-}
 
 export async function POST(request: Request) {
   try {
@@ -79,11 +48,16 @@ export async function POST(request: Request) {
     });
 
     const response = NextResponse.json({ ok: true });
+    const host = request.headers.get("host");
     response.cookies.set(
       getAdminSessionCookieName(),
       token,
-      getAdminSessionCookieOptions(request.headers.get("host")),
+      getAdminSessionCookieOptions(host),
     );
+    response.cookies.set(getAdminReportsUnlockCookieName(), "", {
+      ...getAdminReportsUnlockCookieOptions(host),
+      maxAge: 0,
+    });
     return response;
   } catch (error) {
     if (error instanceof TenantContextError) {

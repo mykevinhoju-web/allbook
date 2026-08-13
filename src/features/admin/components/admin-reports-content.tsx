@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarRange, ChevronDown, Loader2, Users } from "lucide-react";
+import { CalendarRange, ChevronDown, Loader2, Lock, Users } from "lucide-react";
 
 import { AppButton, toast } from "@/components/common";
 import { Input } from "@/components/ui/input";
@@ -221,6 +221,9 @@ export function AdminReportsContent() {
   const [staffOptions, setStaffOptions] = useState<StaffOption[]>([]);
   const [report, setReport] = useState<RevenueResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [unlocked, setUnlocked] = useState<boolean | null>(null);
+  const [password, setPassword] = useState("");
+  const [unlocking, setUnlocking] = useState(false);
 
   useEffect(() => {
     setFrom(today);
@@ -228,6 +231,23 @@ export function AdminReportsContent() {
   }, [today]);
 
   useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch("/api/admin/reports/unlock");
+        const data = (await response.json()) as { unlocked?: boolean };
+        if (!cancelled) setUnlocked(Boolean(response.ok && data.unlocked));
+      } catch {
+        if (!cancelled) setUnlocked(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!unlocked) return;
     void (async () => {
       try {
         const response = await fetchAdminApi("/api/admin/staff");
@@ -245,18 +265,27 @@ export function AdminReportsContent() {
         // Staff filter optional if list fails.
       }
     })();
-  }, []);
+  }, [unlocked]);
 
   const loadReport = useCallback(async () => {
+    if (!unlocked) return;
     setLoading(true);
     try {
       const params = new URLSearchParams({ from, to });
       if (staffId) params.set("staffId", staffId);
 
-      const response = await fetchAdminApi(
+      const response = await fetch(
         `/api/admin/reports/revenue?${params.toString()}`,
       );
-      const data = (await response.json()) as RevenueResponse;
+      const data = (await response.json()) as RevenueResponse & {
+        code?: string;
+      };
+
+      if (response.status === 403 && data.code === "REPORTS_LOCKED") {
+        setUnlocked(false);
+        setReport(null);
+        return;
+      }
 
       if (!response.ok) {
         if (response.status === 401) return;
@@ -276,11 +305,38 @@ export function AdminReportsContent() {
     } finally {
       setLoading(false);
     }
-  }, [from, to, staffId]);
+  }, [from, to, staffId, unlocked]);
 
   useEffect(() => {
     void loadReport();
   }, [loadReport]);
+
+  const unlockReports = async () => {
+    if (!password || unlocking) return;
+    setUnlocking(true);
+    try {
+      const response = await fetch("/api/admin/reports/unlock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        toast.error("Could not unlock reports", {
+          description: data.error ?? "Check the admin password.",
+        });
+        return;
+      }
+      setPassword("");
+      setUnlocked(true);
+    } catch {
+      toast.error("Could not unlock reports", {
+        description: "Network error. Try again.",
+      });
+    } finally {
+      setUnlocking(false);
+    }
+  };
 
   const currency = report?.currency ?? tenantCurrency;
   const applyPreset = (preset: "today" | "7d" | "month") => {
@@ -297,6 +353,52 @@ export function AdminReportsContent() {
     setFrom(monthStartDate(today));
     setTo(today);
   };
+
+  if (unlocked !== true) {
+    return (
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-4 px-3 py-10 sm:px-4">
+        <AdminPageHeader
+          title="Reports"
+          description="Enter the admin password to view cash and card revenue."
+        />
+        <section className="rounded-2xl border border-border/50 bg-card p-5 shadow-soft">
+          <div className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-muted">
+            <Lock className="size-5 text-foreground" />
+          </div>
+          {unlocked === null ? (
+            <p className="text-sm text-muted-foreground">Checking access…</p>
+          ) : (
+            <form
+              className="space-y-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void unlockReports();
+              }}
+            >
+              <label className="block space-y-2 text-sm">
+                <span>Admin password</span>
+                <Input
+                  type="password"
+                  value={password}
+                  autoFocus
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="h-12 rounded-xl"
+                  autoComplete="current-password"
+                />
+              </label>
+              <AppButton
+                type="submit"
+                className="h-11 w-full rounded-xl text-base"
+                disabled={unlocking || !password}
+              >
+                {unlocking ? "Unlocking…" : "Unlock reports"}
+              </AppButton>
+            </form>
+          )}
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-3 py-4 sm:gap-5 sm:px-4 lg:p-6">

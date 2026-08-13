@@ -22,6 +22,7 @@ import {
   handleAdminRouteError,
   requireTenantAndAdminActor,
 } from "@/lib/admin/require-admin-api";
+import { isAdminReportsUnlocked } from "@/lib/admin-reports-unlock";
 
 function mapRow(row: {
   id: string;
@@ -74,7 +75,23 @@ function mapRow(row: {
 
 export async function GET(request: Request) {
   try {
-    const { tenant } = await requireTenantAndAdminActor(request);
+    const { tenant, actor } = await requireTenantAndAdminActor(request);
+    if (
+      actor.role !== "admin" ||
+      !(await isAdminReportsUnlocked(request, {
+        tenantId: tenant.id,
+        adminId: actor.adminId,
+      }))
+    ) {
+      return NextResponse.json(
+        {
+          error: "Enter the admin password to view reports.",
+          code: "REPORTS_LOCKED",
+        },
+        { status: 403 },
+      );
+    }
+
     const timeZone = tenant.settings.timezone || "Australia/Sydney";
     const currency = tenant.settings.currency || "AUD";
     const { searchParams } = new URL(request.url);

@@ -39,12 +39,24 @@ function AdminNewBookingBadgeSync() {
   return null;
 }
 
+function AdminReportsUnlockClear() {
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (pathname.startsWith("/admin/reports")) return;
+    void fetch("/api/admin/reports/unlock", { method: "DELETE" });
+  }, [pathname]);
+
+  return null;
+}
+
 export function AdminShell({ children, user }: AdminShellProps) {
   const isStaff = user?.role === "staff";
 
   return (
     <BookingAlertProvider>
       <AdminNewBookingBadgeSync />
+      <AdminReportsUnlockClear />
       <AdminServiceEndWatcher />
       <AdminExtendRequestWatcher />
       <AdminStaffPresenceWatcher />
