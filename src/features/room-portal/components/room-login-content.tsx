@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { DoorOpen } from "lucide-react";
+import { DoorOpen, UserRound } from "lucide-react";
 
 import { AppButton, toast } from "@/components/common";
 import { cn } from "@/lib/utils";
@@ -198,6 +199,19 @@ export function RoomLoginContent() {
         >
           Refresh
         </AppButton>
+
+        <div className="mt-8 border-t border-border/60 pt-6">
+          <Link
+            href="/staff/login"
+            className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border border-border bg-muted/40 text-base font-semibold text-foreground transition hover:bg-muted md:h-16 md:text-lg"
+          >
+            <UserRound className="size-5" />
+            Staff login
+          </Link>
+          <p className="mt-2 text-center text-sm text-muted-foreground">
+            View your schedule and reports with your staff code.
+          </p>
+        </div>
       </div>
     </div>
   );

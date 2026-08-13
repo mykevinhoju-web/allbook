@@ -1,47 +1,46 @@
 import { NextResponse } from "next/server";
 
 import {
+  compareDateInputs,
+  dateInTimeZone,
+  inclusiveDaySpan,
+  isValidReportDate,
+  nextDateInput,
+  reportDateRangeToUtc,
+} from "@/features/admin/lib/revenue-report";
+import {
+  isOutCallBooking,
+  visibleBookingNotes,
+} from "@/features/booking/lib/booking-outcall";
+import {
+  isOtherStaffBooking,
+  parseOtherStaffName,
+} from "@/features/booking/lib/booking-other-staff";
+import { listBookingIdsForStaff } from "@/features/booking/lib/booking-staffs";
+import { todayDateInZone } from "@/features/booking/lib/schedule-utils";
+import type { AdminBooking, AdminRoom } from "@/features/booking/types/admin-booking";
+import {
+  parsePaymentMethodFromNotes,
+  parseSplitCashCentsFromNotes,
+} from "@/features/booking/lib/internal-payment-method";
+import { touchStaffSessionPresence } from "@/features/staff/lib/staff-presence";
+import type { StaffAttributes, StaffStatus } from "@/features/staff/types";
+import {
+  getStaffShiftWindowForDate,
+  getStaffWorkingTodayLabel,
+} from "@/features/staff/utils/shift-label";
+import {
   createServiceSupabase,
   requireTenantFromRequest,
   TenantContextError,
 } from "@/lib/admin/tenant-context";
 import { StaffAuthError, requireStaffSession } from "@/lib/server/require-staff-session";
-import { getStaffWorkingTodayLabel, getStaffShiftWindowForDate } from "@/features/staff/utils/shift-label";
-import type { StaffAttributes, StaffStatus } from "@/features/staff/types";
-import { todayDateInZone } from "@/features/booking/lib/schedule-utils";
-import { listBookingIdsForStaff } from "@/features/booking/lib/booking-staffs";
-import type { AdminBooking, AdminRoom } from "@/features/booking/types/admin-booking";
-import { touchStaffSessionPresence } from "@/features/staff/lib/staff-presence";
+import type { BookingStatus } from "@/types";
 
-function zonedMidnightToUtcIso(date: string, timeZone: string): string {
-  const [yearStr, monthStr, dayStr] = date.split("-");
-  const year = Number(yearStr);
-  const month = Number(monthStr);
-  const day = Number(dayStr);
+const MAX_SCHEDULE_RANGE_DAYS = 62;
 
-  const utcGuess = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
-  const dtf = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    hour12: false,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-  const parts = dtf.formatToParts(utcGuess);
-  const get = (type: string) => parts.find((p) => p.type === type)?.value;
-  const asUtcMs = Date.UTC(
-    Number(get("year")),
-    Number(get("month")) - 1,
-    Number(get("day")),
-    Number(get("hour")),
-    Number(get("minute")),
-    Number(get("second")),
-  );
-  return new Date(utcGuess.getTime() - (asUtcMs - utcGuess.getTime())).toISOString();
-}
+const BOOKING_SELECT =
+  "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, status, checked_out_at, checked_in_at, customer_name, customer_phone, customer_postcode, customer_email, notes, payment_status, staff(name), rooms(name)";
 
 function mapBooking(row: {
   id: string;
@@ -59,6 +58,7 @@ function mapBooking(row: {
   customer_postcode: string | null;
   customer_email: string | null;
   notes: string | null;
+  payment_status?: string | null;
   staff?: { name: string } | { name: string }[] | null;
   rooms?: { name: string } | { name: string }[] | null;
 }): AdminBooking {
@@ -68,25 +68,32 @@ function mapBooking(row: {
   const roomName = Array.isArray(row.rooms)
     ? row.rooms[0]?.name
     : row.rooms?.name;
+  const otherStaffName = parseOtherStaffName(row.notes);
 
   return {
     id: row.id,
     staffId: row.staff_id,
-    staffName: staffName ?? "Staff",
+    staffName: otherStaffName ?? staffName ?? "Staff",
     roomId: row.room_id,
     roomName: roomName ?? null,
     startsAt: row.starts_at,
     endsAt: row.ends_at,
     durationMinutes: row.duration_minutes,
     priceCents: row.price_cents,
-    status: row.status,
+    status: row.status as BookingStatus,
     checkedOutAt: row.checked_out_at,
     checkedInAt: row.checked_in_at,
     customerName: row.customer_name,
     customerPhone: row.customer_phone,
     customerPostcode: row.customer_postcode,
     customerEmail: row.customer_email,
-    notes: row.notes,
+    notes: visibleBookingNotes(row.notes),
+    paymentMethod: parsePaymentMethodFromNotes(row.notes),
+    splitCashCents: parseSplitCashCentsFromNotes(row.notes),
+    paymentStatus: row.payment_status ?? null,
+    outCall: isOutCallBooking(row.notes),
+    otherStaff: isOtherStaffBooking(row.notes),
+    otherStaffName,
   };
 }
 
@@ -96,7 +103,43 @@ export async function GET(request: Request) {
     const session = await requireStaffSession(tenant.id, request);
     const { searchParams } = new URL(request.url);
     const timeZone = tenant.settings.timezone || "Australia/Sydney";
-    const date = searchParams.get("date") ?? todayDateInZone(timeZone);
+    const today = todayDateInZone(timeZone);
+
+    let from = searchParams.get("from")?.trim() || "";
+    let to = searchParams.get("to")?.trim() || "";
+    const dateParam = searchParams.get("date")?.trim() || "";
+
+    if (from || to) {
+      if (!isValidReportDate(from) || !isValidReportDate(to)) {
+        return NextResponse.json(
+          { error: "from and to must be YYYY-MM-DD dates." },
+          { status: 400 },
+        );
+      }
+      if (compareDateInputs(from, to) > 0) {
+        const swap = from;
+        from = to;
+        to = swap;
+      }
+      if (inclusiveDaySpan(from, to) > MAX_SCHEDULE_RANGE_DAYS) {
+        return NextResponse.json(
+          {
+            error: `Date range cannot exceed ${MAX_SCHEDULE_RANGE_DAYS} days.`,
+          },
+          { status: 400 },
+        );
+      }
+    } else {
+      const date = dateParam || today;
+      if (!isValidReportDate(date)) {
+        return NextResponse.json(
+          { error: "date must be YYYY-MM-DD." },
+          { status: 400 },
+        );
+      }
+      from = date;
+      to = date;
+    }
 
     const supabase = createServiceSupabase();
 
@@ -126,15 +169,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Staff not found." }, { status: 404 });
     }
 
-    const rangeStart = zonedMidnightToUtcIso(date, timeZone);
-    const [y, m, d] = date.split("-").map(Number);
-    const nextDay = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1, 12));
-    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-    const rangeEnd = zonedMidnightToUtcIso(
-      nextDay.toISOString().slice(0, 10),
-      timeZone,
-    );
-
+    const { rangeStart, rangeEnd } = reportDateRangeToUtc(from, to, timeZone);
     const joinedIds = await listBookingIdsForStaff(
       supabase,
       tenant.id,
@@ -143,9 +178,7 @@ export async function GET(request: Request) {
 
     let bookingQuery = supabase
       .from("bookings")
-      .select(
-        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, status, checked_out_at, checked_in_at, customer_name, customer_phone, customer_postcode, customer_email, notes, staff(name), rooms(name)",
-      )
+      .select(BOOKING_SELECT)
       .eq("tenant_id", tenant.id)
       .neq("status", "cancelled")
       .lt("starts_at", rangeEnd)
@@ -166,34 +199,57 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 503 });
     }
 
+    const bookings = (bookingRows ?? []).map(mapBooking);
     const attributes = (staffRow.attributes ?? {}) as StaffAttributes;
-    const { workingToday } = getStaffWorkingTodayLabel({
-      status: (staffRow.status as StaffStatus) ?? "active",
-      attributes,
-      date,
-      timeZone,
-      workingHoursStart: staffRow.working_hours_start,
-      workingHoursEnd: staffRow.working_hours_end,
-    });
+    const status = (staffRow.status as StaffStatus) ?? "active";
 
-    const shiftWindow = workingToday
-      ? getStaffShiftWindowForDate({
-          attributes,
-          date,
-          timeZone,
-          workingHoursStart: staffRow.working_hours_start,
-          workingHoursEnd: staffRow.working_hours_end,
-        })
-      : null;
+    const countsByDate = new Map<string, number>();
+    for (const booking of bookings) {
+      const day = dateInTimeZone(booking.startsAt, timeZone);
+      countsByDate.set(day, (countsByDate.get(day) ?? 0) + 1);
+    }
 
-    const shift = shiftWindow
-      ? {
-          label: shiftWindow.label,
-          shiftStartsAt: shiftWindow.shiftStartsAt,
-          shiftEndsAt: shiftWindow.shiftEndsAt,
-          isOvernight: shiftWindow.isOvernight,
-        }
+    const days: {
+      date: string;
+      working: boolean;
+      shiftLabel: string | null;
+      bookingCount: number;
+    }[] = [];
+    for (
+      let cursor = from;
+      compareDateInputs(cursor, to) <= 0;
+      cursor = nextDateInput(cursor)
+    ) {
+      const { workingToday, shiftLabel } = getStaffWorkingTodayLabel({
+        status,
+        attributes,
+        date: cursor,
+        timeZone,
+        workingHoursStart: staffRow.working_hours_start,
+        workingHoursEnd: staffRow.working_hours_end,
+      });
+      days.push({
+        date: cursor,
+        working: workingToday,
+        shiftLabel,
+        bookingCount: countsByDate.get(cursor) ?? 0,
+      });
+    }
+
+    const focusDate = from === to ? from : null;
+    const focusDay = focusDate
+      ? days.find((day) => day.date === focusDate)
       : null;
+    const shiftWindow =
+      focusDay?.working
+        ? getStaffShiftWindowForDate({
+            attributes,
+            date: focusDay.date,
+            timeZone,
+            workingHoursStart: staffRow.working_hours_start,
+            workingHoursEnd: staffRow.working_hours_end,
+          })
+        : null;
 
     const rooms: AdminRoom[] = (roomsRows ?? []).map((room) => ({
       id: room.id,
@@ -203,13 +259,23 @@ export async function GET(request: Request) {
     }));
 
     return NextResponse.json({
-      date,
+      date: focusDate,
+      from,
+      to,
       staff: {
         id: staffRow.id,
         name: staffRow.name,
       },
-      shift,
-      bookings: (bookingRows ?? []).map((row) => mapBooking(row)),
+      shift: shiftWindow
+        ? {
+            label: shiftWindow.label,
+            shiftStartsAt: shiftWindow.shiftStartsAt,
+            shiftEndsAt: shiftWindow.shiftEndsAt,
+            isOvernight: shiftWindow.isOvernight,
+          }
+        : null,
+      days,
+      bookings,
       rooms,
     });
   } catch (error) {
