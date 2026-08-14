@@ -56,7 +56,7 @@ import { BookingCustomerDateTimePicker } from "../checkout/booking-customer-date
 import { BookingCustomerContactFields } from "../checkout/booking-customer-contact-fields";
 
 /** Switch to searchable scroll list once the chip grid would get tall. */
-const STAFF_CHIP_MAX = 6;
+const STAFF_CHIP_SEARCH_MIN = 8;
 
 export interface BookingFormValues {
   staffId: string;
@@ -189,7 +189,7 @@ function StaffPicker({
     ],
     [options],
   );
-  const useSearch = withExtra.length > STAFF_CHIP_MAX;
+  const showSearch = withExtra.length > STAFF_CHIP_SEARCH_MIN;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -197,93 +197,55 @@ function StaffPicker({
     return withExtra.filter((member) => member.name.toLowerCase().includes(q));
   }, [withExtra, query]);
 
-  if (!useSearch) {
-    return (
-      <div className="grid grid-cols-2 gap-2">
-        {withExtra.map((member) => {
-          const selected =
-            member.id === WALK_IN_SENTINEL
-              ? Boolean(walkIn)
-              : value === member.id;
-          return (
-            <button
-              key={member.id}
-              type="button"
-              disabled={assigning}
-              onClick={() => onSelect(member.id)}
-              className={cn(
-                "min-h-11 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition",
-                selected
-                  ? "border-[#8A6A3A] bg-[#8A6A3A]/10 text-stone-900 ring-2 ring-[#8A6A3A]/25"
-                  : "border-stone-200 bg-white text-stone-700 active:bg-stone-50",
-              )}
-            >
-              <span className="flex items-center gap-2">
-                {member.id === WALK_IN_SENTINEL && assigning ? (
-                  <Loader2 className="size-4 shrink-0 animate-spin text-[#8A6A3A]" />
-                ) : null}
-                {member.name}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-2">
-      <Input
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-        placeholder="Search staff…"
-        className="h-11 rounded-xl border-stone-200 bg-white"
-        autoComplete="off"
-      />
-      <div className="max-h-52 overflow-y-auto rounded-xl border border-stone-200 bg-white">
+      {showSearch ? (
+        <Input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search staff…"
+          className="h-11 rounded-xl border-stone-200 bg-white"
+          autoComplete="off"
+        />
+      ) : null}
+      <div
+        className={cn(
+          "grid grid-cols-2 gap-2",
+          showSearch && "max-h-56 overflow-y-auto pr-0.5",
+        )}
+      >
         {filtered.length === 0 ? (
-          <p className="px-3 py-4 text-sm text-stone-500">No match.</p>
+          <p className="col-span-2 px-1 py-3 text-sm text-stone-500">No match.</p>
         ) : (
-          <ul className="divide-y divide-stone-100">
-            {filtered.map((member) => {
-              const selected =
-                member.id === WALK_IN_SENTINEL
-                  ? Boolean(walkIn)
-                  : value === member.id;
-              return (
-                <li key={member.id}>
-                  <button
-                    type="button"
-                    disabled={assigning}
-                    onClick={() => onSelect(member.id)}
-                    className={cn(
-                      "flex w-full items-center justify-between gap-2 px-3 py-3 text-left text-sm font-semibold transition",
-                      selected
-                        ? "bg-[#8A6A3A]/10 text-stone-900"
-                        : "text-stone-700 active:bg-stone-50",
-                    )}
-                  >
-                    <span className="flex min-w-0 items-center gap-2 truncate">
-                      {member.id === WALK_IN_SENTINEL && assigning ? (
-                        <Loader2 className="size-4 shrink-0 animate-spin text-[#8A6A3A]" />
-                      ) : null}
-                      <span className="truncate">{member.name}</span>
-                    </span>
-                    {selected ? (
-                      <span className="shrink-0 text-xs font-medium text-[#8A6A3A]">
-                        Selected
-                      </span>
-                    ) : null}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          filtered.map((member) => {
+            const selected =
+              member.id === WALK_IN_SENTINEL
+                ? Boolean(walkIn)
+                : value === member.id;
+            return (
+              <button
+                key={member.id}
+                type="button"
+                disabled={assigning}
+                onClick={() => onSelect(member.id)}
+                className={cn(
+                  "min-h-11 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition",
+                  selected
+                    ? "border-[#8A6A3A] bg-[#8A6A3A]/10 text-stone-900 ring-2 ring-[#8A6A3A]/25"
+                    : "border-stone-200 bg-white text-stone-700 active:bg-stone-50",
+                )}
+              >
+                <span className="flex items-center gap-2">
+                  {member.id === WALK_IN_SENTINEL && assigning ? (
+                    <Loader2 className="size-4 shrink-0 animate-spin text-[#8A6A3A]" />
+                  ) : null}
+                  <span className="truncate">{member.name}</span>
+                </span>
+              </button>
+            );
+          })
         )}
       </div>
-      <p className="text-xs text-stone-500">
-        {options.length} staff · scroll or search
-      </p>
     </div>
   );
 }
