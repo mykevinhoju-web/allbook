@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { ChevronDown, ChevronUp, Loader2, ListOrdered } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { GripVertical, Loader2, ListOrdered } from "lucide-react";
 
 import { AppButton, toast } from "@/components/common";
 import { Input } from "@/components/ui/input";
@@ -34,13 +34,25 @@ type RotationResponse = {
   error?: string;
 };
 
-function moveItem<T>(list: T[], from: number, to: number): T[] {
-  if (to < 0 || to >= list.length) return list;
-  const next = [...list];
-  const [item] = next.splice(from, 1);
-  if (!item) return list;
-  next.splice(to, 0, item);
-  return next;
+function toRow(staff: WorkingStaff, sortOrder: number): RotationRow {
+  return {
+    staffId: staff.id,
+    name: staff.name,
+    sortOrder,
+    inService: staff.inService,
+    walkInCount: staff.walkInCount,
+  };
+}
+
+function insertAtOrder(
+  list: RotationRow[],
+  row: RotationRow,
+  order: number,
+): RotationRow[] {
+  const without = list.filter((item) => item.staffId !== row.staffId);
+  const index = Math.max(0, Math.min(without.length, Math.round(order) - 1));
+  without.splice(index, 0, row);
+  return without.map((item, i) => ({ ...item, sortOrder: i + 1 }));
 }
 
 export function AdminRotationContent() {
@@ -52,6 +64,8 @@ export function AdminRotationContent() {
   const [rotation, setRotation] = useState<RotationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [draggingId, setDraggingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -64,8 +78,14 @@ export function AdminRotationContent() {
         });
         return;
       }
+      const nextRotation = data.rotation ?? [];
       setWorking(data.working ?? []);
-      setRotation(data.rotation ?? []);
+      setRotation(nextRotation);
+      setDrafts(
+        Object.fromEntries(
+          nextRotation.map((row) => [row.staffId, String(row.sortOrder)]),
+        ),
+      );
     } catch {
       toast.error("Could not load rotation");
     } finally {
@@ -104,45 +124,88 @@ export function AdminRotationContent() {
     }
   };
 
-  const addStaff = (staff: WorkingStaff) => {
-    if (rotation.some((row) => row.staffId === staff.id)) return;
-    setRotation((current) => [
-      ...current,
-      {
-        staffId: staff.id,
-        name: staff.name,
-        sortOrder: current.length + 1,
-        inService: staff.inService,
-        walkInCount: staff.walkInCount,
-      },
-    ]);
-  };
-
-  const addAllWorking = () => {
+  const applyOrder = (staff: WorkingStaff, raw: string) => {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      setRotation((current) => {
+        const next = current
+          .filter((row) => row.staffId !== staff.id)
+          .map((row, i) => ({ ...row, sortOrder: i + 1 }));
+        setDrafts(
+          Object.fromEntries(
+            next.map((row) => [row.staffId, String(row.sortOrder)]),
+          ),
+        );
+        return next;
+      });
+      return;
+    }
+    const order = Number(trimmed);
+    if (!Number.isFinite(order) || order < 1) {
+      const existing = rotation.find((row) => row.staffId === staff.id);
+      setDrafts((current) => ({
+        ...current,
+        [staff.id]: existing ? String(existing.sortOrder) : "",
+      }));
+      return;
+    }
     setRotation((current) => {
-      const existing = new Set(current.map((row) => row.staffId));
-      const extra = working
-        .filter((staff) => !existing.has(staff.id))
-        .map((staff, index) => ({
-          staffId: staff.id,
-          name: staff.name,
-          sortOrder: current.length + index + 1,
-          inService: staff.inService,
-          walkInCount: staff.walkInCount,
-        }));
-      return [...current, ...extra];
+      const next = insertAtOrder(current, toRow(staff, order), order);
+      setDrafts(
+        Object.fromEntries(
+          next.map((row) => [row.staffId, String(row.sortOrder)]),
+        ),
+      );
+      return next;
     });
   };
 
-  const available = working.filter(
-    (staff) => !rotation.some((row) => row.staffId === staff.id),
-  );
+  const moveByDrag = (fromId: string, toId: string) => {
+    if (fromId === toId) return;
+    setRotation((current) => {
+      const from = current.findIndex((row) => row.staffId === fromId);
+      const to = current.findIndex((row) => row.staffId === toId);
+      if (from < 0 || to < 0) return current;
+      const next = [...current];
+      const [item] = next.splice(from, 1);
+      if (!item) return current;
+      next.splice(to, 0, item);
+      const ordered = next.map((row, i) => ({ ...row, sortOrder: i + 1 }));
+      setDrafts(
+        Object.fromEntries(
+          ordered.map((row) => [row.staffId, String(row.sortOrder)]),
+        ),
+      );
+      return ordered;
+    });
+  };
+
+  const rows = useMemo(() => {
+    const inRotation = new Set(rotation.map((row) => row.staffId));
+    const assigned = rotation.map((row) => {
+      const staff = working.find((item) => item.id === row.staffId);
+      return {
+        staff: staff ?? {
+          id: row.staffId,
+          name: row.name,
+          inService: row.inService,
+          walkInCount: row.walkInCount,
+          inRotation: true,
+        },
+        assigned: true,
+      };
+    });
+    const rest = working
+      .filter((staff) => !inRotation.has(staff.id))
+      .map((staff) => ({ staff, assigned: false }));
+    return [...assigned, ...rest];
+  }, [rotation, working]);
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-3 py-4 sm:px-4 lg:p-6">
       <AdminPageHeader
         title="Rotation"
-        description="Set today's walk-in order. Busy staff are skipped, then catch up on the next guest."
+        description="Type a number to set order, or drag a row. Busy staff are skipped, then catch up on the next guest."
       />
 
       <section className="rounded-2xl border border-border/50 bg-card p-4 shadow-soft">
@@ -172,153 +235,95 @@ export function AdminRotationContent() {
           <Loader2 className="size-5 animate-spin" />
         </div>
       ) : (
-        <>
-          <section className="rounded-2xl border border-border/50 bg-card p-4 shadow-soft">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold">Today&apos;s order</p>
-                <p className="text-xs text-muted-foreground">
-                  Walk-in guests without a chosen staff member follow this list.
-                </p>
-              </div>
-              <ListOrdered className="size-4 text-muted-foreground" />
-            </div>
-
-            {rotation.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-border/60 px-4 py-8 text-center text-sm text-muted-foreground">
-                No rotation yet. Add staff who are working today.
+        <section className="rounded-2xl border border-border/50 bg-card p-4 shadow-soft">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">Working today</p>
+              <p className="text-xs text-muted-foreground">
+                Number = walk-in turn. Leave blank to leave them out.
               </p>
-            ) : (
-              <ul className="space-y-2">
-                {rotation.map((row, index) => (
-                  <li
-                    key={row.staffId}
-                    className="flex items-center gap-2 rounded-xl border border-border/50 bg-background px-3 py-2"
-                  >
-                    <span className="w-7 text-sm font-semibold tabular-nums text-muted-foreground">
-                      {index + 1}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">{row.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {row.walkInCount} walk-in
-                        {row.walkInCount === 1 ? "" : "s"}
-                        {row.inService ? " · in service" : ""}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 gap-1">
-                      <AppButton
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="size-9 rounded-lg"
-                        disabled={index === 0}
-                        onClick={() =>
-                          setRotation((current) => moveItem(current, index, index - 1))
-                        }
-                      >
-                        <ChevronUp className="size-4" />
-                      </AppButton>
-                      <AppButton
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="size-9 rounded-lg"
-                        disabled={index === rotation.length - 1}
-                        onClick={() =>
-                          setRotation((current) => moveItem(current, index, index + 1))
-                        }
-                      >
-                        <ChevronDown className="size-4" />
-                      </AppButton>
-                      <AppButton
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="rounded-lg"
-                        onClick={() =>
-                          setRotation((current) =>
-                            current.filter((item) => item.staffId !== row.staffId),
-                          )
-                        }
-                      >
-                        Remove
-                      </AppButton>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
+            </div>
+            <ListOrdered className="size-4 text-muted-foreground" />
+          </div>
 
-            <AppButton
-              type="button"
-              className="mt-4 h-11 w-full rounded-xl"
-              disabled={saving}
-              onClick={() => void save()}
-            >
-              {saving ? "Saving…" : "Save rotation"}
-            </AppButton>
-          </section>
-
-          <section className="rounded-2xl border border-border/50 bg-card p-4 shadow-soft">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold">Working today</p>
-                <p className="text-xs text-muted-foreground">
-                  Only on-shift staff can be added.
-                </p>
-              </div>
-              {available.length > 0 ? (
-                <AppButton
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="rounded-full"
-                  onClick={addAllWorking}
+          {working.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-border/60 px-4 py-8 text-center text-sm text-muted-foreground">
+              No staff have a shift on this day.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {rows.map(({ staff, assigned }) => (
+                <li
+                  key={staff.id}
+                  draggable={assigned}
+                  onDragStart={() => setDraggingId(staff.id)}
+                  onDragEnd={() => setDraggingId(null)}
+                  onDragOver={(event) => {
+                    if (!assigned || !draggingId) return;
+                    event.preventDefault();
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    if (draggingId) moveByDrag(draggingId, staff.id);
+                    setDraggingId(null);
+                  }}
+                  className={cn(
+                    "flex items-center gap-2 rounded-xl border bg-background px-3 py-2",
+                    assigned ? "border-border/50" : "border-border/30",
+                    draggingId === staff.id && "opacity-50",
+                  )}
                 >
-                  Add all
-                </AppButton>
-              ) : null}
-            </div>
-
-            {working.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No staff have a shift on this day.
-              </p>
-            ) : available.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Everyone working today is already in the rotation.
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {available.map((staff) => (
-                  <li
-                    key={staff.id}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-border/40 px-3 py-2"
+                  <span
+                    className={cn(
+                      "flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground",
+                      assigned ? "cursor-grab active:cursor-grabbing" : "opacity-30",
+                    )}
+                    aria-hidden
                   >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{staff.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {staff.walkInCount} walk-in
-                        {staff.walkInCount === 1 ? "" : "s"}
-                        {staff.inService ? " · in service" : ""}
-                      </p>
-                    </div>
-                    <AppButton
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className={cn("rounded-xl")}
-                      onClick={() => addStaff(staff)}
-                    >
-                      Add
-                    </AppButton>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        </>
+                    <GripVertical className="size-4" />
+                  </span>
+                  <Input
+                    type="number"
+                    min={1}
+                    inputMode="numeric"
+                    value={drafts[staff.id] ?? ""}
+                    placeholder="—"
+                    onChange={(event) =>
+                      setDrafts((current) => ({
+                        ...current,
+                        [staff.id]: event.target.value,
+                      }))
+                    }
+                    onBlur={(event) => applyOrder(staff, event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.currentTarget.blur();
+                      }
+                    }}
+                    className="h-11 w-16 shrink-0 rounded-xl px-2 text-center text-lg font-semibold tabular-nums"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{staff.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {staff.walkInCount} walk-in
+                      {staff.walkInCount === 1 ? "" : "s"}
+                      {staff.inService ? " · in service" : ""}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <AppButton
+            type="button"
+            className="mt-4 h-11 w-full rounded-xl"
+            disabled={saving || working.length === 0}
+            onClick={() => void save()}
+          >
+            {saving ? "Saving…" : "Save rotation"}
+          </AppButton>
+        </section>
       )}
     </div>
   );
