@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import {
@@ -170,11 +171,13 @@ function StaffPicker({
   options,
   value,
   walkIn,
+  assigning,
   onSelect,
 }: {
   options: { id: string; name: string }[];
   value: string;
   walkIn?: boolean;
+  assigning?: boolean;
   onSelect: (staffId: string) => void;
 }) {
   const [query, setQuery] = useState("");
@@ -206,15 +209,22 @@ function StaffPicker({
             <button
               key={member.id}
               type="button"
+              disabled={assigning}
               onClick={() => onSelect(member.id)}
               className={cn(
                 "min-h-11 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition",
                 selected
                   ? "border-[#8A6A3A] bg-[#8A6A3A]/10 text-stone-900 ring-2 ring-[#8A6A3A]/25"
                   : "border-stone-200 bg-white text-stone-700 active:bg-stone-50",
+                assigning && "opacity-60",
               )}
             >
-              {member.name}
+              <span className="flex items-center gap-2">
+                {member.id === WALK_IN_SENTINEL && assigning ? (
+                  <Loader2 className="size-4 shrink-0 animate-spin" />
+                ) : null}
+                {member.name}
+              </span>
             </button>
           );
         })}
@@ -245,15 +255,22 @@ function StaffPicker({
                 <li key={member.id}>
                   <button
                     type="button"
+                    disabled={assigning}
                     onClick={() => onSelect(member.id)}
                     className={cn(
                       "flex w-full items-center justify-between gap-2 px-3 py-3 text-left text-sm font-semibold transition",
                       selected
                         ? "bg-[#8A6A3A]/10 text-stone-900"
                         : "text-stone-700 active:bg-stone-50",
+                      assigning && "opacity-60",
                     )}
                   >
-                    <span className="truncate">{member.name}</span>
+                    <span className="flex min-w-0 items-center gap-2 truncate">
+                      {member.id === WALK_IN_SENTINEL && assigning ? (
+                        <Loader2 className="size-4 shrink-0 animate-spin" />
+                      ) : null}
+                      <span className="truncate">{member.name}</span>
+                    </span>
                     {selected ? (
                       <span className="shrink-0 text-xs font-medium text-[#8A6A3A]">
                         Selected
@@ -511,6 +528,7 @@ export function BookingFormSheet({
       serviceOptions[0]?.durationMinutes ||
       30;
     setAssigningWalkIn(true);
+    const startedAt = Date.now();
     try {
       const response = await fetchAdminApi(
         `/api/admin/rotation/next?durationMinutes=${duration}`,
@@ -521,6 +539,10 @@ export function BookingFormSheet({
         startsAt?: string;
         error?: string;
       };
+      const wait = 500 - (Date.now() - startedAt);
+      if (wait > 0) {
+        await new Promise((resolve) => window.setTimeout(resolve, wait));
+      }
       if (!response.ok || !data.staffId || !data.startsAt) {
         toast.error("Could not assign walk-in", {
           description: data.error ?? "Set today's rotation first.",
@@ -588,7 +610,7 @@ export function BookingFormSheet({
         showCloseButton
         className={adminBookingSheetClassName}
       >
-        <div className={adminBookingSheetBodyClassName}>
+        <div className={cn(adminBookingSheetBodyClassName, "relative")}>
           <div className={adminBookingSheetHandleClassName} />
 
           <SheetHeader className="shrink-0 border-b border-stone-100 px-4 py-3 pr-12 text-left">
@@ -619,7 +641,8 @@ export function BookingFormSheet({
                 <StaffPicker
                   options={pickerStaffOptions}
                   value={values.staffId}
-                  walkIn={values.walkIn}
+                  walkIn={values.walkIn || assigningWalkIn}
+                  assigning={assigningWalkIn}
                   onSelect={(staffId) => {
                     if (staffId === WALK_IN_SENTINEL) {
                       void assignWalkInNow();
@@ -1002,6 +1025,7 @@ export function BookingFormSheet({
               type="button"
               disabled={
                 submitting ||
+                assigningWalkIn ||
                 serviceOptions.length === 0 ||
                 !values.paymentMethod
               }
@@ -1011,6 +1035,18 @@ export function BookingFormSheet({
               {submitting ? "Saving…" : "Create booking"}
             </button>
           </div>
+
+          {assigningWalkIn ? (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-white/85 backdrop-blur-[2px]">
+              <Loader2 className="size-8 animate-spin text-[#8A6A3A]" />
+              <p className="text-sm font-semibold text-stone-900">
+                Assigning walk-in…
+              </p>
+              <p className="text-xs text-stone-500">
+                Finding the next free staff in rotation
+              </p>
+            </div>
+          ) : null}
         </div>
       </SheetContent>
     </Sheet>
