@@ -216,12 +216,11 @@ function StaffPicker({
                 selected
                   ? "border-[#8A6A3A] bg-[#8A6A3A]/10 text-stone-900 ring-2 ring-[#8A6A3A]/25"
                   : "border-stone-200 bg-white text-stone-700 active:bg-stone-50",
-                assigning && "opacity-60",
               )}
             >
               <span className="flex items-center gap-2">
                 {member.id === WALK_IN_SENTINEL && assigning ? (
-                  <Loader2 className="size-4 shrink-0 animate-spin" />
+                  <Loader2 className="size-4 shrink-0 animate-spin text-[#8A6A3A]" />
                 ) : null}
                 {member.name}
               </span>
@@ -262,12 +261,11 @@ function StaffPicker({
                       selected
                         ? "bg-[#8A6A3A]/10 text-stone-900"
                         : "text-stone-700 active:bg-stone-50",
-                      assigning && "opacity-60",
                     )}
                   >
                     <span className="flex min-w-0 items-center gap-2 truncate">
                       {member.id === WALK_IN_SENTINEL && assigning ? (
-                        <Loader2 className="size-4 shrink-0 animate-spin" />
+                        <Loader2 className="size-4 shrink-0 animate-spin text-[#8A6A3A]" />
                       ) : null}
                       <span className="truncate">{member.name}</span>
                     </span>
@@ -528,7 +526,6 @@ export function BookingFormSheet({
       serviceOptions[0]?.durationMinutes ||
       30;
     setAssigningWalkIn(true);
-    const startedAt = Date.now();
     try {
       const response = await fetchAdminApi(
         `/api/admin/rotation/next?durationMinutes=${duration}`,
@@ -539,10 +536,6 @@ export function BookingFormSheet({
         startsAt?: string;
         error?: string;
       };
-      const wait = 500 - (Date.now() - startedAt);
-      if (wait > 0) {
-        await new Promise((resolve) => window.setTimeout(resolve, wait));
-      }
       if (!response.ok || !data.staffId || !data.startsAt) {
         toast.error("Could not assign walk-in", {
           description: data.error ?? "Set today's rotation first.",
@@ -610,7 +603,7 @@ export function BookingFormSheet({
         showCloseButton
         className={adminBookingSheetClassName}
       >
-        <div className={cn(adminBookingSheetBodyClassName, "relative")}>
+        <div className={adminBookingSheetBodyClassName}>
           <div className={adminBookingSheetHandleClassName} />
 
           <SheetHeader className="shrink-0 border-b border-stone-100 px-4 py-3 pr-12 text-left">
@@ -661,7 +654,12 @@ export function BookingFormSheet({
                     });
                   }}
                 />
-                {isOtherStaff ? (
+                {assigningWalkIn ? (
+                  <p className="mt-2 inline-flex items-center gap-2 rounded-lg bg-[#8A6A3A]/10 px-2.5 py-1.5 text-xs font-medium text-stone-800">
+                    <Loader2 className="size-3.5 animate-spin text-[#8A6A3A]" />
+                    Finding next free staff…
+                  </p>
+                ) : isOtherStaff ? (
                   <div className="mt-3 space-y-1">
                     <FieldLabel required>Other staff name</FieldLabel>
                     <Input
@@ -682,11 +680,9 @@ export function BookingFormSheet({
                   </div>
                 ) : isWalkIn ? (
                   <p className="mt-2 text-xs leading-relaxed text-stone-500">
-                    {assigningWalkIn
-                      ? "Finding the next free rotation staff…"
-                      : assignedWalkInName
-                        ? `Assigned ${assignedWalkInName} · starts now. Next free in rotation order.`
-                        : "Assigned from today's rotation. Starts now."}
+                    {assignedWalkInName
+                      ? `Assigned ${assignedWalkInName} · starts now.`
+                      : "Assigned from today's rotation. Starts now."}
                   </p>
                 ) : (
                   <p className="mt-2 text-xs leading-relaxed text-stone-500">
@@ -1035,18 +1031,6 @@ export function BookingFormSheet({
               {submitting ? "Saving…" : "Create booking"}
             </button>
           </div>
-
-          {assigningWalkIn ? (
-            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-white/85 backdrop-blur-[2px]">
-              <Loader2 className="size-8 animate-spin text-[#8A6A3A]" />
-              <p className="text-sm font-semibold text-stone-900">
-                Assigning walk-in…
-              </p>
-              <p className="text-xs text-stone-500">
-                Finding the next free staff in rotation
-              </p>
-            </div>
-          ) : null}
         </div>
       </SheetContent>
     </Sheet>
