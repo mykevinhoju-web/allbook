@@ -74,6 +74,12 @@ const OUTCALL_BLOCK_TONE = {
   muted: "text-purple-900/85",
 } as const;
 
+const WALK_IN_BLOCK_TONE = {
+  idle: "border-red-600/70 bg-red-400 text-red-950",
+  active: "border-red-700 bg-red-500 text-red-50",
+  muted: "text-red-950/80",
+} as const;
+
 const OTHER_STAFF_BLOCK_TONE = {
   idle: "border-orange-600/70 bg-orange-300 text-orange-950",
   active: "border-orange-700 bg-orange-400 text-orange-950",
@@ -576,11 +582,13 @@ export function StaffGuideTimeline({
                           booking.paymentMethod === "pre" ||
                           booking.paymentStatus === "unpaid"
                             ? PRE_BLOCK_TONE
-                            : booking.outCall
-                              ? OUTCALL_BLOCK_TONE
-                              : booking.otherStaff
-                                ? OTHER_STAFF_BLOCK_TONE
-                                : bookingBlockTone(bookingIndex);
+                            : booking.walkIn
+                              ? WALK_IN_BLOCK_TONE
+                              : booking.outCall
+                                ? OUTCALL_BLOCK_TONE
+                                : booking.otherStaff
+                                  ? OTHER_STAFF_BLOCK_TONE
+                                  : bookingBlockTone(bookingIndex);
                         return (
                           <button
                             key={booking.id}
@@ -617,6 +625,7 @@ export function StaffGuideTimeline({
                             </p>
                             {booking.outCall ||
                             booking.otherStaff ||
+                            booking.walkIn ||
                             booking.paymentMethod === "pre" ||
                             booking.paymentStatus === "unpaid" ? (
                               <p
@@ -630,6 +639,7 @@ export function StaffGuideTimeline({
                                   booking.paymentStatus === "unpaid"
                                     ? "pre"
                                     : null,
+                                  booking.walkIn ? "walk-in" : null,
                                   booking.outCall ? "out call" : null,
                                   booking.otherStaff ? "Other Staff" : null,
                                 ]

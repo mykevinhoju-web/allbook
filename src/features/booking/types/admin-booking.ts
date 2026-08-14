@@ -22,6 +22,8 @@ export interface AdminBooking {
   splitCashCents?: number | null;
   /** Stripe / walk-in payment status (pre bookings use unpaid). */
   paymentStatus?: string | null;
+  /** Walk-in guest assigned from the daily rotation. */
+  walkIn?: boolean;
   /** Extra staff joined on this booking (excludes primary). */
   additionalStaff?: { id: string; name: string }[];
   /** Off-site service — no treatment room. */

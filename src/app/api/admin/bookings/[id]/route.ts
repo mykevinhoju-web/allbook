@@ -9,6 +9,7 @@ import {
   isOutCallBooking,
   visibleBookingNotes,
 } from "@/features/booking/lib/booking-outcall";
+import { isWalkInBooking } from "@/features/booking/lib/walk-in-rotation";
 import {
   isOtherStaffBooking,
   parseOtherStaffName,
@@ -79,6 +80,7 @@ function mapBooking(row: {
     splitCashCents: parseSplitCashCentsFromNotes(row.notes),
     paymentStatus: row.payment_status ?? null,
     outCall: isOutCallBooking(row.notes),
+    walkIn: isWalkInBooking(row.notes),
     otherStaff: isOtherStaffBooking(row.notes),
     otherStaffName,
     createdAt: row.created_at,

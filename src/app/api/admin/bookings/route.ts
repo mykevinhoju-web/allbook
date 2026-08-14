@@ -36,7 +36,7 @@ import {
 import { isBookingOverlapConstraintError, isRoomOverlapConstraintError } from "@/features/booking/lib/validate-booking-update";
 import { isStartTimeOnFiveMinuteSlot } from "@/features/booking/lib/schedule-utils";
 import { assignWalkInStaff } from "@/features/booking/server/assign-walk-in-staff";
-import { withWalkInNote } from "@/features/booking/lib/walk-in-rotation";
+import { withWalkInNote, isWalkInBooking } from "@/features/booking/lib/walk-in-rotation";
 import { autoCheckoutExpiredBookings } from "@/features/booking/server/auto-checkout-expired";
 import { computeBookingPriceCents } from "@/features/services/server/get-service-price";
 import { sendBookingPushNotifications } from "@/lib/push/send-booking-push";
@@ -143,6 +143,7 @@ function mapBooking(row: {
     splitCashCents: parseSplitCashCentsFromNotes(row.notes),
     paymentStatus: row.payment_status ?? null,
     outCall: isOutCallBooking(row.notes),
+    walkIn: isWalkInBooking(row.notes),
     otherStaff: isOtherStaffBooking(row.notes),
     otherStaffName,
     createdAt: row.created_at,
@@ -364,20 +365,46 @@ export async function POST(request: Request) {
 
     let staffId = body.staffId ?? "";
     if (walkIn) {
-      const assigned = await assignWalkInStaff({
-        supabase,
-        tenantId: tenant.id,
-        timeZone,
-        startsAtIso: startsAt.toISOString(),
-        endsAtIso: endsAt.toISOString(),
-      });
-      if (!assigned.ok) {
-        return NextResponse.json(
-          { error: assigned.error },
-          { status: assigned.status },
+      if (staffId) {
+        const busy = await hasStaffBookingConflict(
+          supabase,
+          tenant.id,
+          staffId,
+          startsAt.toISOString(),
+          endsAt.toISOString(),
         );
+        if (busy) {
+          const assigned = await assignWalkInStaff({
+            supabase,
+            tenantId: tenant.id,
+            timeZone,
+            startsAtIso: startsAt.toISOString(),
+            endsAtIso: endsAt.toISOString(),
+          });
+          if (!assigned.ok) {
+            return NextResponse.json(
+              { error: assigned.error },
+              { status: assigned.status },
+            );
+          }
+          staffId = assigned.staffId;
+        }
+      } else {
+        const assigned = await assignWalkInStaff({
+          supabase,
+          tenantId: tenant.id,
+          timeZone,
+          startsAtIso: startsAt.toISOString(),
+          endsAtIso: endsAt.toISOString(),
+        });
+        if (!assigned.ok) {
+          return NextResponse.json(
+            { error: assigned.error },
+            { status: assigned.status },
+          );
+        }
+        staffId = assigned.staffId;
       }
-      staffId = assigned.staffId;
     } else if (otherStaff) {
       try {
         const guest = await ensureOtherStaffMember(

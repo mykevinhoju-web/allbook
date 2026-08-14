@@ -30,7 +30,6 @@ import {
   OTHER_STAFF_SENTINEL,
   isOtherStaffGuestAttributes,
 } from "../../lib/booking-other-staff";
-import { WALK_IN_SENTINEL } from "../../lib/walk-in-rotation";
 import {
   getRoomAvailabilityAtTime,
   pickFirstAvailableRoom,
@@ -236,9 +235,7 @@ export function BookingScheduleContent() {
       rooms,
       allRoomBookings,
       skipRoomAvailability: form.outCall,
-      openAllDaySlots:
-        form.staffId === OTHER_STAFF_SENTINEL ||
-        form.staffId === WALK_IN_SENTINEL,
+      openAllDaySlots: form.staffId === OTHER_STAFF_SENTINEL,
     });
 
   const resolvedStartsAt = useMemo(() => {
@@ -305,7 +302,7 @@ export function BookingScheduleContent() {
 
   const createBooking = async () => {
     const isOtherStaff = form.staffId === OTHER_STAFF_SENTINEL;
-    const isWalkIn = form.staffId === WALK_IN_SENTINEL;
+    const isWalkIn = form.walkIn;
 
     if (!form.staffId || !form.startsAt || !form.durationMinutes) {
       toast.error("Staff, start time, and service are required");
@@ -374,8 +371,7 @@ export function BookingScheduleContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          staffId:
-            isOtherStaff || isWalkIn ? undefined : form.staffId,
+          staffId: isOtherStaff ? undefined : form.staffId,
           otherStaff: isOtherStaff,
           otherStaffName: isOtherStaff
             ? form.otherStaffName.trim()
