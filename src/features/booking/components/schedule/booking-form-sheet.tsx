@@ -40,6 +40,7 @@ import {
   adminBookingSheetScrollClassName,
 } from "../../lib/admin-booking-sheet";
 import { OTHER_STAFF_SENTINEL } from "../../lib/booking-other-staff";
+import { WALK_IN_SENTINEL } from "../../lib/walk-in-rotation";
 import type { RoomAvailabilityStatus } from "../../lib/room-availability";
 import {
   buildStartsAtIso,
@@ -171,22 +172,26 @@ function StaffPicker({
   onSelect: (staffId: string) => void;
 }) {
   const [query, setQuery] = useState("");
-  const withOther = useMemo(
-    () => [...options, { id: OTHER_STAFF_SENTINEL, name: "Other Staff" }],
+  const withExtra = useMemo(
+    () => [
+      { id: WALK_IN_SENTINEL, name: "Walk-in" },
+      ...options,
+      { id: OTHER_STAFF_SENTINEL, name: "Other Staff" },
+    ],
     [options],
   );
-  const useSearch = withOther.length > STAFF_CHIP_MAX;
+  const useSearch = withExtra.length > STAFF_CHIP_MAX;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return withOther;
-    return withOther.filter((member) => member.name.toLowerCase().includes(q));
-  }, [withOther, query]);
+    if (!q) return withExtra;
+    return withExtra.filter((member) => member.name.toLowerCase().includes(q));
+  }, [withExtra, query]);
 
   if (!useSearch) {
     return (
       <div className="grid grid-cols-2 gap-2">
-        {withOther.map((member) => {
+        {withExtra.map((member) => {
           const selected = value === member.id;
           return (
             <button
@@ -491,10 +496,13 @@ export function BookingFormSheet({
   const selectedStaffName =
     values.staffId === OTHER_STAFF_SENTINEL
       ? values.otherStaffName.trim() || "Other Staff"
-      : (staffOptions.find((member) => member.id === values.staffId)?.name ??
-        null);
+      : values.staffId === WALK_IN_SENTINEL
+        ? "Walk-in"
+        : (staffOptions.find((member) => member.id === values.staffId)?.name ??
+          null);
 
   const isOtherStaff = values.staffId === OTHER_STAFF_SENTINEL;
+  const isWalkIn = values.staffId === WALK_IN_SENTINEL;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -525,7 +533,7 @@ export function BookingFormSheet({
           <div ref={scrollRef} className={adminBookingSheetScrollClassName}>
             <div className={cn(theme.panel, "space-y-4")}>
               <FormField label="Staff" required>
-                {staffOptions.length === 0 && !isOtherStaff ? (
+                {staffOptions.length === 0 && !isOtherStaff && !isWalkIn ? (
                   <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
                     No staff have a shift on this day. Choose Other Staff, or
                     add shifts under Staff.
@@ -566,6 +574,11 @@ export function BookingFormSheet({
                       External staff — any time from now is available.
                     </p>
                   </div>
+                ) : isWalkIn ? (
+                  <p className="mt-2 text-xs leading-relaxed text-stone-500">
+                    Assigned from today&apos;s rotation. Staff in service are
+                    skipped and catch up on the next walk-in.
+                  </p>
                 ) : (
                   <p className="mt-2 text-xs leading-relaxed text-stone-500">
                     Only staff with a shift on this day (and not yet finished)

@@ -3,6 +3,7 @@ import {
   CalendarDays,
   DoorOpen,
   LayoutDashboard,
+  ListOrdered,
   Palette,
   UserCircle,
   Users,
@@ -43,6 +44,11 @@ export const adminNavItems: AdminNavItem[] = [
     href: "/admin/customers",
     icon: UserCircle,
     module: "customers",
+  },
+  {
+    title: "Rotation",
+    href: "/admin/rotation",
+    icon: ListOrdered,
   },
   {
     title: "Reports",

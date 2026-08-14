@@ -35,6 +35,8 @@ import {
 } from "@/features/booking/lib/staff-conflict";
 import { isBookingOverlapConstraintError, isRoomOverlapConstraintError } from "@/features/booking/lib/validate-booking-update";
 import { isStartTimeOnFiveMinuteSlot } from "@/features/booking/lib/schedule-utils";
+import { assignWalkInStaff } from "@/features/booking/server/assign-walk-in-staff";
+import { withWalkInNote } from "@/features/booking/lib/walk-in-rotation";
 import { autoCheckoutExpiredBookings } from "@/features/booking/server/auto-checkout-expired";
 import { computeBookingPriceCents } from "@/features/services/server/get-service-price";
 import { sendBookingPushNotifications } from "@/lib/push/send-booking-push";
@@ -248,10 +250,13 @@ export async function POST(request: Request) {
       /** External staff — name entered in admin form. */
       otherStaff?: boolean;
       otherStaffName?: string;
+      /** Walk-in with no chosen staff — assign from today's rotation. */
+      walkIn?: boolean;
     };
 
     const otherStaff = Boolean(body.otherStaff);
     const otherStaffName = body.otherStaffName?.trim() ?? "";
+    const walkIn = Boolean(body.walkIn);
 
     if (!body.startsAt || !body.durationMinutes) {
       return NextResponse.json(
@@ -267,7 +272,7 @@ export async function POST(request: Request) {
           { status: 400 },
         );
       }
-    } else if (!body.staffId) {
+    } else if (!walkIn && !body.staffId) {
       return NextResponse.json(
         { error: "staffId, startsAt, and durationMinutes are required." },
         { status: 400 },
@@ -308,6 +313,7 @@ export async function POST(request: Request) {
 
     const durationMinutes = body.durationMinutes;
     const supabase = createServiceSupabase();
+    await autoCheckoutExpiredBookings(supabase, { tenantId: tenant.id });
     const timeZone = tenant.settings.timezone || "Australia/Sydney";
 
     const priced = await computeBookingPriceCents(supabase, {
@@ -356,8 +362,23 @@ export async function POST(request: Request) {
 
     const endsAt = new Date(startsAt.getTime() + durationMinutes * 60_000);
 
-    let staffId = body.staffId!;
-    if (otherStaff) {
+    let staffId = body.staffId ?? "";
+    if (walkIn) {
+      const assigned = await assignWalkInStaff({
+        supabase,
+        tenantId: tenant.id,
+        timeZone,
+        startsAtIso: startsAt.toISOString(),
+        endsAtIso: endsAt.toISOString(),
+      });
+      if (!assigned.ok) {
+        return NextResponse.json(
+          { error: assigned.error },
+          { status: assigned.status },
+        );
+      }
+      staffId = assigned.staffId;
+    } else if (otherStaff) {
       try {
         const guest = await ensureOtherStaffMember(
           supabase,
@@ -466,6 +487,7 @@ export async function POST(request: Request) {
             let notes = body.notes ?? null;
             if (outCall) notes = withOutCallNote(notes);
             if (otherStaff) notes = withOtherStaffNote(otherStaffName, notes);
+            if (walkIn) notes = withWalkInNote(notes);
             return notes;
           })(),
           splitCashCents,

@@ -1,5 +1,6 @@
 import { stripPaymentMethodNote } from "./internal-payment-method";
 import { stripOtherStaffNote } from "./booking-other-staff";
+import { stripWalkInNote } from "./walk-in-rotation";
 
 const OUTCALL_MARKER_RE = /\[outcall\]/i;
 
@@ -20,8 +21,10 @@ export function stripOutCallNote(notes?: string | null): string {
 }
 
 export function visibleBookingNotes(notes?: string | null): string | null {
-  const cleaned = stripOtherStaffNote(
-    stripOutCallNote(stripPaymentMethodNote(notes)),
+  const cleaned = stripWalkInNote(
+    stripOtherStaffNote(
+      stripOutCallNote(stripPaymentMethodNote(notes)),
+    ),
   ).trim();
   return cleaned || null;
 }

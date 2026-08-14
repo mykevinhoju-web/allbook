@@ -9,6 +9,7 @@ export { AdminPageHeader } from "./admin-page-header";
 export { AdminPwaInstallBubble } from "./admin-pwa-install-bubble";
 export { AdminPlaceholderPage } from "./admin-placeholder-page";
 export { AdminReportsContent } from "./admin-reports-content";
+export { AdminRotationContent } from "./admin-rotation-content";
 export { AdminMobileNav } from "./admin-mobile-nav";
 export { AdminShell } from "./admin-shell";
 export { AdminSidebar } from "./admin-sidebar";

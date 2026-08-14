@@ -30,6 +30,7 @@ import {
   OTHER_STAFF_SENTINEL,
   isOtherStaffGuestAttributes,
 } from "../../lib/booking-other-staff";
+import { WALK_IN_SENTINEL } from "../../lib/walk-in-rotation";
 import {
   getRoomAvailabilityAtTime,
   pickFirstAvailableRoom,
@@ -235,7 +236,9 @@ export function BookingScheduleContent() {
       rooms,
       allRoomBookings,
       skipRoomAvailability: form.outCall,
-      openAllDaySlots: form.staffId === OTHER_STAFF_SENTINEL,
+      openAllDaySlots:
+        form.staffId === OTHER_STAFF_SENTINEL ||
+        form.staffId === WALK_IN_SENTINEL,
     });
 
   const resolvedStartsAt = useMemo(() => {
@@ -302,6 +305,7 @@ export function BookingScheduleContent() {
 
   const createBooking = async () => {
     const isOtherStaff = form.staffId === OTHER_STAFF_SENTINEL;
+    const isWalkIn = form.staffId === WALK_IN_SENTINEL;
 
     if (!form.staffId || !form.startsAt || !form.durationMinutes) {
       toast.error("Staff, start time, and service are required");
@@ -370,11 +374,13 @@ export function BookingScheduleContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          staffId: isOtherStaff ? undefined : form.staffId,
+          staffId:
+            isOtherStaff || isWalkIn ? undefined : form.staffId,
           otherStaff: isOtherStaff,
           otherStaffName: isOtherStaff
             ? form.otherStaffName.trim()
             : undefined,
+          walkIn: isWalkIn,
           startsAt: resolveBookingStartsAt(
             date,
             form.startsAt,
@@ -418,9 +424,8 @@ export function BookingScheduleContent() {
           priceLabel,
           data.booking?.otherStaff
             ? `Other Staff${data.booking.otherStaffName ? ` · ${data.booking.otherStaffName}` : ""}`
-            : data.booking?.outCall
-              ? "Out call"
-              : data.booking?.roomName,
+            : data.booking?.staffName,
+          data.booking?.outCall ? "Out call" : data.booking?.roomName,
         ]
           .filter(Boolean)
           .join(" · "),
