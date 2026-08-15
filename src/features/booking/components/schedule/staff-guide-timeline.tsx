@@ -489,10 +489,10 @@ export function StaffGuideTimeline({
                 })}
                 {nowPct != null ? (
                   <div
-                    className="pointer-events-none absolute inset-y-0 z-10 w-0.5 -translate-x-1/2 bg-sky-500"
+                    className="pointer-events-none absolute inset-y-0 z-10 w-0.5 -translate-x-1/2 bg-violet-600"
                     style={{ left: `${nowPct}%` }}
                   >
-                    <span className="absolute left-1/2 top-1 -translate-x-1/2 whitespace-nowrap rounded bg-sky-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    <span className="absolute left-1/2 top-1 -translate-x-1/2 whitespace-nowrap rounded bg-violet-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
                       {formatAmPmTime(now.toISOString())}
                     </span>
                   </div>
@@ -540,7 +540,7 @@ export function StaffGuideTimeline({
                       })}
                       {nowPct != null ? (
                         <div
-                          className="pointer-events-none absolute inset-y-0 z-10 w-0.5 -translate-x-1/2 bg-sky-500"
+                          className="pointer-events-none absolute inset-y-0 z-10 w-0.5 -translate-x-1/2 bg-violet-600"
                           style={{ left: `${nowPct}%` }}
                         />
                       ) : null}
