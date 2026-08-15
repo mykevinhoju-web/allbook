@@ -9,6 +9,10 @@ import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { fetchAdminApi } from "@/features/admin/lib/admin-api-client";
 import {
   DEFAULT_PRICING_ADJUSTMENTS,
+  formatNightWindowLabel,
+  NIGHT_SURCHARGE_END,
+  NIGHT_SURCHARGE_START,
+  parseHhmm,
   type PricingAdjustments,
 } from "@/features/services/lib/pricing-adjustments";
 import { formatPriceFromCents } from "@/features/services/utils/format-price";
@@ -48,6 +52,12 @@ export function ServicePricingContent() {
   const [saving, setSaving] = useState(false);
   const [currency, setCurrency] = useState("AUD");
   const [nightSurcharge, setNightSurcharge] = useState("");
+  const [nightSurchargeStart, setNightSurchargeStart] = useState(
+    NIGHT_SURCHARGE_START,
+  );
+  const [nightSurchargeEnd, setNightSurchargeEnd] = useState(
+    NIGHT_SURCHARGE_END,
+  );
   const [discount, setDiscount] = useState("");
   const [discountExternal, setDiscountExternal] = useState("");
   const [discountApplyInternal, setDiscountApplyInternal] = useState(false);
@@ -79,6 +89,12 @@ export function ServicePricingContent() {
       const adjustments =
         data.pricingAdjustments ?? DEFAULT_PRICING_ADJUSTMENTS;
       setNightSurcharge(dollarsInputFromCents(adjustments.nightSurchargeCents));
+      setNightSurchargeStart(
+        parseHhmm(adjustments.nightSurchargeStart, NIGHT_SURCHARGE_START),
+      );
+      setNightSurchargeEnd(
+        parseHhmm(adjustments.nightSurchargeEnd, NIGHT_SURCHARGE_END),
+      );
       setDiscount(dollarsInputFromCents(adjustments.discountCents));
       setDiscountExternal(
         dollarsInputFromCents(adjustments.discountExternalCents),
@@ -142,6 +158,17 @@ export function ServicePricingContent() {
       return;
     }
 
+    const start = parseHhmm(nightSurchargeStart, "");
+    const end = parseHhmm(nightSurchargeEnd, "");
+    if (!start || !end) {
+      toast.error("Night surcharge needs a valid start and end time.");
+      return;
+    }
+    if (start === end) {
+      toast.error("Night start and end times cannot be the same.");
+      return;
+    }
+
     if (discount.trim() && Number(discount) < 0) {
       toast.error("Internal discount cannot be negative.");
       return;
@@ -154,6 +181,8 @@ export function ServicePricingContent() {
 
     const pricingAdjustments: PricingAdjustments = {
       nightSurchargeCents: centsFromDollarsInput(nightSurcharge),
+      nightSurchargeStart: start,
+      nightSurchargeEnd: end,
       discountCents: centsFromDollarsInput(discount),
       discountApplyInternal,
       discountExternalCents: centsFromDollarsInput(discountExternal),
@@ -194,7 +223,10 @@ export function ServicePricingContent() {
     );
   }
 
-  const nightLabel = "9:00 PM – 10:00 AM";
+  const nightLabel = formatNightWindowLabel(
+    nightSurchargeStart,
+    nightSurchargeEnd,
+  );
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-4 px-3 py-4 sm:px-4 lg:gap-6 lg:p-6">
@@ -298,27 +330,63 @@ export function ServicePricingContent() {
       <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft sm:p-6">
         <h2 className="text-sm font-semibold text-foreground">Night surcharge</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Extra amount added when a booking starts between {nightLabel}. Applies
-          to every booking.
+          Extra amount added when a booking starts in this window. Applies to
+          every booking. Overnight ranges are allowed (for example 9:00 PM to
+          10:00 AM).
         </p>
-        <div className="mt-4 max-w-xs space-y-1">
-          <label
-            htmlFor="night-surcharge"
-            className="text-xs font-medium text-muted-foreground"
-          >
-            Surcharge ({currency})
-          </label>
-          <Input
-            id="night-surcharge"
-            type="number"
-            min={0}
-            step="0.01"
-            placeholder="e.g. 20"
-            value={nightSurcharge}
-            onChange={(event) => setNightSurcharge(event.target.value)}
-            className="h-11 rounded-xl"
-          />
+        <div className="mt-4 grid max-w-xl gap-4 sm:grid-cols-3">
+          <div className="space-y-1">
+            <label
+              htmlFor="night-surcharge-start"
+              className="text-xs font-medium text-muted-foreground"
+            >
+              From
+            </label>
+            <Input
+              id="night-surcharge-start"
+              type="time"
+              value={nightSurchargeStart}
+              onChange={(event) => setNightSurchargeStart(event.target.value)}
+              className="h-11 rounded-xl"
+            />
+          </div>
+          <div className="space-y-1">
+            <label
+              htmlFor="night-surcharge-end"
+              className="text-xs font-medium text-muted-foreground"
+            >
+              To
+            </label>
+            <Input
+              id="night-surcharge-end"
+              type="time"
+              value={nightSurchargeEnd}
+              onChange={(event) => setNightSurchargeEnd(event.target.value)}
+              className="h-11 rounded-xl"
+            />
+          </div>
+          <div className="space-y-1">
+            <label
+              htmlFor="night-surcharge"
+              className="text-xs font-medium text-muted-foreground"
+            >
+              Surcharge ({currency})
+            </label>
+            <Input
+              id="night-surcharge"
+              type="number"
+              min={0}
+              step="0.01"
+              placeholder="e.g. 20"
+              value={nightSurcharge}
+              onChange={(event) => setNightSurcharge(event.target.value)}
+              className="h-11 rounded-xl"
+            />
+          </div>
         </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Current window: {nightLabel}
+        </p>
       </div>
 
       <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft sm:p-6">

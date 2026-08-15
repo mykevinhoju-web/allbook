@@ -11,6 +11,8 @@ import {
 const tz = "Australia/Sydney";
 const adjustments: PricingAdjustments = {
   nightSurchargeCents: 2000,
+  nightSurchargeStart: "21:00",
+  nightSurchargeEnd: "10:00",
   discountCents: 1000,
   discountApplyInternal: true,
   discountExternalCents: 500,
@@ -76,5 +78,15 @@ assert(isNightSurchargeStart(morning, tz), "09:30 should be night window");
 
 const afterTen = "2026-07-29T00:05:00.000Z"; // 10:05 Sydney
 assert(!isNightSurchargeStart(afterTen, tz), "10:05 should not be night");
+
+const customWindow = { start: "22:00", end: "08:00" };
+assert(
+  !isNightSurchargeStart(nightStart, tz, customWindow),
+  "21:30 should be outside 22:00–08:00",
+);
+assert(
+  isNightSurchargeStart("2026-07-28T12:00:00.000Z", tz, customWindow),
+  "22:00 should be inside 22:00–08:00",
+);
 
 console.log("verify-pricing-adjustments: ok");

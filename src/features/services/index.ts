@@ -13,7 +13,9 @@ export {
   mergePricingAdjustments,
   NIGHT_SURCHARGE_END,
   NIGHT_SURCHARGE_START,
+  parseHhmm,
   parsePricingAdjustments,
+  formatNightWindowLabel,
 } from "./lib/pricing-adjustments";
 export type {
   BookingPriceBreakdown,
