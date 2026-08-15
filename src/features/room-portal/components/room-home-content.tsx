@@ -1235,10 +1235,9 @@ export function RoomHomeContent() {
     }
   };
 
-  const staffLogout = async () => {
+  const roomOut = async () => {
     const current = staff;
-    const serviceStillRunning = Boolean(myActiveBooking);
-    // Lock tablet only — never check out / end the in-progress booking.
+    // Leave the room tablet completely — never check out / end the in-progress booking.
     await fetch("/api/room/staff/logout", { method: "POST" });
     if (current) {
       void broadcastStaffPresence(tenant.slug, {
@@ -1248,16 +1247,14 @@ export function RoomHomeContent() {
         roomName: roomLabel,
       }).catch(() => {});
     }
+    await fetch("/api/room/auth/logout", { method: "POST" });
     setStaff(null);
     setStaffBookings([]);
     setPin("");
     setBookStartOpen(false);
     resetBookStartForm();
-    toast.success(
-      serviceStillRunning
-        ? "Tablet locked — service still running. Enter PIN to return."
-        : "Tablet locked",
-    );
+    router.replace("/room/login");
+    router.refresh();
   };
 
   const roomServiceInProgress = useMemo(
@@ -1290,10 +1287,10 @@ export function RoomHomeContent() {
             type="button"
             variant="outline"
             className="h-12 shrink-0 rounded-2xl px-4 text-base md:h-14 md:px-5"
-            onClick={() => void staffLogout()}
+            onClick={() => void roomOut()}
           >
             <LogOut className="size-5" />
-            Lock
+            Room Out
           </AppButton>
         </div>
 
@@ -1533,7 +1530,7 @@ export function RoomHomeContent() {
                   {actionId === activeBooking.id ? "Ending..." : "End service"}
                 </AppButton>
                 <p className="mt-2 text-center text-xs text-muted-foreground">
-                  Only this button ends the service. Lock keeps it running.
+                  Only this button ends the service. Room Out does not end it.
                 </p>
                 </>
                 ) : null}
@@ -1611,7 +1608,7 @@ export function RoomHomeContent() {
                           {actionId === row.id ? "Ending..." : "End service"}
                         </AppButton>
                         <p className="mt-2 text-center text-xs text-muted-foreground">
-                          Ends your booking only. Lock keeps it running.
+                          Ends your booking only. Room Out does not end it.
                         </p>
                       </>
                     ) : null}
@@ -1923,8 +1920,8 @@ export function RoomHomeContent() {
         </h1>
         {roomServiceInProgress ? (
           <p className="mt-6 rounded-2xl border border-emerald-400/25 bg-emerald-950/45 px-4 py-3 text-center text-sm font-medium text-emerald-200 md:text-base">
-            Service in progress — enter staff PIN to return. Lock does not end
-            the service.
+            Service in progress — enter staff PIN to return. Room Out does not
+            end the service.
           </p>
         ) : null}
         <p className="mt-8 text-center text-base font-medium text-muted-foreground md:mt-10 md:text-lg">

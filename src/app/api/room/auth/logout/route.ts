@@ -6,11 +6,15 @@ import {
   TenantContextError,
 } from "@/lib/admin/tenant-context";
 import { readCookieFromRequest } from "@/lib/cookies/read-request-cookie";
+import { markStaffSessionOffline } from "@/features/staff/lib/staff-presence";
 import {
   getRoomSessionCookieName,
   verifyRoomSession,
 } from "@/lib/room-session";
-import { getStaffSessionCookieName } from "@/lib/staff-session";
+import {
+  getStaffSessionCookieName,
+  verifyStaffSession,
+} from "@/lib/staff-session";
 
 /** Release this tablet’s room claim and clear room + staff cookies. */
 export async function POST(request: Request) {
@@ -18,9 +22,22 @@ export async function POST(request: Request) {
     const tenant = await requireTenantFromRequest(request);
     const token = readCookieFromRequest(request, getRoomSessionCookieName());
     const session = token ? await verifyRoomSession(token) : null;
+    const staffToken = readCookieFromRequest(
+      request,
+      getStaffSessionCookieName(),
+    );
+    const staffSession = staffToken ? await verifyStaffSession(staffToken) : null;
+
+    const supabase = createServiceSupabase();
+
+    if (staffSession?.tenantId === tenant.id) {
+      await markStaffSessionOffline(supabase, {
+        tenantId: tenant.id,
+        staffId: staffSession.staffId,
+      });
+    }
 
     if (session?.tenantId === tenant.id) {
-      const supabase = createServiceSupabase();
       await supabase
         .from("rooms")
         .update({
