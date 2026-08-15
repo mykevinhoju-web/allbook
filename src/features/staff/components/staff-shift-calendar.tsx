@@ -280,8 +280,6 @@ export function StaffShiftCalendar({
     visibleMonth.getFullYear() > minSelectableDate.getFullYear() ||
     (visibleMonth.getFullYear() === minSelectableDate.getFullYear() &&
       visibleMonth.getMonth() > minSelectableDate.getMonth());
-  const minStartTime =
-    focusedDate === today ? localNow.slice(11, 16) : undefined;
 
   const focusDate = (key: string) => {
     setFocusedDate(key);
@@ -498,21 +496,22 @@ export function StaffShiftCalendar({
             </div>
 
             <div className="mt-4 space-y-3">
-              <label className="block space-y-1.5">
+              <div className="block space-y-1.5">
                 <span className="text-xs font-medium text-muted-foreground">
-                  Start time
+                  Start time (fixed)
                 </span>
-                <AmPmTimeSelect
-                  aria-label="Start time"
-                  value={focusedEntry.startTime}
-                  min={minStartTime}
-                  onChange={(nextStart) => {
-                    updateFocusedEntry({
-                      startTime: nextStart || DEFAULT_SHIFT_START_TIME,
-                    });
-                  }}
-                />
-              </label>
+                <p className="flex h-11 items-center rounded-xl border border-border/60 bg-muted/40 px-3 text-sm font-semibold tabular-nums text-foreground">
+                  {(() => {
+                    const { hour12, minute, period } = parseClockToAmPm(
+                      focusedEntry.startTime,
+                    );
+                    return `${hour12}:${String(minute).padStart(2, "0")} ${period}`;
+                  })()}
+                  <span className="ml-2 text-xs font-medium text-muted-foreground">
+                    fixed
+                  </span>
+                </p>
+              </div>
 
               <label className="block space-y-1.5">
                 <span className="text-xs font-medium text-muted-foreground">
@@ -527,8 +526,10 @@ export function StaffShiftCalendar({
                   aria-label="End time"
                   value={focusedEntry.endTime}
                   onChange={(nextEnd) => {
+                    const endTime = nextEnd || DEFAULT_SHIFT_END_TIME;
                     updateFocusedEntry({
-                      endTime: nextEnd || DEFAULT_SHIFT_END_TIME,
+                      startTime: focusedEntry.startTime,
+                      endTime,
                     });
                   }}
                 />
@@ -644,10 +645,10 @@ export function StaffShiftCalendar({
       ) : null}
 
       <p className="text-[11px] leading-relaxed text-muted-foreground">
-        Pick any future date, then set start and end times (AM/PM). If end is
-        earlier than or equal to start, the shift ends the next day. Light
-        morning marks are overnight spillover — you can still select those days
-        and start a new shift there.
+        Pick any future date. Start time is fixed; only end time is editable
+        (AM/PM). If end is earlier than or equal to start, the shift ends the
+        next day without changing start. Light morning marks are overnight
+        spillover — you can still select those days and start a new shift there.
       </p>
     </div>
   );

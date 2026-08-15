@@ -30,8 +30,10 @@ import {
   isStaffWorkingOnDate,
   parseDaySchedule,
 } from "../utils/day-schedule";
+import { resolveShiftEndDate } from "../utils/shift-calendar";
 import {
   ensureShiftPlan,
+  parseShiftPlan,
   primaryShiftWindowLocalsFromPlan,
   shiftPlanBounds,
   sortedShiftPlanDates,
@@ -85,14 +87,18 @@ function mapRecordToForm(record: StaffRecord, timeZone: string): StaffFormValues
   const localNow = toDatetimeLocalValue(new Date(), timeZone);
   const today = todayDateInZone(timeZone);
   const daySchedule = parseDaySchedule(record.attributes.daySchedule);
-  const { shiftStartsAt, shiftEndsAt } = normalizeShiftWindow(
-    record.shiftStartsAt,
-    record.shiftEndsAt,
-    localNow,
-    timeZone,
-  );
+  const existingPlan = parseShiftPlan(record.attributes.shiftPlan);
+  const fromPlan = primaryShiftWindowLocalsFromPlan(existingPlan, timeZone);
+  const { shiftStartsAt, shiftEndsAt } = fromPlan
+    ? fromPlan
+    : normalizeShiftWindow(
+        record.shiftStartsAt,
+        record.shiftEndsAt,
+        localNow,
+        timeZone,
+      );
   const shiftPlan = ensureShiftPlan(
-    record.attributes.shiftPlan,
+    existingPlan,
     shiftStartsAt,
     shiftEndsAt,
   );
@@ -392,9 +398,15 @@ export function StaffForm({ staffId }: StaffFormProps) {
     }
 
     if (form.shiftPlan[today]) {
-      const todayStartLocal = `${today}T${form.shiftPlan[today].startTime}`;
-      if (todayStartLocal < localNow) {
-        toast.error("Today's start time cannot be in the past");
+      const entry = form.shiftPlan[today];
+      const endDate = resolveShiftEndDate(
+        today,
+        entry.startTime,
+        entry.endTime,
+      );
+      const todayEndLocal = `${endDate}T${entry.endTime}`;
+      if (todayEndLocal <= localNow) {
+        toast.error("Today's end time must be after now");
         return;
       }
     }
