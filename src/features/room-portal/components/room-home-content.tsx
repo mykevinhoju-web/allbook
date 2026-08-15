@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { LogOut, Loader2 } from "lucide-react";
 
 import { AppButton, toast } from "@/components/common";
 import {
@@ -211,6 +211,9 @@ export function RoomHomeContent() {
     "",
   );
   const [joinLoading, setJoinLoading] = useState(false);
+  const [bookStartOpen, setBookStartOpen] = useState(false);
+  const [bookStartName, setBookStartName] = useState("");
+  const [bookStartLoading, setBookStartLoading] = useState(false);
   const [pendingExtend, setPendingExtend] = useState<{
     requestId: string;
     minutes: number;
@@ -562,6 +565,73 @@ export function RoomHomeContent() {
     pricingAdjustments,
     joinPayment,
   ]);
+
+  const startPriceBreakdown = useMemo(() => {
+    if (!joinOption) return null;
+    return applyPricingAdjustments({
+      baseCents: joinOption.priceCents,
+      startsAtIso: new Date().toISOString(),
+      timeZone,
+      channel: "internal",
+      adjustments: pricingAdjustments,
+      paymentMethod:
+        joinPayment === "cash" || joinPayment === "card" ? joinPayment : null,
+    });
+  }, [joinOption, timeZone, pricingAdjustments, joinPayment]);
+
+  const startWalkInNow = async () => {
+    if (!joinDuration) {
+      toast.error("Select a service duration");
+      return;
+    }
+    if (joinPayment !== "cash" && joinPayment !== "card") {
+      toast.error("Select cash or card");
+      return;
+    }
+
+    setBookStartLoading(true);
+    try {
+      const response = await fetch("/api/room/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          durationMinutes: Number(joinDuration),
+          paymentMethod: joinPayment,
+          customerName: bookStartName.trim() || "Walk-in",
+        }),
+      });
+      const data = (await response.json()) as {
+        error?: string;
+        code?: string;
+        booking?: { id?: string; priceCents?: number };
+      };
+      if (response.status === 403 && data.code === "ROOM_LOGIN_REQUIRED") {
+        toast.error("Room login required", { description: data.error });
+        router.replace("/room/login");
+        return;
+      }
+      if (!response.ok) {
+        toast.error("Could not start booking", { description: data.error });
+        return;
+      }
+      toast.success("Service started", {
+        description: [
+          data.booking?.priceCents != null
+            ? formatPriceFromCents(data.booking.priceCents, currency)
+            : null,
+          "Starts now",
+        ]
+          .filter(Boolean)
+          .join(" · "),
+      });
+      setBookStartOpen(false);
+      setBookStartName("");
+      setJoinPayment("");
+      await refreshAll();
+    } finally {
+      setBookStartLoading(false);
+    }
+  };
 
   const createCompanionBooking = async () => {
     if (!activeBooking || !isVisitPrimaryViewer) return;
@@ -1020,6 +1090,8 @@ export function RoomHomeContent() {
     setStaff(null);
     setStaffBookings([]);
     setPin("");
+    setBookStartOpen(false);
+    setBookStartName("");
     toast.success(
       serviceStillRunning
         ? "Tablet locked — service still running. Enter PIN to return."
@@ -1035,6 +1107,11 @@ export function RoomHomeContent() {
   if (staff) {
     return (
       <div className="space-y-5 md:space-y-6">
+        {bookStartLoading ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70">
+            <Loader2 className="size-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : null}
         <RoomPwaSetup />
 
         <div className="flex items-center justify-between gap-4 rounded-3xl border border-border bg-card px-5 py-4 md:px-6 md:py-5">
@@ -1385,15 +1462,162 @@ export function RoomHomeContent() {
               </>
             ) : (
               <div className="rounded-3xl border border-dashed border-border bg-muted/40 px-5 py-5 md:px-6">
-                <p className="text-base font-semibold text-foreground md:text-lg">
-                  Start service to add staff
-                </p>
-                <p className="mt-2 text-sm text-muted-foreground md:text-base">
-                  Tap <span className="font-semibold text-foreground">Enter</span>{" "}
-                  on your booking. After check-in, add more staff with their
-                  PIN, service length, and cash/card — guest details are copied
-                  automatically.
-                </p>
+                {bookStartOpen ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-base font-semibold text-foreground md:text-lg">
+                        Book start
+                      </p>
+                      <button
+                        type="button"
+                        className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+                        onClick={() => {
+                          setBookStartOpen(false);
+                          setBookStartName("");
+                          setJoinPayment("");
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {staff.name} · starts now in {roomLabel}
+                    </p>
+                    <div>
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                        Guest name
+                      </p>
+                      <input
+                        type="text"
+                        value={bookStartName}
+                        onChange={(event) => setBookStartName(event.target.value)}
+                        placeholder="Walk-in"
+                        className="h-12 w-full rounded-xl border border-border bg-background px-3 text-sm font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                    </div>
+                    <div>
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                        Service
+                      </p>
+                      <div className="space-y-2">
+                        {serviceOptions.map((option) => {
+                          const value = String(option.durationMinutes);
+                          const selected = joinDuration === value;
+                          return (
+                            <button
+                              key={option.durationMinutes}
+                              type="button"
+                              onClick={() => setJoinDuration(value)}
+                              className={cn(
+                                "flex min-h-12 w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left text-sm font-semibold",
+                                selected
+                                  ? "border-primary bg-primary/10 text-foreground ring-2 ring-primary/20"
+                                  : "border-border bg-background text-foreground",
+                              )}
+                            >
+                              {formatServiceOptionLabel(
+                                option.durationMinutes,
+                                option.priceCents,
+                                currency,
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    {startPriceBreakdown ? (
+                      <div className="flex items-baseline justify-between rounded-xl bg-muted px-3 py-2.5">
+                        <p className="text-xs font-medium text-muted-foreground">
+                          Total
+                        </p>
+                        <p className="text-lg font-semibold text-foreground">
+                          {formatPriceFromCents(
+                            startPriceBreakdown.totalCents,
+                            currency,
+                          )}
+                        </p>
+                      </div>
+                    ) : null}
+                    <div>
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                        Payment method
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(
+                          [
+                            { value: "cash" as const, label: "Cash" },
+                            { value: "card" as const, label: "Card" },
+                          ] as const
+                        ).map((option) => {
+                          const selected = joinPayment === option.value;
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => setJoinPayment(option.value)}
+                              className={cn(
+                                "min-h-12 rounded-xl border text-sm font-semibold",
+                                selected
+                                  ? "border-primary bg-primary/10 text-foreground ring-2 ring-primary/20"
+                                  : "border-border bg-background text-foreground",
+                              )}
+                            >
+                              {option.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <AppButton
+                      type="button"
+                      className="h-14 w-full rounded-2xl text-lg"
+                      disabled={
+                        bookStartLoading ||
+                        !joinDuration ||
+                        !joinPayment ||
+                        roomServiceInProgress
+                      }
+                      onClick={() => void startWalkInNow()}
+                    >
+                      {bookStartLoading ? "Starting..." : "Start service"}
+                    </AppButton>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-base font-semibold text-foreground md:text-lg">
+                      Walk-in guest
+                    </p>
+                    <p className="mt-2 text-sm text-muted-foreground md:text-base">
+                      Start a service now with {staff.name}. Time is now — no
+                      need to pick a schedule slot.
+                    </p>
+                    <AppButton
+                      type="button"
+                      className="mt-4 h-14 w-full rounded-2xl text-lg md:h-16"
+                      disabled={roomServiceInProgress}
+                      onClick={() => {
+                        setBookStartOpen(true);
+                        setJoinPayment("");
+                        setBookStartName("");
+                      }}
+                    >
+                      Book start
+                    </AppButton>
+                    {roomServiceInProgress ? (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        This room already has a service in progress.
+                      </p>
+                    ) : (
+                      <p className="mt-3 text-sm text-muted-foreground md:text-base">
+                        Or tap{" "}
+                        <span className="font-semibold text-foreground">
+                          Enter
+                        </span>{" "}
+                        on an existing booking below.
+                      </p>
+                    )}
+                  </>
+                )}
               </div>
             )}
 
