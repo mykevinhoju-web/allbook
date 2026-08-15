@@ -59,6 +59,30 @@ export function getSessionCookieOptions(host?: string | null) {
   return options;
 }
 
+export function getExpiredSessionCookieOptions(host?: string | null) {
+  return {
+    ...getSessionCookieOptions(host),
+    maxAge: 0,
+  };
+}
+
+export function expireNamedSessionCookie(
+  cookies: {
+    set: (
+      name: string,
+      value: string,
+      options: ReturnType<typeof getExpiredSessionCookieOptions>,
+    ) => unknown;
+  },
+  name: string,
+  host?: string | null,
+) {
+  const expired = getExpiredSessionCookieOptions(host);
+  cookies.set(name, "", expired);
+  const { domain: _ignored, ...hostOnly } = expired;
+  cookies.set(name, "", hostOnly);
+}
+
 export async function signAppSession(payload: AppSessionPayload) {
   const secret = getSecret();
   return await new SignJWT(payload as unknown as Record<string, unknown>)

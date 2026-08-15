@@ -31,8 +31,8 @@ export function getRoomSessionCookieName() {
   return ROOM_SESSION_COOKIE;
 }
 
-export function getRoomSessionCookieOptions() {
-  return getSessionCookieOptions();
+export function getRoomSessionCookieOptions(host?: string | null) {
+  return getSessionCookieOptions(host);
 }
 
 export { SESSION_COOKIE_MAX_AGE };

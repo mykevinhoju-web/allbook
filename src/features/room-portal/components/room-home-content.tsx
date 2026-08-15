@@ -1238,7 +1238,10 @@ export function RoomHomeContent() {
   const roomOut = async () => {
     const current = staff;
     // Leave the room tablet completely — never check out / end the in-progress booking.
-    await fetch("/api/room/staff/logout", { method: "POST" });
+    await fetch("/api/room/staff/logout", {
+      method: "POST",
+      credentials: "include",
+    });
     if (current) {
       void broadcastStaffPresence(tenant.slug, {
         type: "offline",
@@ -1247,14 +1250,11 @@ export function RoomHomeContent() {
         roomName: roomLabel,
       }).catch(() => {});
     }
-    await fetch("/api/room/auth/logout", { method: "POST" });
-    setStaff(null);
-    setStaffBookings([]);
-    setPin("");
-    setBookStartOpen(false);
-    resetBookStartForm();
-    router.replace("/room/login");
-    router.refresh();
+    await fetch("/api/room/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+    window.location.assign("/room/login");
   };
 
   const roomServiceInProgress = useMemo(
@@ -1903,9 +1903,11 @@ export function RoomHomeContent() {
   }
 
   const changeRoom = async () => {
-    await fetch("/api/room/auth/logout", { method: "POST" });
-    router.replace("/room/login");
-    router.refresh();
+    await fetch("/api/room/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+    window.location.assign("/room/login");
   };
 
   return (

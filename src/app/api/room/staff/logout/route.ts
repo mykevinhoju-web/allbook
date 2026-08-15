@@ -7,6 +7,7 @@ import {
 } from "@/lib/admin/tenant-context";
 import { readCookieFromRequest } from "@/lib/cookies/read-request-cookie";
 import { markStaffSessionOffline, clearStaffCurrentRoom } from "@/features/staff/lib/staff-presence";
+import { expireNamedSessionCookie } from "@/lib/app-session";
 import {
   getStaffSessionCookieName,
   verifyStaffSession,
@@ -32,7 +33,11 @@ export async function POST(request: Request) {
     }
 
     const response = NextResponse.json({ ok: true });
-    response.cookies.delete(getStaffSessionCookieName());
+    expireNamedSessionCookie(
+      response.cookies,
+      getStaffSessionCookieName(),
+      request.headers.get("host"),
+    );
     return response;
   } catch (error) {
     if (error instanceof TenantContextError) {

@@ -15,6 +15,7 @@ import {
   getStaffSessionCookieName,
   verifyStaffSession,
 } from "@/lib/staff-session";
+import { expireNamedSessionCookie } from "@/lib/app-session";
 
 /** Release this tablet’s room claim and clear room + staff cookies. */
 export async function POST(request: Request) {
@@ -55,8 +56,9 @@ export async function POST(request: Request) {
     }
 
     const response = NextResponse.json({ ok: true });
-    response.cookies.delete(getRoomSessionCookieName());
-    response.cookies.delete(getStaffSessionCookieName());
+    const host = request.headers.get("host");
+    expireNamedSessionCookie(response.cookies, getRoomSessionCookieName(), host);
+    expireNamedSessionCookie(response.cookies, getStaffSessionCookieName(), host);
     return response;
   } catch (error) {
     if (error instanceof TenantContextError) {

@@ -14,6 +14,7 @@ import {
   verifyRoomSession,
 } from "@/lib/room-session";
 import { getStaffSessionCookieName } from "@/lib/staff-session";
+import { expireNamedSessionCookie } from "@/lib/app-session";
 
 /** Claim a room for this tablet (no password). Rejects duplicate claims. */
 export async function POST(request: Request) {
@@ -120,9 +121,13 @@ export async function POST(request: Request) {
     response.cookies.set(
       getRoomSessionCookieName(),
       token,
-      getRoomSessionCookieOptions(),
+      getRoomSessionCookieOptions(request.headers.get("host")),
     );
-    response.cookies.delete(getStaffSessionCookieName());
+    expireNamedSessionCookie(
+      response.cookies,
+      getStaffSessionCookieName(),
+      request.headers.get("host"),
+    );
     return response;
   } catch (error) {
     if (error instanceof TenantContextError) {

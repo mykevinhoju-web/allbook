@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { DoorOpen, UserRound } from "lucide-react";
 
 import { AppButton, toast } from "@/components/common";
@@ -34,32 +33,9 @@ function storeDeviceId(deviceId: string) {
 }
 
 export function RoomLoginContent() {
-  const router = useRouter();
   const [rooms, setRooms] = useState<RoomOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [claimingId, setClaimingId] = useState<string | null>(null);
-  const [checkingSession, setCheckingSession] = useState(true);
-
-  // If this tablet already has a room, skip the picker and go to PIN.
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const response = await fetch("/api/room/me");
-        const data = (await response.json()) as { user?: { roomName?: string } };
-        if (!cancelled && response.ok && data.user) {
-          router.replace("/room");
-          return;
-        }
-      } catch {
-        // fall through to room picker
-      }
-      if (!cancelled) setCheckingSession(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [router]);
 
   const loadRooms = useCallback(async () => {
     setLoading(true);
@@ -80,15 +56,15 @@ export function RoomLoginContent() {
   }, []);
 
   useEffect(() => {
-    if (checkingSession) return;
     void loadRooms();
-  }, [checkingSession, loadRooms]);
+  }, [loadRooms]);
 
   const claimRoom = async (roomId: string, force = false) => {
     setClaimingId(roomId);
     try {
       const response = await fetch("/api/room/auth/login", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           roomId,
@@ -119,18 +95,18 @@ export function RoomLoginContent() {
       }
 
       if (data.deviceId) storeDeviceId(data.deviceId);
-      toast.success(`${data.room?.name ?? "Room"} ready`);
-      router.replace("/room");
-      router.refresh();
+      toast.success(`${data.room?.name ?? "Room"} ready — enter staff PIN`);
+      window.location.assign("/room");
     } finally {
       setClaimingId(null);
     }
   };
 
-  if (checkingSession) {
+  if (loading && rooms.length === 0) {
     return (
       <div className="flex min-h-svh items-center justify-center bg-background text-base text-muted-foreground">
-        Loading...</div>
+        Loading...
+      </div>
     );
   }
 
