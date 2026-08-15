@@ -17,7 +17,6 @@ import {
   DEFAULT_SHIFT_END_TIME,
   DEFAULT_SHIFT_START_TIME,
   durationHoursForEntry,
-  entryFromStartAndDurationHours,
   formatDateInput,
   parseDateInput,
 } from "../utils/shift-calendar";
@@ -508,10 +507,9 @@ export function StaffShiftCalendar({
                   value={focusedEntry.startTime}
                   min={minStartTime}
                   onChange={(nextStart) => {
-                    const duration = durationHoursForEntry(focusedEntry);
-                    updateFocusedEntry(
-                      entryFromStartAndDurationHours(nextStart, duration),
-                    );
+                    updateFocusedEntry({
+                      startTime: nextStart || DEFAULT_SHIFT_START_TIME,
+                    });
                   }}
                 />
               </label>
