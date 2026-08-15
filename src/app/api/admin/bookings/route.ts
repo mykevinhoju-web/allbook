@@ -35,7 +35,6 @@ import {
 } from "@/features/booking/lib/staff-conflict";
 import { isBookingOverlapConstraintError, isRoomOverlapConstraintError } from "@/features/booking/lib/validate-booking-update";
 import { isStartTimeOnFiveMinuteSlot } from "@/features/booking/lib/schedule-utils";
-import { assignWalkInStaff } from "@/features/booking/server/assign-walk-in-staff";
 import { withWalkInNote, isWalkInBooking } from "@/features/booking/lib/walk-in-rotation";
 import { autoCheckoutExpiredBookings } from "@/features/booking/server/auto-checkout-expired";
 import { computeBookingPriceCents } from "@/features/services/server/get-service-price";
@@ -251,7 +250,7 @@ export async function POST(request: Request) {
       /** External staff — name entered in admin form. */
       otherStaff?: boolean;
       otherStaffName?: string;
-      /** Walk-in with no chosen staff — assign from today's rotation. */
+      /** Walk-in — keep chosen staff; mark notes for rotation + blue bar. */
       walkIn?: boolean;
     };
 
@@ -273,7 +272,7 @@ export async function POST(request: Request) {
           { status: 400 },
         );
       }
-    } else if (!walkIn && !body.staffId) {
+    } else if (!body.staffId) {
       return NextResponse.json(
         { error: "staffId, startsAt, and durationMinutes are required." },
         { status: 400 },
@@ -364,48 +363,7 @@ export async function POST(request: Request) {
     const endsAt = new Date(startsAt.getTime() + durationMinutes * 60_000);
 
     let staffId = body.staffId ?? "";
-    if (walkIn) {
-      if (staffId) {
-        const busy = await hasStaffBookingConflict(
-          supabase,
-          tenant.id,
-          staffId,
-          startsAt.toISOString(),
-          endsAt.toISOString(),
-        );
-        if (busy) {
-          const assigned = await assignWalkInStaff({
-            supabase,
-            tenantId: tenant.id,
-            timeZone,
-            startsAtIso: startsAt.toISOString(),
-            endsAtIso: endsAt.toISOString(),
-          });
-          if (!assigned.ok) {
-            return NextResponse.json(
-              { error: assigned.error },
-              { status: assigned.status },
-            );
-          }
-          staffId = assigned.staffId;
-        }
-      } else {
-        const assigned = await assignWalkInStaff({
-          supabase,
-          tenantId: tenant.id,
-          timeZone,
-          startsAtIso: startsAt.toISOString(),
-          endsAtIso: endsAt.toISOString(),
-        });
-        if (!assigned.ok) {
-          return NextResponse.json(
-            { error: assigned.error },
-            { status: assigned.status },
-          );
-        }
-        staffId = assigned.staffId;
-      }
-    } else if (otherStaff) {
+    if (otherStaff) {
       try {
         const guest = await ensureOtherStaffMember(
           supabase,
@@ -424,6 +382,11 @@ export async function POST(request: Request) {
           { status: 503 },
         );
       }
+    } else if (!staffId) {
+      return NextResponse.json(
+        { error: "Select staff for this booking." },
+        { status: 400 },
+      );
     } else if (
       await hasStaffBookingConflict(
         supabase,

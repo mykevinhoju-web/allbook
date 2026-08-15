@@ -302,7 +302,12 @@ export function BookingScheduleContent() {
 
   const createBooking = async () => {
     const isOtherStaff = form.staffId === OTHER_STAFF_SENTINEL;
-    const isWalkIn = form.walkIn;
+    const isWalkIn = form.walkIn === true;
+
+    if (form.walkIn !== true && form.walkIn !== false) {
+      toast.error("Select Work in Book or Booking");
+      return;
+    }
 
     if (!form.staffId || !form.startsAt || !form.durationMinutes) {
       toast.error("Staff, start time, and service are required");

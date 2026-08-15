@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import {
@@ -42,7 +41,6 @@ import {
   adminBookingSheetScrollClassName,
 } from "../../lib/admin-booking-sheet";
 import { OTHER_STAFF_SENTINEL } from "../../lib/booking-other-staff";
-import { WALK_IN_SENTINEL } from "../../lib/walk-in-rotation";
 import type { RoomAvailabilityStatus } from "../../lib/room-availability";
 import {
   buildStartsAtIso,
@@ -75,8 +73,8 @@ export interface BookingFormValues {
   allowImmediateStart: boolean;
   /** Off-site service — no treatment room. */
   outCall: boolean;
-  /** Walk-in assigned from today's rotation. */
-  walkIn: boolean;
+  /** Walk-in vs regular booking — must be chosen before save. */
+  walkIn: boolean | null;
   /** External staff name when staffId is OTHER_STAFF_SENTINEL. */
   otherStaffName: string;
 }
@@ -95,7 +93,7 @@ export const defaultBookingFormValues: BookingFormValues = {
   splitCashAmount: "",
   allowImmediateStart: false,
   outCall: false,
-  walkIn: false,
+  walkIn: null,
   otherStaffName: "",
 };
 
@@ -170,20 +168,15 @@ function FormField({
 function StaffPicker({
   options,
   value,
-  walkIn,
-  assigning,
   onSelect,
 }: {
   options: { id: string; name: string }[];
   value: string;
-  walkIn?: boolean;
-  assigning?: boolean;
   onSelect: (staffId: string) => void;
 }) {
   const [query, setQuery] = useState("");
   const withExtra = useMemo(
     () => [
-      { id: WALK_IN_SENTINEL, name: "Walk-in" },
       ...options,
       { id: OTHER_STAFF_SENTINEL, name: "Other Staff" },
     ],
@@ -218,15 +211,11 @@ function StaffPicker({
           <p className="col-span-2 px-1 py-3 text-sm text-stone-500">No match.</p>
         ) : (
           filtered.map((member) => {
-            const selected =
-              member.id === WALK_IN_SENTINEL
-                ? Boolean(walkIn)
-                : value === member.id;
+            const selected = value === member.id;
             return (
               <button
                 key={member.id}
                 type="button"
-                disabled={assigning}
                 onClick={() => onSelect(member.id)}
                 className={cn(
                   "min-h-11 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition",
@@ -235,12 +224,7 @@ function StaffPicker({
                     : "border-stone-200 bg-white text-stone-700 active:bg-stone-50",
                 )}
               >
-                <span className="flex items-center gap-2">
-                  {member.id === WALK_IN_SENTINEL && assigning ? (
-                    <Loader2 className="size-4 shrink-0 animate-spin text-[#8A6A3A]" />
-                  ) : null}
-                  <span className="truncate">{member.name}</span>
-                </span>
+                <span className="truncate">{member.name}</span>
               </button>
             );
           })
@@ -278,7 +262,6 @@ export function BookingFormSheet({
   const lastLookupPhoneRef = useRef<string>("");
   const [phoneLookingUp, setPhoneLookingUp] = useState(false);
   const [phoneHint, setPhoneHint] = useState<string | null>(null);
-  const [assigningWalkIn, setAssigningWalkIn] = useState(false);
   valuesRef.current = values;
 
   useEffect(() => {
@@ -376,7 +359,6 @@ export function BookingFormSheet({
   useEffect(() => {
     if (!open || !values.staffId) return;
     if (values.staffId === OTHER_STAFF_SENTINEL) return;
-    if (values.walkIn) return;
     if (staffOptions.some((member) => member.id === values.staffId)) return;
     onChange({
       ...values,
@@ -384,11 +366,10 @@ export function BookingFormSheet({
       startsAt: "",
       allowImmediateStart: false,
       otherStaffName: "",
-      walkIn: false,
     });
     // Only re-run when the selected id or option list changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- avoid loop on values object identity
-  }, [open, staffOptions, values.staffId, values.walkIn]);
+  }, [open, staffOptions, values.staffId]);
 
   const update = <K extends keyof BookingFormValues>(
     key: K,
@@ -481,82 +462,17 @@ export function BookingFormSheet({
     });
   };
 
-  const assignWalkInNow = async () => {
-    if (assigningWalkIn) return;
-    const duration =
-      Number(values.durationMinutes) ||
-      serviceOptions[0]?.durationMinutes ||
-      30;
-    setAssigningWalkIn(true);
-    try {
-      const response = await fetchAdminApi(
-        `/api/admin/rotation/next?durationMinutes=${duration}`,
-      );
-      const data = (await response.json()) as {
-        staffId?: string;
-        staffName?: string;
-        startsAt?: string;
-        error?: string;
-      };
-      if (!response.ok || !data.staffId || !data.startsAt) {
-        toast.error("Could not assign walk-in", {
-          description: data.error ?? "Set today's rotation first.",
-        });
-        return;
-      }
-      if (date !== today) onDateChange?.(today);
-      onChange({
-        ...values,
-        staffId: data.staffId,
-        walkIn: true,
-        startsAt: data.startsAt,
-        allowImmediateStart: true,
-        durationMinutes: String(duration),
-        otherStaffName: "",
-      });
-    } catch {
-      toast.error("Could not assign walk-in");
-    } finally {
-      setAssigningWalkIn(false);
-    }
-  };
-
   const selectedRoomName = values.roomId
     ? (roomOptions.find((room) => room.id === values.roomId)?.name ?? null)
     : null;
 
-  const assignedWalkInName =
-    values.walkIn
-      ? (staffOptions.find((member) => member.id === values.staffId)?.name ??
-        null)
-      : null;
-
   const selectedStaffName =
     values.staffId === OTHER_STAFF_SENTINEL
       ? values.otherStaffName.trim() || "Other Staff"
-      : values.walkIn
-        ? assignedWalkInName
-          ? `Walk-in · ${assignedWalkInName}`
-          : "Walk-in"
-        : (staffOptions.find((member) => member.id === values.staffId)?.name ??
-          null);
+      : (staffOptions.find((member) => member.id === values.staffId)?.name ??
+        null);
 
   const isOtherStaff = values.staffId === OTHER_STAFF_SENTINEL;
-  const isWalkIn = values.walkIn;
-
-  const pickerStaffOptions = useMemo(() => {
-    if (
-      !values.walkIn ||
-      !values.staffId ||
-      staffOptions.some((member) => member.id === values.staffId)
-    ) {
-      return staffOptions;
-    }
-    return [
-      { id: values.staffId, name: assignedWalkInName ?? "Staff" },
-      ...staffOptions,
-    ];
-  }, [assignedWalkInName, staffOptions, values.staffId, values.walkIn]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -587,26 +503,19 @@ export function BookingFormSheet({
           <div ref={scrollRef} className={adminBookingSheetScrollClassName}>
             <div className={cn(theme.panel, "space-y-4")}>
               <FormField label="Staff" required>
-                {staffOptions.length === 0 && !isOtherStaff && !isWalkIn ? (
+                {staffOptions.length === 0 && !isOtherStaff ? (
                   <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
                     No staff have a shift on this day. Choose Other Staff, or
                     add shifts under Staff.
                   </p>
                 ) : null}
                 <StaffPicker
-                  options={pickerStaffOptions}
+                  options={staffOptions}
                   value={values.staffId}
-                  walkIn={values.walkIn || assigningWalkIn}
-                  assigning={assigningWalkIn}
                   onSelect={(staffId) => {
-                    if (staffId === WALK_IN_SENTINEL) {
-                      void assignWalkInNow();
-                      return;
-                    }
                     onChange({
                       ...values,
                       staffId,
-                      walkIn: false,
                       startsAt: "",
                       allowImmediateStart: false,
                       otherStaffName:
@@ -616,12 +525,7 @@ export function BookingFormSheet({
                     });
                   }}
                 />
-                {assigningWalkIn ? (
-                  <p className="mt-2 inline-flex items-center gap-2 rounded-lg bg-[#8A6A3A]/10 px-2.5 py-1.5 text-xs font-medium text-stone-800">
-                    <Loader2 className="size-3.5 animate-spin text-[#8A6A3A]" />
-                    Finding next free staff…
-                  </p>
-                ) : isOtherStaff ? (
+                {isOtherStaff ? (
                   <div className="mt-3 space-y-1">
                     <FieldLabel required>Other staff name</FieldLabel>
                     <Input
@@ -640,12 +544,6 @@ export function BookingFormSheet({
                       External staff — any time from now is available.
                     </p>
                   </div>
-                ) : isWalkIn ? (
-                  <p className="mt-2 text-xs leading-relaxed text-stone-500">
-                    {assignedWalkInName
-                      ? `Assigned ${assignedWalkInName} · starts now.`
-                      : "Assigned from today's rotation. Starts now."}
-                  </p>
                 ) : (
                   <p className="mt-2 text-xs leading-relaxed text-stone-500">
                     Only staff with a shift on this day (and not yet finished)
@@ -890,6 +788,50 @@ export function BookingFormSheet({
 
             <div className="mb-3">
               <p className="mb-2 text-xs font-medium text-stone-500">
+                Booking type
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  [
+                    { value: true as const, label: "Work in Book" },
+                    { value: false as const, label: "Booking" },
+                  ] as const
+                ).map((option) => {
+                  const selected = values.walkIn === option.value;
+                  return (
+                    <button
+                      key={option.label}
+                      type="button"
+                      onClick={() => update("walkIn", option.value)}
+                      className={cn(
+                        "min-h-11 rounded-xl border text-sm font-semibold transition",
+                        selected
+                          ? "border-[#8A6A3A] bg-[#8A6A3A]/10 text-stone-900 ring-2 ring-[#8A6A3A]/25"
+                          : "border-stone-200 bg-white text-stone-700 active:bg-stone-50",
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {values.walkIn === true ? (
+                <p className="mt-2 text-xs text-stone-500">
+                  Walk-in · counts on rotation and shows as a blue bar
+                </p>
+              ) : values.walkIn === false ? (
+                <p className="mt-2 text-xs text-stone-500">
+                  Regular booking · orange bar
+                </p>
+              ) : (
+                <p className="mt-2 text-xs text-stone-500">
+                  Select Work in Book or Booking
+                </p>
+              )}
+            </div>
+
+            <div className="mb-3">
+              <p className="mb-2 text-xs font-medium text-stone-500">
                 Payment method
               </p>
               <div className="grid grid-cols-2 gap-2">
@@ -983,9 +925,9 @@ export function BookingFormSheet({
               type="button"
               disabled={
                 submitting ||
-                assigningWalkIn ||
                 serviceOptions.length === 0 ||
-                !values.paymentMethod
+                !values.paymentMethod ||
+                values.walkIn == null
               }
               onClick={onSubmit}
               className={theme.goldButton}
