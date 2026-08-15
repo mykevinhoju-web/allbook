@@ -4,6 +4,7 @@ export type RevenueBookingRow = {
   staffName: string;
   startsAt: string;
   priceCents: number;
+  staffPayoutCents: number;
   status: string;
   customerName: string | null;
   cashCents: number;
@@ -15,11 +16,14 @@ export type RevenueBookingDetail = {
   startsAt: string;
   customerName: string | null;
   priceCents: number;
+  staffPayoutCents: number;
 };
 
 export type RevenueDailyTotal = {
   date: string;
   totalCents: number;
+  staffPayoutCents: number;
+  shopCents: number;
   bookingCount: number;
   bookings: RevenueBookingDetail[];
 };
@@ -28,6 +32,8 @@ export type RevenueStaffReport = {
   staffId: string;
   staffName: string;
   totalCents: number;
+  staffPayoutCents: number;
+  shopCents: number;
   cashCents: number;
   cardCents: number;
   bookingCount: number;
@@ -36,6 +42,8 @@ export type RevenueStaffReport = {
 
 export type RevenueReport = {
   grandTotalCents: number;
+  staffPayoutTotalCents: number;
+  shopTotalCents: number;
   cashTotalCents: number;
   cardTotalCents: number;
   bookingCount: number;
@@ -154,20 +162,40 @@ export function todayDateInZone(
 }
 
 function emptyDaily(date: string): RevenueDailyTotal {
-  return { date, totalCents: 0, bookingCount: 0, bookings: [] };
+  return {
+    date,
+    totalCents: 0,
+    staffPayoutCents: 0,
+    shopCents: 0,
+    bookingCount: 0,
+    bookings: [],
+  };
 }
 
 function bumpDaily(
   map: Map<string, RevenueDailyTotal>,
   date: string,
   cents: number,
+  staffPayoutCents: number,
+  shopCents: number,
   booking: RevenueBookingDetail,
 ) {
   const row = map.get(date) ?? emptyDaily(date);
   row.totalCents += cents;
+  row.staffPayoutCents += staffPayoutCents;
+  row.shopCents += shopCents;
   row.bookingCount += 1;
   row.bookings.push(booking);
   map.set(date, row);
+}
+
+export function resolveStaffPayoutCents(
+  snapshot: number | null | undefined,
+  durationMinutes: number,
+  payoutByDuration: Map<number, number>,
+): number {
+  if (snapshot != null) return Math.max(0, snapshot);
+  return Math.max(0, payoutByDuration.get(durationMinutes) ?? 0);
 }
 
 /**
@@ -184,6 +212,8 @@ export function aggregateRevenueReport(
       staffId: string;
       staffName: string;
       totalCents: number;
+      staffPayoutCents: number;
+      shopCents: number;
       cashCents: number;
       cardCents: number;
       bookingCount: number;
@@ -193,11 +223,15 @@ export function aggregateRevenueReport(
   const dailyMap = new Map<string, RevenueDailyTotal>();
 
   let grandTotalCents = 0;
+  let staffPayoutTotalCents = 0;
+  let shopTotalCents = 0;
   let cashTotalCents = 0;
   let cardTotalCents = 0;
 
   for (const booking of bookings) {
     const cents = Math.max(0, booking.priceCents || 0);
+    const staffPayoutCents = Math.max(0, booking.staffPayoutCents || 0);
+    const shopCents = cents - staffPayoutCents;
     const cashCents = Math.max(0, booking.cashCents || 0);
     const cardCents = Math.max(0, booking.cardCents || 0);
     const date = dateInTimeZone(booking.startsAt, timeZone);
@@ -206,27 +240,34 @@ export function aggregateRevenueReport(
       startsAt: booking.startsAt,
       customerName: booking.customerName,
       priceCents: cents,
+      staffPayoutCents,
     };
 
     grandTotalCents += cents;
+    staffPayoutTotalCents += staffPayoutCents;
+    shopTotalCents += shopCents;
     cashTotalCents += cashCents;
     cardTotalCents += cardCents;
-    bumpDaily(dailyMap, date, cents, detail);
+    bumpDaily(dailyMap, date, cents, staffPayoutCents, shopCents, detail);
 
     const existing = staffMap.get(booking.staffId);
     if (existing) {
       existing.totalCents += cents;
+      existing.staffPayoutCents += staffPayoutCents;
+      existing.shopCents += shopCents;
       existing.cashCents += cashCents;
       existing.cardCents += cardCents;
       existing.bookingCount += 1;
-      bumpDaily(existing.daily, date, cents, detail);
+      bumpDaily(existing.daily, date, cents, staffPayoutCents, shopCents, detail);
     } else {
       const daily = new Map<string, RevenueDailyTotal>();
-      bumpDaily(daily, date, cents, detail);
+      bumpDaily(daily, date, cents, staffPayoutCents, shopCents, detail);
       staffMap.set(booking.staffId, {
         staffId: booking.staffId,
         staffName: booking.staffName || "Staff",
         totalCents: cents,
+        staffPayoutCents,
+        shopCents,
         cashCents,
         cardCents,
         bookingCount: 1,
@@ -251,6 +292,8 @@ export function aggregateRevenueReport(
       staffId: staff.staffId,
       staffName: staff.staffName,
       totalCents: staff.totalCents,
+      staffPayoutCents: staff.staffPayoutCents,
+      shopCents: staff.shopCents,
       cashCents: staff.cashCents,
       cardCents: staff.cardCents,
       bookingCount: staff.bookingCount,
@@ -266,6 +309,8 @@ export function aggregateRevenueReport(
 
   return {
     grandTotalCents,
+    staffPayoutTotalCents,
+    shopTotalCents,
     cashTotalCents,
     cardTotalCents,
     bookingCount: bookings.length,

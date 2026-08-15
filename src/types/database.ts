@@ -500,6 +500,7 @@ export type Database = {
           ends_at: string;
           duration_minutes: number;
           price_cents: number;
+          staff_payout_cents: number | null;
           status: string;
           customer_name: string | null;
           customer_phone: string | null;
@@ -522,6 +523,7 @@ export type Database = {
           ends_at: string;
           duration_minutes: number;
           price_cents?: number;
+          staff_payout_cents?: number | null;
           status?: string;
           customer_name?: string | null;
           customer_phone?: string | null;
@@ -544,6 +546,7 @@ export type Database = {
           ends_at?: string;
           duration_minutes?: number;
           price_cents?: number;
+          staff_payout_cents?: number | null;
           status?: string;
           customer_name?: string | null;
           customer_phone?: string | null;
@@ -625,6 +628,7 @@ export type Database = {
           tenant_id: string;
           duration_minutes: number;
           price_cents: number;
+          staff_payout_cents: number;
           sort_order: number;
           is_active: boolean;
           created_at: string;
@@ -635,6 +639,7 @@ export type Database = {
           tenant_id: string;
           duration_minutes: number;
           price_cents: number;
+          staff_payout_cents?: number;
           sort_order?: number;
           is_active?: boolean;
           created_at?: string;
@@ -645,6 +650,7 @@ export type Database = {
           tenant_id?: string;
           duration_minutes?: number;
           price_cents?: number;
+          staff_payout_cents?: number;
           sort_order?: number;
           is_active?: boolean;
           created_at?: string;

@@ -223,6 +223,7 @@ export async function POST(
     }
 
     let priceCents = 0;
+    let staffPayoutCents: number | null = null;
     try {
       const paymentMethod = parsePaymentMethodFromNotes(existing.notes);
       const isInternal = existing.payment_status === "not_required";
@@ -238,6 +239,7 @@ export async function POST(
           : null,
       });
       priceCents = priced?.totalCents ?? 0;
+      staffPayoutCents = priced?.staffPayoutCents ?? null;
     } catch {
       // Keep previous price if no matching service option.
       priceCents = 0;
@@ -248,6 +250,7 @@ export async function POST(
       duration_minutes: number;
       updated_at: string;
       price_cents?: number;
+      staff_payout_cents?: number;
     } = {
       ends_at: newEndsAt.toISOString(),
       duration_minutes: durationMinutes,
@@ -255,6 +258,9 @@ export async function POST(
     };
     if (priceCents > 0) {
       updates.price_cents = priceCents;
+      if (staffPayoutCents != null) {
+        updates.staff_payout_cents = staffPayoutCents;
+      }
     }
 
     const { data, error } = await supabase

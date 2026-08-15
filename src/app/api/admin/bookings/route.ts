@@ -501,6 +501,7 @@ export async function POST(request: Request) {
         ends_at: endsAt.toISOString(),
         duration_minutes: durationMinutes,
         price_cents: priceCents,
+        staff_payout_cents: priced.staffPayoutCents ?? 0,
         status: body.status ?? "confirmed",
         // Pre bookings stay unpaid until admin confirms payment.
         payment_status: paymentStatusForMethod(paymentMethod),

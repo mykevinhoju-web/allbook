@@ -8,6 +8,7 @@ import {
   MAX_REPORT_RANGE_DAYS,
   reportDateRangeToUtc,
   todayDateInZone,
+  resolveStaffPayoutCents,
   type RevenueBookingRow,
 } from "@/features/admin/lib/revenue-report";
 import {
@@ -15,6 +16,7 @@ import {
   parseOtherStaffName,
 } from "@/features/booking/lib/booking-other-staff";
 import { splitRevenueCents } from "@/features/booking/lib/internal-payment-method";
+import { loadStaffPayoutByDuration } from "@/features/services/server/get-service-price";
 import {
   createServiceSupabase,
   requireTenantFromRequest,
@@ -22,17 +24,22 @@ import {
 } from "@/lib/admin/tenant-context";
 import { StaffAuthError, requireStaffSession } from "@/lib/server/require-staff-session";
 
-function mapRow(row: {
-  id: string;
-  staff_id: string;
-  starts_at: string;
-  price_cents: number;
-  status: string;
-  payment_status: string;
-  customer_name: string | null;
-  notes: string | null;
-  staff?: { name: string } | { name: string }[] | null;
-}): RevenueBookingRow {
+function mapRow(
+  row: {
+    id: string;
+    staff_id: string;
+    starts_at: string;
+    duration_minutes: number;
+    price_cents: number;
+    staff_payout_cents: number | null;
+    status: string;
+    payment_status: string;
+    customer_name: string | null;
+    notes: string | null;
+    staff?: { name: string } | { name: string }[] | null;
+  },
+  payoutByDuration: Map<number, number>,
+): RevenueBookingRow {
   const staffName = Array.isArray(row.staff)
     ? row.staff[0]?.name
     : row.staff?.name;
@@ -43,11 +50,18 @@ function mapRow(row: {
     notes: row.notes,
   });
 
+  const staffPayoutCents = resolveStaffPayoutCents(
+    row.staff_payout_cents,
+    row.duration_minutes,
+    payoutByDuration,
+  );
+
   const base = {
     id: row.id,
     staffId: row.staff_id,
     startsAt: row.starts_at,
     priceCents: row.price_cents,
+    staffPayoutCents,
     status: row.status,
     customerName: row.customer_name,
     cashCents,
@@ -112,7 +126,7 @@ export async function GET(request: Request) {
     const { data, error } = await supabase
       .from("bookings")
       .select(
-        "id, staff_id, starts_at, price_cents, status, payment_status, customer_name, notes, staff(name)",
+        "id, staff_id, starts_at, duration_minutes, price_cents, staff_payout_cents, status, payment_status, customer_name, notes, staff(name)",
       )
       .eq("tenant_id", tenant.id)
       .eq("staff_id", session.staffId)
@@ -126,7 +140,11 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 503 });
     }
 
-    const bookings = (data ?? []).map(mapRow);
+    const payoutByDuration = await loadStaffPayoutByDuration(
+      supabase,
+      tenant.id,
+    );
+    const bookings = (data ?? []).map((row) => mapRow(row, payoutByDuration));
     const report = aggregateRevenueReport(bookings, timeZone);
 
     return NextResponse.json({

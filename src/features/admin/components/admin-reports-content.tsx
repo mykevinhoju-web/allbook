@@ -29,6 +29,8 @@ type RevenueResponse = {
   from: string;
   to: string;
   grandTotalCents: number;
+  staffPayoutTotalCents: number;
+  shopTotalCents: number;
   cashTotalCents: number;
   cardTotalCents: number;
   bookingCount: number;
@@ -121,16 +123,17 @@ function StaffDailyDetail({
           </div>
 
           <div className="overflow-hidden rounded-xl border border-border/40">
-            <div className="hidden bg-muted/40 px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)_5rem] sm:gap-3">
+            <div className="hidden bg-muted/40 px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)_5rem_5rem] sm:gap-3">
               <span>Time</span>
               <span>Customer</span>
-              <span className="text-right">Amount</span>
+              <span className="text-right">Sales</span>
+              <span className="text-right">Staff</span>
             </div>
             <ul className="divide-y divide-border/40">
               {day.bookings.map((booking) => (
                 <li
                   key={booking.id}
-                  className="px-3 py-2.5 sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)_5rem] sm:items-center sm:gap-3"
+                  className="px-3 py-2.5 sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)_5rem_5rem] sm:items-center sm:gap-3"
                 >
                   <p className="text-sm font-medium tabular-nums">
                     {formatAmPmTime(booking.startsAt)}
@@ -145,6 +148,9 @@ function StaffDailyDetail({
                   </div>
                   <p className="mt-0.5 text-sm font-semibold tabular-nums sm:mt-0 sm:text-right">
                     {formatPriceFromCents(booking.priceCents, currency)}
+                  </p>
+                  <p className="text-sm tabular-nums text-muted-foreground sm:text-right">
+                    {formatPriceFromCents(booking.staffPayoutCents, currency)}
                   </p>
                 </li>
               ))}
@@ -183,8 +189,8 @@ function StaffSection({
             </p>
             <p className="text-xs text-muted-foreground">
               {staff.bookingCount} booking{staff.bookingCount === 1 ? "" : "s"} ·{" "}
-              cash {formatPriceFromCents(staff.cashCents, currency)} · card{" "}
-              {formatPriceFromCents(staff.cardCents, currency)}
+              staff {formatPriceFromCents(staff.staffPayoutCents, currency)} ·
+              shop {formatPriceFromCents(staff.shopCents, currency)}
             </p>
           </div>
         </div>
@@ -482,11 +488,11 @@ export function AdminReportsContent() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-soft sm:col-span-2">
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-soft">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm text-muted-foreground">Selected period total</p>
+              <p className="text-sm text-muted-foreground">Total sales</p>
               <p className="mt-1 text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl">
                 {loading && !report
                   ? "—"
@@ -506,6 +512,31 @@ export function AdminReportsContent() {
               <CalendarRange className="size-4" />
             </div>
           </div>
+        </div>
+        <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-soft">
+          <p className="text-sm text-muted-foreground">Staff take</p>
+          <p className="mt-1 text-3xl font-semibold tabular-nums">
+            {loading && !report
+              ? "—"
+              : formatPriceFromCents(
+                  report?.staffPayoutTotalCents ?? 0,
+                  currency,
+                )}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Amount staff keep from services
+          </p>
+        </div>
+        <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-soft">
+          <p className="text-sm text-muted-foreground">Shop profit</p>
+          <p className="mt-1 text-3xl font-semibold tabular-nums">
+            {loading && !report
+              ? "—"
+              : formatPriceFromCents(report?.shopTotalCents ?? 0, currency)}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Sales minus staff take
+          </p>
         </div>
         <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-soft">
           <p className="text-sm text-muted-foreground">Cash</p>

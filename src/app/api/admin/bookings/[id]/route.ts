@@ -202,6 +202,7 @@ export async function PATCH(
       }
 
       updates.price_cents = priced.totalCents;
+      updates.staff_payout_cents = priced.staffPayoutCents ?? 0;
     }
 
     const { data, error } = await supabase

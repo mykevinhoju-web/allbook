@@ -85,7 +85,7 @@ export async function POST(
     const { data: existing, error: fetchError } = await supabase
       .from("bookings")
       .select(
-        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, status, checked_out_at, checked_in_at, price_cents, payment_status, notes",
+        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, status, checked_out_at, checked_in_at, price_cents, staff_payout_cents, payment_status, notes",
       )
       .eq("tenant_id", tenant.id)
       .eq("id", id)
@@ -183,6 +183,7 @@ export async function POST(
     }
 
     let priceCents = existing.price_cents;
+    let staffPayoutCents = existing.staff_payout_cents;
     try {
       const paymentMethod = parsePaymentMethodFromNotes(existing.notes);
       const isInternal = existing.payment_status === "not_required";
@@ -197,7 +198,10 @@ export async function POST(
           ? paymentMethodForPricing(paymentMethod)
           : null,
       });
-      if (priced && priced.totalCents > 0) priceCents = priced.totalCents;
+      if (priced && priced.totalCents > 0) {
+        priceCents = priced.totalCents;
+        staffPayoutCents = priced.staffPayoutCents ?? staffPayoutCents;
+      }
     } catch {
       // keep previous
     }
@@ -208,6 +212,7 @@ export async function POST(
         ends_at: newEndsAt.toISOString(),
         duration_minutes: durationMinutes,
         price_cents: priceCents,
+        staff_payout_cents: staffPayoutCents,
         room_id: roomId,
         updated_at: new Date().toISOString(),
       })

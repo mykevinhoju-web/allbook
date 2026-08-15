@@ -111,7 +111,7 @@ export async function applyBookingExtend(options: {
   const { data: existing, error: fetchError } = await supabase
     .from("bookings")
     .select(
-      "id, staff_id, room_id, starts_at, ends_at, duration_minutes, status, checked_out_at, checked_in_at, price_cents, payment_status, notes",
+      "id, staff_id, room_id, starts_at, ends_at, duration_minutes, status, checked_out_at, checked_in_at, price_cents, staff_payout_cents, payment_status, notes",
     )
     .eq("tenant_id", tenantId)
     .eq("id", bookingId)
@@ -209,6 +209,7 @@ export async function applyBookingExtend(options: {
       : parsePaymentMethodFromNotes(existing.notes);
 
   let priceCents = existing.price_cents;
+  let staffPayoutCents = existing.staff_payout_cents;
   try {
     const isInternal = existing.payment_status === "not_required";
     const priced = await computeBookingPriceCents(supabase, {
@@ -220,7 +221,10 @@ export async function applyBookingExtend(options: {
       adjustments: pricingAdjustments,
       paymentMethod: isInternal ? paymentMethodForPricing(method) : null,
     });
-    if (priced && priced.totalCents > 0) priceCents = priced.totalCents;
+    if (priced && priced.totalCents > 0) {
+      priceCents = priced.totalCents;
+      staffPayoutCents = priced.staffPayoutCents ?? staffPayoutCents;
+    }
   } catch {
     // keep previous
   }
@@ -242,6 +246,7 @@ export async function applyBookingExtend(options: {
       ends_at: newEndsAt.toISOString(),
       duration_minutes: durationMinutes,
       price_cents: priceCents,
+      staff_payout_cents: staffPayoutCents,
       room_id: roomId,
       notes,
       updated_at: new Date().toISOString(),

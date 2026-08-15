@@ -17,6 +17,7 @@ interface PricingRow {
   key: string;
   durationMinutes: string;
   price: string;
+  staffPayout: string;
 }
 
 function emptyRow(): PricingRow {
@@ -24,6 +25,7 @@ function emptyRow(): PricingRow {
     key: crypto.randomUUID(),
     durationMinutes: "",
     price: "",
+    staffPayout: "",
   };
 }
 
@@ -60,6 +62,7 @@ export function ServicePricingContent() {
         options?: {
           durationMinutes: number;
           priceCents: number;
+          staffPayoutCents?: number;
         }[];
         currency?: string;
         pricingAdjustments?: PricingAdjustments;
@@ -89,14 +92,15 @@ export function ServicePricingContent() {
             key: crypto.randomUUID(),
             durationMinutes: String(option.durationMinutes),
             price: String(option.priceCents / 100),
+            staffPayout: dollarsInputFromCents(option.staffPayoutCents ?? 0),
           })),
         );
       } else {
         setRows([
-          { key: crypto.randomUUID(), durationMinutes: "20", price: "30" },
-          { key: crypto.randomUUID(), durationMinutes: "30", price: "45" },
-          { key: crypto.randomUUID(), durationMinutes: "45", price: "65" },
-          { key: crypto.randomUUID(), durationMinutes: "60", price: "100" },
+          { key: crypto.randomUUID(), durationMinutes: "20", price: "30", staffPayout: "" },
+          { key: crypto.randomUUID(), durationMinutes: "30", price: "45", staffPayout: "" },
+          { key: crypto.randomUUID(), durationMinutes: "45", price: "65", staffPayout: "" },
+          { key: crypto.randomUUID(), durationMinutes: "60", price: "100", staffPayout: "" },
         ]);
       }
     } catch (error) {
@@ -125,6 +129,7 @@ export function ServicePricingContent() {
       .map((row) => ({
         durationMinutes: Number(row.durationMinutes),
         price: Number(row.price),
+        staffPayout: row.staffPayout.trim() ? Number(row.staffPayout) : 0,
       }));
 
     if (options.length === 0) {
@@ -192,16 +197,17 @@ export function ServicePricingContent() {
   const nightLabel = "9:00 PM – 10:00 AM";
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-3 py-4 sm:px-4 lg:gap-6 lg:p-6">
+    <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-4 px-3 py-4 sm:px-4 lg:gap-6 lg:p-6">
       <AdminPageHeader
         title="Services & pricing"
-        description="Set duration and price for each service. Customers see these when booking."
+        description="Set duration, customer price, and the amount staff keep. Reports use these for settlement."
       />
 
       <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft sm:p-6">
-        <div className="mb-4 hidden gap-3 text-xs font-medium text-muted-foreground sm:grid sm:grid-cols-[1fr_1fr_auto]">
+        <div className="mb-4 hidden gap-3 text-xs font-medium text-muted-foreground sm:grid sm:grid-cols-[1fr_1fr_1fr_auto]">
           <span>Duration (minutes)</span>
           <span>Price ({currency})</span>
+          <span>Staff amount ({currency})</span>
           <span className="w-10" />
         </div>
 
@@ -209,7 +215,7 @@ export function ServicePricingContent() {
           {rows.map((row) => (
             <div
               key={row.key}
-              className="grid grid-cols-1 gap-2 rounded-xl border border-border/40 p-3 sm:grid-cols-[1fr_1fr_auto] sm:items-center sm:gap-3 sm:border-0 sm:p-0"
+              className="grid grid-cols-1 gap-2 rounded-xl border border-border/40 p-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-center sm:gap-3 sm:border-0 sm:p-0"
             >
               <div className="space-y-1 sm:contents">
                 <span className="text-xs font-medium text-muted-foreground sm:hidden">
@@ -237,6 +243,22 @@ export function ServicePricingContent() {
                   placeholder="e.g. 45"
                   value={row.price}
                   onChange={(event) => updateRow(row.key, "price", event.target.value)}
+                  className="h-11 rounded-xl"
+                />
+              </div>
+              <div className="space-y-1 sm:contents">
+                <span className="text-xs font-medium text-muted-foreground sm:hidden">
+                  Staff amount ({currency})
+                </span>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  placeholder="e.g. 20"
+                  value={row.staffPayout}
+                  onChange={(event) =>
+                    updateRow(row.key, "staffPayout", event.target.value)
+                  }
                   className="h-11 rounded-xl"
                 />
               </div>

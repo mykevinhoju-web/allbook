@@ -22,6 +22,8 @@ type RevenueResponse = {
   from: string;
   to: string;
   grandTotalCents: number;
+  staffPayoutTotalCents: number;
+  shopTotalCents: number;
   cashTotalCents: number;
   cardTotalCents: number;
   bookingCount: number;
@@ -156,24 +158,45 @@ export function StaffReportsContent() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-sm text-muted-foreground">Total</p>
-            <p className="mt-1 text-3xl font-semibold tabular-nums">
-              {loading && !report
-                ? "—"
-                : formatPriceFromCents(report?.grandTotalCents ?? 0, currency)}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {from === to ? from : `${from} → ${to}`} ·{" "}
-              {report?.bookingCount ?? 0} booking
-              {(report?.bookingCount ?? 0) === 1 ? "" : "s"}
-            </p>
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm text-muted-foreground">Sales</p>
+              <p className="mt-1 text-3xl font-semibold tabular-nums">
+                {loading && !report
+                  ? "—"
+                  : formatPriceFromCents(report?.grandTotalCents ?? 0, currency)}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {from === to ? from : `${from} → ${to}`} ·{" "}
+                {report?.bookingCount ?? 0} booking
+                {(report?.bookingCount ?? 0) === 1 ? "" : "s"}
+              </p>
+            </div>
+            <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <CalendarRange className="size-4" />
+            </div>
           </div>
-          <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <CalendarRange className="size-4" />
-          </div>
+        </div>
+        <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft">
+          <p className="text-sm text-muted-foreground">Your take</p>
+          <p className="mt-1 text-3xl font-semibold tabular-nums">
+            {loading && !report
+              ? "—"
+              : formatPriceFromCents(
+                  report?.staffPayoutTotalCents ?? 0,
+                  currency,
+                )}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft">
+          <p className="text-sm text-muted-foreground">Shop</p>
+          <p className="mt-1 text-3xl font-semibold tabular-nums">
+            {loading && !report
+              ? "—"
+              : formatPriceFromCents(report?.shopTotalCents ?? 0, currency)}
+          </p>
         </div>
       </section>
 
@@ -231,8 +254,15 @@ export function StaffReportsContent() {
                         {formatAmPmTime(booking.startsAt)} ·{" "}
                         {booking.customerName?.trim() || "Walk-in"}
                       </span>
-                      <span className="shrink-0 font-medium tabular-nums">
+                      <span className="shrink-0 text-right font-medium tabular-nums">
                         {formatPriceFromCents(booking.priceCents, currency)}
+                        <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                          you{" "}
+                          {formatPriceFromCents(
+                            booking.staffPayoutCents,
+                            currency,
+                          )}
+                        </span>
                       </span>
                     </li>
                   ))}

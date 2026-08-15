@@ -272,6 +272,7 @@ export async function POST(
         ends_at: endsAtIso,
         duration_minutes: durationMinutes,
         price_cents: priced.totalCents,
+        staff_payout_cents: priced.staffPayoutCents ?? 0,
         status: "confirmed",
         payment_status: "not_required",
         checked_in_at: startsAtIso,

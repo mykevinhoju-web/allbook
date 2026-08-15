@@ -233,6 +233,7 @@ export async function createTenantBooking(
       ends_at: endsAt.toISOString(),
       duration_minutes: durationMinutes,
       price_cents: priceCents,
+      staff_payout_cents: priced.staffPayoutCents ?? 0,
       status,
       payment_status: paymentStatus,
       customer_name: body.customerName.trim(),

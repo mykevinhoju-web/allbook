@@ -77,6 +77,7 @@ export interface BookingPriceBreakdown {
   nightSurchargeCents: number;
   discountCents: number;
   totalCents: number;
+  staffPayoutCents?: number;
 }
 
 export function applyPricingAdjustments(args: {
