@@ -6,6 +6,7 @@ import {
   paymentStatusForMethod,
   withPaymentMethodNote,
 } from "@/features/booking/lib/internal-payment-method";
+import { withRoomStartNote } from "@/features/booking/lib/room-start";
 import { withWalkInNote } from "@/features/booking/lib/walk-in-rotation";
 import {
   findRoomActiveService,
@@ -177,13 +178,12 @@ export async function POST(request: Request) {
         price_cents: priced.totalCents,
         staff_payout_cents: priced.staffPayoutCents ?? 0,
         status: "confirmed",
-        payment_status: paymentStatusForMethod(paymentMethod),
-        checked_in_at: startsAtIso,
+        payment_status: paymentStatusForMethod("pre"),
         customer_name: customerName,
         customer_phone: "",
         notes: withPaymentMethodNote(
-          paymentMethod,
-          withWalkInNote(null),
+          "pre",
+          withWalkInNote(withRoomStartNote(paymentMethod, null)),
         ),
       })
       .select(

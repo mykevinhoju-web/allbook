@@ -65,6 +65,7 @@ function mapBooking(row: {
   customer_postcode: string | null;
   customer_email: string | null;
   notes: string | null;
+  payment_status?: string | null;
   staff?: { name: string } | { name: string }[] | null;
   rooms?: { name: string } | { name: string }[] | null;
 }): AdminBooking {
@@ -93,6 +94,7 @@ function mapBooking(row: {
     customerPostcode: row.customer_postcode,
     customerEmail: row.customer_email,
     notes: row.notes,
+    paymentStatus: row.payment_status ?? null,
   };
 }
 
@@ -135,7 +137,7 @@ export async function GET(request: Request) {
     const { data, error } = await supabase
       .from("bookings")
       .select(
-        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, status, checked_out_at, checked_in_at, customer_name, customer_phone, customer_postcode, customer_email, notes, staff(name), rooms(name)",
+        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, status, checked_out_at, checked_in_at, customer_name, customer_phone, customer_postcode, customer_email, notes, payment_status, staff(name), rooms(name)",
       )
       .eq("tenant_id", tenant.id)
       .eq("room_id", roomSession.roomId)

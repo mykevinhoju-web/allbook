@@ -90,7 +90,7 @@ export async function POST(
     const { data: existing, error: fetchError } = await supabase
       .from("bookings")
       .select(
-        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, status, checked_out_at, checked_in_at",
+        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, status, checked_out_at, checked_in_at, payment_status",
       )
       .eq("tenant_id", tenant.id)
       .eq("id", id)
@@ -104,6 +104,13 @@ export async function POST(
     }
     if (existing.staff_id !== staffSession.staffId) {
       return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+    }
+
+    if (existing.payment_status === "unpaid") {
+      return NextResponse.json(
+        { error: "Waiting for admin approval before this service can start." },
+        { status: 409 },
+      );
     }
 
     if (

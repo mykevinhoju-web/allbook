@@ -12,6 +12,7 @@ import {
 } from "@/features/booking/lib/booking-check-in";
 import { getAvailableExtendMinutes } from "@/features/booking/lib/booking-extend";
 import { parsePairBookingId } from "@/features/booking/lib/booking-pair";
+import { isPendingRoomStartBooking } from "@/features/booking/lib/room-start";
 import {
   playServiceEndAlarm,
   unlockBookingAudio,
@@ -19,6 +20,7 @@ import {
 import {
   broadcastExtendRequest,
   broadcastServiceEnd,
+  broadcastStartRequest,
   subscribeToBookingAlerts,
 } from "@/features/booking/lib/booking-realtime";
 import { useBookingRealtime } from "@/features/booking/lib/booking-schedule-realtime";
@@ -165,6 +167,9 @@ function PinPad({
 }
 
 function bookingStateLabel(booking: AdminBooking, now: Date): string {
+  if (isPendingRoomStartBooking(booking)) {
+    return "Waiting admin";
+  }
   if (isBookingCheckedIn(booking)) {
     return "In room";
   }
@@ -453,6 +458,18 @@ export function RoomHomeContent() {
     return getActiveCheckedInBooking(staffBookings);
   }, [staff, staffBookings]);
 
+  const pendingStartBooking = useMemo(() => {
+    if (!staff) return null;
+    return (
+      staffBookings.find((row) => isPendingRoomStartBooking(row)) ??
+      bookings.find(
+        (row) =>
+          row.staffId === staff.id && isPendingRoomStartBooking(row),
+      ) ??
+      null
+    );
+  }, [staff, staffBookings, bookings]);
+
   const loadVisitSchedules = useCallback(
     async (members: CompanionBooking[]) => {
       if (members.length === 0) {
@@ -614,19 +631,24 @@ export function RoomHomeContent() {
         toast.error("Could not start booking", { description: data.error });
         return;
       }
-      toast.success("Service started", {
-        description: [
-          data.booking?.priceCents != null
-            ? formatPriceFromCents(data.booking.priceCents, currency)
-            : null,
-          "Starts now",
-        ]
-          .filter(Boolean)
-          .join(" · "),
+      toast.success("Sent to admin", {
+        description: "Waiting for approval before the service starts.",
       });
+      const guestName = bookStartName.trim() || "Walk-in";
       setBookStartOpen(false);
       setBookStartName("");
       setJoinPayment("");
+      const created = data.booking;
+      if (created?.id) {
+        void broadcastStartRequest(tenant.slug, {
+          bookingId: created.id,
+          staffName: staff?.name ?? "Staff",
+          roomName: roomLabel,
+          customerName: guestName,
+          durationMinutes: Number(joinDuration),
+          requestedAt: new Date().toISOString(),
+        }).catch(() => {});
+      }
       await refreshAll();
     } finally {
       setBookStartLoading(false);
@@ -846,6 +868,27 @@ export function RoomHomeContent() {
     loadVisit,
     myActiveBooking,
   ]);
+
+  useEffect(() => {
+    if (!staff) return;
+    return subscribeToBookingAlerts(
+      tenant.slug,
+      () => {},
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      (payload) => {
+        if (payload.status === "approved") {
+          toast.success("Admin approved — service started");
+        } else {
+          toast.error("Admin declined the start request");
+        }
+        void refreshAll({ soft: true });
+      },
+    );
+  }, [staff, tenant.slug, refreshAll]);
 
   const checkIn = async (bookingId: string) => {
     setActionId(bookingId);
@@ -1460,6 +1503,17 @@ export function RoomHomeContent() {
                 );
               })}
               </>
+            ) : pendingStartBooking ? (
+              <div className="rounded-3xl border border-dashed border-border bg-muted/40 px-5 py-5 md:px-6">
+                <p className="text-base font-semibold text-foreground md:text-lg">
+                  Waiting for admin
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground md:text-base">
+                  {pendingStartBooking.customerName || "Walk-in"} ·{" "}
+                  {formatDurationLabel(pendingStartBooking.durationMinutes)} ·{" "}
+                  {staff.name}. Service starts after admin approval.
+                </p>
+              </div>
             ) : (
               <div className="rounded-3xl border border-dashed border-border bg-muted/40 px-5 py-5 md:px-6">
                 {bookStartOpen ? (
@@ -1764,7 +1818,8 @@ function StaffDayBookingsCard({
               allowEnter &&
               canCheckInToBooking(booking, now) &&
               !activeBooking &&
-              !roomServiceInProgress;
+              !roomServiceInProgress &&
+              !isPendingRoomStartBooking(booking);
             const label = bookingStateLabel(booking, now);
             return (
               <li

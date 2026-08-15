@@ -7,6 +7,10 @@ import type {
   ExtendRequestAlertPayload,
   ExtendRequestResolvedPayload,
 } from "../types/extend-request";
+import type {
+  RoomStartAlertPayload,
+  RoomStartResolvedPayload,
+} from "../types/room-start-request";
 import type { ServiceEndAlertPayload } from "../types/service-end-alert";
 
 function getChannelName(tenantSlug: string) {
@@ -126,6 +130,60 @@ function parseExtendResolvedPayload(
   return null;
 }
 
+function parseStartRequestPayload(
+  message: unknown,
+): RoomStartAlertPayload | null {
+  if (!message || typeof message !== "object") return null;
+  const record = message as Record<string, unknown>;
+  const inner =
+    record.payload && typeof record.payload === "object"
+      ? (record.payload as Record<string, unknown>)
+      : record;
+
+  if (
+    typeof inner.bookingId === "string" &&
+    typeof inner.staffName === "string" &&
+    typeof inner.roomName === "string" &&
+    typeof inner.durationMinutes === "number" &&
+    typeof inner.requestedAt === "string"
+  ) {
+    return {
+      bookingId: inner.bookingId,
+      staffName: inner.staffName,
+      roomName: inner.roomName,
+      customerName:
+        typeof inner.customerName === "string" ? inner.customerName : null,
+      durationMinutes: inner.durationMinutes,
+      requestedAt: inner.requestedAt,
+    };
+  }
+  return null;
+}
+
+function parseStartResolvedPayload(
+  message: unknown,
+): RoomStartResolvedPayload | null {
+  if (!message || typeof message !== "object") return null;
+  const record = message as Record<string, unknown>;
+  const inner =
+    record.payload && typeof record.payload === "object"
+      ? (record.payload as Record<string, unknown>)
+      : record;
+
+  if (
+    typeof inner.bookingId === "string" &&
+    (inner.status === "approved" || inner.status === "rejected") &&
+    typeof inner.resolvedAt === "string"
+  ) {
+    return {
+      bookingId: inner.bookingId,
+      status: inner.status,
+      resolvedAt: inner.resolvedAt,
+    };
+  }
+  return null;
+}
+
 export function subscribeToBookingAlerts(
   tenantSlug: string,
   onBooking: (payload: BookingAlertPayload) => void,
@@ -133,6 +191,8 @@ export function subscribeToBookingAlerts(
   onServiceEnd?: (payload: ServiceEndAlertPayload) => void,
   onExtendRequest?: (payload: ExtendRequestAlertPayload) => void,
   onExtendResolved?: (payload: ExtendRequestResolvedPayload) => void,
+  onStartRequest?: (payload: RoomStartAlertPayload) => void,
+  onStartResolved?: (payload: RoomStartResolvedPayload) => void,
 ) {
   const supabase = createClient();
   const channel: RealtimeChannel = supabase.channel(getChannelName(tenantSlug), {
@@ -155,6 +215,14 @@ export function subscribeToBookingAlerts(
     .on("broadcast", { event: "extend_resolved" }, (message) => {
       const payload = parseExtendResolvedPayload(message);
       if (payload && onExtendResolved) onExtendResolved(payload);
+    })
+    .on("broadcast", { event: "start_request" }, (message) => {
+      const payload = parseStartRequestPayload(message);
+      if (payload && onStartRequest) onStartRequest(payload);
+    })
+    .on("broadcast", { event: "start_resolved" }, (message) => {
+      const payload = parseStartResolvedPayload(message);
+      if (payload && onStartResolved) onStartResolved(payload);
     })
     .subscribe((status) => {
       onStatus?.(status);
@@ -221,4 +289,18 @@ export async function broadcastExtendResolved(
   payload: ExtendRequestResolvedPayload,
 ) {
   await broadcastOnAlertsChannel(tenantSlug, "extend_resolved", payload);
+}
+
+export async function broadcastStartRequest(
+  tenantSlug: string,
+  payload: RoomStartAlertPayload,
+) {
+  await broadcastOnAlertsChannel(tenantSlug, "start_request", payload);
+}
+
+export async function broadcastStartResolved(
+  tenantSlug: string,
+  payload: RoomStartResolvedPayload,
+) {
+  await broadcastOnAlertsChannel(tenantSlug, "start_resolved", payload);
 }
