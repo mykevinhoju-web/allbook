@@ -24,6 +24,7 @@ interface DataTableProps<T> {
   emptyDescription?: string;
   className?: string;
   getRowKey?: (row: T, index: number) => string;
+  getRowClassName?: (row: T, index: number) => string | undefined;
 }
 
 export function DataTable<T>({
@@ -33,6 +34,7 @@ export function DataTable<T>({
   emptyDescription = "There are no records to display yet.",
   className,
   getRowKey,
+  getRowClassName,
 }: DataTableProps<T>) {
   if (data.length === 0) {
     return (
@@ -67,7 +69,10 @@ export function DataTable<T>({
           </TableHeader>
           <TableBody>
             {data.map((row, index) => (
-              <TableRow key={getRowKey?.(row, index) ?? index}>
+              <TableRow
+                key={getRowKey?.(row, index) ?? index}
+                className={getRowClassName?.(row, index)}
+              >
                 {columns.map((column) => (
                   <TableCell key={column.key} className={column.className}>
                     {column.cell(row)}

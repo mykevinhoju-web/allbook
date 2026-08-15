@@ -169,6 +169,34 @@ export function isStaffBookableOnDate(args: {
   );
 }
 
+/** True when this staff member is inside today's shift window right now. */
+export function isStaffOnShiftNow(args: {
+  status: StaffStatus;
+  attributes: StaffAttributes | unknown;
+  date: string;
+  timeZone: string;
+  workingHoursStart?: string | null;
+  workingHoursEnd?: string | null;
+  now?: Date;
+}): boolean {
+  const now = args.now ?? new Date();
+  if (!isStaffBookableOnDate({ ...args, now })) return false;
+
+  const window = getStaffShiftWindowForDate({
+    attributes: args.attributes,
+    date: args.date,
+    timeZone: args.timeZone,
+    workingHoursStart: args.workingHoursStart,
+    workingHoursEnd: args.workingHoursEnd,
+  });
+  if (!window) return true;
+
+  const start = new Date(window.shiftStartsAt).getTime();
+  const end = new Date(window.shiftEndsAt).getTime();
+  const t = now.getTime();
+  return t >= start && t < end;
+}
+
 export function getStaffWorkingTodayLabel(args: {
   status: StaffStatus;
   attributes: StaffAttributes | unknown;

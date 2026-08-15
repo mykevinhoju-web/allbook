@@ -18,7 +18,6 @@ export const staffPresenceFilterOptions: {
 }[] = [
   { value: "all", label: "All presence" },
   { value: "online", label: "Online" },
-  { value: "in_service", label: "In service" },
   { value: "offline", label: "Offline" },
 ];
 

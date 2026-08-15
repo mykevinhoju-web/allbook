@@ -190,7 +190,7 @@ export function StaffListContent() {
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-3 py-4 pb-16 sm:px-4 lg:gap-6 lg:p-6 lg:pb-24">
       <AdminPageHeader
         title="Staff"
-        description="See who is online or in a room. Edit profiles for employment status and schedules."
+        description="Online means on shift. Room name appears after PIN sign-in, even when off shift."
         action={
           <Link
             href="/admin/staff/new"

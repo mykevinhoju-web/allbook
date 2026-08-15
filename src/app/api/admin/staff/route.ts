@@ -8,6 +8,7 @@ import {
   defaultShiftWindow,
   normalizeShiftWindow,
   toDatetimeLocalValue,
+  todayDateInZone,
 } from "@/features/booking/lib/schedule-utils";
 import { autoCheckoutExpiredBookings } from "@/features/booking/server/auto-checkout-expired";
 import {
@@ -27,9 +28,8 @@ import {
   deriveWorkingFieldsFromPlan,
   parseShiftPlan,
 } from "@/features/staff/utils/shift-plan";
-import {
-  isStaffPresenceOnline,
-} from "@/features/staff/lib/staff-presence";
+import { STAFF_CURRENT_ROOM_KEY } from "@/features/staff/lib/staff-presence";
+import { isStaffOnShiftNow } from "@/features/staff/utils/shift-label";
 import type { StaffPresence, StaffStatus } from "@/features/staff/types";
 
 function mapStaffRow(
@@ -192,22 +192,26 @@ export async function GET(request: Request) {
     }
 
     const timeZone = tenant.settings.timezone || DEFAULT_BOOKING_TIMEZONE;
-    const now = Date.now();
     const staff = (staffRows ?? []).map((row) => {
       const mapped = mapStaffRow(
         row,
         photos.filter((photo) => photo.staff_id === row.id),
         timeZone,
       );
-      const currentRoomName = roomByStaff.get(row.id) ?? null;
       const lastSeenAt = lastSeenByStaff.get(row.id) ?? null;
-      const online =
-        Boolean(currentRoomName) || isStaffPresenceOnline(lastSeenAt, now);
-      const presence: StaffPresence = currentRoomName
-        ? "in_service"
-        : online
-          ? "online"
-          : "offline";
+      const attrRoom = mapped.attributes[STAFF_CURRENT_ROOM_KEY];
+      const pinnedRoom =
+        typeof attrRoom === "string" && attrRoom.trim() ? attrRoom.trim() : null;
+      const currentRoomName = pinnedRoom ?? roomByStaff.get(row.id) ?? null;
+      const onShift = isStaffOnShiftNow({
+        status: mapped.status,
+        attributes: mapped.attributes,
+        date: todayDateInZone(timeZone),
+        timeZone,
+        workingHoursStart: mapped.workingHoursStart,
+        workingHoursEnd: mapped.workingHoursEnd,
+      });
+      const presence: StaffPresence = onShift ? "online" : "offline";
 
       return {
         ...mapped,

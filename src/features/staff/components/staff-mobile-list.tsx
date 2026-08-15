@@ -34,7 +34,14 @@ export function StaffMobileList({ staff, onDelete }: StaffMobileListProps) {
     <ul className="space-y-2 lg:hidden">
       {staff.map((member) => (
         <li key={member.id}>
-          <div className="flex items-center gap-3 rounded-2xl border border-border/40 bg-card p-3.5 shadow-soft">
+          <div
+            className={cn(
+              "flex items-center gap-3 rounded-2xl border p-3.5 shadow-soft",
+              member.presence === "online" || member.presence === "in_service"
+                ? "border-emerald-500/30 bg-emerald-50/80 dark:border-emerald-500/20 dark:bg-emerald-950/25"
+                : "border-border/40 bg-card",
+            )}
+          >
             <Link
               href={`/admin/staff/${member.id}`}
               className="flex min-w-0 flex-1 items-center gap-3"

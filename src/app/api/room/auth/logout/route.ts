@@ -6,7 +6,7 @@ import {
   TenantContextError,
 } from "@/lib/admin/tenant-context";
 import { readCookieFromRequest } from "@/lib/cookies/read-request-cookie";
-import { markStaffSessionOffline } from "@/features/staff/lib/staff-presence";
+import { markStaffSessionOffline, clearStaffCurrentRoom } from "@/features/staff/lib/staff-presence";
 import {
   getRoomSessionCookieName,
   verifyRoomSession,
@@ -32,6 +32,10 @@ export async function POST(request: Request) {
 
     if (staffSession?.tenantId === tenant.id) {
       await markStaffSessionOffline(supabase, {
+        tenantId: tenant.id,
+        staffId: staffSession.staffId,
+      });
+      await clearStaffCurrentRoom(supabase, {
         tenantId: tenant.id,
         staffId: staffSession.staffId,
       });

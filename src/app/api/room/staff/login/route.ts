@@ -17,7 +17,7 @@ import {
   getStaffSessionCookieOptions,
   signStaffSession,
 } from "@/lib/staff-session";
-import { markStaffSessionOnline } from "@/features/staff/lib/staff-presence";
+import { markStaffSessionOnline, setStaffCurrentRoom } from "@/features/staff/lib/staff-presence";
 
 /**
  * Staff PIN login for room tablets.
@@ -26,7 +26,7 @@ import { markStaffSessionOnline } from "@/features/staff/lib/staff-presence";
 export async function POST(request: Request) {
   try {
     const tenant = await requireTenantFromRequest(request);
-    await requireRoomSession(tenant.id, request);
+    const roomSession = await requireRoomSession(tenant.id, request);
 
     const body = (await request.json()) as { pin?: string };
     const pin = (body.pin ?? "").trim();
@@ -62,6 +62,11 @@ export async function POST(request: Request) {
     await markStaffSessionOnline(supabase, {
       tenantId: tenant.id,
       staffId: account.staff_id,
+    });
+    await setStaffCurrentRoom(supabase, {
+      tenantId: tenant.id,
+      staffId: account.staff_id,
+      roomName: roomSession.roomName,
     });
 
     const token = await signStaffSession({

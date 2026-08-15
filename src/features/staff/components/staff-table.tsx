@@ -159,6 +159,11 @@ export function StaffTable({ staff, onChanged }: StaffTableProps) {
         columns={columns}
         data={staff}
         getRowKey={(row) => row.id}
+        getRowClassName={(row) =>
+          row.presence === "online" || row.presence === "in_service"
+            ? "bg-emerald-50/80 dark:bg-emerald-950/25"
+            : undefined
+        }
         emptyTitle="No staff found"
         emptyDescription="Try adjusting your search or filters, or add a new staff member."
       />

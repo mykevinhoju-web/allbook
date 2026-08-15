@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireTenantFromRequest, TenantContextError } from "@/lib/admin/tenant-context";
 import { createServiceSupabase } from "@/lib/supabase/service";
-import { markStaffSessionOffline } from "@/features/staff/lib/staff-presence";
+import { markStaffSessionOffline, clearStaffCurrentRoom } from "@/features/staff/lib/staff-presence";
 import {
   getStaffSessionCookieName,
   getStaffSessionCookieOptions,
@@ -19,6 +19,10 @@ export async function POST(request: Request) {
     if (session?.tenantId === tenant.id) {
       const supabase = createServiceSupabase();
       await markStaffSessionOffline(supabase, {
+        tenantId: tenant.id,
+        staffId: session.staffId,
+      });
+      await clearStaffCurrentRoom(supabase, {
         tenantId: tenant.id,
         staffId: session.staffId,
       });
