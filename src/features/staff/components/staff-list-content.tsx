@@ -187,7 +187,7 @@ export function StaffListContent() {
   }, [rows, search, statusFilter]);
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-3 py-4 sm:px-4 lg:gap-6 lg:p-6">
+    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-3 py-4 pb-16 sm:px-4 lg:gap-6 lg:p-6 lg:pb-24">
       <AdminPageHeader
         title="Staff"
         description="See who is online or in a room. Edit profiles for employment status and schedules."
@@ -250,7 +250,11 @@ export function StaffListContent() {
         <p className="py-8 text-center text-sm text-muted-foreground lg:hidden">
           No staff found. Try another search or add a team member.
         </p>
-      ) : null}
+      ) : (
+        <p className="pb-8 pt-2 text-center text-sm text-muted-foreground">
+          {filteredStaff.length} staff
+        </p>
+      )}
 
       <ConfirmDialog
         open={deleteId !== null}
