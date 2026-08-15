@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { fetchAdminApi } from "@/features/admin/lib/admin-api-client";
 import { todayDateInZone } from "@/features/booking/lib/schedule-utils";
+import { pickWalkInStaff } from "@/features/booking/lib/walk-in-rotation";
 import { useOptionalTenant } from "@/features/tenants";
 import { cn } from "@/lib/utils";
 
@@ -218,6 +219,22 @@ export function AdminRotationContent() {
     }
   };
 
+  const nextStaffId = useMemo(() => {
+    return pickWalkInStaff({
+      rotation: rotation.map((row) => ({
+        staffId: row.staffId,
+        sortOrder: row.sortOrder,
+      })),
+      walkInCounts: Object.fromEntries(
+        rotation.map((row) => [row.staffId, row.walkInCount]),
+      ),
+      inServiceIds: rotation
+        .filter((row) => row.inService)
+        .map((row) => row.staffId),
+      slotBusyIds: [],
+    });
+  }, [rotation]);
+
   const rows = useMemo(() => {
     const inRotation = new Set(rotation.map((row) => row.staffId));
     const assigned = rotation.map((row) => {
@@ -341,7 +358,14 @@ export function AdminRotationContent() {
                     className="h-11 w-16 shrink-0 rounded-xl px-2 text-center text-lg font-semibold tabular-nums"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{staff.name}</p>
+                    <p
+                      className={cn(
+                        "truncate text-sm font-semibold",
+                        staff.id === nextStaffId && "text-blue-600 dark:text-blue-400",
+                      )}
+                    >
+                      {staff.name}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       walk-in {staff.walkInCount}
                       {staff.inService ? " · in service" : ""}
