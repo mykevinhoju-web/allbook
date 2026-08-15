@@ -31,65 +31,10 @@ const HEADER_HEIGHT = 48;
 const BLOCK_HOURS = 6;
 const BLOCKS_PER_DAY = 24 / BLOCK_HOURS;
 
-const BOOKING_BLOCK_PALETTE = [
-  {
-    idle: "border-sky-500/50 bg-sky-200 text-sky-950",
-    active: "border-sky-600 bg-sky-300 text-sky-950",
-    muted: "text-sky-800/80",
-  },
-  {
-    idle: "border-violet-500/50 bg-violet-200 text-violet-950",
-    active: "border-violet-600 bg-violet-300 text-violet-950",
-    muted: "text-violet-800/80",
-  },
-  {
-    idle: "border-amber-500/50 bg-amber-200 text-amber-950",
-    active: "border-amber-600 bg-amber-300 text-amber-950",
-    muted: "text-amber-900/80",
-  },
-  {
-    idle: "border-emerald-500/50 bg-emerald-200 text-emerald-950",
-    active: "border-emerald-600 bg-emerald-300 text-emerald-950",
-    muted: "text-emerald-800/80",
-  },
-  {
-    idle: "border-rose-500/50 bg-rose-200 text-rose-950",
-    active: "border-rose-600 bg-rose-300 text-rose-950",
-    muted: "text-rose-800/80",
-  },
-  {
-    idle: "border-teal-500/50 bg-teal-200 text-teal-950",
-    active: "border-teal-600 bg-teal-300 text-teal-950",
-    muted: "text-teal-800/80",
-  },
-] as const;
-
-function bookingBlockTone(index: number) {
-  return BOOKING_BLOCK_PALETTE[index % BOOKING_BLOCK_PALETTE.length]!;
-}
-
-const OUTCALL_BLOCK_TONE = {
-  idle: "border-purple-600/70 bg-purple-300 text-purple-950",
-  active: "border-purple-700 bg-purple-400 text-purple-950",
-  muted: "text-purple-900/85",
-} as const;
-
-const WALK_IN_BLOCK_TONE = {
-  idle: "border-red-600/70 bg-red-400 text-red-950",
-  active: "border-red-700 bg-red-500 text-red-50",
-  muted: "text-red-950/80",
-} as const;
-
-const OTHER_STAFF_BLOCK_TONE = {
-  idle: "border-orange-600/70 bg-orange-300 text-orange-950",
-  active: "border-orange-700 bg-orange-400 text-orange-950",
-  muted: "text-orange-900/85",
-} as const;
-
-const PRE_BLOCK_TONE = {
-  idle: "border-stone-400/70 bg-stone-300 text-stone-900",
-  active: "border-stone-500 bg-stone-400 text-stone-950",
-  muted: "text-stone-700/85",
+const BLUE_BLOCK_TONE = {
+  idle: "border-blue-500/60 bg-blue-200 text-blue-950",
+  active: "border-blue-600 bg-blue-400 text-blue-950",
+  muted: "text-blue-800/80",
 } as const;
 
 type DayBlock = 0 | 1 | 2 | 3;
@@ -593,7 +538,7 @@ export function StaffGuideTimeline({
                           style={{ left: `${nowPct}%` }}
                         />
                       ) : null}
-                      {rowBookings.map((booking, bookingIndex) => {
+                      {rowBookings.map((booking) => {
                         const bStart = new Date(booking.startsAt).getTime();
                         const bEnd = new Date(booking.endsAt).getTime();
                         if (bEnd <= viewStartMs || bStart >= viewEndMs) {
@@ -612,17 +557,7 @@ export function StaffGuideTimeline({
                           Boolean(booking.checkedOutAt) ||
                           booking.status === "completed";
                         const selected = selectedBookingId === booking.id;
-                        const tone =
-                          booking.paymentMethod === "pre" ||
-                          booking.paymentStatus === "unpaid"
-                            ? PRE_BLOCK_TONE
-                            : booking.walkIn
-                              ? WALK_IN_BLOCK_TONE
-                              : booking.outCall
-                                ? OUTCALL_BLOCK_TONE
-                                : booking.otherStaff
-                                  ? OTHER_STAFF_BLOCK_TONE
-                                  : bookingBlockTone(bookingIndex);
+                        const tone = BLUE_BLOCK_TONE;
                         return (
                           <button
                             key={booking.id}
