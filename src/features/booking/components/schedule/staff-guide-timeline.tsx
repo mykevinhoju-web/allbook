@@ -244,6 +244,8 @@ export function StaffGuideTimeline({
   const didInitView = useRef(false);
   const pendingEndRef = useRef(false);
   const lastDateRef = useRef(date);
+  const scheduleCardRef = useRef<HTMLDivElement>(null);
+  const staffScrollRef = useRef<HTMLDivElement>(null);
 
   const viewStartMs = zonedHourMs(date, blockStartHour(block), timeZone);
   const viewportMs = BLOCK_HOURS * 60 * 60_000;
@@ -365,6 +367,30 @@ export function StaffGuideTimeline({
       ? pct(now.getTime())
       : null;
 
+  useEffect(() => {
+    const card = scheduleCardRef.current;
+    const list = staffScrollRef.current;
+    if (!card || !list) return;
+
+    const onWheel = (event: WheelEvent) => {
+      if (!card.contains(event.target as Node)) return;
+      if (list.scrollHeight <= list.clientHeight) return;
+      const max = list.scrollHeight - list.clientHeight;
+      const next = Math.max(0, Math.min(max, list.scrollTop + event.deltaY));
+      if (next === list.scrollTop) return;
+      list.scrollTop = next;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    card.addEventListener("wheel", onWheel, { passive: false, capture: true });
+    return () => {
+      card.removeEventListener("wheel", onWheel, {
+        capture: true,
+      } as AddEventListenerOptions);
+    };
+  }, [loading, displayStaff.length]);
+
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden p-3 md:gap-4 md:p-5 lg:p-6">
       <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -410,7 +436,10 @@ export function StaffGuideTimeline({
 
       {banner}
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card shadow-soft">
+      <div
+        ref={scheduleCardRef}
+        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card shadow-soft"
+      >
         {loading ? (
           <p className="p-6 text-sm text-muted-foreground">Loading schedule…</p>
         ) : displayStaff.length === 0 ? (
@@ -419,7 +448,10 @@ export function StaffGuideTimeline({
           </p>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch]">
+            <div
+              ref={staffScrollRef}
+              className="min-h-0 flex-1 overflow-x-hidden overflow-y-scroll overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch]"
+            >
             <div className="sticky top-0 z-20 bg-card">
             <div className="flex shrink-0 items-center gap-2 border-b border-border/70 px-2 py-2.5 md:px-3">
               <div
@@ -539,6 +571,7 @@ export function StaffGuideTimeline({
                       </p>
                     </div>
                     <div className="relative min-w-0 flex-1 touch-pan-y bg-muted/15">
+                      <div className="absolute inset-0 z-0" aria-hidden />
                       {timeMarks.map((mark) => {
                         const { minute } = zonedClockParts(mark, timeZone);
                         return (

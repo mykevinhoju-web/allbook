@@ -62,10 +62,10 @@ export function AdminShell({ children, user }: AdminShellProps) {
       <AdminStaffPresenceWatcher />
       <SidebarProvider defaultOpen>
         <AdminSidebar isStaff={isStaff} />
-        <SidebarInset className="min-h-svh bg-muted/30">
+        <SidebarInset className="h-svh min-h-0 overflow-hidden bg-muted/30">
           <AdminHeader user={user} />
           <AdminPwaInstallBubble />
-          <div className="flex flex-1 flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-[env(safe-area-inset-bottom)]">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-[env(safe-area-inset-bottom)]">
             {children}
           </div>
         </SidebarInset>
