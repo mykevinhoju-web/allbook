@@ -65,7 +65,7 @@ export function AdminShell({ children, user }: AdminShellProps) {
         <SidebarInset className="h-svh min-h-0 overflow-hidden bg-muted/30">
           <AdminHeader user={user} />
           <AdminPwaInstallBubble />
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-8">
+          <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-8">
             {children}
           </div>
         </SidebarInset>
