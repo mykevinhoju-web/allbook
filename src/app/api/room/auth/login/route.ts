@@ -53,12 +53,7 @@ export async function POST(request: Request) {
       ? await verifyRoomSession(existingToken)
       : null;
 
-    const deviceId =
-      body.deviceId ||
-      (existingSession?.tenantId === tenant.id
-        ? existingSession.deviceId
-        : null) ||
-      randomUUID();
+    const deviceId = randomUUID();
 
     const claimedByOther =
       room.claimed_device_id && room.claimed_device_id !== deviceId;
@@ -124,7 +119,7 @@ export async function POST(request: Request) {
       getRoomSessionCookieOptions(request.headers.get("host")),
     );
     expireNamedSessionCookie(
-      response.cookies,
+      response,
       getStaffSessionCookieName(),
       request.headers.get("host"),
     );

@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 
     const response = NextResponse.json({ ok: true });
     expireNamedSessionCookie(
-      response.cookies,
+      response,
       getStaffSessionCookieName(),
       request.headers.get("host"),
     );

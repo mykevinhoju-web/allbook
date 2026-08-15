@@ -66,21 +66,47 @@ export function getExpiredSessionCookieOptions(host?: string | null) {
   };
 }
 
+function expireCookieHeader(
+  name: string,
+  args: { domain?: string; secure: boolean },
+): string {
+  const parts = [
+    `${name}=`,
+    "Path=/",
+    "Max-Age=0",
+    "Expires=Thu, 01 Jan 1970 00:00:00 GMT",
+    "HttpOnly",
+    "SameSite=Lax",
+  ];
+  if (args.secure) parts.push("Secure");
+  if (args.domain) parts.push(`Domain=${args.domain}`);
+  return parts.join("; ");
+}
+
+/** Expire a cookie under every domain/secure variant this app may have set. */
 export function expireNamedSessionCookie(
-  cookies: {
-    set: (
-      name: string,
-      value: string,
-      options: ReturnType<typeof getExpiredSessionCookieOptions>,
-    ) => unknown;
-  },
+  response: { headers: Headers; cookies: { delete: (name: string) => unknown } },
   name: string,
   host?: string | null,
 ) {
-  const expired = getExpiredSessionCookieOptions(host);
-  cookies.set(name, "", expired);
-  const { domain: _ignored, ...hostOnly } = expired;
-  cookies.set(name, "", hostOnly);
+  const hostname = (host ?? "").split(":")[0]?.toLowerCase() ?? "";
+  const variants: { domain?: string; secure: boolean }[] = [
+    { secure: true },
+    { secure: false },
+  ];
+  if (hostname) {
+    variants.push({ domain: hostname, secure: true });
+    variants.push({ domain: hostname, secure: false });
+  }
+  if (hostname === "allbook.com.au" || hostname.endsWith(".allbook.com.au")) {
+    variants.push({ domain: ".allbook.com.au", secure: true });
+    variants.push({ domain: ".allbook.com.au", secure: false });
+  }
+
+  for (const variant of variants) {
+    response.headers.append("Set-Cookie", expireCookieHeader(name, variant));
+  }
+  response.cookies.delete(name);
 }
 
 export async function signAppSession(payload: AppSessionPayload) {

@@ -67,6 +67,11 @@ import { cn } from "@/lib/utils";
 
 import { useRoomSession } from "./room-layout-gate";
 import { RoomPwaSetup } from "./room-pwa-setup";
+import {
+  clearRoomClientSession,
+  hasRoomPinGate,
+  setRoomPinGate,
+} from "../lib/room-session-gate";
 
 interface StaffUser {
   id: string;
@@ -347,9 +352,12 @@ export function RoomHomeContent() {
   const refreshAll = useCallback(
     async (opts?: { soft?: boolean }) => {
       await loadRoomSchedule(opts);
-      const signedIn = await loadStaffMe();
+      const signedIn = hasRoomPinGate() ? await loadStaffMe() : false;
       if (signedIn) await loadStaffSchedule();
-      else setStaffBookings([]);
+      else {
+        setStaff(null);
+        setStaffBookings([]);
+      }
       const anchor = visitAnchorIdRef.current;
       if (anchor) {
         const visit = await loadVisit(anchor);
@@ -416,6 +424,7 @@ export function RoomHomeContent() {
       const nextStaff = data.staff ?? null;
       setStaff(nextStaff);
       setPin("");
+      setRoomPinGate();
 
       const scheduleRes = await fetch(`/api/staff/schedule?date=${today}`);
       const scheduleData = (await scheduleRes.json()) as {
@@ -1237,6 +1246,8 @@ export function RoomHomeContent() {
 
   const roomOut = async () => {
     const current = staff;
+    clearRoomClientSession();
+    setStaff(null);
     // Leave the room tablet completely — never check out / end the in-progress booking.
     await fetch("/api/room/staff/logout", {
       method: "POST",
@@ -1254,7 +1265,7 @@ export function RoomHomeContent() {
       method: "POST",
       credentials: "include",
     });
-    window.location.assign("/room/login");
+    window.location.replace("/room/login");
   };
 
   const roomServiceInProgress = useMemo(
@@ -1903,11 +1914,12 @@ export function RoomHomeContent() {
   }
 
   const changeRoom = async () => {
+    clearRoomClientSession();
     await fetch("/api/room/auth/logout", {
       method: "POST",
       credentials: "include",
     });
-    window.location.assign("/room/login");
+    window.location.replace("/room/login");
   };
 
   return (

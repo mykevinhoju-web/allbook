@@ -7,29 +7,13 @@ import { DoorOpen, UserRound } from "lucide-react";
 import { AppButton, toast } from "@/components/common";
 import { cn } from "@/lib/utils";
 
+import { clearRoomClientSession } from "../lib/room-session-gate";
+
 interface RoomOption {
   id: string;
   name: string;
   available: boolean;
   claimedByThis: boolean;
-}
-
-const DEVICE_STORAGE_KEY = "allbook_room_device_id";
-
-function getStoredDeviceId(): string | null {
-  try {
-    return localStorage.getItem(DEVICE_STORAGE_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function storeDeviceId(deviceId: string) {
-  try {
-    localStorage.setItem(DEVICE_STORAGE_KEY, deviceId);
-  } catch {
-    // ignore
-  }
 }
 
 export function RoomLoginContent() {
@@ -40,7 +24,9 @@ export function RoomLoginContent() {
   const loadRooms = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/room/auth/rooms");
+      const response = await fetch("/api/room/auth/rooms", {
+        credentials: "include",
+      });
       const data = (await response.json()) as {
         rooms?: RoomOption[];
         error?: string;
@@ -56,7 +42,18 @@ export function RoomLoginContent() {
   }, []);
 
   useEffect(() => {
-    void loadRooms();
+    let cancelled = false;
+    void (async () => {
+      clearRoomClientSession();
+      await fetch("/api/room/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!cancelled) await loadRooms();
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [loadRooms]);
 
   const claimRoom = async (roomId: string, force = false) => {
@@ -69,7 +66,6 @@ export function RoomLoginContent() {
         body: JSON.stringify({
           roomId,
           force,
-          deviceId: getStoredDeviceId() ?? undefined,
         }),
       });
       const data = (await response.json()) as {
@@ -94,9 +90,8 @@ export function RoomLoginContent() {
         return;
       }
 
-      if (data.deviceId) storeDeviceId(data.deviceId);
       toast.success(`${data.room?.name ?? "Room"} ready — enter staff PIN`);
-      window.location.assign("/room");
+      window.location.replace("/room");
     } finally {
       setClaimingId(null);
     }

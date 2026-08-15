@@ -51,14 +51,23 @@ export async function POST(request: Request) {
           updated_at: new Date().toISOString(),
         })
         .eq("tenant_id", tenant.id)
-        .eq("id", session.roomId)
         .eq("claimed_device_id", session.deviceId);
+
+      await supabase
+        .from("rooms")
+        .update({
+          claimed_device_id: null,
+          claimed_at: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("tenant_id", tenant.id)
+        .eq("id", session.roomId);
     }
 
     const response = NextResponse.json({ ok: true });
     const host = request.headers.get("host");
-    expireNamedSessionCookie(response.cookies, getRoomSessionCookieName(), host);
-    expireNamedSessionCookie(response.cookies, getStaffSessionCookieName(), host);
+    expireNamedSessionCookie(response, getRoomSessionCookieName(), host);
+    expireNamedSessionCookie(response, getStaffSessionCookieName(), host);
     return response;
   } catch (error) {
     if (error instanceof TenantContextError) {
