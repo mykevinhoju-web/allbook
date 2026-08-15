@@ -60,7 +60,6 @@ export function AdminRotationContent() {
   const tenant = useOptionalTenant();
   const timeZone = tenant?.settings.timezone || "Australia/Sydney";
   const today = todayDateInZone(timeZone);
-  const [date, setDate] = useState(today);
   const [working, setWorking] = useState<WorkingStaff[]>([]);
   const [rotation, setRotation] = useState<RotationRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,10 +68,10 @@ export function AdminRotationContent() {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [draggingId, setDraggingId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     try {
-      const response = await fetchAdminApi(`/api/admin/rotation?date=${date}`);
+      const response = await fetchAdminApi("/api/admin/rotation");
       const data = (await response.json()) as RotationResponse;
       if (!response.ok) {
         toast.error("Could not load rotation", {
@@ -91,12 +90,16 @@ export function AdminRotationContent() {
     } catch {
       toast.error("Could not load rotation");
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
     }
-  }, [date]);
+  }, []);
 
   useEffect(() => {
     void load();
+    const intervalId = window.setInterval(() => {
+      void load({ silent: true });
+    }, 30_000);
+    return () => window.clearInterval(intervalId);
   }, [load]);
 
   const save = async (next = rotation) => {
@@ -106,7 +109,6 @@ export function AdminRotationContent() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          date,
           staffIds: next.map((row) => row.staffId),
         }),
       });
@@ -189,7 +191,7 @@ export function AdminRotationContent() {
       const response = await fetchAdminApi("/api/admin/rotation/walk-in-count", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date, staffId, step }),
+        body: JSON.stringify({ date: today, staffId, step }),
       });
       const data = (await response.json()) as {
         walkInCount?: number;
@@ -260,30 +262,8 @@ export function AdminRotationContent() {
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-3 py-4 sm:px-4 lg:p-6">
       <AdminPageHeader
         title="Rotation"
-        description="Type a number to set order, or drag a row. Use + / − on walk-ins if a guest was booked as named instead of walk-in."
+        description="Staff appear while they are on shift and drop off when the shift ends. The saved order stays the same. Type a number or drag to set order. Use + / − if a guest was booked as named instead of walk-in."
       />
-
-      <section className="rounded-2xl border border-border/50 bg-card p-4 shadow-soft">
-        <div className="flex flex-wrap items-end gap-3">
-          <label className="space-y-1.5">
-            <span className="text-xs font-medium text-muted-foreground">Date</span>
-            <Input
-              type="date"
-              value={date}
-              onChange={(event) => setDate(event.target.value)}
-              className="h-11 w-44 rounded-xl"
-            />
-          </label>
-          <AppButton
-            type="button"
-            variant="outline"
-            className="h-11 rounded-xl"
-            onClick={() => setDate(today)}
-          >
-            Today
-          </AppButton>
-        </div>
-      </section>
 
       {loading ? (
         <div className="flex flex-1 items-center justify-center py-16 text-muted-foreground">
@@ -293,7 +273,7 @@ export function AdminRotationContent() {
         <section className="rounded-2xl border border-border/50 bg-card p-4 shadow-soft">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold">Working today</p>
+              <p className="text-sm font-semibold">On shift now</p>
               <p className="text-xs text-muted-foreground">
                 Number = walk-in turn. + / − fixes today’s walk-in count.
               </p>
@@ -303,7 +283,7 @@ export function AdminRotationContent() {
 
           {working.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border/60 px-4 py-8 text-center text-sm text-muted-foreground">
-              No staff have a shift on this day.
+              No staff are on shift right now.
             </p>
           ) : (
             <ul className="space-y-2">

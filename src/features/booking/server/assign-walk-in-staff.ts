@@ -11,12 +11,15 @@ import {
   type WalkInRotationMember,
 } from "@/features/booking/lib/walk-in-rotation";
 import type { StaffAttributes, StaffStatus } from "@/features/staff/types";
-import { isStaffBookableOnDate } from "@/features/staff/utils/shift-label";
+import { isStaffOnShiftNow } from "@/features/staff/utils/shift-label";
 import type { Database } from "@/types/database";
 
 type ServiceClient = SupabaseClient<Database>;
 
-export async function loadWalkInRotation(
+/** One persistent rotation order per tenant (not a per-day list). */
+export const ROTATION_ROSTER_DATE = "1970-01-01";
+
+async function loadRotationForDate(
   supabase: ServiceClient,
   tenantId: string,
   workDate: string,
@@ -36,6 +39,108 @@ export async function loadWalkInRotation(
     staffId: row.staff_id,
     sortOrder: row.sort_order,
   }));
+}
+
+export async function loadWalkInRotation(
+  supabase: ServiceClient,
+  tenantId: string,
+  _workDate?: string,
+): Promise<WalkInRotationMember[]> {
+  const roster = await loadRotationForDate(
+    supabase,
+    tenantId,
+    ROTATION_ROSTER_DATE,
+  );
+  if (roster.length > 0) return roster;
+
+  const { data: latest, error } = await supabase
+    .from("staff_walk_in_rotation")
+    .select("work_date")
+    .eq("tenant_id", tenantId)
+    .neq("work_date", ROTATION_ROSTER_DATE)
+    .order("work_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  if (!latest?.work_date) return [];
+
+  const source = await loadRotationForDate(
+    supabase,
+    tenantId,
+    latest.work_date,
+  );
+  if (source.length === 0) return [];
+
+  const now = new Date().toISOString();
+  const { error: insertError } = await supabase
+    .from("staff_walk_in_rotation")
+    .insert(
+      source.map((row) => ({
+        tenant_id: tenantId,
+        work_date: ROTATION_ROSTER_DATE,
+        staff_id: row.staffId,
+        sort_order: row.sortOrder,
+        updated_at: now,
+      })),
+    );
+
+  if (insertError && !insertError.message.toLowerCase().includes("duplicate")) {
+    throw new Error(insertError.message);
+  }
+
+  return loadRotationForDate(supabase, tenantId, ROTATION_ROSTER_DATE);
+}
+
+export async function saveWalkInRotationRoster(
+  supabase: ServiceClient,
+  args: {
+    tenantId: string;
+    incomingStaffIds: string[];
+    onShiftIds: Iterable<string>;
+  },
+): Promise<string[]> {
+  const roster = await loadWalkInRotation(supabase, args.tenantId);
+  const incoming = args.incomingStaffIds;
+  const onShift = new Set(args.onShiftIds);
+  const incomingSet = new Set(incoming);
+
+  const offShiftKept = roster
+    .map((row) => row.staffId)
+    .filter((id) => !incomingSet.has(id) && !onShift.has(id));
+  const nextIds = [...incoming, ...offShiftKept];
+
+  const { error: deleteError } = await supabase
+    .from("staff_walk_in_rotation")
+    .delete()
+    .eq("tenant_id", args.tenantId)
+    .eq("work_date", ROTATION_ROSTER_DATE);
+
+  if (deleteError) {
+    throw new Error(deleteError.message);
+  }
+
+  if (nextIds.length > 0) {
+    const now = new Date().toISOString();
+    const { error: insertError } = await supabase
+      .from("staff_walk_in_rotation")
+      .insert(
+        nextIds.map((staffId, index) => ({
+          tenant_id: args.tenantId,
+          work_date: ROTATION_ROSTER_DATE,
+          staff_id: staffId,
+          sort_order: index + 1,
+          updated_at: now,
+        })),
+      );
+    if (insertError) {
+      throw new Error(insertError.message);
+    }
+  }
+
+  return nextIds;
 }
 
 export async function countWalkInsByStaff(
@@ -226,7 +331,7 @@ async function listOffShiftStaffIds(
   }
 
   for (const row of data ?? []) {
-    const bookable = isStaffBookableOnDate({
+    const bookable = isStaffOnShiftNow({
       status: (row.status as StaffStatus) ?? "active",
       attributes: (row.attributes ?? {}) as StaffAttributes,
       date: args.workDate,
@@ -264,7 +369,7 @@ export async function assignWalkInStaff(args: {
     return {
       ok: false,
       status: 400,
-      error: "Set today's rotation before booking a walk-in.",
+      error: "Set the rotation before booking a walk-in.",
     };
   }
 

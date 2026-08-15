@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 
-import { isValidReportDate } from "@/features/admin/lib/revenue-report";
 import { todayDateInZone } from "@/features/booking/lib/schedule-utils";
 import { isOtherStaffGuestAttributes } from "@/features/booking/lib/booking-other-staff";
 import { autoCheckoutExpiredBookings } from "@/features/booking/server/auto-checkout-expired";
@@ -8,12 +7,10 @@ import {
   countWalkInsByStaff,
   listInServiceStaffIds,
   loadWalkInRotation,
+  saveWalkInRotationRoster,
 } from "@/features/booking/server/assign-walk-in-staff";
 import type { StaffAttributes, StaffStatus } from "@/features/staff/types";
-import {
-  getStaffWorkingTodayLabel,
-  isStaffBookableOnDate,
-} from "@/features/staff/utils/shift-label";
+import { isStaffOnShiftNow } from "@/features/staff/utils/shift-label";
 import {
   handleAdminRouteError,
   requireTenantAndAdminActor,
@@ -24,15 +21,8 @@ export async function GET(request: Request) {
   try {
     const { tenant } = await requireTenantAndAdminActor(request);
     const timeZone = tenant.settings.timezone || "Australia/Sydney";
-    const { searchParams } = new URL(request.url);
-    const date = searchParams.get("date")?.trim() || todayDateInZone(timeZone);
-
-    if (!isValidReportDate(date)) {
-      return NextResponse.json(
-        { error: "date must be YYYY-MM-DD." },
-        { status: 400 },
-      );
-    }
+    const now = new Date();
+    const date = todayDateInZone(timeZone, now);
 
     const supabase = createServiceSupabase();
     await autoCheckoutExpiredBookings(supabase, { tenantId: tenant.id });
@@ -47,41 +37,26 @@ export async function GET(request: Request) {
         .eq("status", "active")
         .order("sort_order", { ascending: true })
         .order("name", { ascending: true }),
-      loadWalkInRotation(supabase, tenant.id, date),
+      loadWalkInRotation(supabase, tenant.id),
     ]);
 
     if (staffError) {
       return NextResponse.json({ error: staffError.message }, { status: 503 });
     }
 
-    const now = new Date();
-    const today = todayDateInZone(timeZone, now);
     const working = (staffRows ?? [])
       .filter((row) => !isOtherStaffGuestAttributes(row.attributes))
-      .filter((row) => {
-        const status = (row.status as StaffStatus) ?? "active";
-        const attributes = (row.attributes ?? {}) as StaffAttributes;
-        if (date === today) {
-          return isStaffBookableOnDate({
-            status,
-            attributes,
-            date,
-            timeZone,
-            workingHoursStart: row.working_hours_start,
-            workingHoursEnd: row.working_hours_end,
-            now,
-          });
-        }
-        const { workingToday } = getStaffWorkingTodayLabel({
-          status,
-          attributes,
+      .filter((row) =>
+        isStaffOnShiftNow({
+          status: (row.status as StaffStatus) ?? "active",
+          attributes: (row.attributes ?? {}) as StaffAttributes,
           date,
           timeZone,
           workingHoursStart: row.working_hours_start,
           workingHoursEnd: row.working_hours_end,
-        });
-        return workingToday;
-      })
+          now,
+        }),
+      )
       .map((row) => ({ id: row.id, name: row.name }));
 
     const workingIds = new Set(working.map((row) => row.id));
@@ -135,84 +110,74 @@ export async function PUT(request: Request) {
   try {
     const { tenant } = await requireTenantAndAdminActor(request);
     const timeZone = tenant.settings.timezone || "Australia/Sydney";
+    const now = new Date();
+    const date = todayDateInZone(timeZone, now);
     const body = (await request.json()) as {
-      date?: string;
       staffIds?: string[];
     };
-    const date = body.date?.trim() || todayDateInZone(timeZone);
     const staffIds = Array.isArray(body.staffIds)
       ? body.staffIds.filter((id) => typeof id === "string" && id.length > 0)
       : [];
 
-    if (!isValidReportDate(date)) {
+    const uniqueIds = [...new Set(staffIds)];
+    const supabase = createServiceSupabase();
+
+    const { data: staffRows, error: staffError } = await supabase
+      .from("staff")
+      .select(
+        "id, attributes, status, working_hours_start, working_hours_end",
+      )
+      .eq("tenant_id", tenant.id)
+      .eq("status", "active");
+
+    if (staffError) {
+      return NextResponse.json({ error: staffError.message }, { status: 503 });
+    }
+
+    const onShiftIds = (staffRows ?? [])
+      .filter((row) => !isOtherStaffGuestAttributes(row.attributes))
+      .filter((row) =>
+        isStaffOnShiftNow({
+          status: (row.status as StaffStatus) ?? "active",
+          attributes: (row.attributes ?? {}) as StaffAttributes,
+          date,
+          timeZone,
+          workingHoursStart: row.working_hours_start,
+          workingHoursEnd: row.working_hours_end,
+          now,
+        }),
+      )
+      .map((row) => row.id);
+
+    const valid = new Set(
+      (staffRows ?? [])
+        .filter(
+          (row) =>
+            row.status === "active" &&
+            !isOtherStaffGuestAttributes(row.attributes),
+        )
+        .map((row) => row.id),
+    );
+
+    if (uniqueIds.some((id) => !valid.has(id))) {
       return NextResponse.json(
-        { error: "date must be YYYY-MM-DD." },
+        { error: "One or more staff cannot be added to rotation." },
         { status: 400 },
       );
     }
 
-    const uniqueIds = [...new Set(staffIds)];
-    const supabase = createServiceSupabase();
-
-    if (uniqueIds.length > 0) {
-      const { data: staffRows, error: staffError } = await supabase
-        .from("staff")
-        .select("id, attributes, status")
-        .eq("tenant_id", tenant.id)
-        .in("id", uniqueIds);
-
-      if (staffError) {
-        return NextResponse.json({ error: staffError.message }, { status: 503 });
-      }
-
-      const valid = new Set(
-        (staffRows ?? [])
-          .filter(
-            (row) =>
-              row.status === "active" &&
-              !isOtherStaffGuestAttributes(row.attributes),
-          )
-          .map((row) => row.id),
-      );
-
-      if (valid.size !== uniqueIds.length) {
-        return NextResponse.json(
-          { error: "One or more staff cannot be added to rotation." },
-          { status: 400 },
-        );
-      }
+    try {
+      const saved = await saveWalkInRotationRoster(supabase, {
+        tenantId: tenant.id,
+        incomingStaffIds: uniqueIds,
+        onShiftIds,
+      });
+      return NextResponse.json({ ok: true, staffIds: saved });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Could not save rotation.";
+      return NextResponse.json({ error: message }, { status: 503 });
     }
-
-    const { error: deleteError } = await supabase
-      .from("staff_walk_in_rotation")
-      .delete()
-      .eq("tenant_id", tenant.id)
-      .eq("work_date", date);
-
-    if (deleteError) {
-      return NextResponse.json({ error: deleteError.message }, { status: 503 });
-    }
-
-    if (uniqueIds.length > 0) {
-      const now = new Date().toISOString();
-      const { error: insertError } = await supabase
-        .from("staff_walk_in_rotation")
-        .insert(
-          uniqueIds.map((staffId, index) => ({
-            tenant_id: tenant.id,
-            work_date: date,
-            staff_id: staffId,
-            sort_order: index + 1,
-            updated_at: now,
-          })),
-        );
-
-      if (insertError) {
-        return NextResponse.json({ error: insertError.message }, { status: 503 });
-      }
-    }
-
-    return NextResponse.json({ ok: true, date, staffIds: uniqueIds });
   } catch (error) {
     const guard = handleAdminRouteError(error);
     if (guard) return guard;
