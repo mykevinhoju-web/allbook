@@ -31,7 +31,13 @@ const HEADER_HEIGHT = 48;
 const BLOCK_HOURS = 6;
 const BLOCKS_PER_DAY = 24 / BLOCK_HOURS;
 
-const BLUE_BLOCK_TONE = {
+const REGULAR_BLOCK_TONE = {
+  idle: "border-red-600/70 bg-red-400 text-red-950",
+  active: "border-red-700 bg-red-500 text-red-50",
+  muted: "text-red-950/80",
+} as const;
+
+const WALK_IN_BLOCK_TONE = {
   idle: "border-blue-500/60 bg-blue-200 text-blue-950",
   active: "border-blue-600 bg-blue-400 text-blue-950",
   muted: "text-blue-800/80",
@@ -557,7 +563,9 @@ export function StaffGuideTimeline({
                           Boolean(booking.checkedOutAt) ||
                           booking.status === "completed";
                         const selected = selectedBookingId === booking.id;
-                        const tone = BLUE_BLOCK_TONE;
+                        const tone = booking.walkIn
+                          ? WALK_IN_BLOCK_TONE
+                          : REGULAR_BLOCK_TONE;
                         return (
                           <button
                             key={booking.id}
