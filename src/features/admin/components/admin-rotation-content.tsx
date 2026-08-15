@@ -343,7 +343,8 @@ export function AdminRotationContent() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{staff.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {staff.inService ? "in service" : "free"}
+                      walk-in {staff.walkInCount}
+                      {staff.inService ? " · in service" : ""}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
@@ -353,9 +354,7 @@ export function AdminRotationContent() {
                       size="icon"
                       className="size-9 rounded-lg"
                       disabled={
-                        saving ||
-                        adjustingId === staff.id ||
-                        staff.walkInCount <= 0
+                        saving || Boolean(adjustingId) || staff.walkInCount <= 0
                       }
                       aria-label={`Decrease walk-ins for ${staff.name}`}
                       onClick={() => void bumpWalkInCount(staff.id, -1)}
@@ -370,7 +369,7 @@ export function AdminRotationContent() {
                       variant="outline"
                       size="icon"
                       className="size-9 rounded-lg"
-                      disabled={saving || adjustingId === staff.id}
+                      disabled={saving || Boolean(adjustingId)}
                       aria-label={`Increase walk-ins for ${staff.name}`}
                       onClick={() => void bumpWalkInCount(staff.id, 1)}
                     >
@@ -385,13 +384,18 @@ export function AdminRotationContent() {
           <AppButton
             type="button"
             className="mt-4 h-11 w-full rounded-xl"
-            disabled={saving || working.length === 0}
+            disabled={saving || Boolean(adjustingId) || working.length === 0}
             onClick={() => void save()}
           >
             {saving ? "Saving…" : "Save rotation"}
           </AppButton>
         </section>
       )}
+      {Boolean(adjustingId) ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70">
+          <Loader2 className="size-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : null}
     </div>
   );
 }
