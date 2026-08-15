@@ -418,7 +418,9 @@ export function StaffGuideTimeline({
             No staff scheduled for this day.
           </p>
         ) : (
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch]">
+            <div className="sticky top-0 z-20 bg-card">
             <div className="flex shrink-0 items-center gap-2 border-b border-border/70 px-2 py-2.5 md:px-3">
               <div
                 className="hidden shrink-0 md:block"
@@ -486,7 +488,7 @@ export function StaffGuideTimeline({
                   return (
                     <div
                       key={mark}
-                      className="absolute inset-y-0 border-l border-border/30"
+                      className="pointer-events-none absolute inset-y-0 border-l border-border/30"
                       style={{ left: `${pct(mark)}%` }}
                     >
                       <span
@@ -514,18 +516,17 @@ export function StaffGuideTimeline({
                 ) : null}
               </div>
             </div>
-
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            </div>
               {displayStaff.map((member) => {
                 const rowBookings = bookingsByStaff.get(member.id) ?? [];
                 return (
                   <div
                     key={member.id}
-                    className="flex border-b border-border/50 last:border-b-0"
+                    className="flex touch-pan-y border-b border-border/50 last:border-b-0"
                     style={{ height: ROW_HEIGHT }}
                   >
                     <div
-                      className="flex shrink-0 flex-col justify-center border-r border-border/70 bg-card px-2.5"
+                      className="flex shrink-0 touch-pan-y flex-col justify-center border-r border-border/70 bg-card px-2.5"
                       style={{ width: LABEL_WIDTH }}
                     >
                       <p className="truncate text-sm font-semibold text-foreground md:text-base">
@@ -537,14 +538,14 @@ export function StaffGuideTimeline({
                           : `${rowBookings.length} booking${rowBookings.length === 1 ? "" : "s"}`}
                       </p>
                     </div>
-                    <div className="relative min-w-0 flex-1 bg-muted/15">
+                    <div className="relative min-w-0 flex-1 touch-pan-y bg-muted/15">
                       {timeMarks.map((mark) => {
                         const { minute } = zonedClockParts(mark, timeZone);
                         return (
                           <div
                             key={mark}
                             className={cn(
-                              "absolute inset-y-0 border-l",
+                              "pointer-events-none absolute inset-y-0 border-l",
                               minute === 0
                                 ? "border-border/35"
                                 : "border-border/20",
@@ -595,7 +596,7 @@ export function StaffGuideTimeline({
                             type="button"
                             onClick={() => onBookingSelect(booking)}
                             className={cn(
-                              "absolute inset-y-0 z-[1] flex flex-col overflow-hidden rounded-none border border-y-0 border-l px-2 py-1.5 text-left transition hover:brightness-[0.97] active:brightness-[0.94]",
+                              "absolute inset-y-0 z-[1] flex touch-pan-y flex-col overflow-hidden rounded-none border border-y-0 border-l px-2 py-1.5 text-left transition hover:brightness-[0.97] active:brightness-[0.94]",
                               "border-r-2",
                               active ? tone.active : tone.idle,
                               done && !active && "opacity-70",
