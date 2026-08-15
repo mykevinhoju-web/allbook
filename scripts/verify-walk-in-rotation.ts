@@ -71,4 +71,15 @@ assert.equal(
   null,
 );
 
+assert.equal(
+  pickWalkInStaff({
+    rotation,
+    walkInCounts: {},
+    inServiceIds: [],
+    slotBusyIds: [],
+    offShiftIds: ["a"],
+  }),
+  "b",
+);
+
 console.log("Walk-in rotation verification passed.");

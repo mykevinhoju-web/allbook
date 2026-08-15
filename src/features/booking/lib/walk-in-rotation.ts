@@ -32,14 +32,19 @@ export function pickWalkInStaff(args: {
   walkInCounts: Record<string, number>;
   inServiceIds: Iterable<string>;
   slotBusyIds: Iterable<string>;
+  offShiftIds?: Iterable<string>;
 }): string | null {
   if (args.rotation.length === 0) return null;
 
   const inService = new Set(args.inServiceIds);
   const slotBusy = new Set(args.slotBusyIds);
+  const offShift = new Set(args.offShiftIds ?? []);
 
   const eligible = args.rotation.filter(
-    (row) => !inService.has(row.staffId) && !slotBusy.has(row.staffId),
+    (row) =>
+      !inService.has(row.staffId) &&
+      !slotBusy.has(row.staffId) &&
+      !offShift.has(row.staffId),
   );
   if (eligible.length === 0) return null;
 

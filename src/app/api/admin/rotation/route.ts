@@ -10,7 +10,10 @@ import {
   loadWalkInRotation,
 } from "@/features/booking/server/assign-walk-in-staff";
 import type { StaffAttributes, StaffStatus } from "@/features/staff/types";
-import { getStaffWorkingTodayLabel } from "@/features/staff/utils/shift-label";
+import {
+  getStaffWorkingTodayLabel,
+  isStaffBookableOnDate,
+} from "@/features/staff/utils/shift-label";
 import {
   handleAdminRouteError,
   requireTenantAndAdminActor,
@@ -51,12 +54,27 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: staffError.message }, { status: 503 });
     }
 
+    const now = new Date();
+    const today = todayDateInZone(timeZone, now);
     const working = (staffRows ?? [])
       .filter((row) => !isOtherStaffGuestAttributes(row.attributes))
       .filter((row) => {
+        const status = (row.status as StaffStatus) ?? "active";
+        const attributes = (row.attributes ?? {}) as StaffAttributes;
+        if (date === today) {
+          return isStaffBookableOnDate({
+            status,
+            attributes,
+            date,
+            timeZone,
+            workingHoursStart: row.working_hours_start,
+            workingHoursEnd: row.working_hours_end,
+            now,
+          });
+        }
         const { workingToday } = getStaffWorkingTodayLabel({
-          status: (row.status as StaffStatus) ?? "active",
-          attributes: (row.attributes ?? {}) as StaffAttributes,
+          status,
+          attributes,
           date,
           timeZone,
           workingHoursStart: row.working_hours_start,

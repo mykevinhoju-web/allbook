@@ -10,6 +10,8 @@ import {
   pickWalkInStaff,
   type WalkInRotationMember,
 } from "@/features/booking/lib/walk-in-rotation";
+import type { StaffAttributes, StaffStatus } from "@/features/staff/types";
+import { isStaffBookableOnDate } from "@/features/staff/utils/shift-label";
 import type { Database } from "@/types/database";
 
 type ServiceClient = SupabaseClient<Database>;
@@ -195,6 +197,50 @@ export async function listInServiceStaffIds(
   return busy;
 }
 
+async function listOffShiftStaffIds(
+  supabase: ServiceClient,
+  args: {
+    tenantId: string;
+    staffIds: string[];
+    workDate: string;
+    timeZone: string;
+    now: Date;
+  },
+): Promise<Set<string>> {
+  const off = new Set<string>();
+  if (args.staffIds.length === 0) return off;
+
+  const { data, error } = await supabase
+    .from("staff")
+    .select("id, status, attributes, working_hours_start, working_hours_end")
+    .eq("tenant_id", args.tenantId)
+    .in("id", args.staffIds);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const found = new Set((data ?? []).map((row) => row.id));
+  for (const id of args.staffIds) {
+    if (!found.has(id)) off.add(id);
+  }
+
+  for (const row of data ?? []) {
+    const bookable = isStaffBookableOnDate({
+      status: (row.status as StaffStatus) ?? "active",
+      attributes: (row.attributes ?? {}) as StaffAttributes,
+      date: args.workDate,
+      timeZone: args.timeZone,
+      workingHoursStart: row.working_hours_start,
+      workingHoursEnd: row.working_hours_end,
+      now: args.now,
+    });
+    if (!bookable) off.add(row.id);
+  }
+
+  return off;
+}
+
 export async function assignWalkInStaff(args: {
   supabase: ServiceClient;
   tenantId: string;
@@ -223,7 +269,7 @@ export async function assignWalkInStaff(args: {
   }
 
   const staffIds = rotation.map((row) => row.staffId);
-  const [walkInCounts, inServiceIds] = await Promise.all([
+  const [walkInCounts, inServiceIds, offShiftIds] = await Promise.all([
     countWalkInsByStaff(args.supabase, {
       tenantId: args.tenantId,
       workDate,
@@ -231,6 +277,13 @@ export async function assignWalkInStaff(args: {
       staffIds,
     }),
     listInServiceStaffIds(args.supabase, args.tenantId, staffIds),
+    listOffShiftStaffIds(args.supabase, {
+      tenantId: args.tenantId,
+      staffIds,
+      workDate,
+      timeZone: args.timeZone,
+      now: new Date(args.startsAtIso),
+    }),
   ]);
 
   const slotBusyIds = new Set<string>();
@@ -252,6 +305,7 @@ export async function assignWalkInStaff(args: {
     walkInCounts,
     inServiceIds,
     slotBusyIds,
+    offShiftIds,
   });
 
   if (!staffId) {
@@ -259,7 +313,7 @@ export async function assignWalkInStaff(args: {
       ok: false,
       status: 409,
       error:
-        "Every rotation staff member is in service or already booked at that time.",
+        "Every rotation staff member is off shift, in service, or already booked at that time.",
     };
   }
 
