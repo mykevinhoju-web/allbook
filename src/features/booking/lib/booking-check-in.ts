@@ -44,6 +44,25 @@ export function getActiveCheckedInBooking<T extends AdminBooking>(
   return bookings.find((booking) => isBookingCheckedIn(booking)) ?? null;
 }
 
+/** Accidental checkout: restore in-progress only while still inside the booked window. */
+export function canResumeEndedService(
+  booking: Pick<
+    AdminBooking,
+    "startsAt" | "endsAt" | "checkedOutAt" | "status"
+  >,
+  at: Date = new Date(),
+): boolean {
+  if (booking.status === "cancelled") return false;
+  const ended =
+    Boolean(booking.checkedOutAt) || booking.status === "completed";
+  if (!ended) return false;
+
+  const atMs = at.getTime();
+  const startMs = new Date(booking.startsAt).getTime();
+  const endMs = new Date(booking.endsAt).getTime();
+  return atMs >= startMs && atMs < endMs;
+}
+
 /**
  * Service clock starts at real check-in: ends = check-in + purchased duration,
  * capped so it does not run into the next room/staff booking.

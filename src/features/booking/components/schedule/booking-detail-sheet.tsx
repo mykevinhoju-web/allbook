@@ -25,7 +25,7 @@ import {
   adminBookingSheetHandleClassName,
   adminBookingSheetScrollClassName,
 } from "../../lib/admin-booking-sheet";
-import { canCheckInToBooking } from "../../lib/booking-check-in";
+import { canCheckInToBooking, canResumeEndedService } from "../../lib/booking-check-in";
 import { getAvailableExtendMinutes } from "../../lib/booking-extend";
 
 import {
@@ -108,6 +108,7 @@ export function BookingDetailSheet({
     useState<SettledInternalPaymentMethod | "">("");
   const [confirmSplitCash, setConfirmSplitCash] = useState("");
   const [confirmingPayment, setConfirmingPayment] = useState(false);
+  const [resuming, setResuming] = useState(false);
 
   useEffect(() => {
     setRoomId(booking?.roomId ?? "");
@@ -162,6 +163,7 @@ export function BookingDetailSheet({
 
   const inProgress = isBookingOccupyingRoom(booking);
   const canEnterRoom = Boolean(onEnterRoom) && canCheckInToBooking(booking);
+  const canResumeService = canResumeEndedService(booking);
   const canExtend =
     Boolean(booking.checkedInAt) &&
     !booking.checkedOutAt &&
@@ -348,6 +350,35 @@ export function BookingDetailSheet({
       });
     } finally {
       setConfirmingPayment(false);
+    }
+  };
+
+  const resumeService = async () => {
+    if (!booking || !canResumeService || resuming) return;
+    setResuming(true);
+    try {
+      const response = await fetchApi(
+        `/api/admin/bookings/${booking.id}/resume-service`,
+        { method: "POST" },
+      );
+      const data = (await response.json()) as {
+        booking?: AdminBooking;
+        error?: string;
+      };
+      if (!response.ok || !data.booking) {
+        toast.error("Could not resume service", {
+          description: data.error ?? "Try again.",
+        });
+        return;
+      }
+      toast.success("Service is in progress again");
+      onRoomChanged?.(data.booking);
+    } catch {
+      toast.error("Could not resume service", {
+        description: "Network error. Try again.",
+      });
+    } finally {
+      setResuming(false);
     }
   };
 
@@ -591,6 +622,26 @@ export function BookingDetailSheet({
                   onOpenChange(false);
                 }}
               />
+            ) : null}
+
+            {canResumeService ? (
+              <div className={cn(theme.panel, "space-y-3")}>
+                <p className="text-sm font-semibold text-stone-900">
+                  Resume in progress
+                </p>
+                <p className="text-xs text-stone-500">
+                  This service was ended early. Restore it while the booked
+                  time is still running.
+                </p>
+                <AppButton
+                  type="button"
+                  className={cn(theme.goldButton, "w-full")}
+                  disabled={resuming}
+                  onClick={() => void resumeService()}
+                >
+                  {resuming ? "Resuming…" : "Mark as in progress"}
+                </AppButton>
+              </div>
             ) : null}
 
             {canCancel ? (
