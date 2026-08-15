@@ -30,7 +30,6 @@ import {
   isStaffWorkingOnDate,
   parseDaySchedule,
 } from "../utils/day-schedule";
-import { resolveShiftEndDate } from "../utils/shift-calendar";
 import {
   ensureShiftPlan,
   parseShiftPlan,
@@ -395,20 +394,6 @@ export function StaffForm({ staffId }: StaffFormProps) {
     if (!primary) {
       toast.error("Could not resolve shift hours from the calendar");
       return;
-    }
-
-    if (form.shiftPlan[today]) {
-      const entry = form.shiftPlan[today];
-      const endDate = resolveShiftEndDate(
-        today,
-        entry.startTime,
-        entry.endTime,
-      );
-      const todayEndLocal = `${endDate}T${entry.endTime}`;
-      if (todayEndLocal <= localNow) {
-        toast.error("Today's end time must be after now");
-        return;
-      }
     }
 
     setSaving(true);

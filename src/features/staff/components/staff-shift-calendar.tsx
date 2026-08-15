@@ -496,22 +496,20 @@ export function StaffShiftCalendar({
             </div>
 
             <div className="mt-4 space-y-3">
-              <div className="block space-y-1.5">
+              <label className="block space-y-1.5">
                 <span className="text-xs font-medium text-muted-foreground">
-                  Start time (fixed)
+                  Start time
                 </span>
-                <p className="flex h-11 items-center rounded-xl border border-border/60 bg-muted/40 px-3 text-sm font-semibold tabular-nums text-foreground">
-                  {(() => {
-                    const { hour12, minute, period } = parseClockToAmPm(
-                      focusedEntry.startTime,
-                    );
-                    return `${hour12}:${String(minute).padStart(2, "0")} ${period}`;
-                  })()}
-                  <span className="ml-2 text-xs font-medium text-muted-foreground">
-                    fixed
-                  </span>
-                </p>
-              </div>
+                <AmPmTimeSelect
+                  aria-label="Start time"
+                  value={focusedEntry.startTime}
+                  onChange={(nextStart) => {
+                    updateFocusedEntry({
+                      startTime: nextStart || DEFAULT_SHIFT_START_TIME,
+                    });
+                  }}
+                />
+              </label>
 
               <label className="block space-y-1.5">
                 <span className="text-xs font-medium text-muted-foreground">
@@ -526,10 +524,8 @@ export function StaffShiftCalendar({
                   aria-label="End time"
                   value={focusedEntry.endTime}
                   onChange={(nextEnd) => {
-                    const endTime = nextEnd || DEFAULT_SHIFT_END_TIME;
                     updateFocusedEntry({
-                      startTime: focusedEntry.startTime,
-                      endTime,
+                      endTime: nextEnd || DEFAULT_SHIFT_END_TIME,
                     });
                   }}
                 />
@@ -645,10 +641,10 @@ export function StaffShiftCalendar({
       ) : null}
 
       <p className="text-[11px] leading-relaxed text-muted-foreground">
-        Pick any future date. Start time is fixed; only end time is editable
-        (AM/PM). If end is earlier than or equal to start, the shift ends the
-        next day without changing start. Light morning marks are overnight
-        spillover — you can still select those days and start a new shift there.
+        Start and end times can be changed independently (AM/PM). If end is
+        earlier than or equal to start, the shift ends the next day. Light
+        morning marks are overnight spillover — you can still select those days
+        and start a new shift there.
       </p>
     </div>
   );
