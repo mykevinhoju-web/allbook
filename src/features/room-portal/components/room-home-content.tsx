@@ -32,6 +32,8 @@ import {
 } from "@/features/booking/components/checkout/booking-customer-contact-fields";
 import {
   playServiceEndAlarm,
+  startServiceEndAlarmLoop,
+  stopServiceEndAlarmLoop,
   unlockBookingAudio,
 } from "@/features/booking/lib/booking-alert-sound";
 import {
@@ -115,11 +117,12 @@ function visitToAdminBooking(row: CompanionBooking): AdminBooking {
 }
 
 function formatRemaining(ms: number): string {
-  if (ms <= 0) return "0:00";
-  const totalSec = Math.ceil(ms / 1000);
+  const overtime = ms < 0;
+  const totalSec = Math.ceil(Math.abs(ms) / 1000);
   const mins = Math.floor(totalSec / 60);
   const secs = totalSec % 60;
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
+  const label = `${mins}:${secs.toString().padStart(2, "0")}`;
+  return overtime ? `-${label}` : label;
 }
 
 /** e.g. 11:25 AM~12:25 PM 1hr Service */
@@ -258,7 +261,6 @@ export function RoomHomeContent() {
   const autoEndingRef = useRef<string | null>(null);
   const endSoonAlarmedRef = useRef<string | null>(null);
   const endAlarmedRef = useRef<string | null>(null);
-  const endAlarmIntervalRef = useRef<number | null>(null);
   /** Keep shared visit UI while the primary booking is still in service. */
   const visitAnchorIdRef = useRef<string | null>(null);
 
@@ -1055,10 +1057,7 @@ export function RoomHomeContent() {
       if (autoEndingRef.current === booking.id && reason === "auto") return;
       if (reason === "auto") autoEndingRef.current = booking.id;
       // Stop repeating alarms immediately when the tablet ends the service.
-      if (endAlarmIntervalRef.current != null) {
-        window.clearInterval(endAlarmIntervalRef.current);
-        endAlarmIntervalRef.current = null;
-      }
+      stopServiceEndAlarmLoop();
       if (endAlarmedRef.current === booking.id) {
         endAlarmedRef.current = null;
       }
@@ -1147,13 +1146,9 @@ export function RoomHomeContent() {
 
   useEffect(() => {
     const END_SOON_MS = 5 * 60_000;
-    const END_REPEAT_EVERY_MS = 60_000;
 
     if (!myActiveBooking || myRemainingMs === null) {
-      if (endAlarmIntervalRef.current != null) {
-        window.clearInterval(endAlarmIntervalRef.current);
-        endAlarmIntervalRef.current = null;
-      }
+      stopServiceEndAlarmLoop();
       endAlarmedRef.current = null;
       endSoonAlarmedRef.current = null;
       return;
@@ -1161,40 +1156,35 @@ export function RoomHomeContent() {
 
     const bookingId = myActiveBooking.id;
 
-    // Service still running: clear any repeating end alarms.
     if (myRemainingMs > 0) {
-      if (endAlarmIntervalRef.current != null) {
-        window.clearInterval(endAlarmIntervalRef.current);
-        endAlarmIntervalRef.current = null;
-      }
+      stopServiceEndAlarmLoop();
       endAlarmedRef.current = null;
 
-      // Fire the "5 minutes left" alarm once.
       if (myRemainingMs <= END_SOON_MS) {
         if (endSoonAlarmedRef.current !== bookingId) {
           endSoonAlarmedRef.current = bookingId;
           void playServiceEndAlarm(1);
         }
-      } else {
-        // If time extended beyond 5 minutes again, allow the warning to fire later.
-        if (endSoonAlarmedRef.current === bookingId) {
-          endSoonAlarmedRef.current = null;
-        }
+      } else if (endSoonAlarmedRef.current === bookingId) {
+        endSoonAlarmedRef.current = null;
       }
 
       return;
     }
 
-    // Time is up: keep ringing until the tablet ends the service manually.
     if (endAlarmedRef.current !== bookingId) {
       endAlarmedRef.current = bookingId;
       endSoonAlarmedRef.current = bookingId;
-      void playServiceEndAlarm(3);
-      endAlarmIntervalRef.current = window.setInterval(() => {
-        void playServiceEndAlarm(2);
-      }, END_REPEAT_EVERY_MS);
+      void unlockBookingAudio().catch(() => {});
+      startServiceEndAlarmLoop();
     }
   }, [myActiveBooking, myRemainingMs]);
+
+  useEffect(() => {
+    return () => {
+      stopServiceEndAlarmLoop();
+    };
+  }, []);
 
   const requestExtend = async (bookingId: string, minutes: number) => {
     setActionId(`extend-${bookingId}-${minutes}`);
@@ -1340,7 +1330,9 @@ export function RoomHomeContent() {
                   {activeBooking.customerName || "Guest"}
                 </p>
                 <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground md:text-sm">
-                  Remaining
+                  {remainingMs !== null && remainingMs <= 0
+                    ? "Overtime"
+                    : "Remaining"}
                 </p>
                 <p className="mt-1 text-6xl font-semibold tabular-nums tracking-tight text-foreground md:text-7xl">
                   {formatRemaining(remainingMs ?? 0)}
@@ -1552,12 +1544,10 @@ export function RoomHomeContent() {
                 const companionActive = isBookingCheckedIn(companionBooking);
                 const companionRemainingMs =
                   new Date(row.endsAt).getTime() - now.getTime();
-                const ended =
-                  !companionActive || companionRemainingMs <= 0;
+                const ended = !companionActive;
+                const overtime = companionActive && companionRemainingMs <= 0;
                 const urgent =
-                  companionActive &&
-                  companionRemainingMs <= 60_000 &&
-                  companionRemainingMs > 0;
+                  companionActive && companionRemainingMs <= 60_000;
                 const isSelf = staff.id === row.staffId;
                 return (
                   <div
@@ -1600,12 +1590,10 @@ export function RoomHomeContent() {
                       {formatPriceFromCents(row.priceCents, currency)}
                     </p>
                     <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground md:text-sm">
-                      {ended ? "Finished" : "Remaining"}
+                      {ended ? "Finished" : overtime ? "Overtime" : "Remaining"}
                     </p>
                     <p className="mt-1 text-6xl font-semibold tabular-nums tracking-tight text-foreground md:text-7xl">
-                      {ended
-                        ? "0:00"
-                        : formatRemaining(Math.max(0, companionRemainingMs))}
+                      {ended ? "0:00" : formatRemaining(companionRemainingMs)}
                     </p>
                     <p className="mt-1 text-sm font-medium text-muted-foreground md:text-base">
                       ends {formatAmPmTime(row.endsAt)}

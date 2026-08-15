@@ -113,6 +113,34 @@ export async function playBookingChime() {
   await playAlertOnce(context);
 }
 
+let serviceEndAlarmGeneration = 0;
+
+export function stopServiceEndAlarmLoop() {
+  serviceEndAlarmGeneration += 1;
+}
+
+/** Keep ringing until stopServiceEndAlarmLoop() (End service). */
+export function startServiceEndAlarmLoop() {
+  const generation = ++serviceEndAlarmGeneration;
+  void (async () => {
+    const context = await getAudioContext();
+    while (generation === serviceEndAlarmGeneration) {
+      try {
+        const buffer = await loadAlertBuffer(context);
+        playAmplifiedBuffer(context, buffer, context.currentTime, MP3_GAIN);
+        vibrateForBooking();
+        await new Promise((resolve) =>
+          window.setTimeout(resolve, Math.max(400, buffer.duration * 1000)),
+        );
+      } catch {
+        playTriToneFallback(context, context.currentTime);
+        vibrateForBooking();
+        await new Promise((resolve) => window.setTimeout(resolve, 450));
+      }
+    }
+  })();
+}
+
 /** Longer alarm for service time ending (room tablet + admin). */
 export async function playServiceEndAlarm(repeats = 3) {
   const context = await getAudioContext();

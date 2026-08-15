@@ -17,7 +17,6 @@ import {
 } from "@/lib/staff-session";
 import { touchStaffSessionPresence } from "@/features/staff/lib/staff-presence";
 import { todayDateInZone } from "@/features/booking/lib/schedule-utils";
-import { autoCheckoutExpiredBookings } from "@/features/booking/server/auto-checkout-expired";
 
 function zonedMidnightToUtcIso(date: string, timeZone: string): string {
   const [yearStr, monthStr, dayStr] = date.split("-");
@@ -107,13 +106,6 @@ export async function GET(request: Request) {
     const date = searchParams.get("date") ?? todayDateInZone(timeZone);
 
     const supabase = createServiceSupabase();
-    // Don't auto-complete checked-in bookings immediately when a room tablet
-    // is actively showing the service UI. Give staff time to press
-    // "End service" after the end alarm starts.
-    await autoCheckoutExpiredBookings(supabase, {
-      tenantId: tenant.id,
-      graceMs: 10 * 60_000,
-    });
 
     const staffToken = readCookieFromRequest(
       request,

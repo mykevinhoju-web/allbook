@@ -4,7 +4,7 @@ import { autoCheckoutExpiredBookings } from "@/features/booking/server/auto-chec
 import { createServiceSupabase } from "@/lib/supabase/service";
 
 /**
- * Vercel Cron + manual maintenance: auto-complete overdue checked-in bookings.
+ * Kept for cron compatibility. Room services are no longer auto-completed.
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
