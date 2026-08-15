@@ -32,9 +32,9 @@ const BLOCK_HOURS = 6;
 const BLOCKS_PER_DAY = 24 / BLOCK_HOURS;
 
 const REGULAR_BLOCK_TONE = {
-  idle: "border-red-600/70 bg-red-400 text-red-950",
-  active: "border-red-700 bg-red-500 text-red-50",
-  muted: "text-red-950/80",
+  idle: "border-orange-500/70 bg-orange-300 text-orange-950",
+  active: "border-orange-600 bg-orange-400 text-orange-950",
+  muted: "text-orange-900/80",
 } as const;
 
 const WALK_IN_BLOCK_TONE = {
