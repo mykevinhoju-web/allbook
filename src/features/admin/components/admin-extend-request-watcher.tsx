@@ -176,7 +176,11 @@ export function AdminExtendRequestWatcher() {
   }, [tenant.slug, loadPending]);
 
   useEffect(() => {
-    if (active?.kind === "start" && active.start.requestedPayment) {
+    if (
+      active?.kind === "start" &&
+      (active.start.requestedPayment === "cash" ||
+        active.start.requestedPayment === "card")
+    ) {
       setPaymentMethod(active.start.requestedPayment);
       return;
     }
@@ -363,7 +367,16 @@ export function AdminExtendRequestWatcher() {
                   Walk-in now
                 </p>
                 <p className="mt-1 text-lg font-semibold text-foreground">
-                  {start.customerName || "Walk-in"}
+                  {start.customerName || "Guest"}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {[
+                    start.customerPhone,
+                    start.customerPostcode,
+                    start.customerEmail,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {start.staffName}

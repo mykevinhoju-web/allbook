@@ -1,0 +1,103 @@
+import { NextResponse } from "next/server";
+
+import {
+  isValidAuMobile,
+  normalizeAuMobile,
+} from "@/features/booking/lib/au-contact";
+import { parseCustomerBookingName } from "@/features/booking/lib/customer-booking-name";
+import {
+  createServiceSupabase,
+  requireTenantFromRequest,
+  TenantContextError,
+} from "@/lib/admin/tenant-context";
+import {
+  RoomAuthError,
+  requireRoomSession,
+} from "@/lib/server/require-room-session";
+import {
+  StaffAuthError,
+  requireStaffSession,
+} from "@/lib/server/require-staff-session";
+
+export async function GET(request: Request) {
+  try {
+    const tenant = await requireTenantFromRequest(request);
+    await requireRoomSession(tenant.id, request);
+    await requireStaffSession(tenant.id, request);
+
+    const { searchParams } = new URL(request.url);
+    const rawPhone = searchParams.get("phone")?.trim() ?? "";
+
+    if (!isValidAuMobile(rawPhone)) {
+      return NextResponse.json({ customer: null });
+    }
+
+    const phone = normalizeAuMobile(rawPhone);
+    const spaced = `${phone.slice(0, 4)} ${phone.slice(4, 7)} ${phone.slice(7)}`;
+    const withoutLeadingZero = phone.startsWith("0") ? phone.slice(1) : phone;
+    const supabase = createServiceSupabase();
+
+    const { data, error } = await supabase
+      .from("bookings")
+      .select(
+        "customer_name, customer_phone, customer_email, customer_postcode, starts_at",
+      )
+      .eq("tenant_id", tenant.id)
+      .not("customer_phone", "is", null)
+      .or(
+        [
+          `customer_phone.eq.${phone}`,
+          `customer_phone.eq.${spaced}`,
+          `customer_phone.ilike.%${phone}%`,
+          `customer_phone.ilike.%${spaced}%`,
+          `customer_phone.ilike.%${withoutLeadingZero}%`,
+        ].join(","),
+      )
+      .order("starts_at", { ascending: false })
+      .limit(30);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 503 });
+    }
+
+    const row = (data ?? []).find((item) => {
+      const digits = normalizeAuMobile(item.customer_phone ?? "");
+      if (digits === phone) return true;
+      if (digits.endsWith(withoutLeadingZero) && withoutLeadingZero.length >= 9) {
+        return true;
+      }
+      return false;
+    });
+
+    if (!row) {
+      return NextResponse.json({ customer: null });
+    }
+
+    const { firstName, secondName } = parseCustomerBookingName(row.customer_name);
+
+    return NextResponse.json({
+      customer: {
+        name: row.customer_name,
+        firstName,
+        secondName,
+        phone,
+        email: row.customer_email?.trim() || null,
+        postcode: row.customer_postcode?.trim() || null,
+      },
+    });
+  } catch (error) {
+    if (error instanceof TenantContextError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    if (error instanceof RoomAuthError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: error.status },
+      );
+    }
+    if (error instanceof StaffAuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    throw error;
+  }
+}

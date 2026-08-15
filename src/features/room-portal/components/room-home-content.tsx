@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { LogOut, Loader2 } from "lucide-react";
 
 import { AppButton, toast } from "@/components/common";
+import { Input } from "@/components/ui/input";
 import {
   canCheckInToBooking,
   getActiveCheckedInBooking,
@@ -13,6 +14,22 @@ import {
 import { getAvailableExtendMinutes } from "@/features/booking/lib/booking-extend";
 import { parsePairBookingId } from "@/features/booking/lib/booking-pair";
 import { isPendingRoomStartBooking } from "@/features/booking/lib/room-start";
+import {
+  formatAuMobileInput,
+  formatAuPostcodeInput,
+  isValidAuMobile,
+  isValidAuPostcode,
+  normalizeAuMobile,
+} from "@/features/booking/lib/au-contact";
+import {
+  formatCustomerBookingName,
+  isValidCustomerBookingNameParts,
+} from "@/features/booking/lib/customer-booking-name";
+import {
+  BookingCustomerContactFields,
+  defaultBookingCustomerContact,
+  type BookingCustomerContactValues,
+} from "@/features/booking/components/checkout/booking-customer-contact-fields";
 import {
   playServiceEndAlarm,
   unlockBookingAudio,
@@ -31,6 +48,7 @@ import {
 } from "@/features/booking/lib/schedule-utils";
 import type { AdminBooking } from "@/features/booking/types/admin-booking";
 import type { InternalPaymentMethod } from "@/features/booking/lib/internal-payment-method";
+import { paymentMethodForPricing } from "@/features/booking/lib/internal-payment-method";
 import {
   applyPricingAdjustments,
   DEFAULT_PRICING_ADJUSTMENTS,
@@ -217,8 +235,16 @@ export function RoomHomeContent() {
   );
   const [joinLoading, setJoinLoading] = useState(false);
   const [bookStartOpen, setBookStartOpen] = useState(false);
-  const [bookStartName, setBookStartName] = useState("");
+  const [bookStartContact, setBookStartContact] =
+    useState<BookingCustomerContactValues>(defaultBookingCustomerContact);
+  const [bookStartEmail, setBookStartEmail] = useState("");
+  const [bookStartSplitCash, setBookStartSplitCash] = useState("");
   const [bookStartLoading, setBookStartLoading] = useState(false);
+  const [phoneLookingUp, setPhoneLookingUp] = useState(false);
+  const [phoneHint, setPhoneHint] = useState<string | null>(null);
+  const lastLookupPhoneRef = useRef("");
+  const bookStartContactRef = useRef(bookStartContact);
+  bookStartContactRef.current = bookStartContact;
   const [pendingExtend, setPendingExtend] = useState<{
     requestId: string;
     minutes: number;
@@ -572,16 +598,9 @@ export function RoomHomeContent() {
       timeZone,
       channel: "internal",
       adjustments: pricingAdjustments,
-      paymentMethod:
-        joinPayment === "cash" || joinPayment === "card" ? joinPayment : null,
+      paymentMethod: paymentMethodForPricing(joinPayment || null),
     });
-  }, [
-    joinOption,
-    activeBooking,
-    timeZone,
-    pricingAdjustments,
-    joinPayment,
-  ]);
+  }, [joinOption, activeBooking, timeZone, pricingAdjustments, joinPayment]);
 
   const startPriceBreakdown = useMemo(() => {
     if (!joinOption) return null;
@@ -591,20 +610,126 @@ export function RoomHomeContent() {
       timeZone,
       channel: "internal",
       adjustments: pricingAdjustments,
-      paymentMethod:
-        joinPayment === "cash" || joinPayment === "card" ? joinPayment : null,
+      paymentMethod: paymentMethodForPricing(joinPayment || null),
     });
   }, [joinOption, timeZone, pricingAdjustments, joinPayment]);
+
+  const resetBookStartForm = () => {
+    setBookStartContact(defaultBookingCustomerContact());
+    setBookStartEmail("");
+    setBookStartSplitCash("");
+    setJoinPayment("");
+    lastLookupPhoneRef.current = "";
+    setPhoneHint(null);
+    setPhoneLookingUp(false);
+  };
+
+  useEffect(() => {
+    if (!bookStartOpen) return;
+    const phone = bookStartContact.phone;
+    if (!isValidAuMobile(phone)) {
+      setPhoneHint(null);
+      setPhoneLookingUp(false);
+      return;
+    }
+
+    const normalized = normalizeAuMobile(phone);
+    if (lastLookupPhoneRef.current === normalized) return;
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      setPhoneLookingUp(true);
+      void (async () => {
+        try {
+          const response = await fetch(
+            `/api/room/customers/lookup?phone=${encodeURIComponent(normalized)}`,
+          );
+          const data = (await response.json()) as {
+            customer?: {
+              firstName: string;
+              secondName: string;
+              email: string | null;
+              postcode: string | null;
+            } | null;
+          };
+
+          if (cancelled) return;
+          lastLookupPhoneRef.current = normalized;
+
+          if (!response.ok || !data.customer) {
+            setPhoneHint(null);
+            return;
+          }
+
+          const guest = data.customer;
+          const current = bookStartContactRef.current;
+          if (normalizeAuMobile(current.phone) !== normalized) return;
+
+          setBookStartContact({
+            ...current,
+            phone: formatAuMobileInput(normalized),
+            firstName: guest.firstName || current.firstName,
+            secondName: guest.secondName || current.secondName,
+            postcode: guest.postcode
+              ? formatAuPostcodeInput(guest.postcode)
+              : current.postcode,
+          });
+          if (guest.email) setBookStartEmail(guest.email);
+          setPhoneHint("Saved contact filled in");
+        } finally {
+          if (!cancelled) setPhoneLookingUp(false);
+        }
+      })();
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [bookStartOpen, bookStartContact.phone]);
 
   const startWalkInNow = async () => {
     if (!joinDuration) {
       toast.error("Select a service duration");
       return;
     }
-    if (joinPayment !== "cash" && joinPayment !== "card") {
-      toast.error("Select cash or card");
+    if (
+      !isValidCustomerBookingNameParts(
+        bookStartContact.firstName,
+        bookStartContact.secondName,
+      )
+    ) {
+      toast.error("Enter first name and lastname initial");
       return;
     }
+    if (!isValidAuMobile(bookStartContact.phone)) {
+      toast.error("Enter a valid Australian mobile");
+      return;
+    }
+    if (!isValidAuPostcode(bookStartContact.postcode)) {
+      toast.error("Enter a valid Queensland postcode");
+      return;
+    }
+    if (!joinPayment) {
+      toast.error("Select a payment method");
+      return;
+    }
+
+    const displayTotal = startPriceBreakdown?.totalCents ?? 0;
+    let splitCashCents: number | undefined;
+    if (joinPayment === "split") {
+      const cash = Math.round(Number(bookStartSplitCash || 0) * 100);
+      if (!Number.isFinite(cash) || cash <= 0 || cash >= displayTotal) {
+        toast.error("Enter a cash amount less than the total");
+        return;
+      }
+      splitCashCents = cash;
+    }
+
+    const guestName = formatCustomerBookingName(
+      bookStartContact.firstName,
+      bookStartContact.secondName,
+    );
 
     setBookStartLoading(true);
     try {
@@ -614,7 +739,12 @@ export function RoomHomeContent() {
         body: JSON.stringify({
           durationMinutes: Number(joinDuration),
           paymentMethod: joinPayment,
-          customerName: bookStartName.trim() || "Walk-in",
+          splitCashCents,
+          customerFirstName: bookStartContact.firstName,
+          customerLastName: bookStartContact.secondName,
+          customerPhone: normalizeAuMobile(bookStartContact.phone),
+          customerPostcode: formatAuPostcodeInput(bookStartContact.postcode),
+          customerEmail: bookStartEmail.trim() || undefined,
         }),
       });
       const data = (await response.json()) as {
@@ -634,10 +764,8 @@ export function RoomHomeContent() {
       toast.success("Sent to admin", {
         description: "Waiting for approval before the service starts.",
       });
-      const guestName = bookStartName.trim() || "Walk-in";
       setBookStartOpen(false);
-      setBookStartName("");
-      setJoinPayment("");
+      resetBookStartForm();
       const created = data.booking;
       if (created?.id) {
         void broadcastStartRequest(tenant.slug, {
@@ -1134,7 +1262,7 @@ export function RoomHomeContent() {
     setStaffBookings([]);
     setPin("");
     setBookStartOpen(false);
-    setBookStartName("");
+    resetBookStartForm();
     toast.success(
       serviceStillRunning
         ? "Tablet locked — service still running. Enter PIN to return."
@@ -1527,8 +1655,7 @@ export function RoomHomeContent() {
                         className="text-sm text-muted-foreground underline-offset-4 hover:underline"
                         onClick={() => {
                           setBookStartOpen(false);
-                          setBookStartName("");
-                          setJoinPayment("");
+                          resetBookStartForm();
                         }}
                       >
                         Cancel
@@ -1537,16 +1664,35 @@ export function RoomHomeContent() {
                     <p className="text-sm text-muted-foreground">
                       {staff.name} · starts now in {roomLabel}
                     </p>
+                    <BookingCustomerContactFields
+                      phoneFirst
+                      phoneLookingUp={phoneLookingUp}
+                      phoneHint={phoneHint}
+                      values={bookStartContact}
+                      onChange={(next) => {
+                        const phoneChanged =
+                          normalizeAuMobile(next.phone) !==
+                          normalizeAuMobile(bookStartContact.phone);
+                        if (phoneChanged) {
+                          lastLookupPhoneRef.current = "";
+                          setPhoneHint(null);
+                        }
+                        setBookStartContact(next);
+                      }}
+                      fieldClass="h-12 rounded-xl border-border bg-background px-3 text-sm font-medium"
+                      labelClass="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+                      helperTextClass="text-xs text-muted-foreground"
+                    />
                     <div>
                       <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                        Guest name
+                        Email
                       </p>
-                      <input
-                        type="text"
-                        value={bookStartName}
-                        onChange={(event) => setBookStartName(event.target.value)}
-                        placeholder="Walk-in"
-                        className="h-12 w-full rounded-xl border border-border bg-background px-3 text-sm font-medium text-foreground outline-none focus:ring-2 focus:ring-primary/20"
+                      <Input
+                        type="email"
+                        value={bookStartEmail}
+                        onChange={(event) => setBookStartEmail(event.target.value)}
+                        placeholder="optional"
+                        className="h-12 rounded-xl border-border bg-background px-3 text-sm font-medium"
                       />
                     </div>
                     <div>
@@ -1601,6 +1747,8 @@ export function RoomHomeContent() {
                           [
                             { value: "cash" as const, label: "Cash" },
                             { value: "card" as const, label: "Card" },
+                            { value: "split" as const, label: "Split" },
+                            { value: "pre" as const, label: "Pre" },
                           ] as const
                         ).map((option) => {
                           const selected = joinPayment === option.value;
@@ -1608,7 +1756,12 @@ export function RoomHomeContent() {
                             <button
                               key={option.value}
                               type="button"
-                              onClick={() => setJoinPayment(option.value)}
+                              onClick={() => {
+                                setJoinPayment(option.value);
+                                if (option.value !== "split") {
+                                  setBookStartSplitCash("");
+                                }
+                              }}
                               className={cn(
                                 "min-h-12 rounded-xl border text-sm font-semibold",
                                 selected
@@ -1621,6 +1774,28 @@ export function RoomHomeContent() {
                           );
                         })}
                       </div>
+                      {joinPayment === "split" ? (
+                        <div className="mt-3 space-y-2 rounded-xl border border-border bg-background px-3 py-3">
+                          <p className="text-xs font-medium text-muted-foreground">
+                            Cash amount ({currency})
+                          </p>
+                          <Input
+                            type="number"
+                            min={0}
+                            step="1"
+                            inputMode="decimal"
+                            placeholder="e.g. 20"
+                            value={bookStartSplitCash}
+                            onChange={(event) =>
+                              setBookStartSplitCash(event.target.value)
+                            }
+                            className="h-11 rounded-xl"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Remainder on card · no cash discount
+                          </p>
+                        </div>
+                      ) : null}
                     </div>
                     <AppButton
                       type="button"
@@ -1633,7 +1808,7 @@ export function RoomHomeContent() {
                       }
                       onClick={() => void startWalkInNow()}
                     >
-                      {bookStartLoading ? "Starting..." : "Start service"}
+                      {bookStartLoading ? "Sending..." : "Send to admin"}
                     </AppButton>
                   </div>
                 ) : (
@@ -1651,8 +1826,7 @@ export function RoomHomeContent() {
                       disabled={roomServiceInProgress}
                       onClick={() => {
                         setBookStartOpen(true);
-                        setJoinPayment("");
-                        setBookStartName("");
+                        resetBookStartForm();
                       }}
                     >
                       Book start

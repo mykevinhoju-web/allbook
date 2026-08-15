@@ -2,8 +2,20 @@ import { NextResponse } from "next/server";
 
 import { ensurePrimaryBookingStaff } from "@/features/booking/lib/booking-staffs";
 import {
-  isCashOrCardMethod,
+  formatAuPostcodeInput,
+  isValidAuMobile,
+  isValidAuPostcode,
+  normalizeAuMobile,
+} from "@/features/booking/lib/au-contact";
+import {
+  formatCustomerBookingName,
+  isValidCustomerBookingNameParts,
+} from "@/features/booking/lib/customer-booking-name";
+import {
+  isInternalPaymentMethod,
+  paymentMethodForPricing,
   paymentStatusForMethod,
+  validateSplitCashCents,
   withPaymentMethodNote,
 } from "@/features/booking/lib/internal-payment-method";
 import { withRoomStartNote } from "@/features/booking/lib/room-start";
@@ -45,7 +57,12 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       durationMinutes?: number;
       paymentMethod?: string;
-      customerName?: string;
+      splitCashCents?: number;
+      customerFirstName?: string;
+      customerLastName?: string;
+      customerPhone?: string;
+      customerPostcode?: string;
+      customerEmail?: string;
     };
 
     const durationMinutes = Number(body.durationMinutes);
@@ -56,14 +73,49 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!isCashOrCardMethod(body.paymentMethod)) {
+    if (
+      !isValidCustomerBookingNameParts(
+        body.customerFirstName ?? "",
+        body.customerLastName ?? "",
+      )
+    ) {
       return NextResponse.json(
-        { error: "Select cash or card payment." },
+        { error: "Enter first name and lastname initial." },
+        { status: 400 },
+      );
+    }
+
+    if (!body.customerPhone?.trim() || !isValidAuMobile(body.customerPhone)) {
+      return NextResponse.json(
+        { error: "Enter a valid Australian mobile (04XX XXX XXX)." },
+        { status: 400 },
+      );
+    }
+
+    if (
+      !body.customerPostcode?.trim() ||
+      !isValidAuPostcode(body.customerPostcode)
+    ) {
+      return NextResponse.json(
+        { error: "Enter a valid Queensland postcode (4XXX)." },
+        { status: 400 },
+      );
+    }
+
+    if (!isInternalPaymentMethod(body.paymentMethod)) {
+      return NextResponse.json(
+        { error: "Select a payment method." },
         { status: 400 },
       );
     }
     const paymentMethod = body.paymentMethod;
-    const customerName = body.customerName?.trim() || "Walk-in";
+    const customerName = formatCustomerBookingName(
+      body.customerFirstName ?? "",
+      body.customerLastName ?? "",
+    );
+    const customerPhone = normalizeAuMobile(body.customerPhone);
+    const customerPostcode = formatAuPostcodeInput(body.customerPostcode);
+    const customerEmail = body.customerEmail?.trim() || null;
     const staffId = staffSession.staffId;
     const roomId = roomSession.roomId;
     const startsAtIso = new Date().toISOString();
@@ -156,7 +208,7 @@ export async function POST(request: Request) {
       timeZone,
       channel: "internal",
       adjustments: tenant.settings.pricingAdjustments,
-      paymentMethod,
+      paymentMethod: paymentMethodForPricing(paymentMethod),
     });
 
     if (priced === null) {
@@ -164,6 +216,20 @@ export async function POST(request: Request) {
         { error: "No price configured for this service duration." },
         { status: 400 },
       );
+    }
+
+    let splitCashCents: number | null = null;
+    if (paymentMethod === "split") {
+      splitCashCents = validateSplitCashCents(
+        body.splitCashCents,
+        priced.totalCents,
+      );
+      if (splitCashCents == null) {
+        return NextResponse.json(
+          { error: "Enter a cash amount less than the total for split pay." },
+          { status: 400 },
+        );
+      }
     }
 
     const { data: created, error: insertError } = await supabase
@@ -180,10 +246,14 @@ export async function POST(request: Request) {
         status: "confirmed",
         payment_status: paymentStatusForMethod("pre"),
         customer_name: customerName,
-        customer_phone: "",
+        customer_phone: customerPhone,
+        customer_postcode: customerPostcode,
+        customer_email: customerEmail,
         notes: withPaymentMethodNote(
           "pre",
-          withWalkInNote(withRoomStartNote(paymentMethod, null)),
+          withWalkInNote(
+            withRoomStartNote(paymentMethod, null, splitCashCents),
+          ),
         ),
       })
       .select(

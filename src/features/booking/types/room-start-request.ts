@@ -1,3 +1,5 @@
+import type { InternalPaymentMethod } from "@/features/booking/lib/internal-payment-method";
+
 export interface RoomStartRequest {
   id: string;
   staffId: string;
@@ -5,9 +7,12 @@ export interface RoomStartRequest {
   roomId: string | null;
   roomName: string | null;
   customerName: string | null;
+  customerPhone: string | null;
+  customerPostcode: string | null;
+  customerEmail: string | null;
   durationMinutes: number;
   priceCents: number;
-  requestedPayment: "cash" | "card" | null;
+  requestedPayment: InternalPaymentMethod | null;
   startsAt: string;
   endsAt: string;
   createdAt: string;

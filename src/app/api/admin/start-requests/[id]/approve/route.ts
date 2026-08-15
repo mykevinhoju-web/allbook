@@ -73,7 +73,9 @@ export async function POST(
     const requested = parseRoomStartPayment(existing.notes);
     const paymentMethod = isCashOrCardMethod(body.paymentMethod)
       ? body.paymentMethod
-      : requested;
+      : isCashOrCardMethod(requested)
+        ? requested
+        : null;
     if (!paymentMethod) {
       return NextResponse.json(
         { error: "Select cash or card." },

@@ -20,6 +20,9 @@ function mapRequest(row: {
   duration_minutes: number;
   price_cents: number;
   customer_name: string | null;
+  customer_phone: string | null;
+  customer_postcode: string | null;
+  customer_email: string | null;
   notes: string | null;
   created_at: string;
   staff?: { name: string } | { name: string }[] | null;
@@ -34,6 +37,9 @@ function mapRequest(row: {
     roomId: row.room_id,
     roomName: room?.name ?? null,
     customerName: row.customer_name,
+    customerPhone: row.customer_phone,
+    customerPostcode: row.customer_postcode,
+    customerEmail: row.customer_email,
     durationMinutes: row.duration_minutes,
     priceCents: row.price_cents,
     requestedPayment: parseRoomStartPayment(row.notes),
@@ -52,7 +58,7 @@ export async function GET(request: Request) {
     const { data, error } = await supabase
       .from("bookings")
       .select(
-        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, customer_name, notes, created_at, staff(name), rooms(name)",
+        "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, customer_name, customer_phone, customer_postcode, customer_email, notes, created_at, staff(name), rooms(name)",
       )
       .eq("tenant_id", tenant.id)
       .eq("status", "confirmed")
