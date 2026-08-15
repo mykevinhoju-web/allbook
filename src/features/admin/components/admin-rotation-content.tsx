@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { GripVertical, Loader2, ListOrdered } from "lucide-react";
+import { GripVertical, Loader2, ListOrdered, Minus, Plus } from "lucide-react";
 
 import { AppButton, toast } from "@/components/common";
 import { Input } from "@/components/ui/input";
@@ -64,6 +64,7 @@ export function AdminRotationContent() {
   const [rotation, setRotation] = useState<RotationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [adjustingId, setAdjustingId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [draggingId, setDraggingId] = useState<string | null>(null);
 
@@ -180,6 +181,43 @@ export function AdminRotationContent() {
     });
   };
 
+  const bumpWalkInCount = async (staffId: string, step: 1 | -1) => {
+    if (adjustingId) return;
+    setAdjustingId(staffId);
+    try {
+      const response = await fetchAdminApi("/api/admin/rotation/walk-in-count", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, staffId, step }),
+      });
+      const data = (await response.json()) as {
+        walkInCount?: number;
+        error?: string;
+      };
+      if (!response.ok) {
+        toast.error("Could not update walk-ins", {
+          description: data.error ?? "Try again.",
+        });
+        return;
+      }
+      const nextCount = Math.max(0, data.walkInCount ?? 0);
+      setWorking((current) =>
+        current.map((row) =>
+          row.id === staffId ? { ...row, walkInCount: nextCount } : row,
+        ),
+      );
+      setRotation((current) =>
+        current.map((row) =>
+          row.staffId === staffId ? { ...row, walkInCount: nextCount } : row,
+        ),
+      );
+    } catch {
+      toast.error("Could not update walk-ins");
+    } finally {
+      setAdjustingId(null);
+    }
+  };
+
   const rows = useMemo(() => {
     const inRotation = new Set(rotation.map((row) => row.staffId));
     const assigned = rotation.map((row) => {
@@ -205,7 +243,7 @@ export function AdminRotationContent() {
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-3 py-4 sm:px-4 lg:p-6">
       <AdminPageHeader
         title="Rotation"
-        description="Type a number to set order, or drag a row. Busy staff are skipped, then catch up on the next guest."
+        description="Type a number to set order, or drag a row. Use + / − on walk-ins if a guest was booked as named instead of walk-in."
       />
 
       <section className="rounded-2xl border border-border/50 bg-card p-4 shadow-soft">
@@ -240,7 +278,7 @@ export function AdminRotationContent() {
             <div>
               <p className="text-sm font-semibold">Working today</p>
               <p className="text-xs text-muted-foreground">
-                Number = walk-in turn. Leave blank to leave them out.
+                Number = walk-in turn. + / − fixes today’s walk-in count.
               </p>
             </div>
             <ListOrdered className="size-4 text-muted-foreground" />
@@ -305,10 +343,39 @@ export function AdminRotationContent() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{staff.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {staff.walkInCount} walk-in
-                      {staff.walkInCount === 1 ? "" : "s"}
-                      {staff.inService ? " · in service" : ""}
+                      {staff.inService ? "in service" : "free"}
                     </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <AppButton
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="size-9 rounded-lg"
+                      disabled={
+                        saving ||
+                        adjustingId === staff.id ||
+                        staff.walkInCount <= 0
+                      }
+                      aria-label={`Decrease walk-ins for ${staff.name}`}
+                      onClick={() => void bumpWalkInCount(staff.id, -1)}
+                    >
+                      <Minus className="size-4" />
+                    </AppButton>
+                    <p className="w-10 text-center text-sm font-semibold tabular-nums">
+                      {staff.walkInCount}
+                    </p>
+                    <AppButton
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="size-9 rounded-lg"
+                      disabled={saving || adjustingId === staff.id}
+                      aria-label={`Increase walk-ins for ${staff.name}`}
+                      onClick={() => void bumpWalkInCount(staff.id, 1)}
+                    >
+                      <Plus className="size-4" />
+                    </AppButton>
                   </div>
                 </li>
               ))}

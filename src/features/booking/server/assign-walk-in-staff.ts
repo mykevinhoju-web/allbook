@@ -72,7 +72,101 @@ export async function countWalkInsByStaff(
     if (!isWalkInBooking(row.notes)) continue;
     counts[row.staff_id] = (counts[row.staff_id] ?? 0) + 1;
   }
+
+  const { data: adjusts, error: adjustError } = await supabase
+    .from("staff_walk_in_count_adjust")
+    .select("staff_id, delta")
+    .eq("tenant_id", args.tenantId)
+    .eq("work_date", args.workDate)
+    .in("staff_id", args.staffIds);
+
+  if (adjustError) {
+    throw new Error(adjustError.message);
+  }
+
+  for (const row of adjusts ?? []) {
+    counts[row.staff_id] = Math.max(
+      0,
+      (counts[row.staff_id] ?? 0) + (row.delta ?? 0),
+    );
+  }
+
   return counts;
+}
+
+export async function bumpWalkInCountAdjust(args: {
+  supabase: ServiceClient;
+  tenantId: string;
+  workDate: string;
+  timeZone: string;
+  staffId: string;
+  step: 1 | -1;
+}): Promise<{ walkInCount: number }> {
+  const { data: existing, error: readError } = await args.supabase
+    .from("staff_walk_in_count_adjust")
+    .select("delta")
+    .eq("tenant_id", args.tenantId)
+    .eq("work_date", args.workDate)
+    .eq("staff_id", args.staffId)
+    .maybeSingle();
+
+  if (readError) {
+    throw new Error(readError.message);
+  }
+
+  const counts = await countWalkInsByStaff(args.supabase, {
+    tenantId: args.tenantId,
+    workDate: args.workDate,
+    timeZone: args.timeZone,
+    staffIds: [args.staffId],
+  });
+  const currentEffective = counts[args.staffId] ?? 0;
+  if (args.step < 0 && currentEffective <= 0) {
+    return { walkInCount: 0 };
+  }
+
+  const currentDelta = existing?.delta ?? 0;
+  const nextDelta = currentDelta + args.step;
+  const now = new Date().toISOString();
+
+  if (nextDelta === 0) {
+    if (existing) {
+      const { error: deleteError } = await args.supabase
+        .from("staff_walk_in_count_adjust")
+        .delete()
+        .eq("tenant_id", args.tenantId)
+        .eq("work_date", args.workDate)
+        .eq("staff_id", args.staffId);
+      if (deleteError) throw new Error(deleteError.message);
+    }
+  } else if (existing) {
+    const { error: updateError } = await args.supabase
+      .from("staff_walk_in_count_adjust")
+      .update({ delta: nextDelta, updated_at: now })
+      .eq("tenant_id", args.tenantId)
+      .eq("work_date", args.workDate)
+      .eq("staff_id", args.staffId);
+    if (updateError) throw new Error(updateError.message);
+  } else {
+    const { error: insertError } = await args.supabase
+      .from("staff_walk_in_count_adjust")
+      .insert({
+        tenant_id: args.tenantId,
+        work_date: args.workDate,
+        staff_id: args.staffId,
+        delta: nextDelta,
+        updated_at: now,
+      });
+    if (insertError) throw new Error(insertError.message);
+  }
+
+  const next = await countWalkInsByStaff(args.supabase, {
+    tenantId: args.tenantId,
+    workDate: args.workDate,
+    timeZone: args.timeZone,
+    staffIds: [args.staffId],
+  });
+  return { walkInCount: next[args.staffId] ?? 0 };
 }
 
 export async function listInServiceStaffIds(

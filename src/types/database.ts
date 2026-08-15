@@ -250,6 +250,33 @@ export type Database = {
         };
         Relationships: [];
       };
+      staff_walk_in_count_adjust: {
+        Row: {
+          tenant_id: string;
+          work_date: string;
+          staff_id: string;
+          delta: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          tenant_id: string;
+          work_date: string;
+          staff_id: string;
+          delta?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          tenant_id?: string;
+          work_date?: string;
+          staff_id?: string;
+          delta?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       admin_accounts: {
         Row: {
           id: string;
