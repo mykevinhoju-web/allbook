@@ -41,6 +41,7 @@ import {
   adminBookingSheetScrollClassName,
 } from "../../lib/admin-booking-sheet";
 import { OTHER_STAFF_SENTINEL } from "../../lib/booking-other-staff";
+import { pickWalkInStaff } from "../../lib/walk-in-rotation";
 import type { RoomAvailabilityStatus } from "../../lib/room-availability";
 import {
   buildStartsAtIso,
@@ -168,10 +169,12 @@ function FormField({
 function StaffPicker({
   options,
   value,
+  nextStaffId,
   onSelect,
 }: {
   options: { id: string; name: string }[];
   value: string;
+  nextStaffId?: string | null;
   onSelect: (staffId: string) => void;
 }) {
   const [query, setQuery] = useState("");
@@ -212,6 +215,7 @@ function StaffPicker({
         ) : (
           filtered.map((member) => {
             const selected = value === member.id;
+            const isNext = Boolean(nextStaffId) && member.id === nextStaffId;
             return (
               <button
                 key={member.id}
@@ -221,10 +225,20 @@ function StaffPicker({
                   "min-h-11 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition",
                   selected
                     ? "border-[#8A6A3A] bg-[#8A6A3A]/10 text-stone-900 ring-2 ring-[#8A6A3A]/25"
-                    : "border-stone-200 bg-white text-stone-700 active:bg-stone-50",
+                    : isNext
+                      ? "border-blue-300 bg-blue-50 text-blue-700 ring-1 ring-blue-200"
+                      : "border-stone-200 bg-white text-stone-700 active:bg-stone-50",
                 )}
               >
-                <span className="truncate">{member.name}</span>
+                <span
+                  className={cn(
+                    "truncate",
+                    isNext && !selected && "text-blue-600",
+                    isNext && selected && "text-blue-700",
+                  )}
+                >
+                  {member.name}
+                </span>
               </button>
             );
           })
@@ -262,7 +276,52 @@ export function BookingFormSheet({
   const lastLookupPhoneRef = useRef<string>("");
   const [phoneLookingUp, setPhoneLookingUp] = useState(false);
   const [phoneHint, setPhoneHint] = useState<string | null>(null);
+  const [nextRotationStaffId, setNextRotationStaffId] = useState<string | null>(
+    null,
+  );
   valuesRef.current = values;
+
+  useEffect(() => {
+    if (!open) {
+      setNextRotationStaffId(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetchAdminApi("/api/admin/rotation");
+        const data = (await response.json()) as {
+          rotation?: {
+            staffId: string;
+            sortOrder: number;
+            inService: boolean;
+            walkInCount: number;
+          }[];
+        };
+        if (cancelled || !response.ok) return;
+        const rotation = data.rotation ?? [];
+        const nextId = pickWalkInStaff({
+          rotation: rotation.map((row) => ({
+            staffId: row.staffId,
+            sortOrder: row.sortOrder,
+          })),
+          walkInCounts: Object.fromEntries(
+            rotation.map((row) => [row.staffId, row.walkInCount]),
+          ),
+          inServiceIds: rotation
+            .filter((row) => row.inService)
+            .map((row) => row.staffId),
+          slotBusyIds: [],
+        });
+        if (!cancelled) setNextRotationStaffId(nextId);
+      } catch {
+        if (!cancelled) setNextRotationStaffId(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -512,6 +571,7 @@ export function BookingFormSheet({
                 <StaffPicker
                   options={staffOptions}
                   value={values.staffId}
+                  nextStaffId={nextRotationStaffId}
                   onSelect={(staffId) => {
                     onChange({
                       ...values,
