@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarRange, CreditCard, DollarSign, Loader2 } from "lucide-react";
+import { CalendarRange, Loader2 } from "lucide-react";
 
 import { AppButton, toast } from "@/components/common";
 import { Input } from "@/components/ui/input";
+import { ReportPaymentIcons } from "@/features/admin/components/report-payment-icons";
 import type { RevenueDailyTotal } from "@/features/admin/lib/revenue-report";
 import {
   addDaysToDateInput,
@@ -93,6 +94,20 @@ export function StaffReportsContent() {
   }, [loadReport]);
 
   const currency = report?.currency ?? tenantCurrency;
+  const splitTotalCents = useMemo(() => {
+    if (!report) return 0;
+    return report.dailyTotals.reduce((sum, day) => {
+      return (
+        sum +
+        day.bookings.reduce((daySum, booking) => {
+          if (booking.cashCents > 0 && booking.cardCents > 0) {
+            return daySum + booking.priceCents;
+          }
+          return daySum;
+        }, 0)
+      );
+    }, 0);
+  }, [report]);
   const applyPreset = (preset: "today" | "7d" | "month") => {
     if (preset === "today") {
       setFrom(today);
@@ -169,11 +184,11 @@ export function StaffReportsContent() {
         </AppButton>
       </section>
 
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <section className="grid grid-cols-1 gap-3">
         <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm text-muted-foreground">Sales</p>
+              <p className="text-sm text-muted-foreground">Total sales</p>
               <p className="mt-1 text-3xl font-semibold tabular-nums">
                 {loading && !report
                   ? "—"
@@ -189,25 +204,6 @@ export function StaffReportsContent() {
               <CalendarRange className="size-4" />
             </div>
           </div>
-        </div>
-        <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft">
-          <p className="text-sm text-muted-foreground">Your take</p>
-          <p className="mt-1 text-3xl font-semibold tabular-nums">
-            {loading && !report
-              ? "—"
-              : formatPriceFromCents(
-                  report?.staffPayoutTotalCents ?? 0,
-                  currency,
-                )}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft">
-          <p className="text-sm text-muted-foreground">Shop</p>
-          <p className="mt-1 text-3xl font-semibold tabular-nums">
-            {loading && !report
-              ? "—"
-              : formatPriceFromCents(report?.shopTotalCents ?? 0, currency)}
-          </p>
         </div>
       </section>
 
@@ -228,6 +224,17 @@ export function StaffReportsContent() {
               : formatPriceFromCents(report?.cardTotalCents ?? 0, currency)}
           </p>
         </div>
+        {splitTotalCents > 0 ? (
+          <div className="col-span-2 rounded-2xl border border-border/60 bg-card p-4 shadow-soft">
+            <p className="text-sm text-muted-foreground">Split</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums">
+              {formatPriceFromCents(splitTotalCents, currency)}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Cash + card in the same booking
+            </p>
+          </div>
+        ) : null}
       </section>
 
       {loading && !report ? (
@@ -255,36 +262,26 @@ export function StaffReportsContent() {
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {day.bookingCount} booking{day.bookingCount === 1 ? "" : "s"}
                 </p>
-                <ul className="mt-2 space-y-1.5">
+                <ul className="mt-2 divide-y divide-border/40 overflow-hidden rounded-xl border border-border/40">
                   {day.bookings.map((booking) => (
                     <li
                       key={booking.id}
-                      className="flex items-center justify-between gap-3 text-sm"
+                      className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-2 px-3 py-2.5 text-sm"
                     >
-                      <span className="flex min-w-0 items-center gap-2 truncate text-muted-foreground">
-                        {formatAmPmTime(booking.startsAt)} ·{" "}
-                        {booking.customerName?.trim() || "Walk-in"}
-                        {booking.cashCents > 0 ? (
-                          <DollarSign
-                            className="size-3.5 shrink-0 text-emerald-700"
-                            aria-label="Cash"
-                          />
-                        ) : null}
-                        {booking.cardCents > 0 ? (
-                          <CreditCard
-                            className="size-3.5 shrink-0 text-sky-700"
-                            aria-label="Card"
-                          />
-                        ) : null}
+                      <span className="font-medium tabular-nums">
+                        {formatAmPmTime(booking.startsAt)}
                       </span>
-                      <span className="shrink-0 text-right font-medium tabular-nums">
-                        {formatPriceFromCents(booking.priceCents, currency)}
-                        <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
-                          you{" "}
-                          {formatPriceFromCents(
-                            booking.staffPayoutCents,
-                            currency,
-                          )}
+                      <span className="min-w-0 truncate font-medium">
+                        {booking.customerName?.trim() || "Walk-in"}
+                      </span>
+                      <span className="flex items-center justify-end gap-2">
+                        <ReportPaymentIcons
+                          cashCents={booking.cashCents}
+                          cardCents={booking.cardCents}
+                          currency={currency}
+                        />
+                        <span className="w-12 text-right font-semibold tabular-nums">
+                          {formatPriceFromCents(booking.priceCents, currency)}
                         </span>
                       </span>
                     </li>

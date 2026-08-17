@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarRange, ChevronDown, CreditCard, DollarSign, Loader2, Lock, Users } from "lucide-react";
+import { CalendarRange, ChevronDown, Loader2, Lock, Users } from "lucide-react";
 
 import { AppButton, toast } from "@/components/common";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ import type {
   RevenueStaffReport,
 } from "../lib/revenue-report";
 import { fetchAdminApi } from "../lib/admin-api-client";
+import { ReportPaymentIcons } from "./report-payment-icons";
 
 type StaffOption = { id: string; name: string };
 
@@ -92,78 +93,6 @@ function CashCardSplit({
         </span>
       </p>
     </div>
-  );
-}
-
-function PaymentIcons({
-  cashCents,
-  cardCents,
-  currency,
-}: {
-  cashCents: number;
-  cardCents: number;
-  currency: string;
-}) {
-  const showCash = cashCents > 0;
-  const showCard = cardCents > 0;
-  const isSplit = showCash && showCard;
-  if (!showCash && !showCard) {
-    return <span className="text-xs text-muted-foreground">—</span>;
-  }
-
-  if (!isSplit) {
-    return (
-      <span className="inline-flex items-center gap-1.5">
-        {showCash ? (
-          <>
-            <span
-              className="inline-flex size-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-800"
-              aria-hidden
-            >
-              <DollarSign className="size-3.5" strokeWidth={2.5} />
-            </span>
-            <span className="text-sm font-medium text-foreground">Cash</span>
-          </>
-        ) : (
-          <>
-            <span
-              className="inline-flex size-7 items-center justify-center rounded-full bg-sky-100 text-sky-800"
-              aria-hidden
-            >
-              <CreditCard className="size-3.5" strokeWidth={2.5} />
-            </span>
-            <span className="text-sm font-medium text-foreground">Card</span>
-          </>
-        )}
-      </span>
-    );
-  }
-
-  return (
-    <span className="inline-flex flex-wrap items-center gap-1.5">
-      <span className="inline-flex items-center gap-1" title="Cash">
-        <span
-          className="inline-flex size-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-800"
-          aria-label="Cash"
-        >
-          <DollarSign className="size-3.5" strokeWidth={2.5} />
-        </span>
-        <span className="text-xs font-semibold tabular-nums text-emerald-800">
-          {formatPriceFromCents(cashCents, currency)}
-        </span>
-      </span>
-      <span className="inline-flex items-center gap-1" title="Card">
-        <span
-          className="inline-flex size-7 items-center justify-center rounded-full bg-sky-100 text-sky-800"
-          aria-label="Card"
-        >
-          <CreditCard className="size-3.5" strokeWidth={2.5} />
-        </span>
-        <span className="text-xs font-semibold tabular-nums text-sky-800">
-          {formatPriceFromCents(cardCents, currency)}
-        </span>
-      </span>
-    </span>
   );
 }
 
@@ -261,7 +190,7 @@ function StaffDailyDetail({
                     </p>
                   </div>
                   <div className="mt-1.5 flex justify-start sm:mt-0 sm:justify-end">
-                    <PaymentIcons
+                    <ReportPaymentIcons
                       cashCents={booking.cashCents}
                       cardCents={booking.cardCents}
                       currency={currency}
