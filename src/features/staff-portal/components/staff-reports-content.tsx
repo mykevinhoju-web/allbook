@@ -5,6 +5,7 @@ import { CalendarRange, Loader2 } from "lucide-react";
 
 import { AppButton, toast } from "@/components/common";
 import { Input } from "@/components/ui/input";
+import { ReportBookingTypeBadge } from "@/features/admin/components/report-booking-type-badge";
 import { ReportPaymentIcons } from "@/features/admin/components/report-payment-icons";
 import type { RevenueDailyTotal } from "@/features/admin/lib/revenue-report";
 import {
@@ -271,8 +272,11 @@ export function StaffReportsContent() {
                       <span className="font-medium tabular-nums">
                         {formatAmPmTime(booking.startsAt)}
                       </span>
-                      <span className="min-w-0 truncate font-medium">
-                        {booking.customerName?.trim() || "Walk-in"}
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium">
+                          {booking.customerName?.trim() || "Guest"}
+                        </span>
+                        <ReportBookingTypeBadge walkIn={Boolean(booking.walkIn)} />
                       </span>
                       <span className="flex items-center justify-end gap-2">
                         <ReportPaymentIcons

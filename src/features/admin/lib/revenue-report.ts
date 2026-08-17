@@ -9,6 +9,7 @@ export type RevenueBookingRow = {
   customerName: string | null;
   cashCents: number;
   cardCents: number;
+  walkIn: boolean;
 };
 
 export type RevenueBookingDetail = {
@@ -19,6 +20,7 @@ export type RevenueBookingDetail = {
   staffPayoutCents: number;
   cashCents: number;
   cardCents: number;
+  walkIn: boolean;
 };
 
 export type RevenueDailyTotal = {
@@ -309,6 +311,7 @@ export function aggregateRevenueReport(
       staffPayoutCents,
       cashCents,
       cardCents,
+      walkIn: Boolean(booking.walkIn),
     };
 
     grandTotalCents += cents;

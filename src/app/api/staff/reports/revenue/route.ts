@@ -15,7 +15,7 @@ import {
   isOtherStaffBooking,
   parseOtherStaffName,
 } from "@/features/booking/lib/booking-other-staff";
-import { splitRevenueCents } from "@/features/booking/lib/internal-payment-method";
+import { isWalkInBooking } from "@/features/booking/lib/walk-in-rotation";
 import { loadStaffPayoutByDuration } from "@/features/services/server/get-service-price";
 import {
   createServiceSupabase,
@@ -66,6 +66,7 @@ function mapRow(
     customerName: row.customer_name,
     cashCents,
     cardCents,
+    walkIn: isWalkInBooking(row.notes),
   };
 
   if (isOtherStaffBooking(row.notes)) {
