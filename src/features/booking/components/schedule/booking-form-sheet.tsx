@@ -897,7 +897,7 @@ export function BookingFormSheet({
                     { value: "cash" as const, label: "Cash" },
                     { value: "card" as const, label: "Card" },
                     { value: "split" as const, label: "Split" },
-                    { value: "pre" as const, label: "Pre" },
+                    { value: "pre" as const, label: "Pre - Book" },
                   ] as const
                 ).map((option) => {
                   const selected = values.paymentMethod === option.value;

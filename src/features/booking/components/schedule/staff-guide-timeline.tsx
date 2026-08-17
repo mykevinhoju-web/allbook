@@ -43,6 +43,12 @@ const WALK_IN_BLOCK_TONE = {
   muted: "text-blue-800/80",
 } as const;
 
+const PRE_BOOKING_BLOCK_TONE = {
+  idle: "border-stone-400/80 bg-stone-300 text-stone-900",
+  active: "border-stone-500 bg-stone-400 text-stone-950",
+  muted: "text-stone-700",
+} as const;
+
 type DayBlock = 0 | 1 | 2 | 3;
 
 function addDaysIso(date: string, days: number): string {
@@ -563,9 +569,14 @@ export function StaffGuideTimeline({
                           Boolean(booking.checkedOutAt) ||
                           booking.status === "completed";
                         const selected = selectedBookingId === booking.id;
-                        const tone = booking.walkIn
-                          ? WALK_IN_BLOCK_TONE
-                          : REGULAR_BLOCK_TONE;
+                        const isPreBooking =
+                          booking.paymentMethod === "pre" ||
+                          booking.paymentStatus === "unpaid";
+                        const tone = isPreBooking
+                          ? PRE_BOOKING_BLOCK_TONE
+                          : booking.walkIn
+                            ? WALK_IN_BLOCK_TONE
+                            : REGULAR_BLOCK_TONE;
                         return (
                           <button
                             key={booking.id}
@@ -612,10 +623,7 @@ export function StaffGuideTimeline({
                                 )}
                               >
                                 {[
-                                  booking.paymentMethod === "pre" ||
-                                  booking.paymentStatus === "unpaid"
-                                    ? "pre"
-                                    : null,
+                                  isPreBooking ? "Pre - Booking" : null,
                                   booking.walkIn ? "walk-in" : null,
                                   booking.outCall ? "out call" : null,
                                   booking.otherStaff ? "Other Staff" : null,
