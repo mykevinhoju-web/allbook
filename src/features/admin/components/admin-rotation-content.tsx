@@ -283,7 +283,7 @@ export function AdminRotationContent() {
             <div>
               <p className="text-sm font-semibold">On shift now</p>
               <p className="text-xs text-muted-foreground">
-                Number = turn order. Blue name = next work-in. + / − fixes
+                Number = turn order. Blue name = next walk-in. + / − fixes
                 today’s walk-in count.
               </p>
             </div>

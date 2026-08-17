@@ -850,7 +850,7 @@ export function BookingFormSheet({
               <div className="grid grid-cols-2 gap-2">
                 {(
                   [
-                    { value: true as const, label: "Work in Book" },
+                    { value: true as const, label: "Walk in" },
                     { value: false as const, label: "Booking" },
                   ] as const
                 ).map((option) => {
@@ -882,7 +882,7 @@ export function BookingFormSheet({
                 </p>
               ) : (
                 <p className="mt-2 text-xs text-stone-500">
-                  Select Work in Book or Booking
+                  Select Walk in or Booking
                 </p>
               )}
             </div>

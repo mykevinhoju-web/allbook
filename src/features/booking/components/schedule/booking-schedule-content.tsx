@@ -305,7 +305,7 @@ export function BookingScheduleContent() {
     const isWalkIn = form.walkIn === true;
 
     if (form.walkIn !== true && form.walkIn !== false) {
-      toast.error("Select Work in Book or Booking");
+      toast.error("Select Walk in or Booking");
       return;
     }
 
