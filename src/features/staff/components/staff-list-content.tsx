@@ -177,6 +177,8 @@ export function StaffListContent() {
     const query = search.trim().toLowerCase();
 
     return rows.filter((member) => {
+      if (member.status === "inactive") return false;
+
       const matchesSearch =
         query.length === 0 || member.name.toLowerCase().includes(query);
       const matchesStatus =
@@ -260,7 +262,7 @@ export function StaffListContent() {
         open={deleteId !== null}
         onOpenChange={(open) => !open && setDeleteId(null)}
         title="Delete staff member?"
-        description="This removes the staff profile and photos. Existing bookings may need to be reassigned."
+        description="Removes this person from the staff list and PIN login. Past bookings stay on reports."
         confirmLabel={deleting ? "Deleting..." : "Delete"}
         variant="danger"
         onConfirm={() => void handleDelete()}

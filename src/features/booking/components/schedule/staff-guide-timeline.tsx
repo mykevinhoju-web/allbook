@@ -239,15 +239,15 @@ export function StaffGuideTimeline({
   }, [loading, date, timeZone, now]);
 
   const displayStaff = useMemo(() => {
-    const active = staff
-      .filter((member) => member.status === "active")
-      .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
-
     const bookedTodayIds = new Set(
       bookings
         .filter((booking) => booking.status !== "cancelled")
         .map((booking) => booking.staffId),
     );
+
+    const active = staff
+      .filter((member) => member.status === "active")
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
 
     const working = active.filter((member) =>
       isStaffWorkingOnDate(
@@ -263,11 +263,13 @@ export function StaffGuideTimeline({
     const baseIds = new Set(base.map((member) => member.id));
 
     // Room joins can add bookings for staff not marked working today — still show their row.
-    const joinedOnly = active.filter(
+    const joinedOnly = staff.filter(
       (member) => bookedTodayIds.has(member.id) && !baseIds.has(member.id),
     );
 
-    return [...base, ...joinedOnly];
+    return [...base, ...joinedOnly].sort(
+      (a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name),
+    );
   }, [staff, date, timeZone, bookings]);
 
   const bookingsByStaff = useMemo(() => {

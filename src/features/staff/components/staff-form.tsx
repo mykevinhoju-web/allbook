@@ -733,7 +733,8 @@ export function StaffForm({ staffId }: StaffFormProps) {
           {isEditing ? (
             <div className="mt-6 border-t border-border/50 pt-4">
               <p className="mb-3 text-sm text-muted-foreground">
-                Permanently remove this staff profile, photos, and PIN login.
+                Permanently remove this person from the staff list and PIN login.
+                Past bookings stay on reports.
               </p>
               <AppButton
                 type="button"
@@ -770,7 +771,7 @@ export function StaffForm({ staffId }: StaffFormProps) {
         open={confirmDeleteOpen}
         onOpenChange={setConfirmDeleteOpen}
         title="Delete staff member?"
-        description="This removes the staff profile, photos, and PIN login. Existing bookings may need to be reassigned. This cannot be undone."
+        description="Removes this person from the staff list and PIN login. Past bookings stay on reports."
         confirmLabel={deleting ? "Deleting..." : "Delete"}
         variant="danger"
         onConfirm={() => void handleDeleteStaff()}

@@ -314,14 +314,61 @@ export async function DELETE(
     const { id } = await params;
     const supabase = createServiceSupabase();
 
-    const { error } = await supabase
+    const { data: existing, error: existingError } = await supabase
       .from("staff")
-      .delete()
+      .select("id")
       .eq("tenant_id", tenant.id)
-      .eq("id", id);
+      .eq("id", id)
+      .maybeSingle();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 503 });
+    if (existingError) {
+      return NextResponse.json({ error: existingError.message }, { status: 503 });
+    }
+    if (!existing) {
+      return NextResponse.json({ error: "Staff not found." }, { status: 404 });
+    }
+
+    const { count: bookingCount, error: bookingCountError } = await supabase
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenant.id)
+      .eq("staff_id", id);
+
+    if (bookingCountError) {
+      return NextResponse.json(
+        { error: bookingCountError.message },
+        { status: 503 },
+      );
+    }
+
+    const now = new Date().toISOString();
+    await Promise.all([
+      supabase.from("staff_accounts").delete().eq("staff_id", id),
+      supabase.from("staff_walk_in_rotation").delete().eq("staff_id", id),
+      supabase.from("staff_walk_in_count_adjust").delete().eq("staff_id", id),
+    ]);
+
+    // Past bookings must keep a staff row for reports. Hide the profile instead.
+    if ((bookingCount ?? 0) > 0) {
+      const { error } = await supabase
+        .from("staff")
+        .update({ status: "inactive", updated_at: now })
+        .eq("tenant_id", tenant.id)
+        .eq("id", id);
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 503 });
+      }
+    } else {
+      const { error } = await supabase
+        .from("staff")
+        .delete()
+        .eq("tenant_id", tenant.id)
+        .eq("id", id);
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 503 });
+      }
     }
 
     revalidateTag("booking-staff");
