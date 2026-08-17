@@ -263,28 +263,32 @@ export function StaffReportsContent() {
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {day.bookingCount} booking{day.bookingCount === 1 ? "" : "s"}
                 </p>
-                <ul className="mt-2 divide-y divide-border/40 overflow-hidden rounded-xl border border-border/40">
+                <ul className="mt-2 overflow-hidden rounded-xl border border-border/40">
+                  <li className="grid grid-cols-[4.25rem_minmax(0,1fr)_5.75rem_auto] gap-2 bg-muted/40 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <span>Time</span>
+                    <span>Customer</span>
+                    <span>Type</span>
+                    <span className="text-right">Pay</span>
+                  </li>
                   {day.bookings.map((booking) => (
                     <li
                       key={booking.id}
-                      className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-2 px-3 py-2.5 text-sm"
+                      className="grid grid-cols-[4.25rem_minmax(0,1fr)_5.75rem_auto] items-center gap-2 border-t border-border/40 px-3 py-2.5 text-sm"
                     >
                       <span className="font-medium tabular-nums">
                         {formatAmPmTime(booking.startsAt)}
                       </span>
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium">
-                          {booking.customerName?.trim() || "Guest"}
-                        </span>
-                        <ReportBookingTypeBadge walkIn={Boolean(booking.walkIn)} />
+                      <span className="min-w-0 truncate font-medium">
+                        {booking.customerName?.trim() || "Guest"}
                       </span>
+                      <ReportBookingTypeBadge walkIn={Boolean(booking.walkIn)} />
                       <span className="flex items-center justify-end gap-2">
                         <ReportPaymentIcons
                           cashCents={booking.cashCents}
                           cardCents={booking.cardCents}
                           currency={currency}
                         />
-                        <span className="w-12 text-right font-semibold tabular-nums">
+                        <span className="min-w-10 text-right font-semibold tabular-nums">
                           {formatPriceFromCents(booking.priceCents, currency)}
                         </span>
                       </span>
