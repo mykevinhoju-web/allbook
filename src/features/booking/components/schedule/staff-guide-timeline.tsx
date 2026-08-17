@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
 import { AppButton } from "@/components/common";
@@ -30,6 +30,8 @@ const HEADER_HEIGHT = 48;
 /** Fixed guide windows: 00–06, 06–12, 12–18, 18–24. */
 const BLOCK_HOURS = 6;
 const BLOCKS_PER_DAY = 24 / BLOCK_HOURS;
+const SWIPE_MIN_DISTANCE_PX = 56;
+const SWIPE_MAX_OFF_AXIS_PX = 48;
 
 const REGULAR_BLOCK_TONE = {
   idle: "border-orange-500/70 bg-orange-300 text-orange-950",
@@ -283,7 +285,7 @@ export function StaffGuideTimeline({
     return map;
   }, [bookings]);
 
-  const goPrev = () => {
+  const goPrev = useCallback(() => {
     if (atDayStart) {
       pendingEndRef.current = true;
       onDateChange(addDaysIso(date, -1));
@@ -291,9 +293,9 @@ export function StaffGuideTimeline({
       return;
     }
     setBlock((b) => (b - 1) as DayBlock);
-  };
+  }, [atDayStart, date, onDateChange]);
 
-  const goNextOrNextDay = () => {
+  const goNextOrNextDay = useCallback(() => {
     if (nearDayEnd) {
       pendingEndRef.current = false;
       onDateChange(addDaysIso(date, 1));
@@ -302,7 +304,7 @@ export function StaffGuideTimeline({
       return;
     }
     setBlock((b) => (b + 1) as DayBlock);
-  };
+  }, [nearDayEnd, date, onDateChange]);
 
   useEffect(() => {
     if (loading || !pendingEndRef.current) return;
@@ -349,6 +351,55 @@ export function StaffGuideTimeline({
       } as AddEventListenerOptions);
     };
   }, [loading, displayStaff.length]);
+
+  useEffect(() => {
+    const card = scheduleCardRef.current;
+    if (!card) return;
+
+    let startX = 0;
+    let startY = 0;
+    let tracking = false;
+    let consumed = false;
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      startX = event.clientX;
+      startY = event.clientY;
+      tracking = true;
+      consumed = false;
+    };
+
+    const onPointerMove = (event: PointerEvent) => {
+      if (!tracking || consumed) return;
+      const dx = event.clientX - startX;
+      const dy = event.clientY - startY;
+      if (Math.abs(dx) < SWIPE_MIN_DISTANCE_PX) return;
+      if (Math.abs(dx) <= Math.abs(dy) + 8) return;
+      if (Math.abs(dy) > SWIPE_MAX_OFF_AXIS_PX) {
+        tracking = false;
+        return;
+      }
+      consumed = true;
+      tracking = false;
+      if (dx < 0) goNextOrNextDay();
+      else goPrev();
+    };
+
+    const endTracking = () => {
+      tracking = false;
+    };
+
+    card.addEventListener("pointerdown", onPointerDown);
+    card.addEventListener("pointermove", onPointerMove);
+    card.addEventListener("pointerup", endTracking);
+    card.addEventListener("pointercancel", endTracking);
+    return () => {
+      card.removeEventListener("pointerdown", onPointerDown);
+      card.removeEventListener("pointermove", onPointerMove);
+      card.removeEventListener("pointerup", endTracking);
+      card.removeEventListener("pointercancel", endTracking);
+    };
+  }, [goNextOrNextDay, goPrev, loading, displayStaff.length]);
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden p-3 md:gap-4 md:p-5 lg:p-6">
@@ -647,7 +698,7 @@ export function StaffGuideTimeline({
       </div>
 
       <p className="shrink-0 pb-1 text-center text-xs text-muted-foreground md:text-sm">
-        Swipe blocks with Earlier / Later · tap a booking for details
+        Swipe the schedule left or right for 6-hour blocks · tap a booking for details
       </p>
     </div>
   );
