@@ -283,8 +283,8 @@ export function AdminRotationContent() {
             <div>
               <p className="text-sm font-semibold">On shift now</p>
               <p className="text-xs text-muted-foreground">
-                Number = turn order. Blue name = next. + / − fixes today’s
-                walk-in count.
+                Number = turn order. Blue name = next work in. + / − fixes
+                today’s walk-in count.
               </p>
             </div>
             <ListOrdered className="size-4 text-muted-foreground" />
@@ -371,7 +371,7 @@ export function AdminRotationContent() {
                         {row.name}
                         {isNext ? (
                           <span className="ml-2 text-[10px] font-bold uppercase tracking-wide">
-                            next
+                            next work in
                           </span>
                         ) : null}
                       </p>

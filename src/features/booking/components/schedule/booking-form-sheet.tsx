@@ -222,7 +222,7 @@ function StaffPicker({
                 type="button"
                 onClick={() => onSelect(member.id)}
                 className={cn(
-                  "min-h-11 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition",
+                  "flex min-h-11 flex-col justify-center gap-0.5 rounded-xl border px-3 py-2.5 text-left transition",
                   selected
                     ? "border-[#8A6A3A] bg-[#8A6A3A]/10 text-stone-900 ring-2 ring-[#8A6A3A]/25"
                     : isNext
@@ -232,13 +232,18 @@ function StaffPicker({
               >
                 <span
                   className={cn(
-                    "truncate",
+                    "truncate text-sm font-semibold",
                     isNext && !selected && "text-blue-600",
                     isNext && selected && "text-blue-700",
                   )}
                 >
                   {member.name}
                 </span>
+                {isNext ? (
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-blue-600">
+                    next work in
+                  </span>
+                ) : null}
               </button>
             );
           })
