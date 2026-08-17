@@ -15,6 +15,7 @@ import { formatPriceFromCents } from "@/features/services";
 import { useTenant } from "@/features/tenants";
 
 import { fetchStaffApi } from "../lib/staff-api-client";
+import { StaffPortalTabs } from "./staff-portal-tabs";
 
 type RevenueResponse = {
   currency: string;
@@ -109,16 +110,18 @@ export function StaffReportsContent() {
 
   return (
     <div className="space-y-4">
+      <StaffPortalTabs active="report" />
+
       <section className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft">
         <p className="text-sm font-semibold">My report</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Revenue for your bookings only.
+          Your bookings only · same date range as admin reports.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {(
             [
               ["today", "Today"],
-              ["7d", "Last 7 days"],
+              ["7d", "Week"],
               ["month", "This month"],
             ] as const
           ).map(([key, label]) => (
@@ -156,6 +159,14 @@ export function StaffReportsContent() {
             />
           </label>
         </div>
+        <AppButton
+          type="button"
+          className="mt-3 h-11 w-full rounded-xl"
+          onClick={() => void loadReport()}
+          disabled={loading}
+        >
+          {loading ? "Loading…" : "Apply"}
+        </AppButton>
       </section>
 
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">

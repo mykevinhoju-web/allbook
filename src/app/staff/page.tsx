@@ -1,5 +1,10 @@
 import { StaffHome } from "@/features/staff-portal";
+import { Suspense } from "react";
 
 export default function StaffHomePage() {
-  return <StaffHome />;
+  return (
+    <Suspense>
+      <StaffHome />
+    </Suspense>
+  );
 }

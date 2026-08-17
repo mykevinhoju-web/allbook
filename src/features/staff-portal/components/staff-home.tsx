@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, DoorOpen } from "lucide-react";
 
 import { AppButton } from "@/components/common";
@@ -28,6 +29,7 @@ import { cn } from "@/lib/utils";
 
 import { fetchStaffApi } from "../lib/staff-api-client";
 import { StaffCheckInSheet } from "./staff-check-in-sheet";
+import { StaffPortalTabs } from "./staff-portal-tabs";
 
 type ScheduleView = "day" | "month";
 
@@ -89,7 +91,10 @@ export function StaffHome() {
   const currency = tenant.settings.currency ?? "AUD";
   const now = useNowTick(60_000);
   const today = todayDateInZone(timeZone, now);
-  const [view, setView] = useState<ScheduleView>("day");
+  const searchParams = useSearchParams();
+  const [view, setView] = useState<ScheduleView>(
+    searchParams.get("view") === "month" ? "month" : "day",
+  );
   const [date, setDate] = useState(() => todayDateInZone(timeZone));
   const [data, setData] = useState<StaffScheduleResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -184,30 +189,13 @@ export function StaffHome() {
     setView("day");
   };
 
+  useEffect(() => {
+    setView(searchParams.get("view") === "month" ? "month" : "day");
+  }, [searchParams]);
+
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-2 rounded-2xl bg-muted/70 p-1">
-        {(
-          [
-            ["day", "Daily"],
-            ["month", "Monthly"],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setView(key)}
-            className={cn(
-              "h-10 rounded-xl text-sm font-semibold transition",
-              view === key
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground",
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <StaffPortalTabs active={view === "month" ? "month" : "day"} />
 
       {view === "day" ? (
         <>

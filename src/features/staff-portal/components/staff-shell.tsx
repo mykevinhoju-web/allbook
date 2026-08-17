@@ -31,7 +31,7 @@ export function StaffShell({ children, user }: StaffShellProps) {
 
   const nav = [
     { href: "/staff", label: "Schedule", icon: CalendarDays, exact: true },
-    { href: "/staff/reports", label: "Reports", icon: BarChart3, exact: false },
+    { href: "/staff/reports", label: "Report", icon: BarChart3, exact: false },
   ] as const;
 
   return (
