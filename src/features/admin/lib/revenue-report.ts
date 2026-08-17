@@ -43,13 +43,67 @@ export type RevenueStaffReport = {
 export type RevenueReport = {
   grandTotalCents: number;
   staffPayoutTotalCents: number;
+  staffPayoutCashCents: number;
+  staffPayoutCardCents: number;
   shopTotalCents: number;
+  shopCashCents: number;
+  shopCardCents: number;
   cashTotalCents: number;
   cardTotalCents: number;
   bookingCount: number;
   byStaff: RevenueStaffReport[];
   dailyTotals: RevenueDailyTotal[];
 };
+
+/** Split staff take / shop by the booking's cash vs card tender mix. */
+export function allocateStaffShopByTender(args: {
+  priceCents: number;
+  staffPayoutCents: number;
+  cashCents: number;
+  cardCents: number;
+}): {
+  staffPayoutCashCents: number;
+  staffPayoutCardCents: number;
+  shopCashCents: number;
+  shopCardCents: number;
+} {
+  const price = Math.max(0, args.priceCents);
+  const payout = Math.max(0, args.staffPayoutCents);
+  const cash = Math.max(0, args.cashCents);
+  const card = Math.max(0, args.cardCents);
+
+  if (price <= 0 || payout <= 0) {
+    return {
+      staffPayoutCashCents: 0,
+      staffPayoutCardCents: 0,
+      shopCashCents: cash,
+      shopCardCents: card,
+    };
+  }
+
+  let staffPayoutCashCents = Math.min(
+    cash,
+    Math.round((payout * cash) / price),
+  );
+  let staffPayoutCardCents = Math.min(card, payout - staffPayoutCashCents);
+  const short = payout - staffPayoutCashCents - staffPayoutCardCents;
+  if (short > 0) {
+    const cardRoom = card - staffPayoutCardCents;
+    if (cardRoom >= short) {
+      staffPayoutCardCents += short;
+    } else {
+      staffPayoutCashCents += short - cardRoom;
+      staffPayoutCardCents += cardRoom;
+    }
+  }
+
+  return {
+    staffPayoutCashCents,
+    staffPayoutCardCents,
+    shopCashCents: cash - staffPayoutCashCents,
+    shopCardCents: card - staffPayoutCardCents,
+  };
+}
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -224,7 +278,11 @@ export function aggregateRevenueReport(
 
   let grandTotalCents = 0;
   let staffPayoutTotalCents = 0;
+  let staffPayoutCashCents = 0;
+  let staffPayoutCardCents = 0;
   let shopTotalCents = 0;
+  let shopCashCents = 0;
+  let shopCardCents = 0;
   let cashTotalCents = 0;
   let cardTotalCents = 0;
 
@@ -234,6 +292,12 @@ export function aggregateRevenueReport(
     const shopCents = cents - staffPayoutCents;
     const cashCents = Math.max(0, booking.cashCents || 0);
     const cardCents = Math.max(0, booking.cardCents || 0);
+    const tender = allocateStaffShopByTender({
+      priceCents: cents,
+      staffPayoutCents,
+      cashCents,
+      cardCents,
+    });
     const date = dateInTimeZone(booking.startsAt, timeZone);
     const detail: RevenueBookingDetail = {
       id: booking.id,
@@ -245,7 +309,11 @@ export function aggregateRevenueReport(
 
     grandTotalCents += cents;
     staffPayoutTotalCents += staffPayoutCents;
+    staffPayoutCashCents += tender.staffPayoutCashCents;
+    staffPayoutCardCents += tender.staffPayoutCardCents;
     shopTotalCents += shopCents;
+    shopCashCents += tender.shopCashCents;
+    shopCardCents += tender.shopCardCents;
     cashTotalCents += cashCents;
     cardTotalCents += cardCents;
     bumpDaily(dailyMap, date, cents, staffPayoutCents, shopCents, detail);
@@ -310,7 +378,11 @@ export function aggregateRevenueReport(
   return {
     grandTotalCents,
     staffPayoutTotalCents,
+    staffPayoutCashCents,
+    staffPayoutCardCents,
     shopTotalCents,
+    shopCashCents,
+    shopCardCents,
     cashTotalCents,
     cardTotalCents,
     bookingCount: bookings.length,

@@ -30,7 +30,11 @@ type RevenueResponse = {
   to: string;
   grandTotalCents: number;
   staffPayoutTotalCents: number;
+  staffPayoutCashCents: number;
+  staffPayoutCardCents: number;
   shopTotalCents: number;
+  shopCashCents: number;
+  shopCardCents: number;
   cashTotalCents: number;
   cardTotalCents: number;
   bookingCount: number;
@@ -52,6 +56,33 @@ function formatDayLabel(date: string, timeZone: string): string {
     day: "numeric",
     month: "short",
   }).format(utc);
+}
+
+function CashCardSplit({
+  cashCents,
+  cardCents,
+  currency,
+  loading,
+}: {
+  cashCents: number;
+  cardCents: number;
+  currency: string;
+  loading: boolean;
+}) {
+  if (loading) {
+    return (
+      <div className="shrink-0 text-right text-xs leading-5 text-muted-foreground">
+        <p>Cash —</p>
+        <p>Card —</p>
+      </div>
+    );
+  }
+  return (
+    <div className="shrink-0 text-right text-xs leading-5 text-muted-foreground tabular-nums">
+      <p>Cash {formatPriceFromCents(cashCents, currency)}</p>
+      <p>Card {formatPriceFromCents(cardCents, currency)}</p>
+    </div>
+  );
 }
 
 function DailySummaryRows({
@@ -515,25 +546,41 @@ export function AdminReportsContent() {
         </div>
         <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-soft">
           <p className="text-sm text-muted-foreground">Staff take</p>
-          <p className="mt-1 text-3xl font-semibold tabular-nums">
-            {loading && !report
-              ? "—"
-              : formatPriceFromCents(
-                  report?.staffPayoutTotalCents ?? 0,
-                  currency,
-                )}
-          </p>
+          <div className="mt-1 flex items-start justify-between gap-3">
+            <p className="text-3xl font-semibold tabular-nums">
+              {loading && !report
+                ? "—"
+                : formatPriceFromCents(
+                    report?.staffPayoutTotalCents ?? 0,
+                    currency,
+                  )}
+            </p>
+            <CashCardSplit
+              cashCents={report?.staffPayoutCashCents ?? 0}
+              cardCents={report?.staffPayoutCardCents ?? 0}
+              currency={currency}
+              loading={Boolean(loading && !report)}
+            />
+          </div>
           <p className="mt-1 text-xs text-muted-foreground">
             Amount staff keep from services
           </p>
         </div>
         <div className="rounded-2xl border border-border/50 bg-card p-4 shadow-soft">
           <p className="text-sm text-muted-foreground">Shop profit</p>
-          <p className="mt-1 text-3xl font-semibold tabular-nums">
-            {loading && !report
-              ? "—"
-              : formatPriceFromCents(report?.shopTotalCents ?? 0, currency)}
-          </p>
+          <div className="mt-1 flex items-start justify-between gap-3">
+            <p className="text-3xl font-semibold tabular-nums">
+              {loading && !report
+                ? "—"
+                : formatPriceFromCents(report?.shopTotalCents ?? 0, currency)}
+            </p>
+            <CashCardSplit
+              cashCents={report?.shopCashCents ?? 0}
+              cardCents={report?.shopCardCents ?? 0}
+              currency={currency}
+              loading={Boolean(loading && !report)}
+            />
+          </div>
           <p className="mt-1 text-xs text-muted-foreground">
             Sales minus staff take
           </p>
