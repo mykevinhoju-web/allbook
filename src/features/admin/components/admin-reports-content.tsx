@@ -130,6 +130,8 @@ function PaymentIcons({
     </span>
   );
 }
+
+function DailySummaryRows({
   daily,
   currency,
   timeZone,
