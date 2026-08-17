@@ -71,14 +71,14 @@ function CashCardSplit({
 }) {
   if (loading) {
     return (
-      <div className="shrink-0 text-right text-xs leading-5 text-muted-foreground">
+      <div className="shrink-0 text-right text-sm font-medium leading-6 text-stone-600">
         <p>Cash —</p>
         <p>Card —</p>
       </div>
     );
   }
   return (
-    <div className="shrink-0 text-right text-xs leading-5 text-muted-foreground tabular-nums">
+    <div className="shrink-0 text-right text-sm font-medium leading-6 text-stone-700 tabular-nums">
       <p>Cash {formatPriceFromCents(cashCents, currency)}</p>
       <p>Card {formatPriceFromCents(cardCents, currency)}</p>
     </div>
