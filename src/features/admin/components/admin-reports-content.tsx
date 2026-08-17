@@ -98,33 +98,48 @@ function CashCardSplit({
 function PaymentIcons({
   cashCents,
   cardCents,
+  currency,
 }: {
   cashCents: number;
   cardCents: number;
+  currency: string;
 }) {
   const showCash = cashCents > 0;
   const showCard = cardCents > 0;
+  const isSplit = showCash && showCard;
   if (!showCash && !showCard) {
     return <span className="text-xs text-muted-foreground">—</span>;
   }
   return (
-    <span className="inline-flex items-center gap-1.5">
+    <span className="inline-flex flex-wrap items-center gap-1.5">
       {showCash ? (
-        <span
-          className="inline-flex size-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-800"
-          title="Cash"
-          aria-label="Cash"
-        >
-          <DollarSign className="size-3.5" strokeWidth={2.5} />
+        <span className="inline-flex items-center gap-1" title="Cash">
+          <span
+            className="inline-flex size-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-800"
+            aria-label="Cash"
+          >
+            <DollarSign className="size-3.5" strokeWidth={2.5} />
+          </span>
+          {isSplit ? (
+            <span className="text-xs font-semibold tabular-nums text-emerald-800">
+              {formatPriceFromCents(cashCents, currency)}
+            </span>
+          ) : null}
         </span>
       ) : null}
       {showCard ? (
-        <span
-          className="inline-flex size-7 items-center justify-center rounded-full bg-sky-100 text-sky-800"
-          title="Card"
-          aria-label="Card"
-        >
-          <CreditCard className="size-3.5" strokeWidth={2.5} />
+        <span className="inline-flex items-center gap-1" title="Card">
+          <span
+            className="inline-flex size-7 items-center justify-center rounded-full bg-sky-100 text-sky-800"
+            aria-label="Card"
+          >
+            <CreditCard className="size-3.5" strokeWidth={2.5} />
+          </span>
+          {isSplit ? (
+            <span className="text-xs font-semibold tabular-nums text-sky-800">
+              {formatPriceFromCents(cardCents, currency)}
+            </span>
+          ) : null}
         </span>
       ) : null}
     </span>
@@ -200,7 +215,7 @@ function StaffDailyDetail({
           </div>
 
           <div className="overflow-hidden rounded-xl border border-border/40">
-            <div className="hidden bg-muted/40 px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)_4.5rem_5rem_5rem] sm:gap-3">
+            <div className="hidden bg-muted/40 px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)_minmax(6.5rem,8.5rem)_5rem_5rem] sm:gap-3">
               <span>Time</span>
               <span>Customer</span>
               <span>Payment</span>
@@ -211,7 +226,7 @@ function StaffDailyDetail({
               {day.bookings.map((booking) => (
                 <li
                   key={booking.id}
-                  className="px-3 py-2.5 sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)_4.5rem_5rem_5rem] sm:items-center sm:gap-3"
+                  className="px-3 py-2.5 sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)_minmax(6.5rem,8.5rem)_5rem_5rem] sm:items-center sm:gap-3"
                 >
                   <p className="text-sm font-medium tabular-nums">
                     {formatAmPmTime(booking.startsAt)}
@@ -228,6 +243,7 @@ function StaffDailyDetail({
                     <PaymentIcons
                       cashCents={booking.cashCents}
                       cardCents={booking.cardCents}
+                      currency={currency}
                     />
                   </div>
                   <p className="mt-0.5 text-sm font-semibold tabular-nums sm:mt-0 sm:text-right">
