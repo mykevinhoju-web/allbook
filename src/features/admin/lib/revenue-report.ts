@@ -9,7 +9,7 @@ export type RevenueBookingRow = {
   customerName: string | null;
   cashCents: number;
   cardCents: number;
-  walkIn: boolean;
+  walkIn?: boolean;
 };
 
 export type RevenueBookingDetail = {
