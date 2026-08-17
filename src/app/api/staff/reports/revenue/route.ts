@@ -16,6 +16,7 @@ import {
   parseOtherStaffName,
 } from "@/features/booking/lib/booking-other-staff";
 import { isWalkInBooking } from "@/features/booking/lib/walk-in-rotation";
+import { splitRevenueCents } from "@/features/booking/lib/internal-payment-method";
 import { loadStaffPayoutByDuration } from "@/features/services/server/get-service-price";
 import {
   createServiceSupabase,
