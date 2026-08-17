@@ -236,10 +236,10 @@ function StaffDailyDetail({
           </div>
 
           <div className="overflow-hidden rounded-xl border border-border/40">
-            <div className="hidden bg-muted/40 px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)_minmax(7.5rem,9.5rem)_5rem_5rem] sm:gap-x-2 sm:gap-y-0">
+            <div className="hidden bg-muted/40 px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)_minmax(7.5rem,9.5rem)_5rem_5rem] sm:gap-x-1 sm:gap-y-0">
               <span>Time</span>
               <span>Customer</span>
-              <span className="text-center">Payment</span>
+              <span className="text-right">Payment</span>
               <span className="text-right">Sales</span>
               <span className="text-right">Staff</span>
             </div>
@@ -247,7 +247,7 @@ function StaffDailyDetail({
               {day.bookings.map((booking) => (
                 <li
                   key={booking.id}
-                  className="px-3 py-2.5 sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)_minmax(7.5rem,9.5rem)_5rem_5rem] sm:items-center sm:gap-x-2 sm:gap-y-0"
+                  className="px-3 py-2.5 sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)_minmax(7.5rem,9.5rem)_5rem_5rem] sm:items-center sm:gap-x-1 sm:gap-y-0"
                 >
                   <p className="text-sm font-medium tabular-nums">
                     {formatAmPmTime(booking.startsAt)}
@@ -260,7 +260,7 @@ function StaffDailyDetail({
                       {formatAmPmTime(booking.startsAt)}
                     </p>
                   </div>
-                  <div className="mt-1.5 flex justify-start sm:mt-0 sm:justify-center">
+                  <div className="mt-1.5 flex justify-start sm:mt-0 sm:justify-end">
                     <PaymentIcons
                       cashCents={booking.cashCents}
                       cardCents={booking.cardCents}
