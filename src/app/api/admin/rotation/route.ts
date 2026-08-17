@@ -60,13 +60,31 @@ export async function GET(request: Request) {
       .map((row) => ({ id: row.id, name: row.name }));
 
     const workingIds = new Set(working.map((row) => row.id));
-    const orderedRotation = rotation.filter((row) => workingIds.has(row.staffId));
-    const staffIds = [
-      ...new Set([
-        ...orderedRotation.map((row) => row.staffId),
-        ...working.map((row) => row.id),
-      ]),
-    ];
+    const rosterOnShift = rotation.filter((row) => workingIds.has(row.staffId));
+    const rosterIds = new Set(rosterOnShift.map((row) => row.staffId));
+    // On-shift staff not yet in the saved roster join the end so numbers always show.
+    const newcomers = working.filter((row) => !rosterIds.has(row.id));
+    const orderedRotation = [
+      ...rosterOnShift,
+      ...newcomers.map((row, index) => ({
+        staffId: row.id,
+        sortOrder: rosterOnShift.length + index + 1,
+      })),
+    ].map((row, index) => ({ ...row, sortOrder: index + 1 }));
+
+    if (newcomers.length > 0) {
+      try {
+        await saveWalkInRotationRoster(supabase, {
+          tenantId: tenant.id,
+          incomingStaffIds: orderedRotation.map((row) => row.staffId),
+          onShiftIds: workingIds,
+        });
+      } catch {
+        // Still return the live ordered list even if persist fails.
+      }
+    }
+
+    const staffIds = orderedRotation.map((row) => row.staffId);
 
     const [walkInCounts, inServiceIds] = await Promise.all([
       countWalkInsByStaff(supabase, {
@@ -89,7 +107,7 @@ export async function GET(request: Request) {
         ...row,
         inService: inServiceIds.has(row.id),
         walkInCount: walkInCounts[row.id] ?? 0,
-        inRotation: orderedRotation.some((item) => item.staffId === row.id),
+        inRotation: true,
       })),
       rotation: orderedRotation.map((row) => ({
         staffId: row.staffId,

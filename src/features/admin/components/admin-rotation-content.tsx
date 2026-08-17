@@ -56,11 +56,36 @@ function insertAtOrder(
   return without.map((item, i) => ({ ...item, sortOrder: i + 1 }));
 }
 
+function mergeOnShiftRotation(
+  rotation: RotationRow[],
+  working: WorkingStaff[],
+): RotationRow[] {
+  const workingById = new Map(working.map((row) => [row.id, row]));
+  const kept = rotation
+    .filter((row) => workingById.has(row.staffId))
+    .map((row) => {
+      const staff = workingById.get(row.staffId)!;
+      return {
+        ...row,
+        name: staff.name,
+        inService: staff.inService,
+        walkInCount: staff.walkInCount,
+      };
+    });
+  const keptIds = new Set(kept.map((row) => row.staffId));
+  const extras = working
+    .filter((staff) => !keptIds.has(staff.id))
+    .map((staff, index) => toRow(staff, kept.length + index + 1));
+  return [...kept, ...extras].map((row, index) => ({
+    ...row,
+    sortOrder: index + 1,
+  }));
+}
+
 export function AdminRotationContent() {
   const tenant = useOptionalTenant();
   const timeZone = tenant?.settings.timezone || "Australia/Sydney";
   const today = todayDateInZone(timeZone);
-  const [working, setWorking] = useState<WorkingStaff[]>([]);
   const [rotation, setRotation] = useState<RotationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -68,31 +93,40 @@ export function AdminRotationContent() {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [draggingId, setDraggingId] = useState<string | null>(null);
 
-  const load = useCallback(async (opts?: { silent?: boolean }) => {
-    if (!opts?.silent) setLoading(true);
-    try {
-      const response = await fetchAdminApi("/api/admin/rotation");
-      const data = (await response.json()) as RotationResponse;
-      if (!response.ok) {
-        toast.error("Could not load rotation", {
-          description: data.error ?? "Try again.",
-        });
-        return;
-      }
-      const nextRotation = data.rotation ?? [];
-      setWorking(data.working ?? []);
-      setRotation(nextRotation);
+  const applyRotationState = useCallback(
+    (nextWorking: WorkingStaff[], nextRotation: RotationRow[]) => {
+      const merged = mergeOnShiftRotation(nextRotation, nextWorking);
+      setRotation(merged);
       setDrafts(
         Object.fromEntries(
-          nextRotation.map((row) => [row.staffId, String(row.sortOrder)]),
+          merged.map((row) => [row.staffId, String(row.sortOrder)]),
         ),
       );
-    } catch {
-      toast.error("Could not load rotation");
-    } finally {
-      if (!opts?.silent) setLoading(false);
-    }
-  }, []);
+    },
+    [],
+  );
+
+  const load = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!opts?.silent) setLoading(true);
+      try {
+        const response = await fetchAdminApi("/api/admin/rotation");
+        const data = (await response.json()) as RotationResponse;
+        if (!response.ok) {
+          toast.error("Could not load rotation", {
+            description: data.error ?? "Try again.",
+          });
+          return;
+        }
+        applyRotationState(data.working ?? [], data.rotation ?? []);
+      } catch {
+        toast.error("Could not load rotation");
+      } finally {
+        if (!opts?.silent) setLoading(false);
+      }
+    },
+    [applyRotationState],
+  );
 
   useEffect(() => {
     void load();
@@ -204,11 +238,6 @@ export function AdminRotationContent() {
         return;
       }
       const nextCount = Math.max(0, data.walkInCount ?? 0);
-      setWorking((current) =>
-        current.map((row) =>
-          row.id === staffId ? { ...row, walkInCount: nextCount } : row,
-        ),
-      );
       setRotation((current) =>
         current.map((row) =>
           row.staffId === staffId ? { ...row, walkInCount: nextCount } : row,
@@ -237,32 +266,11 @@ export function AdminRotationContent() {
     });
   }, [rotation]);
 
-  const rows = useMemo(() => {
-    const inRotation = new Set(rotation.map((row) => row.staffId));
-    const assigned = rotation.map((row) => {
-      const staff = working.find((item) => item.id === row.staffId);
-      return {
-        staff: staff ?? {
-          id: row.staffId,
-          name: row.name,
-          inService: row.inService,
-          walkInCount: row.walkInCount,
-          inRotation: true,
-        },
-        assigned: true,
-      };
-    });
-    const rest = working
-      .filter((staff) => !inRotation.has(staff.id))
-      .map((staff) => ({ staff, assigned: false }));
-    return [...assigned, ...rest];
-  }, [rotation, working]);
-
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-3 py-4 sm:px-4 lg:p-6">
       <AdminPageHeader
         title="Rotation"
-        description="Staff appear while they are on shift and drop off when the shift ends. The saved order stays the same. Type a number or drag to set order. Use + / − if a guest was booked as named instead of walk-in."
+        description="Numbers show today’s walk-in order. The next turn is highlighted in blue — book that staff manually, then the next person updates."
       />
 
       {loading ? (
@@ -275,120 +283,144 @@ export function AdminRotationContent() {
             <div>
               <p className="text-sm font-semibold">On shift now</p>
               <p className="text-xs text-muted-foreground">
-                Number = walk-in turn. + / − fixes today’s walk-in count.
+                Number = turn order. Blue name = next. + / − fixes today’s
+                walk-in count.
               </p>
             </div>
             <ListOrdered className="size-4 text-muted-foreground" />
           </div>
 
-          {working.length === 0 ? (
+          {rotation.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border/60 px-4 py-8 text-center text-sm text-muted-foreground">
               No staff are on shift right now.
             </p>
           ) : (
             <ul className="space-y-2">
-              {rows.map(({ staff, assigned }) => (
-                <li
-                  key={staff.id}
-                  draggable={assigned}
-                  onDragStart={() => setDraggingId(staff.id)}
-                  onDragEnd={() => setDraggingId(null)}
-                  onDragOver={(event) => {
-                    if (!assigned || !draggingId) return;
-                    event.preventDefault();
-                  }}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    if (draggingId) moveByDrag(draggingId, staff.id);
-                    setDraggingId(null);
-                  }}
-                  className={cn(
-                    "flex items-center gap-2 rounded-xl border bg-background px-3 py-2",
-                    assigned ? "border-border/50" : "border-border/30",
-                    draggingId === staff.id && "opacity-50",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground",
-                      assigned ? "cursor-grab active:cursor-grabbing" : "opacity-30",
-                    )}
-                    aria-hidden
-                  >
-                    <GripVertical className="size-4" />
-                  </span>
-                  <Input
-                    type="number"
-                    min={1}
-                    inputMode="numeric"
-                    value={drafts[staff.id] ?? ""}
-                    placeholder="—"
-                    onChange={(event) =>
-                      setDrafts((current) => ({
-                        ...current,
-                        [staff.id]: event.target.value,
-                      }))
-                    }
-                    onBlur={(event) => applyOrder(staff, event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.currentTarget.blur();
-                      }
+              {rotation.map((row) => {
+                const isNext = row.staffId === nextStaffId;
+                return (
+                  <li
+                    key={row.staffId}
+                    draggable
+                    onDragStart={() => setDraggingId(row.staffId)}
+                    onDragEnd={() => setDraggingId(null)}
+                    onDragOver={(event) => {
+                      if (!draggingId) return;
+                      event.preventDefault();
                     }}
-                    className="h-11 w-16 shrink-0 rounded-xl px-2 text-center text-lg font-semibold tabular-nums"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className={cn(
-                        "truncate text-sm font-semibold",
-                        staff.id === nextStaffId && "text-blue-600 dark:text-blue-400",
-                      )}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      if (draggingId) moveByDrag(draggingId, row.staffId);
+                      setDraggingId(null);
+                    }}
+                    className={cn(
+                      "flex items-center gap-2 rounded-xl border bg-background px-3 py-2",
+                      isNext
+                        ? "border-blue-400/50 bg-blue-50/70 dark:border-blue-500/40 dark:bg-blue-950/30"
+                        : "border-border/50",
+                      draggingId === row.staffId && "opacity-50",
+                    )}
+                  >
+                    <span
+                      className="flex size-9 shrink-0 cursor-grab items-center justify-center rounded-lg text-muted-foreground active:cursor-grabbing"
+                      aria-hidden
                     >
-                      {staff.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      walk-in {staff.walkInCount}
-                      {staff.inService ? " · in service" : ""}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <AppButton
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="size-9 rounded-lg"
-                      disabled={
-                        saving || Boolean(adjustingId) || staff.walkInCount <= 0
+                      <GripVertical className="size-4" />
+                    </span>
+                    <Input
+                      type="number"
+                      min={1}
+                      inputMode="numeric"
+                      value={drafts[row.staffId] ?? String(row.sortOrder)}
+                      onChange={(event) =>
+                        setDrafts((current) => ({
+                          ...current,
+                          [row.staffId]: event.target.value,
+                        }))
                       }
-                      aria-label={`Decrease walk-ins for ${staff.name}`}
-                      onClick={() => void bumpWalkInCount(staff.id, -1)}
-                    >
-                      <Minus className="size-4" />
-                    </AppButton>
-                    <p className="w-10 text-center text-sm font-semibold tabular-nums">
-                      {staff.walkInCount}
-                    </p>
-                    <AppButton
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="size-9 rounded-lg"
-                      disabled={saving || Boolean(adjustingId)}
-                      aria-label={`Increase walk-ins for ${staff.name}`}
-                      onClick={() => void bumpWalkInCount(staff.id, 1)}
-                    >
-                      <Plus className="size-4" />
-                    </AppButton>
-                  </div>
-                </li>
-              ))}
+                      onBlur={(event) =>
+                        applyOrder(
+                          {
+                            id: row.staffId,
+                            name: row.name,
+                            inService: row.inService,
+                            walkInCount: row.walkInCount,
+                            inRotation: true,
+                          },
+                          event.target.value,
+                        )
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.currentTarget.blur();
+                        }
+                      }}
+                      className={cn(
+                        "h-11 w-16 shrink-0 rounded-xl px-2 text-center text-lg font-semibold tabular-nums",
+                        isNext && "border-blue-400/60 text-blue-700 dark:text-blue-300",
+                      )}
+                      aria-label={`Turn order for ${row.name}`}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className={cn(
+                          "truncate text-sm font-semibold",
+                          isNext && "text-blue-600 dark:text-blue-400",
+                        )}
+                      >
+                        {row.name}
+                        {isNext ? (
+                          <span className="ml-2 text-[10px] font-bold uppercase tracking-wide">
+                            next
+                          </span>
+                        ) : null}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        walk-in {row.walkInCount}
+                        {row.inService ? " · in service" : ""}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <AppButton
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="size-9 rounded-lg"
+                        disabled={
+                          saving ||
+                          Boolean(adjustingId) ||
+                          row.walkInCount <= 0
+                        }
+                        aria-label={`Decrease walk-ins for ${row.name}`}
+                        onClick={() => void bumpWalkInCount(row.staffId, -1)}
+                      >
+                        <Minus className="size-4" />
+                      </AppButton>
+                      <p className="w-10 text-center text-sm font-semibold tabular-nums">
+                        {row.walkInCount}
+                      </p>
+                      <AppButton
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="size-9 rounded-lg"
+                        disabled={saving || Boolean(adjustingId)}
+                        aria-label={`Increase walk-ins for ${row.name}`}
+                        onClick={() => void bumpWalkInCount(row.staffId, 1)}
+                      >
+                        <Plus className="size-4" />
+                      </AppButton>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
 
           <AppButton
             type="button"
             className="mt-4 h-11 w-full rounded-xl"
-            disabled={saving || Boolean(adjustingId) || working.length === 0}
+            disabled={saving || Boolean(adjustingId) || rotation.length === 0}
             onClick={() => void save()}
           >
             {saving ? "Saving…" : "Save rotation"}
