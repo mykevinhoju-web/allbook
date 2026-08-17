@@ -739,7 +739,7 @@ export function StaffGuideTimeline({
                               >
                                 {[
                                   isPreBooking ? "Pre - Booking" : null,
-                                  booking.walkIn ? "walk-in" : null,
+                                  booking.walkIn ? "Walk-in" : null,
                                   booking.outCall ? "out call" : null,
                                   booking.otherStaff ? "Other Staff" : null,
                                 ]
