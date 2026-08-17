@@ -118,12 +118,12 @@ export async function findRoomActiveService(
   tenantId: string,
   roomId: string,
   excludeBookingId?: string | string[],
-): Promise<{ id: string; customer_name: string | null } | null> {
+): Promise<{ id: string; staff_id: string; customer_name: string | null } | null> {
   const excludeIds = new Set(normalizeExcludeIds(excludeBookingId));
 
   const { data } = await supabase
     .from("bookings")
-    .select("id, customer_name")
+    .select("id, staff_id, customer_name")
     .eq("tenant_id", tenantId)
     .eq("room_id", roomId)
     .not("checked_in_at", "is", null)

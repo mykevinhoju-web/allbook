@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { findRoomActiveService } from "@/features/booking/lib/staff-conflict";
 import {
   createServiceSupabase,
   requireTenantFromRequest,
@@ -52,6 +53,23 @@ export async function POST(request: Request) {
     }
 
     const account = matches[0]!;
+
+    const roomInService = await findRoomActiveService(
+      supabase,
+      tenant.id,
+      roomSession.roomId,
+    );
+    if (roomInService && roomInService.staff_id !== account.staff_id) {
+      return NextResponse.json(
+        {
+          error:
+            "This room is already in service. Wait until that service ends, or use another room.",
+          code: "ROOM_IN_SERVICE",
+        },
+        { status: 409 },
+      );
+    }
+
     const { data: staff } = await supabase
       .from("staff")
       .select("id, name")
