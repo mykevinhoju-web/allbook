@@ -34,6 +34,7 @@ const report = aggregateRevenueReport(
       cashCents: 10000,
       cardCents: 0,
       staffPayoutCents: 4000,
+      walkIn: false,
     },
     {
       id: "b2",
@@ -46,6 +47,7 @@ const report = aggregateRevenueReport(
       cashCents: 2000,
       cardCents: 3000,
       staffPayoutCents: 2000,
+      walkIn: true,
     },
     {
       id: "b3",
@@ -58,6 +60,7 @@ const report = aggregateRevenueReport(
       cashCents: 0,
       cardCents: 8000,
       staffPayoutCents: 3000,
+      walkIn: false,
     },
   ],
   "Australia/Sydney",
