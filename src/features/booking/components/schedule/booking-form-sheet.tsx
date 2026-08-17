@@ -222,7 +222,7 @@ function StaffPicker({
                 type="button"
                 onClick={() => onSelect(member.id)}
                 className={cn(
-                  "flex min-h-11 flex-col justify-center gap-0.5 rounded-xl border px-3 py-2.5 text-left transition",
+                  "flex min-h-11 items-center rounded-xl border px-3 py-2.5 text-left transition",
                   selected
                     ? "border-[#8A6A3A] bg-[#8A6A3A]/10 text-stone-900 ring-2 ring-[#8A6A3A]/25"
                     : "border-stone-200 bg-white text-stone-700 active:bg-stone-50",
@@ -236,11 +236,6 @@ function StaffPicker({
                 >
                   {member.name}
                 </span>
-                {isNext ? (
-                  <span className="text-[10px] font-medium uppercase tracking-wide text-stone-600">
-                    next work in
-                  </span>
-                ) : null}
               </button>
             );
           })
