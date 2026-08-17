@@ -109,7 +109,7 @@ export function BookingScheduleContent() {
           rooms?: { id: string; name: string; isActive?: boolean }[];
         };
 
-        setStaff(staffData.staff ?? []);
+        if (staffData.staff) setStaff(staffData.staff);
         setBookings(bookingsData.bookings ?? []);
         setServiceOptions(optionsData.options ?? []);
         if (optionsData.pricingAdjustments) {

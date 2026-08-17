@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Plus } from "lucide-react";
 
 import { AppButton } from "@/components/common";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,7 @@ const BLOCK_HOURS = 6;
 const BLOCKS_PER_DAY = 24 / BLOCK_HOURS;
 const SWIPE_MIN_DISTANCE_PX = 56;
 const SWIPE_MAX_OFF_AXIS_PX = 48;
+const SWIPE_FOLLOW_MAX_PX = 72;
 
 const REGULAR_BLOCK_TONE = {
   idle: "border-orange-500/70 bg-orange-300 text-orange-950",
@@ -200,11 +201,16 @@ export function StaffGuideTimeline({
 }: StaffGuideTimelineProps) {
   const now = useNowTick(30_000);
   const [block, setBlock] = useState<DayBlock>(0);
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [blockSlide, setBlockSlide] = useState<"none" | "left" | "right">(
+    "none",
+  );
   const didInitView = useRef(false);
   const pendingEndRef = useRef(false);
   const lastDateRef = useRef(date);
   const scheduleCardRef = useRef<HTMLDivElement>(null);
   const staffScrollRef = useRef<HTMLDivElement>(null);
+  const swipeLockRef = useRef(false);
 
   const viewStartMs = zonedHourMs(date, blockStartHour(block), timeZone);
   const viewportMs = BLOCK_HOURS * 60 * 60_000;
@@ -286,24 +292,38 @@ export function StaffGuideTimeline({
   }, [bookings]);
 
   const goPrev = useCallback(() => {
-    if (atDayStart) {
-      pendingEndRef.current = true;
-      onDateChange(addDaysIso(date, -1));
-      didInitView.current = false;
-      return;
-    }
-    setBlock((b) => (b - 1) as DayBlock);
+    if (swipeLockRef.current) return;
+    swipeLockRef.current = true;
+    setBlockSlide("right");
+    window.setTimeout(() => {
+      if (atDayStart) {
+        pendingEndRef.current = true;
+        onDateChange(addDaysIso(date, -1));
+        didInitView.current = false;
+      } else {
+        setBlock((b) => (b - 1) as DayBlock);
+      }
+      setBlockSlide("none");
+      swipeLockRef.current = false;
+    }, 160);
   }, [atDayStart, date, onDateChange]);
 
   const goNextOrNextDay = useCallback(() => {
-    if (nearDayEnd) {
-      pendingEndRef.current = false;
-      onDateChange(addDaysIso(date, 1));
-      setBlock(0);
-      didInitView.current = false;
-      return;
-    }
-    setBlock((b) => (b + 1) as DayBlock);
+    if (swipeLockRef.current) return;
+    swipeLockRef.current = true;
+    setBlockSlide("left");
+    window.setTimeout(() => {
+      if (nearDayEnd) {
+        pendingEndRef.current = false;
+        onDateChange(addDaysIso(date, 1));
+        setBlock(0);
+        didInitView.current = false;
+      } else {
+        setBlock((b) => (b + 1) as DayBlock);
+      }
+      setBlockSlide("none");
+      swipeLockRef.current = false;
+    }, 160);
   }, [nearDayEnd, date, onDateChange]);
 
   useEffect(() => {
@@ -359,13 +379,22 @@ export function StaffGuideTimeline({
     let startX = 0;
     let startY = 0;
     let tracking = false;
+    let axis: "undecided" | "x" | "y" = "undecided";
     let consumed = false;
+
+    const reset = () => {
+      tracking = false;
+      axis = "undecided";
+      setSwipeOffset(0);
+    };
 
     const onPointerDown = (event: PointerEvent) => {
       if (event.pointerType === "mouse" && event.button !== 0) return;
+      if (swipeLockRef.current) return;
       startX = event.clientX;
       startY = event.clientY;
       tracking = true;
+      axis = "undecided";
       consumed = false;
     };
 
@@ -373,31 +402,48 @@ export function StaffGuideTimeline({
       if (!tracking || consumed) return;
       const dx = event.clientX - startX;
       const dy = event.clientY - startY;
+      if (axis === "undecided") {
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+        axis = Math.abs(dx) > Math.abs(dy) + 6 ? "x" : "y";
+        if (axis === "y") {
+          tracking = false;
+          setSwipeOffset(0);
+          return;
+        }
+      }
+      if (axis !== "x") return;
+      event.preventDefault();
+      const clamped = Math.max(
+        -SWIPE_FOLLOW_MAX_PX,
+        Math.min(SWIPE_FOLLOW_MAX_PX, dx),
+      );
+      setSwipeOffset(clamped);
       if (Math.abs(dx) < SWIPE_MIN_DISTANCE_PX) return;
-      if (Math.abs(dx) <= Math.abs(dy) + 8) return;
       if (Math.abs(dy) > SWIPE_MAX_OFF_AXIS_PX) {
-        tracking = false;
+        reset();
         return;
       }
       consumed = true;
       tracking = false;
+      setSwipeOffset(0);
       if (dx < 0) goNextOrNextDay();
       else goPrev();
     };
 
-    const endTracking = () => {
-      tracking = false;
+    const onPointerUp = () => {
+      if (!consumed) reset();
+      else tracking = false;
     };
 
     card.addEventListener("pointerdown", onPointerDown);
-    card.addEventListener("pointermove", onPointerMove);
-    card.addEventListener("pointerup", endTracking);
-    card.addEventListener("pointercancel", endTracking);
+    card.addEventListener("pointermove", onPointerMove, { passive: false });
+    card.addEventListener("pointerup", onPointerUp);
+    card.addEventListener("pointercancel", onPointerUp);
     return () => {
       card.removeEventListener("pointerdown", onPointerDown);
       card.removeEventListener("pointermove", onPointerMove);
-      card.removeEventListener("pointerup", endTracking);
-      card.removeEventListener("pointercancel", endTracking);
+      card.removeEventListener("pointerup", onPointerUp);
+      card.removeEventListener("pointercancel", onPointerUp);
     };
   }, [goNextOrNextDay, goPrev, loading, displayStaff.length]);
 
@@ -448,16 +494,32 @@ export function StaffGuideTimeline({
 
       <div
         ref={scheduleCardRef}
-        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card shadow-soft"
+        className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card shadow-soft"
       >
-        {loading ? (
+        {loading && displayStaff.length === 0 ? (
           <p className="p-6 text-sm text-muted-foreground">Loading schedule…</p>
         ) : displayStaff.length === 0 ? (
           <p className="p-6 text-sm text-muted-foreground">
             No staff scheduled for this day.
           </p>
         ) : (
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div
+            className={cn(
+              "flex min-h-0 flex-1 flex-col overflow-hidden will-change-transform",
+              blockSlide === "left" &&
+                "transition-transform duration-150 ease-out -translate-x-8 opacity-80",
+              blockSlide === "right" &&
+                "transition-transform duration-150 ease-out translate-x-8 opacity-80",
+              blockSlide === "none" &&
+                swipeOffset === 0 &&
+                "transition-transform duration-150 ease-out",
+            )}
+            style={
+              swipeOffset !== 0
+                ? { transform: `translateX(${swipeOffset}px)` }
+                : undefined
+            }
+          >
             <div
               ref={staffScrollRef}
               className="min-h-0 flex-1 overflow-x-hidden overflow-y-scroll overscroll-contain touch-pan-y [-webkit-overflow-scrolling:touch]"
@@ -695,6 +757,11 @@ export function StaffGuideTimeline({
             </div>
           </div>
         )}
+        {loading && displayStaff.length > 0 ? (
+          <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-background/35">
+            <Loader2 className="size-8 animate-spin text-primary" />
+          </div>
+        ) : null}
       </div>
 
       <p className="shrink-0 pb-1 text-center text-xs text-muted-foreground md:text-sm">
