@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarRange, ChevronDown, Loader2, Lock, Users } from "lucide-react";
+import { CalendarRange, ChevronDown, CreditCard, DollarSign, Loader2, Lock, Users } from "lucide-react";
 
 import { AppButton, toast } from "@/components/common";
 import { Input } from "@/components/ui/input";
@@ -95,7 +95,41 @@ function CashCardSplit({
   );
 }
 
-function DailySummaryRows({
+function PaymentIcons({
+  cashCents,
+  cardCents,
+}: {
+  cashCents: number;
+  cardCents: number;
+}) {
+  const showCash = cashCents > 0;
+  const showCard = cardCents > 0;
+  if (!showCash && !showCard) {
+    return <span className="text-xs text-muted-foreground">—</span>;
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {showCash ? (
+        <span
+          className="inline-flex size-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-800"
+          title="Cash"
+          aria-label="Cash"
+        >
+          <DollarSign className="size-3.5" strokeWidth={2.5} />
+        </span>
+      ) : null}
+      {showCard ? (
+        <span
+          className="inline-flex size-7 items-center justify-center rounded-full bg-sky-100 text-sky-800"
+          title="Card"
+          aria-label="Card"
+        >
+          <CreditCard className="size-3.5" strokeWidth={2.5} />
+        </span>
+      ) : null}
+    </span>
+  );
+}
   daily,
   currency,
   timeZone,
@@ -164,9 +198,10 @@ function StaffDailyDetail({
           </div>
 
           <div className="overflow-hidden rounded-xl border border-border/40">
-            <div className="hidden bg-muted/40 px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)_5rem_5rem] sm:gap-3">
+            <div className="hidden bg-muted/40 px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)_4.5rem_5rem_5rem] sm:gap-3">
               <span>Time</span>
               <span>Customer</span>
+              <span>Payment</span>
               <span className="text-right">Sales</span>
               <span className="text-right">Staff</span>
             </div>
@@ -174,7 +209,7 @@ function StaffDailyDetail({
               {day.bookings.map((booking) => (
                 <li
                   key={booking.id}
-                  className="px-3 py-2.5 sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)_5rem_5rem] sm:items-center sm:gap-3"
+                  className="px-3 py-2.5 sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)_4.5rem_5rem_5rem] sm:items-center sm:gap-3"
                 >
                   <p className="text-sm font-medium tabular-nums">
                     {formatAmPmTime(booking.startsAt)}
@@ -186,6 +221,12 @@ function StaffDailyDetail({
                     <p className="text-xs text-muted-foreground sm:hidden">
                       {formatAmPmTime(booking.startsAt)}
                     </p>
+                  </div>
+                  <div className="mt-1.5 sm:mt-0">
+                    <PaymentIcons
+                      cashCents={booking.cashCents}
+                      cardCents={booking.cardCents}
+                    />
                   </div>
                   <p className="mt-0.5 text-sm font-semibold tabular-nums sm:mt-0 sm:text-right">
                     {formatPriceFromCents(booking.priceCents, currency)}

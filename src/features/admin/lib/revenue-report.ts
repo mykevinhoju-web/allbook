@@ -17,6 +17,8 @@ export type RevenueBookingDetail = {
   customerName: string | null;
   priceCents: number;
   staffPayoutCents: number;
+  cashCents: number;
+  cardCents: number;
 };
 
 export type RevenueDailyTotal = {
@@ -305,6 +307,8 @@ export function aggregateRevenueReport(
       customerName: booking.customerName,
       priceCents: cents,
       staffPayoutCents,
+      cashCents,
+      cardCents,
     };
 
     grandTotalCents += cents;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarRange, Loader2 } from "lucide-react";
+import { CalendarRange, CreditCard, DollarSign, Loader2 } from "lucide-react";
 
 import { AppButton, toast } from "@/components/common";
 import { Input } from "@/components/ui/input";
@@ -250,9 +250,21 @@ export function StaffReportsContent() {
                       key={booking.id}
                       className="flex items-center justify-between gap-3 text-sm"
                     >
-                      <span className="min-w-0 truncate text-muted-foreground">
+                      <span className="flex min-w-0 items-center gap-2 truncate text-muted-foreground">
                         {formatAmPmTime(booking.startsAt)} ·{" "}
                         {booking.customerName?.trim() || "Walk-in"}
+                        {booking.cashCents > 0 ? (
+                          <DollarSign
+                            className="size-3.5 shrink-0 text-emerald-700"
+                            aria-label="Cash"
+                          />
+                        ) : null}
+                        {booking.cardCents > 0 ? (
+                          <CreditCard
+                            className="size-3.5 shrink-0 text-sky-700"
+                            aria-label="Card"
+                          />
+                        ) : null}
                       </span>
                       <span className="shrink-0 text-right font-medium tabular-nums">
                         {formatPriceFromCents(booking.priceCents, currency)}
