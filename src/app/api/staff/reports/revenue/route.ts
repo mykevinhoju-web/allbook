@@ -61,6 +61,7 @@ function mapRow(
     id: row.id,
     staffId: row.staff_id,
     startsAt: row.starts_at,
+    durationMinutes: row.duration_minutes,
     priceCents: row.price_cents,
     staffPayoutCents,
     status: row.status,

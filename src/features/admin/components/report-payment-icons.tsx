@@ -75,3 +75,40 @@ export function ReportPaymentIcons({
     </span>
   );
 }
+
+export function ReportCashCardSplit({
+  cashCents,
+  cardCents,
+  currency,
+  loading,
+}: {
+  cashCents: number;
+  cardCents: number;
+  currency: string;
+  loading?: boolean;
+}) {
+  if (loading) {
+    return (
+      <div className="shrink-0 text-right text-sm leading-6 text-muted-foreground">
+        <p>Cash —</p>
+        <p>Card —</p>
+      </div>
+    );
+  }
+  return (
+    <div className="shrink-0 text-right text-sm leading-6 tabular-nums">
+      <p>
+        <span className="text-muted-foreground">Cash</span>{" "}
+        <span className="font-semibold text-foreground">
+          {formatPriceFromCents(cashCents, currency)}
+        </span>
+      </p>
+      <p>
+        <span className="text-muted-foreground">Card</span>{" "}
+        <span className="font-semibold text-foreground">
+          {formatPriceFromCents(cardCents, currency)}
+        </span>
+      </p>
+    </div>
+  );
+}

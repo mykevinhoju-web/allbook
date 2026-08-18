@@ -34,6 +34,7 @@ const report = aggregateRevenueReport(
       cashCents: 10000,
       cardCents: 0,
       staffPayoutCents: 4000,
+      durationMinutes: 30,
       walkIn: false,
     },
     {
@@ -47,6 +48,7 @@ const report = aggregateRevenueReport(
       cashCents: 2000,
       cardCents: 3000,
       staffPayoutCents: 2000,
+      durationMinutes: 45,
       walkIn: true,
     },
     {
@@ -60,6 +62,7 @@ const report = aggregateRevenueReport(
       cashCents: 0,
       cardCents: 8000,
       staffPayoutCents: 3000,
+      durationMinutes: 60,
       walkIn: false,
     },
   ],
@@ -68,6 +71,11 @@ const report = aggregateRevenueReport(
 
 assert.equal(report.grandTotalCents, 23000);
 assert.equal(report.staffPayoutTotalCents, 9000);
+assert.equal(report.staffPayoutCashCents, 4800);
+assert.equal(report.staffPayoutCardCents, 4200);
+assert.equal(report.dailyTotals[0]?.bookings[0]?.durationMinutes, 30);
+assert.equal(report.dailyTotals[0]?.bookings[0]?.staffPayoutCashCents, 4000);
+assert.equal(report.dailyTotals[0]?.bookings[1]?.staffPayoutCardCents, 1200);
 assert.equal(report.shopTotalCents, 14000);
 assert.equal(report.cashTotalCents, 12000);
 assert.equal(report.cardTotalCents, 11000);

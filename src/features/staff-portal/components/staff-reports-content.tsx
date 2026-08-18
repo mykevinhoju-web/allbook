@@ -6,7 +6,10 @@ import { CalendarRange, Loader2 } from "lucide-react";
 import { AppButton, toast } from "@/components/common";
 import { Input } from "@/components/ui/input";
 import { ReportBookingTypeBadge } from "@/features/admin/components/report-booking-type-badge";
-import { ReportPaymentIcons } from "@/features/admin/components/report-payment-icons";
+import {
+  ReportCashCardSplit,
+  ReportPaymentIcons,
+} from "@/features/admin/components/report-payment-icons";
 import type { RevenueDailyTotal } from "@/features/admin/lib/revenue-report";
 import {
   addDaysToDateInput,
@@ -26,6 +29,8 @@ type RevenueResponse = {
   to: string;
   grandTotalCents: number;
   staffPayoutTotalCents: number;
+  staffPayoutCashCents: number;
+  staffPayoutCardCents: number;
   shopTotalCents: number;
   cashTotalCents: number;
   cardTotalCents: number;
@@ -36,6 +41,10 @@ type RevenueResponse = {
 
 function monthStartDate(date: string): string {
   return `${date.slice(0, 7)}-01`;
+}
+
+function serviceLabel(minutes: number): string {
+  return minutes > 0 ? `${minutes} min` : "Service";
 }
 
 function formatDayLabel(date: string, timeZone: string): string {
@@ -108,6 +117,42 @@ export function StaffReportsContent() {
         }, 0)
       );
     }, 0);
+  }, [report]);
+  const byService = useMemo(() => {
+    if (!report) return [];
+    const map = new Map<
+      number,
+      {
+        durationMinutes: number;
+        count: number;
+        salesCents: number;
+        takeCents: number;
+        takeCashCents: number;
+        takeCardCents: number;
+      }
+    >();
+    for (const day of report.dailyTotals) {
+      for (const booking of day.bookings) {
+        const durationMinutes = booking.durationMinutes || 0;
+        const row = map.get(durationMinutes) ?? {
+          durationMinutes,
+          count: 0,
+          salesCents: 0,
+          takeCents: 0,
+          takeCashCents: 0,
+          takeCardCents: 0,
+        };
+        row.count += 1;
+        row.salesCents += booking.priceCents;
+        row.takeCents += booking.staffPayoutCents;
+        row.takeCashCents += booking.staffPayoutCashCents;
+        row.takeCardCents += booking.staffPayoutCardCents;
+        map.set(durationMinutes, row);
+      }
+    }
+    return [...map.values()].sort(
+      (a, b) => a.durationMinutes - b.durationMinutes,
+    );
   }, [report]);
   const applyPreset = (preset: "today" | "7d" | "month") => {
     if (preset === "today") {
@@ -206,6 +251,28 @@ export function StaffReportsContent() {
             </div>
           </div>
         </div>
+        <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft">
+          <p className="text-sm text-muted-foreground">Your take</p>
+          <div className="mt-1 flex items-start justify-between gap-3">
+            <p className="text-3xl font-semibold tabular-nums">
+              {loading && !report
+                ? "—"
+                : formatPriceFromCents(
+                    report?.staffPayoutTotalCents ?? 0,
+                    currency,
+                  )}
+            </p>
+            <ReportCashCardSplit
+              cashCents={report?.staffPayoutCashCents ?? 0}
+              cardCents={report?.staffPayoutCardCents ?? 0}
+              currency={currency}
+              loading={Boolean(loading && !report)}
+            />
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Amount you keep · cash vs card
+          </p>
+        </div>
       </section>
 
       <section className="grid grid-cols-2 gap-3">
@@ -247,7 +314,72 @@ export function StaffReportsContent() {
           No paid bookings in this period.
         </div>
       ) : (
-        <section className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft">
+        <>
+          {byService.length > 0 ? (
+            <section className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft">
+              <p className="text-sm font-semibold">By service</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Your take for each duration, cash vs card
+              </p>
+              <ul className="mt-3 overflow-hidden rounded-xl border border-border/40">
+                <li className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 bg-muted/40 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <span>Service</span>
+                  <span className="text-right">Your take</span>
+                </li>
+                {byService.map((row) => (
+                  <li
+                    key={row.durationMinutes}
+                    className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 border-t border-border/40 px-3 py-2.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold">
+                        {serviceLabel(row.durationMinutes)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {row.count} booking{row.count === 1 ? "" : "s"} · sales{" "}
+                        {formatPriceFromCents(row.salesCents, currency)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold tabular-nums">
+                        {formatPriceFromCents(row.takeCents, currency)}
+                      </p>
+                      <ReportCashCardSplit
+                        cashCents={row.takeCashCents}
+                        cardCents={row.takeCardCents}
+                        currency={currency}
+                      />
+                    </div>
+                  </li>
+                ))}
+                <li className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 border-t border-border/60 bg-muted/30 px-3 py-2.5">
+                  <div>
+                    <p className="text-sm font-semibold">Total</p>
+                    <p className="text-xs text-muted-foreground">
+                      {report.bookingCount} booking
+                      {report.bookingCount === 1 ? "" : "s"} · sales{" "}
+                      {formatPriceFromCents(report.grandTotalCents, currency)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold tabular-nums">
+                      {formatPriceFromCents(
+                        report.staffPayoutTotalCents,
+                        currency,
+                      )}
+                    </p>
+                    <ReportCashCardSplit
+                      cashCents={report.staffPayoutCashCents}
+                      cardCents={report.staffPayoutCardCents}
+                      currency={currency}
+                    />
+                  </div>
+                </li>
+              </ul>
+            </section>
+          ) : null}
+
+          <section className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft">
           <p className="text-sm font-semibold">By day</p>
           <ul className="mt-3 divide-y divide-border/40">
             {report.dailyTotals.map((day) => (
@@ -257,41 +389,56 @@ export function StaffReportsContent() {
                     {formatDayLabel(day.date, report.timezone)}
                   </p>
                   <p className="text-sm font-semibold tabular-nums">
-                    {formatPriceFromCents(day.totalCents, currency)}
+                    You {formatPriceFromCents(day.staffPayoutCents, currency)}
                   </p>
                 </div>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  {day.bookingCount} booking{day.bookingCount === 1 ? "" : "s"}
+                  {day.bookingCount} booking{day.bookingCount === 1 ? "" : "s"} ·
+                  sales {formatPriceFromCents(day.totalCents, currency)}
                 </p>
                 <ul className="mt-2 overflow-hidden rounded-xl border border-border/40">
-                  <li className="grid grid-cols-[4.25rem_minmax(0,1fr)_5.75rem_auto] gap-2 bg-muted/40 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <li className="grid grid-cols-[4.25rem_minmax(0,1fr)_auto] gap-2 bg-muted/40 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                     <span>Time</span>
-                    <span>Customer</span>
-                    <span>Type</span>
-                    <span className="text-right">Pay</span>
+                    <span>Service</span>
+                    <span className="text-right">Your take</span>
                   </li>
                   {day.bookings.map((booking) => (
                     <li
                       key={booking.id}
-                      className="grid grid-cols-[4.25rem_minmax(0,1fr)_5.75rem_auto] items-center gap-2 border-t border-border/40 px-3 py-2.5 text-sm"
+                      className="grid grid-cols-[4.25rem_minmax(0,1fr)_auto] items-start gap-2 border-t border-border/40 px-3 py-2.5 text-sm"
                     >
-                      <span className="font-medium tabular-nums">
+                      <span className="pt-0.5 font-medium tabular-nums">
                         {formatAmPmTime(booking.startsAt)}
                       </span>
-                      <span className="min-w-0 truncate font-medium">
-                        {booking.customerName?.trim() || "Guest"}
-                      </span>
-                      <ReportBookingTypeBadge walkIn={Boolean(booking.walkIn)} />
-                      <span className="flex items-center justify-end gap-2">
-                        <ReportPaymentIcons
-                          cashCents={booking.cashCents}
-                          cardCents={booking.cardCents}
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">
+                          {serviceLabel(booking.durationMinutes)}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {booking.customerName?.trim() || "Guest"}
+                        </p>
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <ReportBookingTypeBadge walkIn={Boolean(booking.walkIn)} />
+                          <ReportPaymentIcons
+                            cashCents={booking.cashCents}
+                            cardCents={booking.cardCents}
+                            currency={currency}
+                          />
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold tabular-nums">
+                          {formatPriceFromCents(
+                            booking.staffPayoutCents,
+                            currency,
+                          )}
+                        </p>
+                        <ReportCashCardSplit
+                          cashCents={booking.staffPayoutCashCents}
+                          cardCents={booking.staffPayoutCardCents}
                           currency={currency}
                         />
-                        <span className="min-w-10 text-right font-semibold tabular-nums">
-                          {formatPriceFromCents(booking.priceCents, currency)}
-                        </span>
-                      </span>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -299,6 +446,7 @@ export function StaffReportsContent() {
             ))}
           </ul>
         </section>
+        </>
       )}
     </div>
   );
