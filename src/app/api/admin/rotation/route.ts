@@ -10,6 +10,7 @@ import {
   appendWalkInRotationNewcomers,
   saveWalkInRotationRoster,
 } from "@/features/booking/server/assign-walk-in-staff";
+import { appendNewcomersAtEnd } from "@/features/booking/lib/walk-in-rotation";
 import type { StaffAttributes, StaffStatus } from "@/features/staff/types";
 import { isStaffOnShiftNow } from "@/features/staff/utils/shift-label";
 import {
@@ -65,18 +66,16 @@ export async function GET(request: Request) {
     const newcomers = working.filter((row) => !rosterIds.has(row.id));
 
     let roster = rotation;
-    if (newcomers.length > 0) {
-      try {
-        roster = await appendWalkInRotationNewcomers(supabase, {
-          tenantId: tenant.id,
-          staffIds: newcomers.map((row) => row.id),
-        });
-      } catch {
-        roster = [
-          ...rotation,
-          ...newcomers.map((row) => ({ staffId: row.id, sortOrder: 0 })),
-        ];
-      }
+    try {
+      roster = await appendWalkInRotationNewcomers(supabase, {
+        tenantId: tenant.id,
+        staffIds: newcomers.map((row) => row.id),
+      });
+    } catch {
+      roster = appendNewcomersAtEnd(
+        rotation,
+        newcomers.map((row) => row.id),
+      );
     }
 
     const orderedRotation = roster.filter((row) => workingIds.has(row.staffId));

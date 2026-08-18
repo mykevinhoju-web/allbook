@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { fetchAdminApi } from "@/features/admin/lib/admin-api-client";
 import { todayDateInZone } from "@/features/booking/lib/schedule-utils";
-import { pickWalkInStaff } from "@/features/booking/lib/walk-in-rotation";
+import { pickWalkInStaff, fillRotationNumbers } from "@/features/booking/lib/walk-in-rotation";
 import { useOptionalTenant } from "@/features/tenants";
 import { cn } from "@/lib/utils";
 
@@ -52,8 +52,8 @@ function insertAtOrder(
 ): RotationRow[] {
   const without = list.filter((item) => item.staffId !== row.staffId);
   const index = Math.max(0, Math.min(without.length, Math.round(order) - 1));
-  without.splice(index, 0, { ...row, sortOrder: Math.max(0, Math.round(order)) });
-  return without;
+  without.splice(index, 0, row);
+  return without.map((item, i) => ({ ...item, sortOrder: i + 1 }));
 }
 
 function mergeOnShiftRotation(
@@ -61,21 +61,27 @@ function mergeOnShiftRotation(
   working: WorkingStaff[],
 ): RotationRow[] {
   const workingById = new Map(working.map((row) => [row.id, row]));
-  const kept = rotation
-    .filter((row) => workingById.has(row.staffId))
-    .map((row) => {
-      const staff = workingById.get(row.staffId)!;
-      return {
-        ...row,
-        name: staff.name,
-        inService: staff.inService,
-        walkInCount: staff.walkInCount,
-      };
-    });
+  const kept = fillRotationNumbers(
+    rotation
+      .filter((row) => workingById.has(row.staffId))
+      .map((row) => {
+        const staff = workingById.get(row.staffId)!;
+        return {
+          ...row,
+          name: staff.name,
+          inService: staff.inService,
+          walkInCount: staff.walkInCount,
+        };
+      }),
+  );
   const keptIds = new Set(kept.map((row) => row.staffId));
+  let nextNumber = Math.max(0, ...kept.map((row) => row.sortOrder));
   const extras = working
     .filter((staff) => !keptIds.has(staff.id))
-    .map((staff) => toRow(staff, 0));
+    .map((staff) => {
+      nextNumber += 1;
+      return toRow(staff, nextNumber);
+    });
   return [...kept, ...extras];
 }
 
@@ -166,7 +172,9 @@ export function AdminRotationContent() {
     const trimmed = raw.trim();
     if (!trimmed) {
       setRotation((current) => {
-        const next = current.filter((row) => row.staffId !== staff.id);
+        const next = current
+          .filter((row) => row.staffId !== staff.id)
+          .map((row, i) => ({ ...row, sortOrder: i + 1 }));
         setDrafts(
           Object.fromEntries(
             next.map((row) => [row.staffId, String(row.sortOrder)]),
@@ -177,7 +185,7 @@ export function AdminRotationContent() {
       return;
     }
     const order = Number(trimmed);
-    if (!Number.isFinite(order) || order < 0) {
+    if (!Number.isFinite(order) || order < 1) {
       const existing = rotation.find((row) => row.staffId === staff.id);
       setDrafts((current) => ({
         ...current,
@@ -206,12 +214,13 @@ export function AdminRotationContent() {
       const [item] = next.splice(from, 1);
       if (!item) return current;
       next.splice(to, 0, item);
+      const ordered = next.map((row, i) => ({ ...row, sortOrder: i + 1 }));
       setDrafts(
         Object.fromEntries(
-          next.map((row) => [row.staffId, String(row.sortOrder)]),
+          ordered.map((row) => [row.staffId, String(row.sortOrder)]),
         ),
       );
-      return next;
+      return ordered;
     });
   };
 
@@ -326,7 +335,7 @@ export function AdminRotationContent() {
                     </span>
                     <Input
                       type="number"
-                      min={0}
+                      min={1}
                       inputMode="numeric"
                       value={drafts[row.staffId] ?? String(row.sortOrder)}
                       onChange={(event) =>

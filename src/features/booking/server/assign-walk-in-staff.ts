@@ -8,6 +8,8 @@ import { hasStaffBookingConflict } from "@/features/booking/lib/staff-conflict";
 import {
   isWalkInBooking,
   pickWalkInStaff,
+  appendNewcomersAtEnd,
+  fillRotationNumbers,
   type WalkInRotationMember,
 } from "@/features/booking/lib/walk-in-rotation";
 import type { StaffAttributes, StaffStatus } from "@/features/staff/types";
@@ -102,30 +104,52 @@ export async function appendWalkInRotationNewcomers(
   },
 ): Promise<WalkInRotationMember[]> {
   const roster = await loadWalkInRotation(supabase, args.tenantId);
-  const existing = new Set(roster.map((row) => row.staffId));
-  const toAdd = [...new Set(args.staffIds)].filter(
-    (staffId) => staffId && !existing.has(staffId),
-  );
-  if (toAdd.length === 0) return roster;
+  const next = appendNewcomersAtEnd(roster, args.staffIds);
+  const changed =
+    next.length !== roster.length ||
+    next.some(
+      (row, index) =>
+        row.staffId !== roster[index]?.staffId ||
+        row.sortOrder !== roster[index]?.sortOrder,
+    );
+  if (!changed) return roster;
 
   const now = new Date().toISOString();
-  const { error } = await supabase.from("staff_walk_in_rotation").insert(
-    toAdd.map((staffId) => ({
-      tenant_id: args.tenantId,
-      work_date: ROTATION_ROSTER_DATE,
-      staff_id: staffId,
-      sort_order: 0,
-      updated_at: now,
-    })),
-  );
-  if (error) {
-    throw new Error(error.message);
+  const existingIds = new Set(roster.map((row) => row.staffId));
+  const toInsert = next.filter((row) => !existingIds.has(row.staffId));
+  const toUpdate = next.filter((row) => {
+    const previous = roster.find((item) => item.staffId === row.staffId);
+    return previous != null && previous.sortOrder !== row.sortOrder;
+  });
+
+  for (const row of toUpdate) {
+    const { error } = await supabase
+      .from("staff_walk_in_rotation")
+      .update({ sort_order: row.sortOrder, updated_at: now })
+      .eq("tenant_id", args.tenantId)
+      .eq("work_date", ROTATION_ROSTER_DATE)
+      .eq("staff_id", row.staffId);
+    if (error) {
+      throw new Error(error.message);
+    }
   }
 
-  return [
-    ...roster,
-    ...toAdd.map((staffId) => ({ staffId, sortOrder: 0 })),
-  ];
+  if (toInsert.length > 0) {
+    const { error } = await supabase.from("staff_walk_in_rotation").insert(
+      toInsert.map((row) => ({
+        tenant_id: args.tenantId,
+        work_date: ROTATION_ROSTER_DATE,
+        staff_id: row.staffId,
+        sort_order: row.sortOrder,
+        updated_at: now,
+      })),
+    );
+    if (error) {
+      throw new Error(error.message);
+    }
+  }
+
+  return next;
 }
 
 export async function saveWalkInRotationRoster(
@@ -137,14 +161,16 @@ export async function saveWalkInRotationRoster(
   },
 ): Promise<string[]> {
   const roster = await loadWalkInRotation(supabase, args.tenantId);
-  const incoming = args.incoming.filter((row) => row.staffId);
+  const incoming = fillRotationNumbers(
+    args.incoming.filter((row) => row.staffId),
+  );
   const onShift = new Set(args.onShiftIds);
   const incomingSet = new Set(incoming.map((row) => row.staffId));
 
   const offShiftKept = roster.filter(
     (row) => !incomingSet.has(row.staffId) && !onShift.has(row.staffId),
   );
-  const next = [...incoming, ...offShiftKept];
+  const next = fillRotationNumbers([...incoming, ...offShiftKept]);
 
   const { error: deleteError } = await supabase
     .from("staff_walk_in_rotation")

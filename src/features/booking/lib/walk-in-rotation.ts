@@ -23,21 +23,44 @@ export type WalkInRotationMember = {
   sortOrder: number;
 };
 
-/** 0 = not yet in the numbered sequence — keep existing 1, 2, 3… ahead. */
+/** 0 = missing number — keep numbered staff ahead until we fill it. */
 export function rotationTieBreak(sortOrder: number): number {
   return sortOrder <= 0 ? Number.MAX_SAFE_INTEGER : sortOrder;
 }
 
-/** New staff join at 0 without renumbering anyone already on the roster. */
-export function appendNewcomersAtZero<T extends WalkInRotationMember>(
+/** If nobody has a number yet, use list order 1, 2, 3…; otherwise fill zeros at the end. */
+export function fillRotationNumbers<T extends WalkInRotationMember>(
+  rotation: T[],
+): T[] {
+  if (rotation.length === 0) return rotation;
+  if (rotation.every((row) => row.sortOrder <= 0)) {
+    return rotation.map((row, index) => ({ ...row, sortOrder: index + 1 }));
+  }
+  let next = Math.max(0, ...rotation.map((row) => row.sortOrder));
+  return rotation.map((row) => {
+    if (row.sortOrder > 0) return row;
+    next += 1;
+    return { ...row, sortOrder: next };
+  });
+}
+
+/** New staff join at the last number. Existing numbers stay as they are. */
+export function appendNewcomersAtEnd<T extends WalkInRotationMember>(
   rotation: T[],
   newStaffIds: string[],
 ): Array<T | WalkInRotationMember> {
-  const existing = new Set(rotation.map((row) => row.staffId));
-  const extras = newStaffIds
-    .filter((staffId) => staffId && !existing.has(staffId))
-    .map((staffId) => ({ staffId, sortOrder: 0 }));
-  return extras.length === 0 ? rotation : [...rotation, ...extras];
+  const filled = fillRotationNumbers(rotation);
+  const existing = new Set(filled.map((row) => row.staffId));
+  const extras = newStaffIds.filter((staffId) => staffId && !existing.has(staffId));
+  if (extras.length === 0) return filled;
+  let next = Math.max(0, ...filled.map((row) => row.sortOrder));
+  return [
+    ...filled,
+    ...extras.map((staffId) => {
+      next += 1;
+      return { staffId, sortOrder: next };
+    }),
+  ];
 }
 
 /**

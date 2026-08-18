@@ -4,7 +4,8 @@
 import assert from "node:assert/strict";
 
 import {
-  appendNewcomersAtZero,
+  appendNewcomersAtEnd,
+  fillRotationNumbers,
   pickWalkInStaff,
 } from "../src/features/booking/lib/walk-in-rotation";
 
@@ -85,14 +86,27 @@ assert.equal(
   "b",
 );
 
-const withNewcomer = appendNewcomersAtZero(rotation, ["d", "a"]);
+assert.deepEqual(
+  fillRotationNumbers([
+    { staffId: "a", sortOrder: 0 },
+    { staffId: "b", sortOrder: 0 },
+    { staffId: "c", sortOrder: 0 },
+  ]).map((row) => [row.staffId, row.sortOrder]),
+  [
+    ["a", 1],
+    ["b", 2],
+    ["c", 3],
+  ],
+);
+
+const withNewcomer = appendNewcomersAtEnd(rotation, ["d", "a"]);
 assert.deepEqual(
   withNewcomer.map((row) => [row.staffId, row.sortOrder]),
   [
     ["a", 1],
     ["b", 2],
     ["c", 3],
-    ["d", 0],
+    ["d", 4],
   ],
 );
 
