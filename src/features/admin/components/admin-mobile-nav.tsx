@@ -7,6 +7,7 @@ import {
   DoorOpen,
   LayoutDashboard,
   LayoutGrid,
+  ListOrdered,
   Users,
 } from "lucide-react";
 
@@ -22,6 +23,7 @@ const adminTabs = [
   { title: "Home", href: "/admin", icon: LayoutDashboard },
   { title: "Bookings", href: "/admin/bookings", icon: CalendarDays },
   { title: "Staff", href: "/admin/staff", icon: Users },
+  { title: "Rotation", href: "/admin/rotation", icon: ListOrdered },
   { title: "Rooms", href: "/admin/rooms", icon: DoorOpen },
 ] as const;
 
@@ -46,7 +48,7 @@ export function AdminMobileNav({ isStaff = false }: AdminMobileNavProps) {
         <div
           className={cn(
             "mx-auto grid h-14 max-w-lg",
-            isStaff ? "grid-cols-1" : "grid-cols-5",
+            isStaff ? "grid-cols-1" : "grid-cols-6",
           )}
         >
           {tabs.map((tab) => {

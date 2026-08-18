@@ -35,6 +35,11 @@ export const adminNavItems: AdminNavItem[] = [
     icon: CalendarDays,
   },
   {
+    title: "Rotation",
+    href: "/admin/rotation",
+    icon: ListOrdered,
+  },
+  {
     title: "Rooms",
     href: "/admin/rooms",
     icon: DoorOpen,
@@ -44,11 +49,6 @@ export const adminNavItems: AdminNavItem[] = [
     href: "/admin/customers",
     icon: UserCircle,
     module: "customers",
-  },
-  {
-    title: "Rotation",
-    href: "/admin/rotation",
-    icon: ListOrdered,
   },
   {
     title: "Reports",
