@@ -52,8 +52,8 @@ function insertAtOrder(
 ): RotationRow[] {
   const without = list.filter((item) => item.staffId !== row.staffId);
   const index = Math.max(0, Math.min(without.length, Math.round(order) - 1));
-  without.splice(index, 0, row);
-  return without.map((item, i) => ({ ...item, sortOrder: i + 1 }));
+  without.splice(index, 0, { ...row, sortOrder: Math.max(0, Math.round(order)) });
+  return without;
 }
 
 function mergeOnShiftRotation(
@@ -75,11 +75,8 @@ function mergeOnShiftRotation(
   const keptIds = new Set(kept.map((row) => row.staffId));
   const extras = working
     .filter((staff) => !keptIds.has(staff.id))
-    .map((staff, index) => toRow(staff, kept.length + index + 1));
-  return [...kept, ...extras].map((row, index) => ({
-    ...row,
-    sortOrder: index + 1,
-  }));
+    .map((staff) => toRow(staff, 0));
+  return [...kept, ...extras];
 }
 
 export function AdminRotationContent() {
@@ -143,7 +140,10 @@ export function AdminRotationContent() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          staffIds: next.map((row) => row.staffId),
+          roster: next.map((row) => ({
+            staffId: row.staffId,
+            sortOrder: row.sortOrder,
+          })),
         }),
       });
       const data = (await response.json()) as { error?: string };
@@ -166,9 +166,7 @@ export function AdminRotationContent() {
     const trimmed = raw.trim();
     if (!trimmed) {
       setRotation((current) => {
-        const next = current
-          .filter((row) => row.staffId !== staff.id)
-          .map((row, i) => ({ ...row, sortOrder: i + 1 }));
+        const next = current.filter((row) => row.staffId !== staff.id);
         setDrafts(
           Object.fromEntries(
             next.map((row) => [row.staffId, String(row.sortOrder)]),
@@ -179,7 +177,7 @@ export function AdminRotationContent() {
       return;
     }
     const order = Number(trimmed);
-    if (!Number.isFinite(order) || order < 1) {
+    if (!Number.isFinite(order) || order < 0) {
       const existing = rotation.find((row) => row.staffId === staff.id);
       setDrafts((current) => ({
         ...current,
@@ -208,13 +206,12 @@ export function AdminRotationContent() {
       const [item] = next.splice(from, 1);
       if (!item) return current;
       next.splice(to, 0, item);
-      const ordered = next.map((row, i) => ({ ...row, sortOrder: i + 1 }));
       setDrafts(
         Object.fromEntries(
-          ordered.map((row) => [row.staffId, String(row.sortOrder)]),
+          next.map((row) => [row.staffId, String(row.sortOrder)]),
         ),
       );
-      return ordered;
+      return next;
     });
   };
 
@@ -329,7 +326,7 @@ export function AdminRotationContent() {
                     </span>
                     <Input
                       type="number"
-                      min={1}
+                      min={0}
                       inputMode="numeric"
                       value={drafts[row.staffId] ?? String(row.sortOrder)}
                       onChange={(event) =>

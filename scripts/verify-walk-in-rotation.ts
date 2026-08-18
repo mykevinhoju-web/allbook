@@ -3,7 +3,10 @@
  */
 import assert from "node:assert/strict";
 
-import { pickWalkInStaff } from "../src/features/booking/lib/walk-in-rotation";
+import {
+  appendNewcomersAtZero,
+  pickWalkInStaff,
+} from "../src/features/booking/lib/walk-in-rotation";
 
 const rotation = [
   { staffId: "a", sortOrder: 1 },
@@ -80,6 +83,37 @@ assert.equal(
     offShiftIds: ["a"],
   }),
   "b",
+);
+
+const withNewcomer = appendNewcomersAtZero(rotation, ["d", "a"]);
+assert.deepEqual(
+  withNewcomer.map((row) => [row.staffId, row.sortOrder]),
+  [
+    ["a", 1],
+    ["b", 2],
+    ["c", 3],
+    ["d", 0],
+  ],
+);
+
+assert.equal(
+  pickWalkInStaff({
+    rotation: withNewcomer,
+    walkInCounts: { a: 0, b: 0, c: 0, d: 0 },
+    inServiceIds: [],
+    slotBusyIds: [],
+  }),
+  "a",
+);
+
+assert.equal(
+  pickWalkInStaff({
+    rotation: withNewcomer,
+    walkInCounts: { a: 2, b: 2, c: 1, d: 0 },
+    inServiceIds: [],
+    slotBusyIds: [],
+  }),
+  "d",
 );
 
 console.log("Walk-in rotation verification passed.");

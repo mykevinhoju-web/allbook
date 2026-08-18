@@ -7,6 +7,7 @@ import {
   countWalkInsByStaff,
   listInServiceStaffIds,
   loadWalkInRotation,
+  appendWalkInRotationNewcomers,
   saveWalkInRotationRoster,
 } from "@/features/booking/server/assign-walk-in-staff";
 import type { StaffAttributes, StaffStatus } from "@/features/staff/types";
@@ -60,29 +61,25 @@ export async function GET(request: Request) {
       .map((row) => ({ id: row.id, name: row.name }));
 
     const workingIds = new Set(working.map((row) => row.id));
-    const rosterOnShift = rotation.filter((row) => workingIds.has(row.staffId));
-    const rosterIds = new Set(rosterOnShift.map((row) => row.staffId));
-    // On-shift staff not yet in the saved roster join the end so numbers always show.
+    const rosterIds = new Set(rotation.map((row) => row.staffId));
     const newcomers = working.filter((row) => !rosterIds.has(row.id));
-    const orderedRotation = [
-      ...rosterOnShift,
-      ...newcomers.map((row, index) => ({
-        staffId: row.id,
-        sortOrder: rosterOnShift.length + index + 1,
-      })),
-    ].map((row, index) => ({ ...row, sortOrder: index + 1 }));
 
+    let roster = rotation;
     if (newcomers.length > 0) {
       try {
-        await saveWalkInRotationRoster(supabase, {
+        roster = await appendWalkInRotationNewcomers(supabase, {
           tenantId: tenant.id,
-          incomingStaffIds: orderedRotation.map((row) => row.staffId),
-          onShiftIds: workingIds,
+          staffIds: newcomers.map((row) => row.id),
         });
       } catch {
-        // Still return the live ordered list even if persist fails.
+        roster = [
+          ...rotation,
+          ...newcomers.map((row) => ({ staffId: row.id, sortOrder: 0 })),
+        ];
       }
     }
+
+    const orderedRotation = roster.filter((row) => workingIds.has(row.staffId));
 
     const staffIds = orderedRotation.map((row) => row.staffId);
 
@@ -132,12 +129,35 @@ export async function PUT(request: Request) {
     const date = todayDateInZone(timeZone, now);
     const body = (await request.json()) as {
       staffIds?: string[];
+      roster?: { staffId?: string; sortOrder?: number }[];
     };
-    const staffIds = Array.isArray(body.staffIds)
-      ? body.staffIds.filter((id) => typeof id === "string" && id.length > 0)
+    const fromRoster = Array.isArray(body.roster)
+      ? body.roster
+          .filter(
+            (row) =>
+              typeof row?.staffId === "string" && row.staffId.length > 0,
+          )
+          .map((row) => {
+            const order = Number(row.sortOrder);
+            return {
+              staffId: row.staffId as string,
+              sortOrder: Number.isFinite(order) ? order : 0,
+            };
+          })
       : [];
-
-    const uniqueIds = [...new Set(staffIds)];
+    const fromIds = Array.isArray(body.staffIds)
+      ? body.staffIds
+          .filter((id) => typeof id === "string" && id.length > 0)
+          .map((staffId, index) => ({ staffId, sortOrder: index + 1 }))
+      : [];
+    const incoming: { staffId: string; sortOrder: number }[] = [];
+    const seen = new Set<string>();
+    for (const row of fromRoster.length > 0 ? fromRoster : fromIds) {
+      if (seen.has(row.staffId)) continue;
+      seen.add(row.staffId);
+      incoming.push(row);
+    }
+    const uniqueIds = incoming.map((row) => row.staffId);
     const supabase = createServiceSupabase();
 
     const { data: staffRows, error: staffError } = await supabase
@@ -187,7 +207,7 @@ export async function PUT(request: Request) {
     try {
       const saved = await saveWalkInRotationRoster(supabase, {
         tenantId: tenant.id,
-        incomingStaffIds: uniqueIds,
+        incoming,
         onShiftIds,
       });
       return NextResponse.json({ ok: true, staffIds: saved });

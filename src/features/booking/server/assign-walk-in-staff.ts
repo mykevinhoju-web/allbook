@@ -94,23 +94,57 @@ export async function loadWalkInRotation(
   return loadRotationForDate(supabase, tenantId, ROTATION_ROSTER_DATE);
 }
 
+export async function appendWalkInRotationNewcomers(
+  supabase: ServiceClient,
+  args: {
+    tenantId: string;
+    staffIds: string[];
+  },
+): Promise<WalkInRotationMember[]> {
+  const roster = await loadWalkInRotation(supabase, args.tenantId);
+  const existing = new Set(roster.map((row) => row.staffId));
+  const toAdd = [...new Set(args.staffIds)].filter(
+    (staffId) => staffId && !existing.has(staffId),
+  );
+  if (toAdd.length === 0) return roster;
+
+  const now = new Date().toISOString();
+  const { error } = await supabase.from("staff_walk_in_rotation").insert(
+    toAdd.map((staffId) => ({
+      tenant_id: args.tenantId,
+      work_date: ROTATION_ROSTER_DATE,
+      staff_id: staffId,
+      sort_order: 0,
+      updated_at: now,
+    })),
+  );
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return [
+    ...roster,
+    ...toAdd.map((staffId) => ({ staffId, sortOrder: 0 })),
+  ];
+}
+
 export async function saveWalkInRotationRoster(
   supabase: ServiceClient,
   args: {
     tenantId: string;
-    incomingStaffIds: string[];
+    incoming: WalkInRotationMember[];
     onShiftIds: Iterable<string>;
   },
 ): Promise<string[]> {
   const roster = await loadWalkInRotation(supabase, args.tenantId);
-  const incoming = args.incomingStaffIds;
+  const incoming = args.incoming.filter((row) => row.staffId);
   const onShift = new Set(args.onShiftIds);
-  const incomingSet = new Set(incoming);
+  const incomingSet = new Set(incoming.map((row) => row.staffId));
 
-  const offShiftKept = roster
-    .map((row) => row.staffId)
-    .filter((id) => !incomingSet.has(id) && !onShift.has(id));
-  const nextIds = [...incoming, ...offShiftKept];
+  const offShiftKept = roster.filter(
+    (row) => !incomingSet.has(row.staffId) && !onShift.has(row.staffId),
+  );
+  const next = [...incoming, ...offShiftKept];
 
   const { error: deleteError } = await supabase
     .from("staff_walk_in_rotation")
@@ -122,16 +156,16 @@ export async function saveWalkInRotationRoster(
     throw new Error(deleteError.message);
   }
 
-  if (nextIds.length > 0) {
+  if (next.length > 0) {
     const now = new Date().toISOString();
     const { error: insertError } = await supabase
       .from("staff_walk_in_rotation")
       .insert(
-        nextIds.map((staffId, index) => ({
+        next.map((row) => ({
           tenant_id: args.tenantId,
           work_date: ROTATION_ROSTER_DATE,
-          staff_id: staffId,
-          sort_order: index + 1,
+          staff_id: row.staffId,
+          sort_order: row.sortOrder,
           updated_at: now,
         })),
       );
@@ -140,7 +174,7 @@ export async function saveWalkInRotationRoster(
     }
   }
 
-  return nextIds;
+  return next.map((row) => row.staffId);
 }
 
 export async function countWalkInsByStaff(

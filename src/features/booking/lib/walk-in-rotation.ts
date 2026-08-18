@@ -23,9 +23,27 @@ export type WalkInRotationMember = {
   sortOrder: number;
 };
 
+/** 0 = not yet in the numbered sequence — keep existing 1, 2, 3… ahead. */
+export function rotationTieBreak(sortOrder: number): number {
+  return sortOrder <= 0 ? Number.MAX_SAFE_INTEGER : sortOrder;
+}
+
+/** New staff join at 0 without renumbering anyone already on the roster. */
+export function appendNewcomersAtZero<T extends WalkInRotationMember>(
+  rotation: T[],
+  newStaffIds: string[],
+): Array<T | WalkInRotationMember> {
+  const existing = new Set(rotation.map((row) => row.staffId));
+  const extras = newStaffIds
+    .filter((staffId) => staffId && !existing.has(staffId))
+    .map((staffId) => ({ staffId, sortOrder: 0 }));
+  return extras.length === 0 ? rotation : [...rotation, ...extras];
+}
+
 /**
  * Next walk-in staff: idle people first, then fewest walk-ins today,
  * then the saved rotation order (catch-up for skipped busy staff).
+ * Unranked (0) staff wait behind numbered staff when counts are equal.
  */
 export function pickWalkInStaff(args: {
   rotation: WalkInRotationMember[];
@@ -51,7 +69,7 @@ export function pickWalkInStaff(args: {
   eligible.sort((a, b) => {
     const countA = args.walkInCounts[a.staffId] ?? 0;
     const countB = args.walkInCounts[b.staffId] ?? 0;
-    return countA - countB || a.sortOrder - b.sortOrder;
+    return countA - countB || rotationTieBreak(a.sortOrder) - rotationTieBreak(b.sortOrder);
   });
 
   return eligible[0]?.staffId ?? null;
