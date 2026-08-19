@@ -9,7 +9,6 @@ import {
   isWalkInBooking,
   pickWalkInStaff,
   appendNewcomersAtEnd,
-  fillRotationNumbers,
   type WalkInRotationMember,
 } from "@/features/booking/lib/walk-in-rotation";
 import type { StaffAttributes, StaffStatus } from "@/features/staff/types";
@@ -161,16 +160,14 @@ export async function saveWalkInRotationRoster(
   },
 ): Promise<string[]> {
   const roster = await loadWalkInRotation(supabase, args.tenantId);
-  const incoming = fillRotationNumbers(
-    args.incoming.filter((row) => row.staffId),
-  );
+  const incoming = args.incoming.filter((row) => row.staffId);
   const onShift = new Set(args.onShiftIds);
   const incomingSet = new Set(incoming.map((row) => row.staffId));
 
   const offShiftKept = roster.filter(
     (row) => !incomingSet.has(row.staffId) && !onShift.has(row.staffId),
   );
-  const next = fillRotationNumbers([...incoming, ...offShiftKept]);
+  const next = [...incoming, ...offShiftKept];
 
   const { error: deleteError } = await supabase
     .from("staff_walk_in_rotation")

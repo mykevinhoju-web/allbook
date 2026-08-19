@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { fetchAdminApi } from "@/features/admin/lib/admin-api-client";
 import { todayDateInZone } from "@/features/booking/lib/schedule-utils";
-import { pickWalkInStaff, fillRotationNumbers } from "@/features/booking/lib/walk-in-rotation";
+import { pickWalkInStaff, appendNewcomersAtEnd } from "@/features/booking/lib/walk-in-rotation";
 import { useOptionalTenant } from "@/features/tenants";
 import { cn } from "@/lib/utils";
 
@@ -52,8 +52,8 @@ function insertAtOrder(
 ): RotationRow[] {
   const without = list.filter((item) => item.staffId !== row.staffId);
   const index = Math.max(0, Math.min(without.length, Math.round(order) - 1));
-  without.splice(index, 0, row);
-  return without.map((item, i) => ({ ...item, sortOrder: i + 1 }));
+  without.splice(index, 0, { ...row, sortOrder: Math.max(0, Math.round(order)) });
+  return without;
 }
 
 function mergeOnShiftRotation(
@@ -61,28 +61,36 @@ function mergeOnShiftRotation(
   working: WorkingStaff[],
 ): RotationRow[] {
   const workingById = new Map(working.map((row) => [row.id, row]));
-  const kept = fillRotationNumbers(
-    rotation
-      .filter((row) => workingById.has(row.staffId))
-      .map((row) => {
-        const staff = workingById.get(row.staffId)!;
-        return {
-          ...row,
-          name: staff.name,
-          inService: staff.inService,
-          walkInCount: staff.walkInCount,
-        };
-      }),
-  );
-  const keptIds = new Set(kept.map((row) => row.staffId));
-  let nextNumber = Math.max(0, ...kept.map((row) => row.sortOrder));
-  const extras = working
-    .filter((staff) => !keptIds.has(staff.id))
-    .map((staff) => {
-      nextNumber += 1;
-      return toRow(staff, nextNumber);
+  const kept = rotation
+    .filter((row) => workingById.has(row.staffId))
+    .map((row) => {
+      const staff = workingById.get(row.staffId)!;
+      return {
+        ...row,
+        name: staff.name,
+        inService: staff.inService,
+        walkInCount: staff.walkInCount,
+      };
     });
-  return [...kept, ...extras];
+  const extraIds = working
+    .filter((staff) => !kept.some((row) => row.staffId === staff.id))
+    .map((staff) => staff.id);
+  return appendNewcomersAtEnd(kept, extraIds).map((row) => {
+    const staff = workingById.get(row.staffId);
+    return staff
+      ? toRow(staff, row.sortOrder)
+      : {
+          staffId: row.staffId,
+          name: "Staff",
+          sortOrder: row.sortOrder,
+          inService: false,
+          walkInCount: 0,
+        };
+  });
+}
+
+function draftValue(sortOrder: number): string {
+  return sortOrder > 0 ? String(sortOrder) : "";
 }
 
 export function AdminRotationContent() {
@@ -102,7 +110,7 @@ export function AdminRotationContent() {
       setRotation(merged);
       setDrafts(
         Object.fromEntries(
-          merged.map((row) => [row.staffId, String(row.sortOrder)]),
+          merged.map((row) => [row.staffId, draftValue(row.sortOrder)]),
         ),
       );
     },
@@ -172,12 +180,12 @@ export function AdminRotationContent() {
     const trimmed = raw.trim();
     if (!trimmed) {
       setRotation((current) => {
-        const next = current
-          .filter((row) => row.staffId !== staff.id)
-          .map((row, i) => ({ ...row, sortOrder: i + 1 }));
+        const next = current.map((row) =>
+          row.staffId === staff.id ? { ...row, sortOrder: 0 } : row,
+        );
         setDrafts(
           Object.fromEntries(
-            next.map((row) => [row.staffId, String(row.sortOrder)]),
+            next.map((row) => [row.staffId, draftValue(row.sortOrder)]),
           ),
         );
         return next;
@@ -189,7 +197,7 @@ export function AdminRotationContent() {
       const existing = rotation.find((row) => row.staffId === staff.id);
       setDrafts((current) => ({
         ...current,
-        [staff.id]: existing ? String(existing.sortOrder) : "",
+        [staff.id]: existing ? draftValue(existing.sortOrder) : "",
       }));
       return;
     }
@@ -197,7 +205,7 @@ export function AdminRotationContent() {
       const next = insertAtOrder(current, toRow(staff, order), order);
       setDrafts(
         Object.fromEntries(
-          next.map((row) => [row.staffId, String(row.sortOrder)]),
+          next.map((row) => [row.staffId, draftValue(row.sortOrder)]),
         ),
       );
       return next;
@@ -214,13 +222,12 @@ export function AdminRotationContent() {
       const [item] = next.splice(from, 1);
       if (!item) return current;
       next.splice(to, 0, item);
-      const ordered = next.map((row, i) => ({ ...row, sortOrder: i + 1 }));
       setDrafts(
         Object.fromEntries(
-          ordered.map((row) => [row.staffId, String(row.sortOrder)]),
+          next.map((row) => [row.staffId, draftValue(row.sortOrder)]),
         ),
       );
-      return ordered;
+      return next;
     });
   };
 
@@ -276,7 +283,7 @@ export function AdminRotationContent() {
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-3 py-4 sm:px-4 lg:p-6">
       <AdminPageHeader
         title="Rotation"
-        description="Numbers show today’s walk-in order. The next turn is highlighted in blue — book that staff manually, then the next person updates."
+        description="Walk-in counts stay as they are. Person numbers stay blank when the rotation is new — type a number only if you need one. Blue name = next walk-in."
       />
 
       {loading ? (
@@ -289,8 +296,8 @@ export function AdminRotationContent() {
             <div>
               <p className="text-sm font-semibold">On shift now</p>
               <p className="text-xs text-muted-foreground">
-                Number = turn order. Blue name = next walk-in. + / − fixes
-                today’s walk-in count.
+                Leave 순번 blank on a new lineup. Blue name = next walk-in.
+                + / − fixes today’s walk-in count.
               </p>
             </div>
             <ListOrdered className="size-4 text-muted-foreground" />
@@ -337,7 +344,7 @@ export function AdminRotationContent() {
                       type="number"
                       min={1}
                       inputMode="numeric"
-                      value={drafts[row.staffId] ?? String(row.sortOrder)}
+                      value={drafts[row.staffId] ?? draftValue(row.sortOrder)}
                       onChange={(event) =>
                         setDrafts((current) => ({
                           ...current,

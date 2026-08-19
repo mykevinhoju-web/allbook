@@ -23,36 +23,51 @@ export type WalkInRotationMember = {
   sortOrder: number;
 };
 
-/** 0 = missing number — keep numbered staff ahead until we fill it. */
+/** 0 = no person number yet — walk-in counts still decide the next turn. */
 export function rotationTieBreak(sortOrder: number): number {
   return sortOrder <= 0 ? Number.MAX_SAFE_INTEGER : sortOrder;
 }
 
-/** If nobody has a number yet, use list order 1, 2, 3…; otherwise fill zeros at the end. */
+function hasAnyPersonNumber(rotation: WalkInRotationMember[]): boolean {
+  return rotation.some((row) => row.sortOrder > 0);
+}
+
+/**
+ * A fresh rotation stays unnumbered. Do not invent 1, 2, 3 for everyone.
+ * Sequential 1..n is treated as auto-assigned and cleared.
+ */
 export function fillRotationNumbers<T extends WalkInRotationMember>(
   rotation: T[],
 ): T[] {
-  if (rotation.length === 0) return rotation;
-  if (rotation.every((row) => row.sortOrder <= 0)) {
-    return rotation.map((row, index) => ({ ...row, sortOrder: index + 1 }));
-  }
-  let next = Math.max(0, ...rotation.map((row) => row.sortOrder));
-  return rotation.map((row) => {
-    if (row.sortOrder > 0) return row;
-    next += 1;
-    return { ...row, sortOrder: next };
-  });
+  return stripAutoRotationNumbers(rotation);
 }
 
-/** New staff join at the last number. Existing numbers stay as they are. */
+/** Sequential 1..n was auto-assigned — treat as a fresh rotation with no 순번. */
+export function stripAutoRotationNumbers<T extends WalkInRotationMember>(
+  rotation: T[],
+): T[] {
+  if (rotation.length === 0) return rotation;
+  const autoNumbered = rotation.every((row, index) => row.sortOrder === index + 1);
+  if (!autoNumbered) return rotation;
+  return rotation.map((row) => ({ ...row, sortOrder: 0 }));
+}
+
+/** New staff take the last number only when the roster already has 순번. */
 export function appendNewcomersAtEnd<T extends WalkInRotationMember>(
   rotation: T[],
   newStaffIds: string[],
 ): Array<T | WalkInRotationMember> {
-  const filled = fillRotationNumbers(rotation);
+  const stripped = stripAutoRotationNumbers(rotation);
+  const filled = fillRotationNumbers(stripped);
   const existing = new Set(filled.map((row) => row.staffId));
   const extras = newStaffIds.filter((staffId) => staffId && !existing.has(staffId));
   if (extras.length === 0) return filled;
+  if (!hasAnyPersonNumber(filled)) {
+    return [
+      ...filled,
+      ...extras.map((staffId) => ({ staffId, sortOrder: 0 })),
+    ];
+  }
   let next = Math.max(0, ...filled.map((row) => row.sortOrder));
   return [
     ...filled,
