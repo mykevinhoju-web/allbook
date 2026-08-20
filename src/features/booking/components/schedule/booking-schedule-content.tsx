@@ -295,7 +295,6 @@ export function BookingScheduleContent() {
       roomId: partial?.roomId ?? "",
       customerFirstName: "",
       customerLastName: "",
-      customerEmail: "",
     });
     setShowCreate(true);
   };
@@ -396,7 +395,6 @@ export function BookingScheduleContent() {
           ),
           customerPhone: normalizeAuMobile(form.customerPhone),
           customerPostcode: formatAuPostcodeInput(form.customerPostcode),
-          customerEmail: form.customerEmail.trim() || undefined,
           paymentMethod: form.paymentMethod,
           splitCashCents,
           allowImmediateStart: form.allowImmediateStart,

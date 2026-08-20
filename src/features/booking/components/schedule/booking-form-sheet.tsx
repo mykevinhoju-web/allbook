@@ -66,7 +66,6 @@ export interface BookingFormValues {
   customerLastName: string;
   customerPhone: string;
   customerPostcode: string;
-  customerEmail: string;
   paymentMethod: InternalPaymentMethod | "";
   /** Dollars input for Split cash portion (converted on submit). */
   splitCashAmount: string;
@@ -89,7 +88,6 @@ export const defaultBookingFormValues: BookingFormValues = {
   customerLastName: "",
   customerPhone: AU_MOBILE_PREFIX,
   customerPostcode: AU_POSTCODE_PREFIX,
-  customerEmail: "",
   paymentMethod: "",
   splitCashAmount: "",
   allowImmediateStart: false,
@@ -389,7 +387,6 @@ export function BookingFormSheet({
             customerPostcode: guest.postcode
               ? formatAuPostcodeInput(guest.postcode)
               : current.customerPostcode,
-            customerEmail: guest.email || current.customerEmail,
           });
           setPhoneHint(
             guest.name
@@ -795,19 +792,6 @@ export function BookingFormSheet({
                 labelClass={theme.label}
                 helperTextClass="text-xs text-stone-500"
               />
-
-              <label className="block space-y-1">
-                <FieldLabel>Email</FieldLabel>
-                <Input
-                  type="email"
-                  value={values.customerEmail}
-                  onChange={(event) =>
-                    update("customerEmail", event.target.value)
-                  }
-                  className={theme.field}
-                  placeholder="optional"
-                />
-              </label>
             </div>
           </div>
 

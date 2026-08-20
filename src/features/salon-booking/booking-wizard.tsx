@@ -61,7 +61,6 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
     firstName: "",
     lastName: "",
     phone: "",
-    email: "",
     notes: "",
   });
   const [error, setError] = useState<string | null>(null);
@@ -211,7 +210,6 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
         return setError("First and last name are required.");
       }
       if (!customer.phone.trim()) return setError("Phone is required.");
-      if (!customer.email.trim()) return setError("Email is required.");
       setStep("summary");
     }
   }
@@ -249,7 +247,6 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
             firstName: customer.firstName.trim(),
             lastName: customer.lastName.trim(),
             phone: customer.phone.trim(),
-            email: customer.email.trim(),
             notes: customer.notes.trim(),
           },
         }),
@@ -400,7 +397,6 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
               duration={service.duration}
               priceLabel={service.priceLabel}
               customerName={customerName}
-              customerEmail={customer.email}
               customerPhone={customer.phone}
               confirmationNote={
                 resolvedPolicy?.instantConfirmation
@@ -428,7 +424,6 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
             duration={created.duration}
             priceLabel={service.priceLabel}
             customerName={created.customerName}
-            customerEmail={created.customerEmail}
             customerPhone={created.customerPhone}
             status={created.status}
             bookingId={created.id}

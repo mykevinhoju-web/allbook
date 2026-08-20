@@ -4,7 +4,6 @@ export type CustomerFormValue = {
   firstName: string;
   lastName: string;
   phone: string;
-  email: string;
   notes: string;
 };
 
@@ -56,18 +55,6 @@ export function CustomerForm({ value, onChange }: CustomerFormProps) {
           value={value.phone}
           onChange={(e) => patch({ phone: e.target.value })}
           autoComplete="tel"
-        />
-      </label>
-      <label className="block">
-        <span className="mb-1.5 block text-[13px] font-medium text-neutral-700">
-          Email *
-        </span>
-        <input
-          type="email"
-          className={fieldClass}
-          value={value.email}
-          onChange={(e) => patch({ email: e.target.value })}
-          autoComplete="email"
         />
       </label>
       <label className="block">

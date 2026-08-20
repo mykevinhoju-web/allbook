@@ -246,7 +246,6 @@ export function RoomHomeContent() {
   const [bookStartOpen, setBookStartOpen] = useState(false);
   const [bookStartContact, setBookStartContact] =
     useState<BookingCustomerContactValues>(defaultBookingCustomerContact);
-  const [bookStartEmail, setBookStartEmail] = useState("");
   const [bookStartSplitCash, setBookStartSplitCash] = useState("");
   const [bookStartLoading, setBookStartLoading] = useState(false);
   const [phoneLookingUp, setPhoneLookingUp] = useState(false);
@@ -664,7 +663,6 @@ export function RoomHomeContent() {
 
   const resetBookStartForm = () => {
     setBookStartContact(defaultBookingCustomerContact());
-    setBookStartEmail("");
     setBookStartSplitCash("");
     setJoinPayment("");
     lastLookupPhoneRef.current = "";
@@ -722,7 +720,6 @@ export function RoomHomeContent() {
               ? formatAuPostcodeInput(guest.postcode)
               : current.postcode,
           });
-          if (guest.email) setBookStartEmail(guest.email);
           setPhoneHint("Saved contact filled in");
         } finally {
           if (!cancelled) setPhoneLookingUp(false);
@@ -792,7 +789,6 @@ export function RoomHomeContent() {
           customerLastName: bookStartContact.secondName,
           customerPhone: normalizeAuMobile(bookStartContact.phone),
           customerPostcode: formatAuPostcodeInput(bookStartContact.postcode),
-          customerEmail: bookStartEmail.trim() || undefined,
         }),
       });
       const data = (await response.json()) as {
@@ -1724,18 +1720,6 @@ export function RoomHomeContent() {
                       labelClass="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground"
                       helperTextClass="text-xs text-muted-foreground"
                     />
-                    <div>
-                      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                        Email
-                      </p>
-                      <Input
-                        type="email"
-                        value={bookStartEmail}
-                        onChange={(event) => setBookStartEmail(event.target.value)}
-                        placeholder="optional"
-                        className="h-12 rounded-xl border-border bg-background px-3 text-sm font-medium"
-                      />
-                    </div>
                     <div>
                       <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                         Service
