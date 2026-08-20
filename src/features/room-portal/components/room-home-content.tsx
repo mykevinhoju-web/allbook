@@ -1977,6 +1977,13 @@ export function RoomHomeContent() {
     <div className="flex min-h-[calc(100svh-2rem)] flex-col justify-center md:min-h-[calc(100svh-4rem)]">
       <RoomPwaSetup />
       <div className="mx-auto w-full max-w-2xl rounded-[2rem] border border-border bg-card px-6 py-10 shadow-sm md:max-w-3xl md:px-12 md:py-14">
+        <button
+          type="button"
+          onClick={() => void changeRoom()}
+          className="mb-8 flex w-full items-center justify-center rounded-2xl bg-red-600 px-4 py-3.5 text-base font-semibold text-white shadow-sm transition hover:bg-red-500 active:bg-red-700 md:mb-10 md:py-4 md:text-lg"
+        >
+          Change room
+        </button>
         <p className="text-center text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground md:text-sm">
           This tablet
         </p>
@@ -1995,13 +2002,6 @@ export function RoomHomeContent() {
         <div className="mt-5 md:mt-6">
           <PinPad value={pin} onChange={setPin} disabled={pinLoading} />
         </div>
-        <button
-          type="button"
-          onClick={() => void changeRoom()}
-          className="mt-10 w-full text-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline md:mt-12 md:text-base"
-        >
-          Change room
-        </button>
       </div>
     </div>
   );
