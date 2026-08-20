@@ -476,21 +476,9 @@ export function StaffForm({ staffId }: StaffFormProps) {
 
       toast.success(isEditing ? "Staff updated" : "Staff created");
 
-      if (isEditing) {
-        router.push("/admin/staff");
-        router.refresh();
-        return;
-      }
-
-      if (savedStaff.id) {
-        router.replace(`/admin/staff/${savedStaff.id}`);
-        router.refresh();
-        return;
-      }
-
       setForm({
         ...mapRecordToForm(savedStaff, timeZone),
-        password: pin,
+        password: "",
       });
       setExistingPhotos(savedStaff.photos);
       setShiftStartedAtIso(
@@ -499,6 +487,10 @@ export function StaffForm({ staffId }: StaffFormProps) {
           ? savedStaff.attributes.shiftStartsAt
           : null,
       );
+
+      if (!isEditing && savedStaff.id) {
+        router.replace(`/admin/staff/${savedStaff.id}`);
+      }
       router.refresh();
     } catch (error) {
       toast.error("Could not save staff", {
