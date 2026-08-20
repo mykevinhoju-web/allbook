@@ -392,7 +392,7 @@ export function AdminRotationContent() {
                         </p>
                         {row.inService ? (
                           <span className="inline-flex shrink-0 items-center rounded-full bg-blue-600 px-2 py-0.5 text-[11px] font-semibold leading-none text-white">
-                            서비스중
+                            In service
                           </span>
                         ) : null}
                         {row.inService && row.roomName ? (
