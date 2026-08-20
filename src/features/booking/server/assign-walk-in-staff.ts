@@ -4,6 +4,7 @@ import {
   reportDateRangeToUtc,
   todayDateInZone,
 } from "@/features/admin/lib/revenue-report";
+import { addDaysToDateInput } from "@/features/booking/lib/schedule-utils";
 import { hasStaffBookingConflict } from "@/features/booking/lib/staff-conflict";
 import {
   isWalkInBooking,
@@ -12,7 +13,10 @@ import {
   type WalkInRotationMember,
 } from "@/features/booking/lib/walk-in-rotation";
 import type { StaffAttributes, StaffStatus } from "@/features/staff/types";
-import { isStaffOnShiftNow } from "@/features/staff/utils/shift-label";
+import {
+  getActiveShiftAnchorDate,
+  isStaffOnShiftNow,
+} from "@/features/staff/utils/shift-label";
 import type { Database } from "@/types/database";
 
 type ServiceClient = SupabaseClient<Database>;
@@ -451,22 +455,58 @@ export async function assignWalkInStaff(args: {
   }
 
   const staffIds = rotation.map((row) => row.staffId);
-  const [walkInCounts, inServiceIds, offShiftIds] = await Promise.all([
-    countWalkInsByStaff(args.supabase, {
-      tenantId: args.tenantId,
-      workDate,
-      timeZone: args.timeZone,
-      staffIds,
-    }),
-    listInServiceStaffIds(args.supabase, args.tenantId, staffIds),
-    listOffShiftStaffIds(args.supabase, {
-      tenantId: args.tenantId,
-      staffIds,
-      workDate,
-      timeZone: args.timeZone,
-      now: new Date(args.startsAtIso),
-    }),
-  ]);
+  const now = new Date(args.startsAtIso);
+  const yesterday = addDaysToDateInput(workDate, -1);
+
+  const { data: staffRows } = await args.supabase
+    .from("staff")
+    .select("id, status, attributes, working_hours_start, working_hours_end")
+    .eq("tenant_id", args.tenantId)
+    .in("id", staffIds);
+
+  const [walkInCountsToday, walkInCountsYesterday, inServiceIds, offShiftIds] =
+    await Promise.all([
+      countWalkInsByStaff(args.supabase, {
+        tenantId: args.tenantId,
+        workDate,
+        timeZone: args.timeZone,
+        staffIds,
+      }),
+      countWalkInsByStaff(args.supabase, {
+        tenantId: args.tenantId,
+        workDate: yesterday,
+        timeZone: args.timeZone,
+        staffIds,
+      }),
+      listInServiceStaffIds(args.supabase, args.tenantId, staffIds),
+      listOffShiftStaffIds(args.supabase, {
+        tenantId: args.tenantId,
+        staffIds,
+        workDate,
+        timeZone: args.timeZone,
+        now,
+      }),
+    ]);
+
+  const walkInCounts: Record<string, number> = {};
+  for (const id of staffIds) {
+    const row = (staffRows ?? []).find((item) => item.id === id);
+    const anchor = row
+      ? getActiveShiftAnchorDate({
+          status: (row.status as StaffStatus) ?? "active",
+          attributes: (row.attributes ?? {}) as StaffAttributes,
+          date: workDate,
+          timeZone: args.timeZone,
+          workingHoursStart: row.working_hours_start,
+          workingHoursEnd: row.working_hours_end,
+          now,
+        })
+      : workDate;
+    walkInCounts[id] =
+      anchor === yesterday
+        ? (walkInCountsYesterday[id] ?? 0)
+        : (walkInCountsToday[id] ?? 0);
+  }
 
   const slotBusyIds = new Set<string>();
   await Promise.all(

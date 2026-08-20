@@ -169,7 +169,10 @@ export function isStaffBookableOnDate(args: {
   );
 }
 
-/** True when this staff member is inside today's shift window right now. */
+/** True when this staff member is inside an active shift window right now.
+ * After midnight, yesterday's overnight shift still counts — even if today's
+ * evening shift is already on the plan (that used to hide the whole rotation).
+ */
 export function isStaffOnShiftNow(args: {
   status: StaffStatus;
   attributes: StaffAttributes | unknown;
@@ -180,20 +183,81 @@ export function isStaffOnShiftNow(args: {
   now?: Date;
 }): boolean {
   const now = args.now ?? new Date();
-  if (!isStaffBookableOnDate({ ...args, now })) return false;
+  const today = args.date;
+  const yesterday = addDaysToDateInput(today, -1);
+
+  if (isWithinShiftWindowOnDate({ ...args, date: yesterday, now })) {
+    return true;
+  }
+  return isWithinShiftWindowOnDate({ ...args, date: today, now });
+}
+
+/** Calendar date whose shift currently contains `now` (overnight → previous day). */
+export function getActiveShiftAnchorDate(args: {
+  status: StaffStatus;
+  attributes: StaffAttributes | unknown;
+  date: string;
+  timeZone: string;
+  workingHoursStart?: string | null;
+  workingHoursEnd?: string | null;
+  now?: Date;
+}): string | null {
+  const now = args.now ?? new Date();
+  const today = args.date;
+  const yesterday = addDaysToDateInput(today, -1);
+
+  if (isWithinShiftWindowOnDate({ ...args, date: yesterday, now })) {
+    return yesterday;
+  }
+  if (isWithinShiftWindowOnDate({ ...args, date: today, now })) {
+    return today;
+  }
+  return null;
+}
+
+function isWithinShiftWindowOnDate(args: {
+  status: StaffStatus;
+  attributes: StaffAttributes | unknown;
+  date: string;
+  timeZone: string;
+  workingHoursStart?: string | null;
+  workingHoursEnd?: string | null;
+  now: Date;
+}): boolean {
+  if (args.status !== "active") return false;
+
+  const attrs =
+    args.attributes && typeof args.attributes === "object"
+      ? parseStaffAttributes(args.attributes as never)
+      : {};
+  const shiftPlan = parseShiftPlan(attrs.shiftPlan);
+  if (
+    !isStaffWorkingOnDate(
+      args.status,
+      parseDaySchedule(attrs.daySchedule),
+      args.date,
+      shiftPlan,
+      args.timeZone,
+    )
+  ) {
+    return false;
+  }
 
   const window = getStaffShiftWindowForDate({
-    attributes: args.attributes,
+    attributes: attrs,
     date: args.date,
     timeZone: args.timeZone,
     workingHoursStart: args.workingHoursStart,
     workingHoursEnd: args.workingHoursEnd,
   });
-  if (!window) return true;
+
+  if (!window) {
+    return Object.keys(shiftPlan).length === 0;
+  }
 
   const start = new Date(window.shiftStartsAt).getTime();
   const end = new Date(window.shiftEndsAt).getTime();
-  const t = now.getTime();
+  const t = args.now.getTime();
   return t >= start && t < end;
 }
 

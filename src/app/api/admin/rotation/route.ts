@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { todayDateInZone } from "@/features/booking/lib/schedule-utils";
+import { addDaysToDateInput, todayDateInZone } from "@/features/booking/lib/schedule-utils";
 import { isOtherStaffGuestAttributes } from "@/features/booking/lib/booking-other-staff";
 import { autoCheckoutExpiredBookings } from "@/features/booking/server/auto-checkout-expired";
 import {
@@ -12,7 +12,10 @@ import {
 } from "@/features/booking/server/assign-walk-in-staff";
 import { appendNewcomersAtEnd } from "@/features/booking/lib/walk-in-rotation";
 import type { StaffAttributes, StaffStatus } from "@/features/staff/types";
-import { isStaffOnShiftNow } from "@/features/staff/utils/shift-label";
+import {
+  getActiveShiftAnchorDate,
+  isStaffOnShiftNow,
+} from "@/features/staff/utils/shift-label";
 import {
   handleAdminRouteError,
   requireTenantAndAdminActor,
@@ -46,7 +49,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: staffError.message }, { status: 503 });
     }
 
-    const working = (staffRows ?? [])
+    const workingRows = (staffRows ?? [])
       .filter((row) => !isOtherStaffGuestAttributes(row.attributes))
       .filter((row) =>
         isStaffOnShiftNow({
@@ -58,8 +61,9 @@ export async function GET(request: Request) {
           workingHoursEnd: row.working_hours_end,
           now,
         }),
-      )
-      .map((row) => ({ id: row.id, name: row.name }));
+      );
+
+    const working = workingRows.map((row) => ({ id: row.id, name: row.name }));
 
     const workingIds = new Set(working.map((row) => row.id));
     const rosterIds = new Set(rotation.map((row) => row.staffId));
@@ -81,17 +85,63 @@ export async function GET(request: Request) {
     const orderedRotation = roster.filter((row) => workingIds.has(row.staffId));
 
     const staffIds = orderedRotation.map((row) => row.staffId);
+    const yesterday = addDaysToDateInput(date, -1);
+    const staffById = new Map(workingRows.map((row) => [row.id, row]));
+    const needsYesterday = staffIds.some((id) => {
+      const row = staffById.get(id);
+      if (!row) return false;
+      return (
+        getActiveShiftAnchorDate({
+          status: (row.status as StaffStatus) ?? "active",
+          attributes: (row.attributes ?? {}) as StaffAttributes,
+          date,
+          timeZone,
+          workingHoursStart: row.working_hours_start,
+          workingHoursEnd: row.working_hours_end,
+          now,
+        }) === yesterday
+      );
+    });
 
-    const [walkInCounts, inService] = await Promise.all([
-      countWalkInsByStaff(supabase, {
-        tenantId: tenant.id,
-        workDate: date,
-        timeZone,
-        staffIds,
-      }),
-      listInServiceStaff(supabase, tenant.id, staffIds),
-    ]);
+    const [walkInCountsToday, walkInCountsYesterday, inService] =
+      await Promise.all([
+        countWalkInsByStaff(supabase, {
+          tenantId: tenant.id,
+          workDate: date,
+          timeZone,
+          staffIds,
+        }),
+        needsYesterday
+          ? countWalkInsByStaff(supabase, {
+              tenantId: tenant.id,
+              workDate: yesterday,
+              timeZone,
+              staffIds,
+            })
+          : Promise.resolve({} as Record<string, number>),
+        listInServiceStaff(supabase, tenant.id, staffIds),
+      ]);
     const inServiceIds = inService.ids;
+
+    const walkInCounts: Record<string, number> = {};
+    for (const id of staffIds) {
+      const row = staffById.get(id);
+      const anchor = row
+        ? getActiveShiftAnchorDate({
+            status: (row.status as StaffStatus) ?? "active",
+            attributes: (row.attributes ?? {}) as StaffAttributes,
+            date,
+            timeZone,
+            workingHoursStart: row.working_hours_start,
+            workingHoursEnd: row.working_hours_end,
+            now,
+          })
+        : date;
+      walkInCounts[id] =
+        anchor === yesterday
+          ? (walkInCountsYesterday[id] ?? 0)
+          : (walkInCountsToday[id] ?? 0);
+    }
 
     const nameById = new Map(working.map((row) => [row.id, row.name]));
     for (const row of staffRows ?? []) {
