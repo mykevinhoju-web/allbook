@@ -1977,16 +1977,18 @@ export function RoomHomeContent() {
     <div className="flex min-h-[calc(100svh-2rem)] flex-col justify-center md:min-h-[calc(100svh-4rem)]">
       <RoomPwaSetup />
       <div className="mx-auto w-full max-w-2xl rounded-[2rem] border border-border bg-card px-6 py-10 shadow-sm md:max-w-3xl md:px-12 md:py-14">
-        <button
-          type="button"
-          onClick={() => void changeRoom()}
-          className="mb-8 flex w-full items-center justify-center rounded-2xl bg-red-600 px-4 py-3.5 text-base font-semibold text-white shadow-sm transition hover:bg-red-500 active:bg-red-700 md:mb-10 md:py-4 md:text-lg"
-        >
-          Change room
-        </button>
-        <p className="text-center text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground md:text-sm">
-          This tablet
-        </p>
+        <div className="flex items-center justify-center gap-3">
+          <p className="text-center text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground md:text-sm">
+            This tablet
+          </p>
+          <button
+            type="button"
+            onClick={() => void changeRoom()}
+            className="text-[11px] font-medium text-red-500/80 underline-offset-2 hover:text-red-400 hover:underline md:text-xs"
+          >
+            Change room
+          </button>
+        </div>
         <h1 className="mt-3 text-center text-6xl font-bold tracking-tight text-foreground md:text-7xl lg:text-8xl">
           {roomLabel}
         </h1>
