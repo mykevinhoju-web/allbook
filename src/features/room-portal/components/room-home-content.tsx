@@ -72,6 +72,7 @@ import {
   hasRoomPinGate,
   setRoomPinGate,
 } from "../lib/room-session-gate";
+import { useIdleStaffLogout } from "../hooks/use-idle-staff-logout";
 
 interface StaffUser {
   id: string;
@@ -494,6 +495,42 @@ export function RoomHomeContent() {
     if (!staff) return null;
     return getActiveCheckedInBooking(staffBookings);
   }, [staff, staffBookings]);
+
+  const signOutStaffCompletely = useCallback(async () => {
+    const current = staff;
+    setStaff(null);
+    setStaffBookings([]);
+    setPin("");
+    clearVisit();
+    await fetch("/api/room/staff/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+    await fetch("/api/staff/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+    if (current) {
+      void broadcastStaffPresence(tenant.slug, {
+        type: "offline",
+        staffId: current.id,
+        staffName: current.name,
+        roomName: roomLabel,
+      }).catch(() => {});
+    }
+  }, [clearVisit, roomLabel, staff, tenant.slug]);
+
+  useIdleStaffLogout({
+    enabled: Boolean(staff) && !myActiveBooking,
+    onIdle: () => {
+      void (async () => {
+        await signOutStaffCompletely();
+        toast.success("Signed out", {
+          description: "No activity for 5 minutes outside a service.",
+        });
+      })();
+    },
+  });
 
   const pendingStartBooking = useMemo(() => {
     if (!staff) return null;
@@ -1138,6 +1175,14 @@ export function RoomHomeContent() {
         setStaff(null);
         setStaffBookings([]);
         setPin("");
+        await fetch("/api/room/staff/logout", {
+          method: "POST",
+          credentials: "include",
+        });
+        await fetch("/api/staff/auth/logout", {
+          method: "POST",
+          credentials: "include",
+        });
       } finally {
         setActionId(null);
       }

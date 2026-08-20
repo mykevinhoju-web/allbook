@@ -3,9 +3,9 @@ import { NextResponse } from "next/server";
 import { requireTenantFromRequest, TenantContextError } from "@/lib/admin/tenant-context";
 import { createServiceSupabase } from "@/lib/supabase/service";
 import { markStaffSessionOffline, clearStaffCurrentRoom } from "@/features/staff/lib/staff-presence";
+import { expireNamedSessionCookie } from "@/lib/app-session";
 import {
   getStaffSessionCookieName,
-  getStaffSessionCookieOptions,
   verifyStaffSession,
 } from "@/lib/staff-session";
 import { readCookieFromRequest } from "@/lib/cookies/read-request-cookie";
@@ -29,11 +29,11 @@ export async function POST(request: Request) {
     }
 
     const response = NextResponse.json({ ok: true });
-    const options = {
-      ...getStaffSessionCookieOptions(request.headers.get("host")),
-      maxAge: 0,
-    };
-    response.cookies.set(getStaffSessionCookieName(), "", options);
+    expireNamedSessionCookie(
+      response,
+      getStaffSessionCookieName(),
+      request.headers.get("host"),
+    );
     return response;
   } catch (error) {
     if (error instanceof TenantContextError) {
