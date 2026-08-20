@@ -527,11 +527,14 @@ export function StaffShiftCalendar({
 
             <div className="mt-4 space-y-3">
               <label className="block space-y-1.5">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Start time
+                <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs font-medium text-muted-foreground">
+                  <span>Start time</span>
+                  <span className="font-semibold text-foreground">
+                    {formatShortDate(focusedDate)}
+                  </span>
                 </span>
                 <AmPmTimeSelect
-                  aria-label="Start time"
+                  aria-label={`Start time on ${formatShortDate(focusedDate)}`}
                   value={focusedEntry.startTime}
                   onChange={(nextStart) => {
                     updateFocusedEntry({
@@ -542,16 +545,22 @@ export function StaffShiftCalendar({
               </label>
 
               <label className="block space-y-1.5">
-                <span className="text-xs font-medium text-muted-foreground">
-                  End time
-                  {focusedOvernight ? (
-                    <span className="ml-1 font-normal text-indigo-600 dark:text-indigo-400">
-                      (next day)
-                    </span>
-                  ) : null}
+                <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs font-medium text-muted-foreground">
+                  <span>End time</span>
+                  <span className="font-semibold text-foreground">
+                    {formatShortDate(
+                      focusedOvernight
+                        ? addDaysToDateInput(focusedDate, 1)
+                        : focusedDate,
+                    )}
+                  </span>
                 </span>
                 <AmPmTimeSelect
-                  aria-label="End time"
+                  aria-label={`End time on ${formatShortDate(
+                    focusedOvernight
+                      ? addDaysToDateInput(focusedDate, 1)
+                      : focusedDate,
+                  )}`}
                   value={focusedEntry.endTime}
                   onChange={(nextEnd) => {
                     updateFocusedEntry({
