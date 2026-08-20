@@ -1977,14 +1977,14 @@ export function RoomHomeContent() {
     <div className="flex min-h-[calc(100svh-2rem)] flex-col justify-center md:min-h-[calc(100svh-4rem)]">
       <RoomPwaSetup />
       <div className="mx-auto w-full max-w-2xl rounded-[2rem] border border-border bg-card px-6 py-10 shadow-sm md:max-w-3xl md:px-12 md:py-14">
-        <div className="flex items-center justify-center gap-3">
+        <div className="relative mb-1">
           <p className="text-center text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground md:text-sm">
             This tablet
           </p>
           <button
             type="button"
             onClick={() => void changeRoom()}
-            className="text-[11px] font-medium text-red-500/80 underline-offset-2 hover:text-red-400 hover:underline md:text-xs"
+            className="absolute right-0 top-1/2 -translate-y-1/2 text-[11px] font-medium text-white/70 underline-offset-2 hover:text-white hover:underline md:text-xs"
           >
             Change room
           </button>
