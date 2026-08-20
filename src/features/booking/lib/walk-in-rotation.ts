@@ -23,7 +23,9 @@ export type WalkInRotationMember = {
   sortOrder: number;
 };
 
-/** 0 = no person number yet — walk-in counts still decide the next turn. */
+/** 0 = no person number yet — walk-in counts still decide the next turn.
+ * Negative = blank 순번 but preserves list order after save (‑1, ‑2, …).
+ */
 export function rotationTieBreak(sortOrder: number): number {
   return sortOrder <= 0 ? Number.MAX_SAFE_INTEGER : sortOrder;
 }
@@ -32,24 +34,44 @@ function hasAnyPersonNumber(rotation: WalkInRotationMember[]): boolean {
   return rotation.some((row) => row.sortOrder > 0);
 }
 
+/** Stable list order: explicit 순번 first, then blank slots by saved position. */
+export function rotationListRank(sortOrder: number): number {
+  if (sortOrder > 0) return sortOrder;
+  if (sortOrder < 0) return 100_000 + Math.abs(sortOrder);
+  return 200_000;
+}
+
+export function compareRotationListOrder(
+  a: WalkInRotationMember,
+  b: WalkInRotationMember,
+): number {
+  return rotationListRank(a.sortOrder) - rotationListRank(b.sortOrder);
+}
+
 /**
- * A fresh rotation stays unnumbered. Do not invent 1, 2, 3 for everyone.
- * Sequential 1..n is treated as auto-assigned and cleared.
+ * Keep saved person numbers as-is. Do not invent or clear 1..n —
+ * admins set those deliberately via Save rotation.
  */
 export function fillRotationNumbers<T extends WalkInRotationMember>(
   rotation: T[],
 ): T[] {
-  return stripAutoRotationNumbers(rotation);
+  return rotation;
 }
 
-/** Sequential 1..n was auto-assigned — treat as a fresh rotation with no 순번. */
+/** @deprecated No longer strips user-saved sequential numbers. */
 export function stripAutoRotationNumbers<T extends WalkInRotationMember>(
   rotation: T[],
 ): T[] {
-  if (rotation.length === 0) return rotation;
-  const autoNumbered = rotation.every((row, index) => row.sortOrder === index + 1);
-  if (!autoNumbered) return rotation;
-  return rotation.map((row) => ({ ...row, sortOrder: 0 }));
+  return rotation;
+}
+
+/** Blank 순번 rows keep list position via negative sort_order (−1, −2, …). */
+export function reindexBlankRotationOrders<T extends WalkInRotationMember>(
+  rotation: T[],
+): T[] {
+  return rotation.map((row, index) =>
+    row.sortOrder > 0 ? row : { ...row, sortOrder: -(index + 1) },
+  );
 }
 
 /** New staff take the last number only when the roster already has 순번. */
@@ -57,23 +79,24 @@ export function appendNewcomersAtEnd<T extends WalkInRotationMember>(
   rotation: T[],
   newStaffIds: string[],
 ): Array<T | WalkInRotationMember> {
-  const stripped = stripAutoRotationNumbers(rotation);
-  const filled = fillRotationNumbers(stripped);
-  const existing = new Set(filled.map((row) => row.staffId));
-  const extras = newStaffIds.filter((staffId) => staffId && !existing.has(staffId));
-  if (extras.length === 0) return filled;
-  if (!hasAnyPersonNumber(filled)) {
-    return [
-      ...filled,
+  const existing = new Set(rotation.map((row) => row.staffId));
+  const extras = newStaffIds.filter(
+    (staffId) => staffId && !existing.has(staffId),
+  );
+  if (extras.length === 0) return rotation;
+  if (!hasAnyPersonNumber(rotation)) {
+    const next = [
+      ...rotation,
       ...extras.map((staffId) => ({ staffId, sortOrder: 0 })),
     ];
+    return reindexBlankRotationOrders(next);
   }
-  let next = Math.max(0, ...filled.map((row) => row.sortOrder));
+  let nextNum = Math.max(0, ...rotation.map((row) => row.sortOrder));
   return [
-    ...filled,
+    ...rotation,
     ...extras.map((staffId) => {
-      next += 1;
-      return { staffId, sortOrder: next };
+      nextNum += 1;
+      return { staffId, sortOrder: nextNum };
     }),
   ];
 }

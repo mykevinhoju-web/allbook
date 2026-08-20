@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { fetchAdminApi } from "@/features/admin/lib/admin-api-client";
 import { todayDateInZone } from "@/features/booking/lib/schedule-utils";
-import { pickWalkInStaff, appendNewcomersAtEnd } from "@/features/booking/lib/walk-in-rotation";
+import { pickWalkInStaff, appendNewcomersAtEnd, reindexBlankRotationOrders } from "@/features/booking/lib/walk-in-rotation";
 import { useOptionalTenant } from "@/features/tenants";
 import { cn } from "@/lib/utils";
 
@@ -79,19 +79,21 @@ function mergeOnShiftRotation(
   const extraIds = working
     .filter((staff) => !kept.some((row) => row.staffId === staff.id))
     .map((staff) => staff.id);
-  return appendNewcomersAtEnd(kept, extraIds).map((row) => {
-    const staff = workingById.get(row.staffId);
-    return staff
-      ? toRow(staff, row.sortOrder)
-      : {
-          staffId: row.staffId,
-          name: "Staff",
-          sortOrder: row.sortOrder,
-          inService: false,
-          roomName: null,
-          walkInCount: 0,
-        };
-  });
+  return reindexBlankRotationOrders(
+    appendNewcomersAtEnd(kept, extraIds).map((row) => {
+      const staff = workingById.get(row.staffId);
+      return staff
+        ? toRow(staff, row.sortOrder)
+        : {
+            staffId: row.staffId,
+            name: "Staff",
+            sortOrder: row.sortOrder,
+            inService: false,
+            roomName: null,
+            walkInCount: 0,
+          };
+    }),
+  );
 }
 
 function draftValue(sortOrder: number): string {
@@ -103,7 +105,7 @@ function applyDraftsToRotation(
   list: RotationRow[],
   drafts: Record<string, string>,
 ): RotationRow[] {
-  return list.map((row) => {
+  const next = list.map((row) => {
     if (!(row.staffId in drafts)) return row;
     const trimmed = drafts[row.staffId]!.trim();
     if (!trimmed) return { ...row, sortOrder: 0 };
@@ -111,6 +113,7 @@ function applyDraftsToRotation(
     if (!Number.isFinite(order) || order < 1) return { ...row, sortOrder: 0 };
     return { ...row, sortOrder: Math.round(order) };
   });
+  return reindexBlankRotationOrders(next);
 }
 
 export function AdminRotationContent() {
@@ -207,8 +210,10 @@ export function AdminRotationContent() {
     const trimmed = raw.trim();
     if (!trimmed) {
       setRotation((current) => {
-        const next = current.map((row) =>
-          row.staffId === staff.id ? { ...row, sortOrder: 0 } : row,
+        const next = reindexBlankRotationOrders(
+          current.map((row) =>
+            row.staffId === staff.id ? { ...row, sortOrder: 0 } : row,
+          ),
         );
         setDrafts(
           Object.fromEntries(
@@ -249,12 +254,13 @@ export function AdminRotationContent() {
       const [item] = next.splice(from, 1);
       if (!item) return current;
       next.splice(to, 0, item);
+      const reindexed = reindexBlankRotationOrders(next);
       setDrafts(
         Object.fromEntries(
-          next.map((row) => [row.staffId, draftValue(row.sortOrder)]),
+          reindexed.map((row) => [row.staffId, draftValue(row.sortOrder)]),
         ),
       );
-      return next;
+      return reindexed;
     });
   };
 

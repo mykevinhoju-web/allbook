@@ -10,6 +10,7 @@ import {
   isWalkInBooking,
   pickWalkInStaff,
   appendNewcomersAtEnd,
+  compareRotationListOrder,
   type WalkInRotationMember,
 } from "@/features/booking/lib/walk-in-rotation";
 import type { StaffAttributes, StaffStatus } from "@/features/staff/types";
@@ -40,10 +41,12 @@ async function loadRotationForDate(
     throw new Error(error.message);
   }
 
-  return (data ?? []).map((row) => ({
-    staffId: row.staff_id,
-    sortOrder: row.sort_order,
-  }));
+  return (data ?? [])
+    .map((row) => ({
+      staffId: row.staff_id,
+      sortOrder: row.sort_order,
+    }))
+    .sort(compareRotationListOrder);
 }
 
 export async function loadWalkInRotation(
@@ -107,35 +110,15 @@ export async function appendWalkInRotationNewcomers(
   },
 ): Promise<WalkInRotationMember[]> {
   const roster = await loadWalkInRotation(supabase, args.tenantId);
-  const next = appendNewcomersAtEnd(roster, args.staffIds);
-  const changed =
-    next.length !== roster.length ||
-    next.some(
-      (row, index) =>
-        row.staffId !== roster[index]?.staffId ||
-        row.sortOrder !== roster[index]?.sortOrder,
-    );
-  if (!changed) return roster;
-
-  const now = new Date().toISOString();
   const existingIds = new Set(roster.map((row) => row.staffId));
-  const toInsert = next.filter((row) => !existingIds.has(row.staffId));
-  const toUpdate = next.filter((row) => {
-    const previous = roster.find((item) => item.staffId === row.staffId);
-    return previous != null && previous.sortOrder !== row.sortOrder;
-  });
+  const extras = args.staffIds.filter(
+    (staffId) => staffId && !existingIds.has(staffId),
+  );
+  if (extras.length === 0) return roster;
 
-  for (const row of toUpdate) {
-    const { error } = await supabase
-      .from("staff_walk_in_rotation")
-      .update({ sort_order: row.sortOrder, updated_at: now })
-      .eq("tenant_id", args.tenantId)
-      .eq("work_date", ROTATION_ROSTER_DATE)
-      .eq("staff_id", row.staffId);
-    if (error) {
-      throw new Error(error.message);
-    }
-  }
+  const next = appendNewcomersAtEnd(roster, extras);
+  const now = new Date().toISOString();
+  const toInsert = next.filter((row) => !existingIds.has(row.staffId));
 
   if (toInsert.length > 0) {
     const { error } = await supabase.from("staff_walk_in_rotation").insert(

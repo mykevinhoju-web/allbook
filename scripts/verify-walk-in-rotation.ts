@@ -106,9 +106,9 @@ assert.deepEqual(
     { staffId: "c", sortOrder: 3 },
   ]).map((row) => [row.staffId, row.sortOrder]),
   [
-    ["a", 0],
-    ["b", 0],
-    ["c", 0],
+    ["a", 1],
+    ["b", 2],
+    ["c", 3],
   ],
 );
 
@@ -116,10 +116,10 @@ const withNewcomer = appendNewcomersAtEnd(rotation, ["d", "a"]);
 assert.deepEqual(
   withNewcomer.map((row) => [row.staffId, row.sortOrder]),
   [
-    ["a", 0],
-    ["b", 0],
-    ["c", 0],
-    ["d", 0],
+    ["a", 1],
+    ["b", 2],
+    ["c", 3],
+    ["d", 4],
   ],
 );
 
