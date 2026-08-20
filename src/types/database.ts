@@ -277,6 +277,33 @@ export type Database = {
         };
         Relationships: [];
       };
+      tenant_customer_flags: {
+        Row: {
+          tenant_id: string;
+          customer_key: string;
+          rating: string | null;
+          note: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          tenant_id: string;
+          customer_key: string;
+          rating?: string | null;
+          note?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          tenant_id?: string;
+          customer_key?: string;
+          rating?: string | null;
+          note?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       admin_accounts: {
         Row: {
           id: string;

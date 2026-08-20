@@ -42,6 +42,8 @@ export type CustomerSummary = {
   firstBookingAt: string;
   /** Visits newest-first (lifetime for all; period for daily/monthly). */
   visits: CustomerVisit[];
+  rating: "good" | "bad" | null;
+  note: string;
 };
 
 export type CustomersView = "all" | "daily" | "monthly";
@@ -212,6 +214,8 @@ export function aggregateCustomers(
       lastBookingAt: periodVisits[0]?.startsAt ?? row.lastBookingAt,
       firstBookingAt: row.firstBookingAt,
       visits: periodVisits,
+      rating: null,
+      note: "",
     });
   }
 

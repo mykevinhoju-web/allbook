@@ -1,8 +1,9 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronDown, Loader2, Search, Users } from "lucide-react";
+import { ChevronDown, Loader2, Minus, Plus, Search, Users } from "lucide-react";
 
+import { AppButton, toast } from "@/components/common";
 import { Input } from "@/components/ui/input";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import {
@@ -102,6 +103,50 @@ export function AdminCustomersContent() {
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
   const [openKey, setOpenKey] = useState<string | null>(null);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
+
+  const saveFlag = async (
+    customer: CustomerSummary,
+    next: { rating: CustomerSummary["rating"]; note: string },
+  ) => {
+    if (savingKey) return;
+    setSavingKey(customer.key);
+    try {
+      const response = await fetchAdminApi("/api/admin/customers/flag", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerKey: customer.key,
+          rating: next.rating,
+          note: next.note,
+        }),
+      });
+      const data = (await response.json()) as {
+        rating?: CustomerSummary["rating"];
+        note?: string;
+        error?: string;
+      };
+      if (!response.ok) {
+        toast.error("Could not save customer note", {
+          description: data.error ?? "Try again.",
+        });
+        return;
+      }
+      const rating = data.rating ?? null;
+      const note = data.note ?? "";
+      setCustomers((current) =>
+        current.map((row) =>
+          row.key === customer.key ? { ...row, rating, note } : row,
+        ),
+      );
+      setNoteDrafts((current) => ({ ...current, [customer.key]: note }));
+    } catch {
+      toast.error("Could not save customer note");
+    } finally {
+      setSavingKey(null);
+    }
+  };
 
   const loadCustomers = useCallback(async () => {
     setLoading(true);
@@ -123,6 +168,11 @@ export function AdminCustomersContent() {
       }
 
       setCustomers(data.customers ?? []);
+      setNoteDrafts(
+        Object.fromEntries(
+          (data.customers ?? []).map((row) => [row.key, row.note ?? ""]),
+        ),
+      );
       setOpenKey(null);
     } catch {
       setCustomers([]);
@@ -153,7 +203,7 @@ export function AdminCustomersContent() {
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
       <AdminPageHeader
         title="Customers"
-        description="Guest history from bookings — visit counts and every service date kept permanently."
+        description="Guest history from bookings. Mark + good (blue) or − bad (red), and leave a short note."
       />
 
       <div className="flex flex-wrap gap-2">
@@ -276,14 +326,115 @@ export function AdminCustomersContent() {
                   return (
                     <Fragment key={customer.key}>
                       <tr className="border-b border-border/40 hover:bg-muted/20">
-                        <td className="px-4 py-3 font-medium">
-                          {customer.name ?? "Walk-in"}
+                        <td className="px-4 py-3">
+                          <p
+                            className={cn(
+                              "font-medium",
+                              customer.rating === "good" &&
+                                "text-blue-600 dark:text-blue-400",
+                              customer.rating === "bad" &&
+                                "text-red-600 dark:text-red-400",
+                            )}
+                          >
+                            {customer.name ?? "Walk-in"}
+                            {customer.rating === "good" ? (
+                              <span className="ml-1.5 text-xs font-semibold">
+                                + good
+                              </span>
+                            ) : null}
+                            {customer.rating === "bad" ? (
+                              <span className="ml-1.5 text-xs font-semibold">
+                                − bad
+                              </span>
+                            ) : null}
+                          </p>
                           {view !== "all" ? (
                             <p className="mt-0.5 text-xs font-normal text-muted-foreground">
                               {customer.bookingCount} visit
                               {customer.bookingCount === 1 ? "" : "s"} total
                             </p>
                           ) : null}
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            <AppButton
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className={cn(
+                                "size-8 rounded-lg",
+                                customer.rating === "good" &&
+                                  "border-blue-400 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300",
+                              )}
+                              disabled={savingKey === customer.key}
+                              aria-label="Mark as good customer"
+                              onClick={() =>
+                                void saveFlag(customer, {
+                                  rating:
+                                    customer.rating === "good" ? null : "good",
+                                  note:
+                                    noteDrafts[customer.key] ??
+                                    customer.note ??
+                                    "",
+                                })
+                              }
+                            >
+                              <Plus className="size-4" />
+                            </AppButton>
+                            <AppButton
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className={cn(
+                                "size-8 rounded-lg",
+                                customer.rating === "bad" &&
+                                  "border-red-400 bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300",
+                              )}
+                              disabled={savingKey === customer.key}
+                              aria-label="Mark as bad customer"
+                              onClick={() =>
+                                void saveFlag(customer, {
+                                  rating:
+                                    customer.rating === "bad" ? null : "bad",
+                                  note:
+                                    noteDrafts[customer.key] ??
+                                    customer.note ??
+                                    "",
+                                })
+                              }
+                            >
+                              <Minus className="size-4" />
+                            </AppButton>
+                            <Input
+                              value={
+                                noteDrafts[customer.key] ?? customer.note ?? ""
+                              }
+                              maxLength={160}
+                              placeholder="Short note"
+                              disabled={savingKey === customer.key}
+                              onChange={(event) => {
+                                const value = event.target.value;
+                                setNoteDrafts((current) => ({
+                                  ...current,
+                                  [customer.key]: value,
+                                }));
+                              }}
+                              onBlur={(event) => {
+                                const nextNote = event.target.value.trim();
+                                if (nextNote === (customer.note ?? "").trim()) {
+                                  return;
+                                }
+                                void saveFlag(customer, {
+                                  rating: customer.rating,
+                                  note: nextNote,
+                                });
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  event.currentTarget.blur();
+                                }
+                              }}
+                              className="h-8 min-w-[10rem] max-w-[16rem] flex-1 rounded-lg text-xs"
+                            />
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">
                           <div className="space-y-0.5">

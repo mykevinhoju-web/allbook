@@ -100,6 +100,31 @@ export async function GET(request: Request) {
       month: view === "monthly" ? month : null,
     });
 
+    const { data: flagRows } = await supabase
+      .from("tenant_customer_flags")
+      .select("customer_key, rating, note")
+      .eq("tenant_id", tenant.id);
+
+    const flags = new Map(
+      (flagRows ?? []).map((row) => [
+        row.customer_key,
+        {
+          rating:
+            row.rating === "good" || row.rating === "bad" ? row.rating : null,
+          note: row.note ?? "",
+        },
+      ]),
+    );
+
+    customers = customers.map((customer) => {
+      const flag = flags.get(customer.key);
+      return {
+        ...customer,
+        rating: flag?.rating ?? null,
+        note: flag?.note ?? "",
+      };
+    });
+
     if (query) {
       customers = customers.filter((customer) => {
         const haystack = [
