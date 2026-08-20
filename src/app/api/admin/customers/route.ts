@@ -105,7 +105,10 @@ export async function GET(request: Request) {
       .select("customer_key, rating, note")
       .eq("tenant_id", tenant.id);
 
-    const flags = new Map(
+    const flags = new Map<
+      string,
+      { rating: "good" | "bad" | null; note: string }
+    >(
       (flagRows ?? []).map((row) => [
         row.customer_key,
         {
