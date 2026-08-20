@@ -278,6 +278,43 @@ function StaffSection({
           currency={currency}
           timeZone={timeZone}
         />
+        <div className="mt-3 overflow-hidden rounded-xl border border-border/50 bg-muted/30 px-3 py-3">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Total
+          </p>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-5">
+            <div>
+              <p className="text-xs text-muted-foreground">Cash</p>
+              <p className="text-sm font-semibold tabular-nums">
+                {formatPriceFromCents(staff.cashCents, currency)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Card</p>
+              <p className="text-sm font-semibold tabular-nums">
+                {formatPriceFromCents(staff.cardCents, currency)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Staff</p>
+              <p className="text-sm font-semibold tabular-nums">
+                {formatPriceFromCents(staff.staffPayoutCents, currency)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Shop</p>
+              <p className="text-sm font-semibold tabular-nums">
+                {formatPriceFromCents(staff.shopCents, currency)}
+              </p>
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <p className="text-xs text-muted-foreground">Total</p>
+              <p className="text-sm font-semibold tabular-nums">
+                {formatPriceFromCents(staff.totalCents, currency)}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </details>
   );
