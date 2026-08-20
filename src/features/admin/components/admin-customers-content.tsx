@@ -5,6 +5,7 @@ import { ChevronDown, Loader2, Minus, Plus, Search, Users } from "lucide-react";
 
 import { AppButton, toast } from "@/components/common";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import {
   formatAmPmTime,
@@ -205,7 +206,7 @@ export function AdminCustomersContent() {
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
       <AdminPageHeader
         title="Customers"
-        description="Guest history from bookings. Tap a name to mark good (blue) or bad (red) and leave a short note."
+        description="Guest history from bookings. Tap a name to mark good (blue) or bad (red) and leave a note."
       />
 
       <div className="flex flex-wrap gap-2">
@@ -355,65 +356,68 @@ export function AdminCustomersContent() {
                             </p>
                           ) : null}
                           {flagOpen ? (
-                            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                              <AppButton
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className={cn(
-                                  "size-8 rounded-lg",
-                                  customer.rating === "good" &&
-                                    "border-blue-400 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300",
-                                )}
-                                disabled={savingKey === customer.key}
-                                aria-label="Mark as good customer"
-                                onClick={() =>
-                                  void saveFlag(customer, {
-                                    rating:
-                                      customer.rating === "good"
-                                        ? null
-                                        : "good",
-                                    note:
-                                      noteDrafts[customer.key] ??
-                                      customer.note ??
-                                      "",
-                                  })
-                                }
-                              >
-                                <Plus className="size-4" />
-                              </AppButton>
-                              <AppButton
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className={cn(
-                                  "size-8 rounded-lg",
-                                  customer.rating === "bad" &&
-                                    "border-red-400 bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300",
-                                )}
-                                disabled={savingKey === customer.key}
-                                aria-label="Mark as bad customer"
-                                onClick={() =>
-                                  void saveFlag(customer, {
-                                    rating:
-                                      customer.rating === "bad" ? null : "bad",
-                                    note:
-                                      noteDrafts[customer.key] ??
-                                      customer.note ??
-                                      "",
-                                  })
-                                }
-                              >
-                                <Minus className="size-4" />
-                              </AppButton>
-                              <Input
+                            <div className="mt-2 flex w-full min-w-0 flex-col gap-1.5 sm:max-w-md">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <AppButton
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  className={cn(
+                                    "size-8 rounded-lg",
+                                    customer.rating === "good" &&
+                                      "border-blue-400 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300",
+                                  )}
+                                  disabled={savingKey === customer.key}
+                                  aria-label="Mark as good customer"
+                                  onClick={() =>
+                                    void saveFlag(customer, {
+                                      rating:
+                                        customer.rating === "good"
+                                          ? null
+                                          : "good",
+                                      note:
+                                        noteDrafts[customer.key] ??
+                                        customer.note ??
+                                        "",
+                                    })
+                                  }
+                                >
+                                  <Plus className="size-4" />
+                                </AppButton>
+                                <AppButton
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  className={cn(
+                                    "size-8 rounded-lg",
+                                    customer.rating === "bad" &&
+                                      "border-red-400 bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300",
+                                  )}
+                                  disabled={savingKey === customer.key}
+                                  aria-label="Mark as bad customer"
+                                  onClick={() =>
+                                    void saveFlag(customer, {
+                                      rating:
+                                        customer.rating === "bad" ? null : "bad",
+                                      note:
+                                        noteDrafts[customer.key] ??
+                                        customer.note ??
+                                        "",
+                                    })
+                                  }
+                                >
+                                  <Minus className="size-4" />
+                                </AppButton>
+                              </div>
+                              <Textarea
                                 value={
                                   noteDrafts[customer.key] ??
                                   customer.note ??
                                   ""
                                 }
-                                maxLength={160}
-                                placeholder="Short note"
+                                maxLength={200}
+                                rows={3}
+                                placeholder="Customer note"
                                 disabled={savingKey === customer.key}
                                 onChange={(event) => {
                                   const value = event.target.value;
@@ -434,13 +438,16 @@ export function AdminCustomersContent() {
                                     note: nextNote,
                                   });
                                 }}
-                                onKeyDown={(event) => {
-                                  if (event.key === "Enter") {
-                                    event.currentTarget.blur();
-                                  }
-                                }}
-                                className="h-8 min-w-[10rem] max-w-[16rem] flex-1 rounded-lg text-xs"
+                                className="min-h-[4.5rem] w-full resize-y rounded-lg text-xs leading-relaxed"
                               />
+                              <p className="text-[11px] text-muted-foreground">
+                                {(
+                                  noteDrafts[customer.key] ??
+                                  customer.note ??
+                                  ""
+                                ).length}
+                                /200
+                              </p>
                             </div>
                           ) : null}
                         </td>

@@ -7,7 +7,7 @@ import {
 import { createServiceSupabase } from "@/lib/admin/tenant-context";
 
 const KEY_RE = /^(phone|email|name):.+$/;
-const NOTE_MAX = 160;
+const NOTE_MAX = 200;
 
 function parseRating(value: unknown): "good" | "bad" | null {
   if (value === "good" || value === "bad") return value;
