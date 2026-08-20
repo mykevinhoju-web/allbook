@@ -28,17 +28,37 @@ import type { BookingExtendRequest } from "@/features/booking/types/extend-reque
 import type { RoomStartRequest } from "@/features/booking/types/room-start-request";
 import type { InternalPaymentMethod } from "@/features/booking/lib/internal-payment-method";
 import {
+  formatPaymentMethodLabel,
+  paymentMethodForPricing,
+} from "@/features/booking/lib/internal-payment-method";
+import {
   applyPricingAdjustments,
   DEFAULT_PRICING_ADJUSTMENTS,
   type PricingAdjustments,
 } from "@/features/services/lib/pricing-adjustments";
 import { formatPriceFromCents } from "@/features/services";
 import { useTenant } from "@/features/tenants";
-import { cn } from "@/lib/utils";
 
 type QueueItem =
   | { kind: "extend"; id: string; createdAt: string; extend: BookingExtendRequest }
   | { kind: "start"; id: string; createdAt: string; start: RoomStartRequest };
+
+function roomPaymentFromActive(active: QueueItem | null): {
+  method: InternalPaymentMethod | null;
+  splitCashCents: number | null;
+} {
+  if (!active) return { method: null, splitCashCents: null };
+  if (active.kind === "start") {
+    return {
+      method: active.start.requestedPayment,
+      splitCashCents: active.start.splitCashCents,
+    };
+  }
+  return {
+    method: active.extend.paymentMethod,
+    splitCashCents: active.extend.splitCashCents,
+  };
+}
 
 /**
  * Sticky admin popup for room-tablet extend and Book-start requests.
@@ -46,9 +66,6 @@ type QueueItem =
 export function AdminExtendRequestWatcher() {
   const tenant = useTenant();
   const [queue, setQueue] = useState<QueueItem[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<
-    InternalPaymentMethod | ""
-  >("");
   const [submitting, setSubmitting] = useState(false);
   const [servicePrices, setServicePrices] = useState<
     Record<number, number>
@@ -62,6 +79,7 @@ export function AdminExtendRequestWatcher() {
   const primedRef = useRef(false);
 
   const active = queue[0] ?? null;
+  const roomPayment = roomPaymentFromActive(active);
 
   const alertNewRequests = useCallback((items: QueueItem[]) => {
     const known = knownIdsRef.current;
@@ -175,18 +193,6 @@ export function AdminExtendRequestWatcher() {
     );
   }, [tenant.slug, loadPending]);
 
-  useEffect(() => {
-    if (
-      active?.kind === "start" &&
-      (active.start.requestedPayment === "cash" ||
-        active.start.requestedPayment === "card")
-    ) {
-      setPaymentMethod(active.start.requestedPayment);
-      return;
-    }
-    setPaymentMethod("");
-  }, [active?.id, active?.kind, active]);
-
   const priceBreakdown = useMemo(() => {
     if (!active) return null;
     const minutes =
@@ -201,23 +207,20 @@ export function AdminExtendRequestWatcher() {
       timeZone: tenant.settings.timezone || "Australia/Sydney",
       channel: "internal",
       adjustments: pricingAdjustments,
-      paymentMethod:
-        paymentMethod === "cash" || paymentMethod === "card"
-          ? paymentMethod
-          : null,
+      paymentMethod: paymentMethodForPricing(roomPayment.method),
     });
   }, [
     active,
     servicePrices,
-    paymentMethod,
+    roomPayment.method,
     pricingAdjustments,
     tenant.settings.timezone,
   ]);
 
   const approve = async () => {
     if (!active) return;
-    if (paymentMethod !== "cash" && paymentMethod !== "card") {
-      toast.error("Select cash or card");
+    if (!roomPayment.method) {
+      toast.error("No payment method from the room");
       return;
     }
     setSubmitting(true);
@@ -225,11 +228,7 @@ export function AdminExtendRequestWatcher() {
       if (active.kind === "start") {
         const response = await fetchAdminApi(
           `/api/admin/start-requests/${active.start.id}/approve`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ paymentMethod }),
-          },
+          { method: "POST" },
         );
         const data = (await response.json()) as {
           error?: string;
@@ -252,11 +251,7 @@ export function AdminExtendRequestWatcher() {
 
       const response = await fetchAdminApi(
         `/api/admin/extend-requests/${active.extend.id}/approve`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ paymentMethod }),
-        },
+        { method: "POST" },
       );
       const data = (await response.json()) as {
         error?: string;
@@ -420,30 +415,12 @@ export function AdminExtendRequestWatcher() {
                 <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                   Payment method
                 </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {(
-                    [
-                      { value: "cash" as const, label: "Cash" },
-                      { value: "card" as const, label: "Card" },
-                    ] as const
-                  ).map((option) => {
-                    const selected = paymentMethod === option.value;
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => setPaymentMethod(option.value)}
-                        className={cn(
-                          "min-h-12 rounded-xl border text-sm font-semibold",
-                          selected
-                            ? "border-primary bg-primary/10 text-foreground ring-2 ring-primary/20"
-                            : "border-border bg-background text-foreground",
-                        )}
-                      >
-                        {option.label}
-                      </button>
-                    );
-                  })}
+                <div className="rounded-xl border border-border bg-background px-4 py-3 text-sm font-semibold text-foreground">
+                  {formatPaymentMethodLabel(
+                    roomPayment.method,
+                    roomPayment.splitCashCents,
+                    priceBreakdown?.totalCents ?? start.priceCents,
+                  )}
                 </div>
               </div>
             </div>
@@ -461,7 +438,7 @@ export function AdminExtendRequestWatcher() {
               <AppButton
                 type="button"
                 className="h-12 rounded-2xl"
-                disabled={submitting || !paymentMethod}
+                disabled={submitting || !roomPayment.method}
                 onClick={() => void approve()}
               >
                 {submitting ? "Saving…" : "Approve start"}
@@ -473,7 +450,7 @@ export function AdminExtendRequestWatcher() {
             <DialogHeader className="space-y-1 border-b border-border px-6 py-5 text-left">
               <DialogTitle className="text-xl">Extend service</DialogTitle>
               <DialogDescription>
-                Room request · waiting for cash/card approval
+                Room request · waiting for your approval
               </DialogDescription>
             </DialogHeader>
 
@@ -538,30 +515,12 @@ export function AdminExtendRequestWatcher() {
                 <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                   Payment method
                 </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {(
-                    [
-                      { value: "cash" as const, label: "Cash" },
-                      { value: "card" as const, label: "Card" },
-                    ] as const
-                  ).map((option) => {
-                    const selected = paymentMethod === option.value;
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => setPaymentMethod(option.value)}
-                        className={cn(
-                          "min-h-12 rounded-xl border text-sm font-semibold",
-                          selected
-                            ? "border-primary bg-primary/10 text-foreground ring-2 ring-primary/20"
-                            : "border-border bg-background text-foreground",
-                        )}
-                      >
-                        {option.label}
-                      </button>
-                    );
-                  })}
+                <div className="rounded-xl border border-border bg-background px-4 py-3 text-sm font-semibold text-foreground">
+                  {formatPaymentMethodLabel(
+                    roomPayment.method,
+                    roomPayment.splitCashCents,
+                    priceBreakdown?.totalCents,
+                  )}
                 </div>
               </div>
             </div>
@@ -579,7 +538,7 @@ export function AdminExtendRequestWatcher() {
               <AppButton
                 type="button"
                 className="h-12 rounded-2xl"
-                disabled={submitting || !paymentMethod}
+                disabled={submitting || !roomPayment.method}
                 onClick={() => void approve()}
               >
                 {submitting ? "Saving…" : "Approve extend"}

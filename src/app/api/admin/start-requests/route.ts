@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import {
   isRoomStartBooking,
   parseRoomStartPayment,
+  parseRoomStartSplitCashCents,
 } from "@/features/booking/lib/room-start";
 import type { RoomStartRequest } from "@/features/booking/types/room-start-request";
 import { createServiceSupabase } from "@/lib/admin/tenant-context";
@@ -43,6 +44,7 @@ function mapRequest(row: {
     durationMinutes: row.duration_minutes,
     priceCents: row.price_cents,
     requestedPayment: parseRoomStartPayment(row.notes),
+    splitCashCents: parseRoomStartSplitCashCents(row.notes),
     startsAt: row.starts_at,
     endsAt: row.ends_at,
     createdAt: row.created_at,

@@ -1,3 +1,5 @@
+import type { InternalPaymentMethod } from "@/features/booking/lib/internal-payment-method";
+
 export type ExtendRequestStatus =
   | "pending"
   | "approved"
@@ -9,7 +11,8 @@ export interface BookingExtendRequest {
   bookingId: string;
   minutes: number;
   status: ExtendRequestStatus;
-  paymentMethod: "cash" | "card" | null;
+  paymentMethod: InternalPaymentMethod | null;
+  splitCashCents: number | null;
   priceCents: number | null;
   createdAt: string;
   resolvedAt: string | null;

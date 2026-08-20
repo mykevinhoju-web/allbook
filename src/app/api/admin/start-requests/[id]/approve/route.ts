@@ -5,12 +5,14 @@ import {
 } from "@/features/booking/lib/booking-check-in";
 import { ensurePrimaryBookingStaff } from "@/features/booking/lib/booking-staffs";
 import {
-  isCashOrCardMethod,
+  isInternalPaymentMethod,
+  paymentMethodForPricing,
   withPaymentMethodNote,
 } from "@/features/booking/lib/internal-payment-method";
 import {
   isRoomStartBooking,
   parseRoomStartPayment,
+  parseRoomStartSplitCashCents,
   stripRoomStartNote,
 } from "@/features/booking/lib/room-start";
 import {
@@ -35,7 +37,6 @@ export async function POST(
   try {
     const { tenant } = await requireTenantAndAdminActor(request);
     const { id } = await params;
-    const body = (await request.json()) as { paymentMethod?: string };
     const supabase = createServiceSupabase();
 
     const { data: existing, error: fetchError } = await supabase
@@ -71,17 +72,14 @@ export async function POST(
     }
 
     const requested = parseRoomStartPayment(existing.notes);
-    const paymentMethod = isCashOrCardMethod(body.paymentMethod)
-      ? body.paymentMethod
-      : isCashOrCardMethod(requested)
-        ? requested
-        : null;
-    if (!paymentMethod) {
+    const splitCashCents = parseRoomStartSplitCashCents(existing.notes);
+    if (!isInternalPaymentMethod(requested)) {
       return NextResponse.json(
-        { error: "Select cash or card." },
+        { error: "This request has no payment method from the room." },
         { status: 400 },
       );
     }
+    const paymentMethod = requested;
 
     const roomId = existing.room_id;
     if (!roomId) {
@@ -180,12 +178,13 @@ export async function POST(
       timeZone,
       channel: "internal",
       adjustments: tenant.settings.pricingAdjustments,
-      paymentMethod,
+      paymentMethod: paymentMethodForPricing(paymentMethod),
     });
 
     const notes = withPaymentMethodNote(
       paymentMethod,
       stripRoomStartNote(existing.notes),
+      splitCashCents,
     );
 
     const { data, error } = await supabase

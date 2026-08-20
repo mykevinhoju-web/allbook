@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 
 import type { BookingExtendRequest } from "@/features/booking/types/extend-request";
+import {
+  isInternalPaymentMethod,
+  parsePaymentMethodFromNotes,
+  parseSplitCashCentsFromNotes,
+} from "@/features/booking/lib/internal-payment-method";
 import { createServiceSupabase } from "@/lib/admin/tenant-context";
 import {
   handleAdminRouteError,
@@ -27,6 +32,7 @@ function mapRequest(row: {
         ends_at: string;
         duration_minutes: number;
         room_id: string | null;
+        notes: string | null;
         rooms?: { name: string } | { name: string }[] | null;
       }
     | {
@@ -38,6 +44,7 @@ function mapRequest(row: {
         ends_at: string;
         duration_minutes: number;
         room_id: string | null;
+        notes: string | null;
         rooms?: { name: string } | { name: string }[] | null;
       }[]
     | null;
@@ -51,15 +58,25 @@ function mapRequest(row: {
       : booking.rooms
     : null;
 
+  const requestedPayment = booking
+    ? parsePaymentMethodFromNotes(booking.notes)
+    : null;
+  const splitCashCents = booking
+    ? parseSplitCashCentsFromNotes(booking.notes)
+    : null;
+
   return {
     id: row.id,
     bookingId: row.booking_id,
     minutes: row.minutes,
     status: row.status as BookingExtendRequest["status"],
     paymentMethod:
-      row.payment_method === "cash" || row.payment_method === "card"
-        ? row.payment_method
-        : null,
+      requestedPayment && isInternalPaymentMethod(requestedPayment)
+        ? requestedPayment
+        : row.payment_method === "cash" || row.payment_method === "card"
+          ? row.payment_method
+          : null,
+    splitCashCents,
     priceCents: row.price_cents,
     createdAt: row.created_at,
     resolvedAt: row.resolved_at,
@@ -86,7 +103,7 @@ export async function GET(request: Request) {
     const { data, error } = await supabase
       .from("booking_extend_requests")
       .select(
-        "id, booking_id, minutes, status, payment_method, price_cents, created_at, resolved_at, requested_by_staff_id, staff:requested_by_staff_id(name), bookings(customer_name, customer_phone, customer_postcode, customer_email, starts_at, ends_at, duration_minutes, room_id, rooms(name))",
+        "id, booking_id, minutes, status, payment_method, price_cents, created_at, resolved_at, requested_by_staff_id, staff:requested_by_staff_id(name), bookings(customer_name, customer_phone, customer_postcode, customer_email, starts_at, ends_at, duration_minutes, room_id, notes, rooms(name))",
       )
       .eq("tenant_id", tenant.id)
       .eq("status", "pending")

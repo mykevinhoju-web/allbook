@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
 import {
-  isCashOrCardMethod,
+  isInternalPaymentMethod,
+  parsePaymentMethodFromNotes,
 } from "@/features/booking/lib/internal-payment-method";
 import { applyBookingExtend } from "@/features/booking/server/apply-booking-extend";
 import { createServiceSupabase } from "@/lib/admin/tenant-context";
@@ -10,7 +11,7 @@ import {
   requireTenantAndAdminActor,
 } from "@/lib/admin/require-admin-api";
 
-/** Admin approves a room extend request: cash/card + apply extend. */
+/** Admin approves a room extend request using the booking's payment method. */
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -18,15 +19,6 @@ export async function POST(
   try {
     const { tenant } = await requireTenantAndAdminActor(request);
     const { id } = await params;
-    const body = (await request.json()) as { paymentMethod?: string };
-
-    if (!isCashOrCardMethod(body.paymentMethod)) {
-      return NextResponse.json(
-        { error: "Select cash or card payment." },
-        { status: 400 },
-      );
-    }
-    const paymentMethod = body.paymentMethod;
 
     const supabase = createServiceSupabase();
     const { data: existing, error: fetchError } = await supabase
@@ -46,6 +38,28 @@ export async function POST(
       return NextResponse.json(
         { error: "This extend request was already handled." },
         { status: 409 },
+      );
+    }
+
+    const { data: booking, error: bookingError } = await supabase
+      .from("bookings")
+      .select("notes")
+      .eq("tenant_id", tenant.id)
+      .eq("id", existing.booking_id)
+      .maybeSingle();
+
+    if (bookingError) {
+      return NextResponse.json({ error: bookingError.message }, { status: 503 });
+    }
+    if (!booking) {
+      return NextResponse.json({ error: "Booking not found." }, { status: 404 });
+    }
+
+    const paymentMethod = parsePaymentMethodFromNotes(booking.notes);
+    if (!isInternalPaymentMethod(paymentMethod)) {
+      return NextResponse.json(
+        { error: "This booking has no payment method from the room." },
+        { status: 400 },
       );
     }
 

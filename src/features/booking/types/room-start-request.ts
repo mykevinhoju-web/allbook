@@ -13,6 +13,7 @@ export interface RoomStartRequest {
   durationMinutes: number;
   priceCents: number;
   requestedPayment: InternalPaymentMethod | null;
+  splitCashCents: number | null;
   startsAt: string;
   endsAt: string;
   createdAt: string;
