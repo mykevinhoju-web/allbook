@@ -205,7 +205,7 @@ export function AdminCustomersContent() {
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
       <AdminPageHeader
         title="Customers"
-        description="Guest history from bookings. Tap a name to mark + good (blue) or − bad (red) and leave a short note."
+        description="Guest history from bookings. Tap a name to mark good (blue) or bad (red) and leave a short note."
       />
 
       <div className="flex flex-wrap gap-2">
@@ -347,16 +347,6 @@ export function AdminCustomersContent() {
                             )}
                           >
                             {customer.name ?? "Walk-in"}
-                            {customer.rating === "good" ? (
-                              <span className="ml-1.5 text-xs font-semibold">
-                                + good
-                              </span>
-                            ) : null}
-                            {customer.rating === "bad" ? (
-                              <span className="ml-1.5 text-xs font-semibold">
-                                − bad
-                              </span>
-                            ) : null}
                           </button>
                           {view !== "all" ? (
                             <p className="mt-0.5 text-xs font-normal text-muted-foreground">
