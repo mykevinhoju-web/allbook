@@ -98,6 +98,21 @@ function draftValue(sortOrder: number): string {
   return sortOrder > 0 ? String(sortOrder) : "";
 }
 
+/** Apply visible 순번 inputs (including blanks) before save — blur may not have run yet. */
+function applyDraftsToRotation(
+  list: RotationRow[],
+  drafts: Record<string, string>,
+): RotationRow[] {
+  return list.map((row) => {
+    if (!(row.staffId in drafts)) return row;
+    const trimmed = drafts[row.staffId]!.trim();
+    if (!trimmed) return { ...row, sortOrder: 0 };
+    const order = Number(trimmed);
+    if (!Number.isFinite(order) || order < 1) return { ...row, sortOrder: 0 };
+    return { ...row, sortOrder: Math.round(order) };
+  });
+}
+
 export function AdminRotationContent() {
   const tenant = useOptionalTenant();
   const timeZone = tenant?.settings.timezone || "Australia/Sydney";
@@ -153,13 +168,20 @@ export function AdminRotationContent() {
   }, [load]);
 
   const save = async (next = rotation) => {
+    const roster = applyDraftsToRotation(next, drafts);
+    setRotation(roster);
+    setDrafts(
+      Object.fromEntries(
+        roster.map((row) => [row.staffId, draftValue(row.sortOrder)]),
+      ),
+    );
     setSaving(true);
     try {
       const response = await fetchAdminApi("/api/admin/rotation", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          roster: next.map((row) => ({
+          roster: roster.map((row) => ({
             staffId: row.staffId,
             sortOrder: row.sortOrder,
           })),
