@@ -38,7 +38,7 @@ export function AdminSidebar({ isStaff = false }: { isStaff?: boolean }) {
   const closeMobile = () => setOpenMobile(false);
 
   return (
-    <Sidebar collapsible="icon" variant="inset">
+    <Sidebar collapsible="icon" variant="sidebar">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Bell, LogOut, Settings, Smartphone, User } from "lucide-react";
@@ -24,7 +23,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useBookingAlerts } from "@/features/booking/context/booking-alert-provider";
 import {
@@ -102,18 +100,6 @@ export function AdminHeader({ user }: AdminHeaderProps) {
     <>
       <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-3 sm:gap-3 sm:px-4">
         <SidebarTrigger className="-ml-1 size-9 shrink-0" aria-label="Open menu" />
-
-        <Link
-          href="/admin"
-          className="hidden min-w-0 items-center gap-2 font-semibold tracking-tight lg:flex"
-        >
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
-            {tenant.branding.logoInitials}
-          </span>
-          <span className="truncate">{tenant.branding.displayName}</span>
-        </Link>
-
-        <Separator orientation="vertical" className="hidden h-4 lg:block" />
 
         <div className="min-w-0 flex-1">
           <p className="truncate text-base font-semibold tracking-tight lg:hidden">
