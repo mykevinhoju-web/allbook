@@ -172,7 +172,12 @@ function StaffDailyDetail({
               <span>Type</span>
               <span className="text-right">Payment</span>
               <span className="text-right">Sales</span>
-              <span className="text-right">Staff</span>
+              <span className="text-right">
+                <span>Staff</span>
+                <span className="block text-[11px] text-muted-foreground">
+                  Shop
+                </span>
+              </span>
             </div>
             <ul className="divide-y divide-border/40">
               {day.bookings.map((booking) => (
@@ -207,9 +212,14 @@ function StaffDailyDetail({
                   <p className="mt-0.5 text-sm font-semibold tabular-nums sm:mt-0 sm:text-right">
                     {formatPriceFromCents(booking.priceCents, currency)}
                   </p>
-                  <p className="text-sm tabular-nums text-muted-foreground sm:text-right">
-                    {formatPriceFromCents(booking.staffPayoutCents, currency)}
-                  </p>
+                  <div className="text-right">
+                    <p className="text-sm tabular-nums">
+                      {formatPriceFromCents(booking.staffPayoutCents, currency)}
+                    </p>
+                    <p className="text-xs tabular-nums text-muted-foreground">
+                      {formatPriceFromCents(booking.shopCents, currency)}
+                    </p>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -691,6 +701,47 @@ export function AdminReportsContent() {
                 timeZone={report.timezone}
                 dense
               />
+            </div>
+            <div className="mt-4 space-y-2 border-t border-border/40 pt-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Totals
+              </p>
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span className="text-muted-foreground">Cash</span>
+                <span className="font-semibold tabular-nums">
+                  {formatPriceFromCents(
+                    report.cashTotalCents ?? 0,
+                    currency,
+                  )}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span className="text-muted-foreground">Card / online</span>
+                <span className="font-semibold tabular-nums">
+                  {formatPriceFromCents(
+                    report.cardTotalCents ?? 0,
+                    currency,
+                  )}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span className="text-muted-foreground">Total staff take</span>
+                <span className="font-semibold tabular-nums">
+                  {formatPriceFromCents(
+                    report.staffPayoutTotalCents ?? 0,
+                    currency,
+                  )}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span className="text-muted-foreground">Total shop take</span>
+                <span className="font-semibold tabular-nums">
+                  {formatPriceFromCents(
+                    report.shopTotalCents ?? 0,
+                    currency,
+                  )}
+                </span>
+              </div>
             </div>
           </section>
         </div>

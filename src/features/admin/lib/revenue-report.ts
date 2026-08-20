@@ -19,6 +19,7 @@ export type RevenueBookingDetail = {
   customerName: string | null;
   priceCents: number;
   staffPayoutCents: number;
+  shopCents: number;
   staffPayoutCashCents: number;
   staffPayoutCardCents: number;
   cashCents: number;
@@ -313,6 +314,7 @@ export function aggregateRevenueReport(
       customerName: booking.customerName,
       priceCents: cents,
       staffPayoutCents,
+      shopCents,
       staffPayoutCashCents: tender.staffPayoutCashCents,
       staffPayoutCardCents: tender.staffPayoutCardCents,
       cashCents,
