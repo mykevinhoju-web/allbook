@@ -103,6 +103,7 @@ export function AdminCustomersContent() {
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
   const [openKey, setOpenKey] = useState<string | null>(null);
+  const [flagKey, setFlagKey] = useState<string | null>(null);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
 
@@ -174,6 +175,7 @@ export function AdminCustomersContent() {
         ),
       );
       setOpenKey(null);
+      setFlagKey(null);
     } catch {
       setCustomers([]);
     } finally {
@@ -203,7 +205,7 @@ export function AdminCustomersContent() {
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
       <AdminPageHeader
         title="Customers"
-        description="Guest history from bookings. Mark + good (blue) or − bad (red), and leave a short note."
+        description="Guest history from bookings. Tap a name to mark + good (blue) or − bad (red) and leave a short note."
       />
 
       <div className="flex flex-wrap gap-2">
@@ -294,7 +296,7 @@ export function AdminCustomersContent() {
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-sm">
+            <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-border/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
                   <th className="px-4 py-3 font-medium">Customer</th>
@@ -314,6 +316,7 @@ export function AdminCustomersContent() {
               <tbody>
                 {customers.map((customer) => {
                   const open = openKey === customer.key;
+                  const flagOpen = flagKey === customer.key;
                   const spent =
                     view === "all"
                       ? customer.totalSpentCents
@@ -322,18 +325,25 @@ export function AdminCustomersContent() {
                     view === "all"
                       ? customer.bookingCount
                       : customer.periodVisitCount;
+                  const nameColor =
+                    customer.rating === "good"
+                      ? "text-blue-600 dark:text-blue-400"
+                      : customer.rating === "bad"
+                        ? "text-red-600 dark:text-red-400"
+                        : "text-foreground";
 
                   return (
                     <Fragment key={customer.key}>
                       <tr className="border-b border-border/40 hover:bg-muted/20">
                         <td className="px-4 py-3">
-                          <p
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFlagKey(flagOpen ? null : customer.key)
+                            }
                             className={cn(
-                              "font-medium",
-                              customer.rating === "good" &&
-                                "text-blue-600 dark:text-blue-400",
-                              customer.rating === "bad" &&
-                                "text-red-600 dark:text-red-400",
+                              "max-w-full text-left font-medium hover:underline",
+                              nameColor,
                             )}
                           >
                             {customer.name ?? "Walk-in"}
@@ -347,94 +357,102 @@ export function AdminCustomersContent() {
                                 − bad
                               </span>
                             ) : null}
-                          </p>
+                          </button>
                           {view !== "all" ? (
                             <p className="mt-0.5 text-xs font-normal text-muted-foreground">
                               {customer.bookingCount} visit
                               {customer.bookingCount === 1 ? "" : "s"} total
                             </p>
                           ) : null}
-                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                            <AppButton
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              className={cn(
-                                "size-8 rounded-lg",
-                                customer.rating === "good" &&
-                                  "border-blue-400 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300",
-                              )}
-                              disabled={savingKey === customer.key}
-                              aria-label="Mark as good customer"
-                              onClick={() =>
-                                void saveFlag(customer, {
-                                  rating:
-                                    customer.rating === "good" ? null : "good",
-                                  note:
-                                    noteDrafts[customer.key] ??
-                                    customer.note ??
-                                    "",
-                                })
-                              }
-                            >
-                              <Plus className="size-4" />
-                            </AppButton>
-                            <AppButton
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              className={cn(
-                                "size-8 rounded-lg",
-                                customer.rating === "bad" &&
-                                  "border-red-400 bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300",
-                              )}
-                              disabled={savingKey === customer.key}
-                              aria-label="Mark as bad customer"
-                              onClick={() =>
-                                void saveFlag(customer, {
-                                  rating:
-                                    customer.rating === "bad" ? null : "bad",
-                                  note:
-                                    noteDrafts[customer.key] ??
-                                    customer.note ??
-                                    "",
-                                })
-                              }
-                            >
-                              <Minus className="size-4" />
-                            </AppButton>
-                            <Input
-                              value={
-                                noteDrafts[customer.key] ?? customer.note ?? ""
-                              }
-                              maxLength={160}
-                              placeholder="Short note"
-                              disabled={savingKey === customer.key}
-                              onChange={(event) => {
-                                const value = event.target.value;
-                                setNoteDrafts((current) => ({
-                                  ...current,
-                                  [customer.key]: value,
-                                }));
-                              }}
-                              onBlur={(event) => {
-                                const nextNote = event.target.value.trim();
-                                if (nextNote === (customer.note ?? "").trim()) {
-                                  return;
+                          {flagOpen ? (
+                            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                              <AppButton
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className={cn(
+                                  "size-8 rounded-lg",
+                                  customer.rating === "good" &&
+                                    "border-blue-400 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300",
+                                )}
+                                disabled={savingKey === customer.key}
+                                aria-label="Mark as good customer"
+                                onClick={() =>
+                                  void saveFlag(customer, {
+                                    rating:
+                                      customer.rating === "good"
+                                        ? null
+                                        : "good",
+                                    note:
+                                      noteDrafts[customer.key] ??
+                                      customer.note ??
+                                      "",
+                                  })
                                 }
-                                void saveFlag(customer, {
-                                  rating: customer.rating,
-                                  note: nextNote,
-                                });
-                              }}
-                              onKeyDown={(event) => {
-                                if (event.key === "Enter") {
-                                  event.currentTarget.blur();
+                              >
+                                <Plus className="size-4" />
+                              </AppButton>
+                              <AppButton
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className={cn(
+                                  "size-8 rounded-lg",
+                                  customer.rating === "bad" &&
+                                    "border-red-400 bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300",
+                                )}
+                                disabled={savingKey === customer.key}
+                                aria-label="Mark as bad customer"
+                                onClick={() =>
+                                  void saveFlag(customer, {
+                                    rating:
+                                      customer.rating === "bad" ? null : "bad",
+                                    note:
+                                      noteDrafts[customer.key] ??
+                                      customer.note ??
+                                      "",
+                                  })
                                 }
-                              }}
-                              className="h-8 min-w-[10rem] max-w-[16rem] flex-1 rounded-lg text-xs"
-                            />
-                          </div>
+                              >
+                                <Minus className="size-4" />
+                              </AppButton>
+                              <Input
+                                value={
+                                  noteDrafts[customer.key] ??
+                                  customer.note ??
+                                  ""
+                                }
+                                maxLength={160}
+                                placeholder="Short note"
+                                disabled={savingKey === customer.key}
+                                onChange={(event) => {
+                                  const value = event.target.value;
+                                  setNoteDrafts((current) => ({
+                                    ...current,
+                                    [customer.key]: value,
+                                  }));
+                                }}
+                                onBlur={(event) => {
+                                  const nextNote = event.target.value.trim();
+                                  if (
+                                    nextNote === (customer.note ?? "").trim()
+                                  ) {
+                                    return;
+                                  }
+                                  void saveFlag(customer, {
+                                    rating: customer.rating,
+                                    note: nextNote,
+                                  });
+                                }}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter") {
+                                    event.currentTarget.blur();
+                                  }
+                                }}
+                                className="h-8 min-w-[10rem] max-w-[16rem] flex-1 rounded-lg text-xs"
+                              />
+                            </div>
+                          ) : null}
                         </td>
                         <td className="px-4 py-3 text-muted-foreground">
                           <div className="space-y-0.5">
