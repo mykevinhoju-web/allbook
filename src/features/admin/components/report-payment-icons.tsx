@@ -8,10 +8,13 @@ export function ReportPaymentIcons({
   cashCents,
   cardCents,
   currency,
+  compact,
 }: {
   cashCents: number;
   cardCents: number;
   currency: string;
+  /** Icon-only (or icon + amount for splits) to fit narrow report tables. */
+  compact?: boolean;
 }) {
   const showCash = cashCents > 0;
   const showCard = cardCents > 0;
@@ -27,21 +30,27 @@ export function ReportPaymentIcons({
           <>
             <span
               className="inline-flex size-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-800"
-              aria-hidden
+              aria-label="Cash"
+              title="Cash"
             >
               <DollarSign className="size-3.5" strokeWidth={2.5} />
             </span>
-            <span className="text-sm font-medium text-foreground">Cash</span>
+            {compact ? null : (
+              <span className="text-sm font-medium text-foreground">Cash</span>
+            )}
           </>
         ) : (
           <>
             <span
               className="inline-flex size-7 items-center justify-center rounded-full bg-sky-100 text-sky-800"
-              aria-hidden
+              aria-label="Card"
+              title="Card"
             >
               <CreditCard className="size-3.5" strokeWidth={2.5} />
             </span>
-            <span className="text-sm font-medium text-foreground">Card</span>
+            {compact ? null : (
+              <span className="text-sm font-medium text-foreground">Card</span>
+            )}
           </>
         )}
       </span>
@@ -49,7 +58,7 @@ export function ReportPaymentIcons({
   }
 
   return (
-    <span className="inline-flex flex-wrap items-center gap-1.5">
+    <span className="inline-flex flex-wrap items-center justify-end gap-1.5">
       <span className="inline-flex items-center gap-1" title="Cash">
         <span
           className="inline-flex size-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-800"

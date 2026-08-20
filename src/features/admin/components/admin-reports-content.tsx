@@ -165,58 +165,61 @@ function StaffDailyDetail({
             </p>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-border/40">
-            <div className="hidden bg-muted/40 px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)_5.5rem_minmax(7.5rem,9.5rem)_5rem_4rem_4rem] sm:gap-x-1 sm:gap-y-0">
-              <span>Time</span>
-              <span>Customer</span>
-              <span>Type</span>
-              <span className="text-right">Payment</span>
-              <span className="text-right">Sales</span>
-              <span className="text-right">Staff</span>
-              <span className="text-right">Shop</span>
-            </div>
-            <ul className="divide-y divide-border/40">
-              {day.bookings.map((booking) => (
-                <li
-                  key={booking.id}
-                  className="px-3 py-2.5 sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)_5.5rem_minmax(7.5rem,9.5rem)_5rem_4rem_4rem] sm:items-center sm:gap-x-1 sm:gap-y-0"
-                >
-                  <p className="text-sm font-medium tabular-nums">
-                    {formatAmPmTime(booking.startsAt)}
-                  </p>
-                  <div className="min-w-0 sm:col-start-2">
-                    <p className="truncate text-sm font-medium">
-                      {booking.customerName?.trim() || "Guest"}
-                    </p>
-                    <p className="text-xs text-muted-foreground sm:hidden">
+          <div className="overflow-x-auto rounded-xl border border-border/40">
+            <div className="min-w-[36rem]">
+              <div className="hidden bg-muted/40 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[4.5rem_minmax(0,1.1fr)_auto_minmax(5.5rem,1fr)_3.75rem_3.5rem_3.5rem] sm:items-center sm:gap-x-2">
+                <span>Time</span>
+                <span>Customer</span>
+                <span>Type</span>
+                <span className="text-right">Payment</span>
+                <span className="text-right">Sales</span>
+                <span className="text-right">Staff</span>
+                <span className="text-right">Shop</span>
+              </div>
+              <ul className="divide-y divide-border/40">
+                {day.bookings.map((booking) => (
+                  <li
+                    key={booking.id}
+                    className="px-3 py-2.5 sm:grid sm:grid-cols-[4.5rem_minmax(0,1.1fr)_auto_minmax(5.5rem,1fr)_3.75rem_3.5rem_3.5rem] sm:items-center sm:gap-x-2"
+                  >
+                    <p className="text-sm font-medium tabular-nums">
                       {formatAmPmTime(booking.startsAt)}
                     </p>
-                    <div className="mt-1 sm:hidden">
+                    <div className="min-w-0 sm:col-start-2">
+                      <p className="truncate text-sm font-medium">
+                        {booking.customerName?.trim() || "Guest"}
+                      </p>
+                      <p className="text-xs text-muted-foreground sm:hidden">
+                        {formatAmPmTime(booking.startsAt)}
+                      </p>
+                      <div className="mt-1 sm:hidden">
+                        <ReportBookingTypeBadge walkIn={booking.walkIn} />
+                      </div>
+                    </div>
+                    <div className="hidden sm:block">
                       <ReportBookingTypeBadge walkIn={booking.walkIn} />
                     </div>
-                  </div>
-                  <div className="hidden sm:block">
-                    <ReportBookingTypeBadge walkIn={booking.walkIn} />
-                  </div>
-                  <div className="mt-1.5 flex justify-start sm:mt-0 sm:justify-end">
-                    <ReportPaymentIcons
-                      cashCents={booking.cashCents}
-                      cardCents={booking.cardCents}
-                      currency={currency}
-                    />
-                  </div>
-                  <p className="mt-0.5 text-sm font-semibold tabular-nums sm:mt-0 sm:text-right">
-                    {formatPriceFromCents(booking.priceCents, currency)}
-                  </p>
-                  <p className="mt-0.5 text-sm tabular-nums sm:mt-0 sm:text-right">
-                    {formatPriceFromCents(booking.staffPayoutCents, currency)}
-                  </p>
-                  <p className="mt-0.5 text-sm tabular-nums text-muted-foreground sm:mt-0 sm:text-right">
-                    {formatPriceFromCents(booking.shopCents, currency)}
-                  </p>
-                </li>
-              ))}
-            </ul>
+                    <div className="mt-1.5 flex justify-start sm:mt-0 sm:justify-end">
+                      <ReportPaymentIcons
+                        cashCents={booking.cashCents}
+                        cardCents={booking.cardCents}
+                        currency={currency}
+                        compact
+                      />
+                    </div>
+                    <p className="mt-0.5 text-sm font-semibold tabular-nums sm:mt-0 sm:text-right">
+                      {formatPriceFromCents(booking.priceCents, currency)}
+                    </p>
+                    <p className="mt-0.5 text-sm tabular-nums sm:mt-0 sm:text-right">
+                      {formatPriceFromCents(booking.staffPayoutCents, currency)}
+                    </p>
+                    <p className="mt-0.5 text-sm tabular-nums text-muted-foreground sm:mt-0 sm:text-right">
+                      {formatPriceFromCents(booking.shopCents, currency)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
       ))}
@@ -699,7 +702,7 @@ export function AdminReportsContent() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:items-start">
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)] xl:items-start">
           <section className="space-y-3">
             <div className="flex items-baseline justify-between px-1">
               <h2 className="text-sm font-semibold tracking-tight">By staff</h2>
@@ -720,7 +723,7 @@ export function AdminReportsContent() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-border/50 bg-card p-4 shadow-soft lg:sticky lg:top-4">
+          <section className="rounded-2xl border border-border/50 bg-card p-4 shadow-soft xl:sticky xl:top-4">
             <h2 className="text-sm font-semibold tracking-tight">Daily total</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
               All selected staff combined
