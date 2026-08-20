@@ -166,24 +166,20 @@ function StaffDailyDetail({
           </div>
 
           <div className="overflow-hidden rounded-xl border border-border/40">
-            <div className="hidden bg-muted/40 px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)_5.5rem_minmax(7.5rem,9.5rem)_5rem_5rem] sm:gap-x-1 sm:gap-y-0">
+            <div className="hidden bg-muted/40 px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)_5.5rem_minmax(7.5rem,9.5rem)_5rem_4rem_4rem] sm:gap-x-1 sm:gap-y-0">
               <span>Time</span>
               <span>Customer</span>
               <span>Type</span>
               <span className="text-right">Payment</span>
               <span className="text-right">Sales</span>
-              <span className="text-right">
-                <span>Staff</span>
-                <span className="block text-[11px] text-muted-foreground">
-                  Shop
-                </span>
-              </span>
+              <span className="text-right">Staff</span>
+              <span className="text-right">Shop</span>
             </div>
             <ul className="divide-y divide-border/40">
               {day.bookings.map((booking) => (
                 <li
                   key={booking.id}
-                  className="px-3 py-2.5 sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)_5.5rem_minmax(7.5rem,9.5rem)_5rem_5rem] sm:items-center sm:gap-x-1 sm:gap-y-0"
+                  className="px-3 py-2.5 sm:grid sm:grid-cols-[5.5rem_minmax(0,1fr)_5.5rem_minmax(7.5rem,9.5rem)_5rem_4rem_4rem] sm:items-center sm:gap-x-1 sm:gap-y-0"
                 >
                   <p className="text-sm font-medium tabular-nums">
                     {formatAmPmTime(booking.startsAt)}
@@ -212,14 +208,12 @@ function StaffDailyDetail({
                   <p className="mt-0.5 text-sm font-semibold tabular-nums sm:mt-0 sm:text-right">
                     {formatPriceFromCents(booking.priceCents, currency)}
                   </p>
-                  <div className="text-right">
-                    <p className="text-sm tabular-nums">
-                      {formatPriceFromCents(booking.staffPayoutCents, currency)}
-                    </p>
-                    <p className="text-xs tabular-nums text-muted-foreground">
-                      {formatPriceFromCents(booking.shopCents, currency)}
-                    </p>
-                  </div>
+                  <p className="mt-0.5 text-sm tabular-nums sm:mt-0 sm:text-right">
+                    {formatPriceFromCents(booking.staffPayoutCents, currency)}
+                  </p>
+                  <p className="mt-0.5 text-sm tabular-nums text-muted-foreground sm:mt-0 sm:text-right">
+                    {formatPriceFromCents(booking.shopCents, currency)}
+                  </p>
                 </li>
               ))}
             </ul>
