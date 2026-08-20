@@ -5,7 +5,7 @@ import { isOtherStaffGuestAttributes } from "@/features/booking/lib/booking-othe
 import { autoCheckoutExpiredBookings } from "@/features/booking/server/auto-checkout-expired";
 import {
   countWalkInsByStaff,
-  listInServiceStaffIds,
+  listInServiceStaff,
   loadWalkInRotation,
   appendWalkInRotationNewcomers,
   saveWalkInRotationRoster,
@@ -82,15 +82,16 @@ export async function GET(request: Request) {
 
     const staffIds = orderedRotation.map((row) => row.staffId);
 
-    const [walkInCounts, inServiceIds] = await Promise.all([
+    const [walkInCounts, inService] = await Promise.all([
       countWalkInsByStaff(supabase, {
         tenantId: tenant.id,
         workDate: date,
         timeZone,
         staffIds,
       }),
-      listInServiceStaffIds(supabase, tenant.id, staffIds),
+      listInServiceStaff(supabase, tenant.id, staffIds),
     ]);
+    const inServiceIds = inService.ids;
 
     const nameById = new Map(working.map((row) => [row.id, row.name]));
     for (const row of staffRows ?? []) {
@@ -102,6 +103,7 @@ export async function GET(request: Request) {
       working: working.map((row) => ({
         ...row,
         inService: inServiceIds.has(row.id),
+        roomName: inService.roomByStaffId.get(row.id) ?? null,
         walkInCount: walkInCounts[row.id] ?? 0,
         inRotation: true,
       })),
@@ -110,6 +112,7 @@ export async function GET(request: Request) {
         name: nameById.get(row.staffId) ?? "Staff",
         sortOrder: row.sortOrder,
         inService: inServiceIds.has(row.staffId),
+        roomName: inService.roomByStaffId.get(row.staffId) ?? null,
         walkInCount: walkInCounts[row.staffId] ?? 0,
       })),
     });

@@ -16,6 +16,7 @@ type WorkingStaff = {
   id: string;
   name: string;
   inService: boolean;
+  roomName: string | null;
   walkInCount: number;
   inRotation: boolean;
 };
@@ -25,6 +26,7 @@ type RotationRow = {
   name: string;
   sortOrder: number;
   inService: boolean;
+  roomName: string | null;
   walkInCount: number;
 };
 
@@ -41,6 +43,7 @@ function toRow(staff: WorkingStaff, sortOrder: number): RotationRow {
     name: staff.name,
     sortOrder,
     inService: staff.inService,
+    roomName: staff.roomName,
     walkInCount: staff.walkInCount,
   };
 }
@@ -69,6 +72,7 @@ function mergeOnShiftRotation(
         ...row,
         name: staff.name,
         inService: staff.inService,
+        roomName: staff.roomName,
         walkInCount: staff.walkInCount,
       };
     });
@@ -84,6 +88,7 @@ function mergeOnShiftRotation(
           name: "Staff",
           sortOrder: row.sortOrder,
           inService: false,
+          roomName: null,
           walkInCount: 0,
         };
   });
@@ -357,6 +362,7 @@ export function AdminRotationContent() {
                             id: row.staffId,
                             name: row.name,
                             inService: row.inService,
+                            roomName: row.roomName,
                             walkInCount: row.walkInCount,
                             inRotation: true,
                           },
@@ -375,17 +381,28 @@ export function AdminRotationContent() {
                       aria-label={`Turn order for ${row.name}`}
                     />
                     <div className="min-w-0 flex-1">
-                      <p
-                        className={cn(
-                          "truncate text-sm font-semibold",
-                          isNext && "text-blue-600 dark:text-blue-400",
-                        )}
-                      >
-                        {row.name}
-                      </p>
+                      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                        <p
+                          className={cn(
+                            "truncate text-sm font-semibold",
+                            isNext && "text-blue-600 dark:text-blue-400",
+                          )}
+                        >
+                          {row.name}
+                        </p>
+                        {row.inService ? (
+                          <span className="inline-flex shrink-0 items-center rounded-full bg-blue-600 px-2 py-0.5 text-[11px] font-semibold leading-none text-white">
+                            서비스중
+                          </span>
+                        ) : null}
+                        {row.inService && row.roomName ? (
+                          <span className="inline-flex shrink-0 items-center rounded-full bg-violet-600 px-2 py-0.5 text-[11px] font-semibold leading-none text-white">
+                            {row.roomName}
+                          </span>
+                        ) : null}
+                      </div>
                       <p className="text-xs text-muted-foreground">
                         walk-in {row.walkInCount}
-                        {row.inService ? " · in service" : ""}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">

@@ -333,17 +333,18 @@ export async function bumpWalkInCountAdjust(args: {
   return { walkInCount: next[args.staffId] ?? 0 };
 }
 
-export async function listInServiceStaffIds(
+export async function listInServiceStaff(
   supabase: ServiceClient,
   tenantId: string,
   staffIds: string[],
-): Promise<Set<string>> {
-  const busy = new Set<string>();
-  if (staffIds.length === 0) return busy;
+): Promise<{ ids: Set<string>; roomByStaffId: Map<string, string> }> {
+  const ids = new Set<string>();
+  const roomByStaffId = new Map<string, string>();
+  if (staffIds.length === 0) return { ids, roomByStaffId };
 
   const { data, error } = await supabase
     .from("bookings")
-    .select("staff_id")
+    .select("staff_id, rooms(name)")
     .eq("tenant_id", tenantId)
     .in("staff_id", staffIds)
     .neq("status", "cancelled")
@@ -355,8 +356,27 @@ export async function listInServiceStaffIds(
     throw new Error(error.message);
   }
 
-  for (const row of data ?? []) busy.add(row.staff_id);
-  return busy;
+  for (const row of (data ?? []) as Array<{
+    staff_id: string;
+    rooms?: { name: string } | { name: string }[] | null;
+  }>) {
+    ids.add(row.staff_id);
+    const rooms = row.rooms;
+    const roomName = (Array.isArray(rooms) ? rooms[0]?.name : rooms?.name)?.trim();
+    if (roomName && !roomByStaffId.has(row.staff_id)) {
+      roomByStaffId.set(row.staff_id, roomName);
+    }
+  }
+  return { ids, roomByStaffId };
+}
+
+export async function listInServiceStaffIds(
+  supabase: ServiceClient,
+  tenantId: string,
+  staffIds: string[],
+): Promise<Set<string>> {
+  const { ids } = await listInServiceStaff(supabase, tenantId, staffIds);
+  return ids;
 }
 
 async function listOffShiftStaffIds(
