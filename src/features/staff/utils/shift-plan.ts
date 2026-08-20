@@ -112,6 +112,29 @@ export function tailDatesForPlan(plan: ShiftPlan): string[] {
   return tails;
 }
 
+/**
+ * Yesterday's overnight shift that is still in progress after midnight.
+ * Staff editors hide past days — without this, active night shifts disappear from the UI.
+ */
+export function activeOvernightAnchorDates(
+  plan: ShiftPlan,
+  today: string,
+  timeZone: string,
+  now = new Date(),
+): string[] {
+  const yesterday = addDaysToDateInput(today, -1);
+  const entry = plan[yesterday];
+  if (!entry || !isOvernightShift(entry)) return [];
+
+  const window = shiftPlanDayToWindow(yesterday, entry, timeZone);
+  const t = now.getTime();
+  const start = new Date(window.shiftStartsAt).getTime();
+  const end = new Date(window.shiftEndsAt).getTime();
+  if (Number.isNaN(start) || Number.isNaN(end)) return [];
+  if (t < start || t >= end) return [];
+  return [yesterday];
+}
+
 export function parseShiftPlan(value: unknown): ShiftPlan {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {};

@@ -21,6 +21,7 @@ import {
   parseDateInput,
 } from "../utils/shift-calendar";
 import {
+  activeOvernightAnchorDates,
   formatShiftPlanDayLabel,
   isOvernightShift,
   resolveShiftForCalendarDate,
@@ -174,15 +175,18 @@ function defaultEntryFromPlan(
 function ScheduleDayButton({
   shiftPlan,
   today,
+  activeOvernightAnchors,
   onDayClick,
   ...props
 }: React.ComponentProps<typeof CalendarDayButton> & {
   shiftPlan: ShiftPlan;
   today: string;
+  activeOvernightAnchors: string[];
   onDayClick: (day: Date) => void;
 }) {
   const dateKey = formatDateInput(props.day.date);
-  const showMarkers = dateKey >= today;
+  const showMarkers =
+    dateKey >= today || activeOvernightAnchors.includes(dateKey);
   const entry = showMarkers ? shiftPlan[dateKey] : undefined;
   const label = showMarkers
     ? formatShiftPlanDayLabel(dateKey, shiftPlan)
@@ -236,10 +240,17 @@ export function StaffShiftCalendar({
   onShiftPlanChange,
 }: StaffShiftCalendarProps) {
   const today = todayDateInZone(timeZone);
-  const upcomingDates = useMemo(
-    () => sortedShiftPlanDates(shiftPlan).filter((date) => date >= today),
-    [shiftPlan, today],
+  const activeOvernightAnchors = useMemo(
+    () => activeOvernightAnchorDates(shiftPlan, today, timeZone),
+    [shiftPlan, today, timeZone, localNow],
   );
+  const upcomingDates = useMemo(() => {
+    const future = sortedShiftPlanDates(shiftPlan).filter(
+      (date) => date >= today,
+    );
+    const merged = [...activeOvernightAnchors, ...future];
+    return [...new Set(merged)].sort();
+  }, [shiftPlan, today, activeOvernightAnchors]);
   const scheduledDates = useMemo(
     () => upcomingDates.map((date) => parseDateInput(date)),
     [upcomingDates],
@@ -253,15 +264,22 @@ export function StaffShiftCalendar({
   );
 
   const [focusedDate, setFocusedDate] = useState(() => {
+    const liveOvernight = activeOvernightAnchorDates(
+      shiftPlan,
+      today,
+      timeZone,
+    );
+    if (liveOvernight[0]) return liveOvernight[0];
+    // Prefer today when an overnight spillover covers this morning.
+    if (resolveShiftForCalendarDate(shiftPlan, today, timeZone)?.isTailOnly) {
+      return today;
+    }
     const dates = sortedShiftPlanDates(shiftPlan);
-    // Never open on a past day — fall back to today when nothing upcoming.
     return dates.find((date) => date >= today) ?? today;
   });
 
   const [visibleMonth, setVisibleMonth] = useState(() =>
-    parseDateInput(
-      sortedShiftPlanDates(shiftPlan).find((date) => date >= today) ?? today,
-    ),
+    parseDateInput(focusedDate),
   );
 
   const focusedShift = useMemo(
@@ -274,8 +292,11 @@ export function StaffShiftCalendar({
   };
   const focusedOvernight = isOvernightShift(focusedEntry);
   const isTailFocus = Boolean(focusedShift?.isTailOnly);
+  const isActivePastOvernight = activeOvernightAnchors.includes(focusedDate);
 
-  const minSelectableDate = parseDateInput(today);
+  const minSelectableDate = parseDateInput(
+    activeOvernightAnchors[0] ?? today,
+  );
   const canGoPrevMonth =
     visibleMonth.getFullYear() > minSelectableDate.getFullYear() ||
     (visibleMonth.getFullYear() === minSelectableDate.getFullYear() &&
@@ -298,7 +319,8 @@ export function StaffShiftCalendar({
 
   const handleDayClick = (day: Date) => {
     const key = formatDateInput(day);
-    if (key < today) return;
+    const allowedPast = activeOvernightAnchors.includes(key);
+    if (key < today && !allowedPast) return;
 
     // Any future date is selectable — including overnight "tail" mornings.
     if (shiftPlan[key]) {
@@ -326,7 +348,9 @@ export function StaffShiftCalendar({
 
     const remaining = sortedShiftPlanDates(nextPlan);
     const nextFocus =
-      remaining.find((date) => date >= today) ?? today;
+      remaining.find((date) => date >= today) ??
+      activeOvernightAnchorDates(nextPlan, today, timeZone)[0] ??
+      today;
     focusDate(nextFocus);
   };
 
@@ -438,6 +462,7 @@ export function StaffShiftCalendar({
                 {...props}
                 shiftPlan={shiftPlan}
                 today={today}
+                activeOvernightAnchors={activeOvernightAnchors}
                 onDayClick={handleDayClick}
               />
             ),
@@ -491,6 +516,11 @@ export function StaffShiftCalendar({
                 <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
                   <Moon className="size-3" />
                   Ends next day
+                </span>
+              ) : null}
+              {isActivePastOvernight ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                  In progress now
                 </span>
               ) : null}
             </div>
