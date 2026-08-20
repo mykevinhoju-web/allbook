@@ -295,6 +295,28 @@ export function RoomHomeContent() {
   }, [router, today]);
 
   const loadStaffMe = useCallback(async () => {
+    // Room presence sync: validates server session + rewrites Room badge for admin list.
+    const presenceRes = await fetch("/api/room/staff/presence", {
+      method: "POST",
+      credentials: "include",
+    });
+    const presenceData = (await presenceRes.json()) as {
+      staff?: { id: string; name: string } | null;
+      code?: string;
+    };
+    if (presenceRes.status === 403 && presenceData.code === "ROOM_LOGIN_REQUIRED") {
+      router.replace("/room/login");
+      setStaff(null);
+      return false;
+    }
+    if (presenceData.staff?.id) {
+      setStaff({
+        id: presenceData.staff.id,
+        name: presenceData.staff.name ?? "Staff",
+      });
+      return true;
+    }
+
     const response = await fetch("/api/staff/auth/me");
     const data = (await response.json()) as {
       user?: { role: string; staffId?: string; name?: string } | null;
@@ -305,7 +327,7 @@ export function RoomHomeContent() {
     }
     setStaff(null);
     return false;
-  }, []);
+  }, [router]);
 
   const loadStaffSchedule = useCallback(async () => {
     const response = await fetch(`/api/staff/schedule?date=${today}`);

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { readCookieFromRequest } from "@/lib/cookies/read-request-cookie";
 import { requireTenantFromRequest, TenantContextError } from "@/lib/admin/tenant-context";
+import { expireNamedSessionCookie } from "@/lib/app-session";
 import { getStaffSessionCookieName, verifyStaffSession } from "@/lib/staff-session";
 import { createServiceSupabase } from "@/lib/supabase/service";
 
@@ -15,20 +16,41 @@ export async function GET(request: Request) {
 
     const payload = await verifyStaffSession(token);
     if (!payload || payload.role !== "staff" || payload.tenantId !== tenant.id) {
-      return NextResponse.json({ user: null });
+      const response = NextResponse.json({ user: null });
+      expireNamedSessionCookie(
+        response,
+        getStaffSessionCookieName(),
+        request.headers.get("host"),
+      );
+      return response;
     }
 
     const supabase = createServiceSupabase();
 
-    const { data } = await supabase
-      .from("staff")
-      .select("id, name")
-      .eq("tenant_id", tenant.id)
-      .eq("id", payload.staffId)
-      .maybeSingle();
+    const [{ data }, { data: account }] = await Promise.all([
+      supabase
+        .from("staff")
+        .select("id, name")
+        .eq("tenant_id", tenant.id)
+        .eq("id", payload.staffId)
+        .maybeSingle(),
+      supabase
+        .from("staff_accounts")
+        .select("session_started_at")
+        .eq("tenant_id", tenant.id)
+        .eq("staff_id", payload.staffId)
+        .maybeSingle(),
+    ]);
 
-    if (!data) {
-      return NextResponse.json({ user: null });
+    // Admin Clear room login / staff logout clears session_started_at — drop stale cookie.
+    if (!data || !account?.session_started_at) {
+      const response = NextResponse.json({ user: null });
+      expireNamedSessionCookie(
+        response,
+        getStaffSessionCookieName(),
+        request.headers.get("host"),
+      );
+      return response;
     }
 
     return NextResponse.json({
