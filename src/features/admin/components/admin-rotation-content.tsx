@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GripVertical, Loader2, ListOrdered, Minus, Plus } from "lucide-react";
 
 import { AppButton, toast } from "@/components/common";
@@ -8,7 +8,11 @@ import { Input } from "@/components/ui/input";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { fetchAdminApi } from "@/features/admin/lib/admin-api-client";
 import { todayDateInZone } from "@/features/booking/lib/schedule-utils";
-import { pickWalkInStaff, appendNewcomersAtEnd, reindexBlankRotationOrders } from "@/features/booking/lib/walk-in-rotation";
+import {
+  pickWalkInStaff,
+  appendNewcomersAtEnd,
+  reindexBlankRotationOrders,
+} from "@/features/booking/lib/walk-in-rotation";
 import { useOptionalTenant } from "@/features/tenants";
 import { cn } from "@/lib/utils";
 
@@ -48,17 +52,6 @@ function toRow(staff: WorkingStaff, sortOrder: number): RotationRow {
   };
 }
 
-function insertAtOrder(
-  list: RotationRow[],
-  row: RotationRow,
-  order: number,
-): RotationRow[] {
-  const without = list.filter((item) => item.staffId !== row.staffId);
-  const index = Math.max(0, Math.min(without.length, Math.round(order) - 1));
-  without.splice(index, 0, { ...row, sortOrder: Math.max(0, Math.round(order)) });
-  return without;
-}
-
 function mergeOnShiftRotation(
   rotation: RotationRow[],
   working: WorkingStaff[],
@@ -96,16 +89,35 @@ function mergeOnShiftRotation(
   );
 }
 
+/** Refresh live badges without touching unsaved 순번 / list order. */
+function mergeLiveFields(
+  current: RotationRow[],
+  working: WorkingStaff[],
+): RotationRow[] {
+  const workingById = new Map(working.map((row) => [row.id, row]));
+  return current.map((row) => {
+    const staff = workingById.get(row.staffId);
+    if (!staff) return row;
+    return {
+      ...row,
+      name: staff.name,
+      inService: staff.inService,
+      roomName: staff.roomName,
+      walkInCount: staff.walkInCount,
+    };
+  });
+}
+
 function draftValue(sortOrder: number): string {
   return sortOrder > 0 ? String(sortOrder) : "";
 }
 
-/** Apply visible 순번 inputs (including blanks) before save — blur may not have run yet. */
-function applyDraftsToRotation(
+/** Apply draft 순번, then order the list for save (numbered first). */
+function applyDraftsForSave(
   list: RotationRow[],
   drafts: Record<string, string>,
 ): RotationRow[] {
-  const next = list.map((row) => {
+  const withNumbers = list.map((row) => {
     if (!(row.staffId in drafts)) return row;
     const trimmed = drafts[row.staffId]!.trim();
     if (!trimmed) return { ...row, sortOrder: 0 };
@@ -113,7 +125,12 @@ function applyDraftsToRotation(
     if (!Number.isFinite(order) || order < 1) return { ...row, sortOrder: 0 };
     return { ...row, sortOrder: Math.round(order) };
   });
-  return reindexBlankRotationOrders(next);
+
+  const numbered = withNumbers
+    .filter((row) => row.sortOrder > 0)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const blank = withNumbers.filter((row) => row.sortOrder <= 0);
+  return reindexBlankRotationOrders([...numbered, ...blank]);
 }
 
 export function AdminRotationContent() {
@@ -126,6 +143,9 @@ export function AdminRotationContent() {
   const [adjustingId, setAdjustingId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const dirtyRef = useRef(false);
+  dirtyRef.current = dirty;
 
   const applyRotationState = useCallback(
     (nextWorking: WorkingStaff[], nextRotation: RotationRow[]) => {
@@ -136,12 +156,13 @@ export function AdminRotationContent() {
           merged.map((row) => [row.staffId, draftValue(row.sortOrder)]),
         ),
       );
+      setDirty(false);
     },
     [],
   );
 
   const load = useCallback(
-    async (opts?: { silent?: boolean }) => {
+    async (opts?: { silent?: boolean; force?: boolean }) => {
       if (!opts?.silent) setLoading(true);
       try {
         const response = await fetchAdminApi("/api/admin/rotation");
@@ -152,9 +173,18 @@ export function AdminRotationContent() {
           });
           return;
         }
-        applyRotationState(data.working ?? [], data.rotation ?? []);
+        const working = data.working ?? [];
+        const nextRotation = data.rotation ?? [];
+
+        // While editing, only refresh live status — never overwrite unsaved 순번.
+        if (opts?.silent && dirtyRef.current && !opts.force) {
+          setRotation((current) => mergeLiveFields(current, working));
+          return;
+        }
+
+        applyRotationState(working, nextRotation);
       } catch {
-        toast.error("Could not load rotation");
+        if (!opts?.silent) toast.error("Could not load rotation");
       } finally {
         if (!opts?.silent) setLoading(false);
       }
@@ -170,8 +200,8 @@ export function AdminRotationContent() {
     return () => window.clearInterval(intervalId);
   }, [load]);
 
-  const save = async (next = rotation) => {
-    const roster = applyDraftsToRotation(next, drafts);
+  const save = async () => {
+    const roster = applyDraftsForSave(rotation, drafts);
     setRotation(roster);
     setDrafts(
       Object.fromEntries(
@@ -198,7 +228,9 @@ export function AdminRotationContent() {
         return;
       }
       toast.success("Rotation saved");
-      await load();
+      setDirty(false);
+      dirtyRef.current = false;
+      await load({ force: true });
     } catch {
       toast.error("Could not save rotation");
     } finally {
@@ -206,46 +238,9 @@ export function AdminRotationContent() {
     }
   };
 
-  const applyOrder = (staff: WorkingStaff, raw: string) => {
-    const trimmed = raw.trim();
-    if (!trimmed) {
-      setRotation((current) => {
-        const next = reindexBlankRotationOrders(
-          current.map((row) =>
-            row.staffId === staff.id ? { ...row, sortOrder: 0 } : row,
-          ),
-        );
-        setDrafts(
-          Object.fromEntries(
-            next.map((row) => [row.staffId, draftValue(row.sortOrder)]),
-          ),
-        );
-        return next;
-      });
-      return;
-    }
-    const order = Number(trimmed);
-    if (!Number.isFinite(order) || order < 1) {
-      const existing = rotation.find((row) => row.staffId === staff.id);
-      setDrafts((current) => ({
-        ...current,
-        [staff.id]: existing ? draftValue(existing.sortOrder) : "",
-      }));
-      return;
-    }
-    setRotation((current) => {
-      const next = insertAtOrder(current, toRow(staff, order), order);
-      setDrafts(
-        Object.fromEntries(
-          next.map((row) => [row.staffId, draftValue(row.sortOrder)]),
-        ),
-      );
-      return next;
-    });
-  };
-
   const moveByDrag = (fromId: string, toId: string) => {
     if (fromId === toId) return;
+    setDirty(true);
     setRotation((current) => {
       const from = current.findIndex((row) => row.staffId === fromId);
       const to = current.findIndex((row) => row.staffId === toId);
@@ -254,13 +249,7 @@ export function AdminRotationContent() {
       const [item] = next.splice(from, 1);
       if (!item) return current;
       next.splice(to, 0, item);
-      const reindexed = reindexBlankRotationOrders(next);
-      setDrafts(
-        Object.fromEntries(
-          reindexed.map((row) => [row.staffId, draftValue(row.sortOrder)]),
-        ),
-      );
-      return reindexed;
+      return next;
     });
   };
 
@@ -296,9 +285,14 @@ export function AdminRotationContent() {
     }
   };
 
+  const previewRoster = useMemo(
+    () => applyDraftsForSave(rotation, drafts),
+    [rotation, drafts],
+  );
+
   const nextStaffId = useMemo(() => {
     return pickWalkInStaff({
-      rotation: rotation.map((row) => ({
+      rotation: previewRoster.map((row) => ({
         staffId: row.staffId,
         sortOrder: row.sortOrder,
       })),
@@ -310,13 +304,13 @@ export function AdminRotationContent() {
         .map((row) => row.staffId),
       slotBusyIds: [],
     });
-  }, [rotation]);
+  }, [previewRoster, rotation]);
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 px-3 py-4 sm:px-4 lg:p-6">
       <AdminPageHeader
         title="Rotation"
-        description="Walk-in counts stay as they are. Person numbers stay blank when the rotation is new — type a number only if you need one. Blue name = next walk-in."
+        description="Change 순번 or drag to reorder, then press Save rotation. + / − for walk-in counts save immediately."
       />
 
       {loading ? (
@@ -329,8 +323,8 @@ export function AdminRotationContent() {
             <div>
               <p className="text-sm font-semibold">On shift now</p>
               <p className="text-xs text-muted-foreground">
-                Leave 순번 blank on a new lineup. Blue name = next walk-in.
-                + / − fixes today’s walk-in count.
+                Edits stay on this screen until you Save. Blue name = next
+                walk-in (preview).
               </p>
             </div>
             <ListOrdered className="size-4 text-muted-foreground" />
@@ -377,34 +371,18 @@ export function AdminRotationContent() {
                       type="number"
                       min={1}
                       inputMode="numeric"
-                      value={drafts[row.staffId] ?? draftValue(row.sortOrder)}
-                      onChange={(event) =>
+                      value={drafts[row.staffId] ?? ""}
+                      onChange={(event) => {
+                        setDirty(true);
                         setDrafts((current) => ({
                           ...current,
                           [row.staffId]: event.target.value,
-                        }))
-                      }
-                      onBlur={(event) =>
-                        applyOrder(
-                          {
-                            id: row.staffId,
-                            name: row.name,
-                            inService: row.inService,
-                            roomName: row.roomName,
-                            walkInCount: row.walkInCount,
-                            inRotation: true,
-                          },
-                          event.target.value,
-                        )
-                      }
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          event.currentTarget.blur();
-                        }
+                        }));
                       }}
                       className={cn(
                         "h-11 w-16 shrink-0 rounded-xl px-2 text-center text-lg font-semibold tabular-nums",
-                        isNext && "border-blue-400/60 text-blue-700 dark:text-blue-300",
+                        isNext &&
+                          "border-blue-400/60 text-blue-700 dark:text-blue-300",
                       )}
                       aria-label={`Turn order for ${row.name}`}
                     />
@@ -478,6 +456,11 @@ export function AdminRotationContent() {
           >
             {saving ? "Saving…" : "Save rotation"}
           </AppButton>
+          {dirty ? (
+            <p className="mt-2 text-center text-xs text-amber-700 dark:text-amber-400">
+              Unsaved 순번 / order changes
+            </p>
+          ) : null}
         </section>
       )}
       {Boolean(adjustingId) ? (
