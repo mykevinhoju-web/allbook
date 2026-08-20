@@ -46,6 +46,10 @@ export function StaffListContent() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [clearRoomStaff, setClearRoomStaff] = useState<AdminStaffRow | null>(
+    null,
+  );
+  const [clearingRoom, setClearingRoom] = useState(false);
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -72,6 +76,49 @@ export function StaffListContent() {
     } finally {
       setDeleting(false);
       setDeleteId(null);
+    }
+  };
+
+  const handleClearRoomLogin = async () => {
+    if (!clearRoomStaff) return;
+
+    setClearingRoom(true);
+    try {
+      const response = await fetchAdminApi(
+        `/api/admin/staff/${clearRoomStaff.id}/force-logout`,
+        { method: "POST" },
+      );
+      const data = (await response.json()) as {
+        error?: string;
+        clearedRoomName?: string | null;
+        tabletReleased?: boolean;
+      };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Failed to clear room login.");
+      }
+
+      const room =
+        data.clearedRoomName?.trim() || clearRoomStaff.currentRoomName;
+      toast.success(
+        room
+          ? `${clearRoomStaff.name} cleared from ${room}`
+          : `${clearRoomStaff.name} room login cleared`,
+        {
+          description: data.tabletReleased
+            ? "Tablet claim released — another device can sign in."
+            : "Room badge removed from the staff list.",
+        },
+      );
+      void loadData();
+    } catch (error) {
+      toast.error("Could not clear room login", {
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+      });
+    } finally {
+      setClearingRoom(false);
+      setClearRoomStaff(null);
     }
   };
 
@@ -192,7 +239,7 @@ export function StaffListContent() {
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-3 py-4 pb-16 sm:px-4 lg:gap-6 lg:p-6 lg:pb-24">
       <AdminPageHeader
         title="Staff"
-        description="Online means on shift. Room name appears after PIN sign-in, even when off shift."
+        description="Online means on shift. Room name appears after PIN sign-in — use Clear room login when the room is empty."
         action={
           <Link
             href="/admin/staff/new"
@@ -239,6 +286,7 @@ export function StaffListContent() {
       <StaffMobileList
         staff={filteredStaff}
         onDelete={(id) => setDeleteId(id)}
+        onClearRoomLogin={(member) => setClearRoomStaff(member)}
       />
 
       <div className="hidden lg:block">
@@ -266,6 +314,20 @@ export function StaffListContent() {
         confirmLabel={deleting ? "Deleting..." : "Delete"}
         variant="danger"
         onConfirm={() => void handleDelete()}
+      />
+
+      <ConfirmDialog
+        open={clearRoomStaff !== null}
+        onOpenChange={(open) => !open && setClearRoomStaff(null)}
+        title="Clear room login?"
+        description={
+          clearRoomStaff?.currentRoomName
+            ? `Only use when ${clearRoomStaff.currentRoomName} is empty. Removes ${clearRoomStaff.name}'s room badge and releases that room's tablet claim so another guest can use it.`
+            : "Removes this staff member's room badge and releases any tablet claim on that room."
+        }
+        confirmLabel={clearingRoom ? "Clearing..." : "Clear room login"}
+        variant="danger"
+        onConfirm={() => void handleClearRoomLogin()}
       />
     </div>
   );

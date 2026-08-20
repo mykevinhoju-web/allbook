@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   ChevronRight,
+  LogOut,
   MoreHorizontal,
   Pencil,
   Trash2,
@@ -23,9 +24,14 @@ import { StaffPresenceBadge } from "./staff-presence-badge";
 interface StaffMobileListProps {
   staff: AdminStaffRow[];
   onDelete: (id: string) => void;
+  onClearRoomLogin?: (member: AdminStaffRow) => void;
 }
 
-export function StaffMobileList({ staff, onDelete }: StaffMobileListProps) {
+export function StaffMobileList({
+  staff,
+  onDelete,
+  onClearRoomLogin,
+}: StaffMobileListProps) {
   if (staff.length === 0) {
     return null;
   }
@@ -106,6 +112,14 @@ export function StaffMobileList({ staff, onDelete }: StaffMobileListProps) {
                   <Pencil className="size-4" />
                   Edit
                 </DropdownMenuItem>
+                {member.currentRoomName && onClearRoomLogin ? (
+                  <DropdownMenuItem
+                    onClick={() => onClearRoomLogin(member)}
+                  >
+                    <LogOut className="size-4" />
+                    Clear room login
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuItem
                   className="text-destructive"
                   onClick={() => onDelete(member.id)}

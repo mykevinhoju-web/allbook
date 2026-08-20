@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { LogOut, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 
 import { AppAvatar, AppButton, ConfirmDialog, toast } from "@/components/common";
 import { DataTable, type DataTableColumn } from "@/components/common/data-table";
@@ -26,6 +26,10 @@ interface StaffTableProps {
 export function StaffTable({ staff, onChanged }: StaffTableProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [clearRoomStaff, setClearRoomStaff] = useState<AdminStaffRow | null>(
+    null,
+  );
+  const [clearingRoom, setClearingRoom] = useState(false);
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -52,6 +56,48 @@ export function StaffTable({ staff, onChanged }: StaffTableProps) {
     } finally {
       setDeleting(false);
       setDeleteId(null);
+    }
+  };
+
+  const handleClearRoomLogin = async () => {
+    if (!clearRoomStaff) return;
+
+    setClearingRoom(true);
+    try {
+      const response = await fetchAdminApi(
+        `/api/admin/staff/${clearRoomStaff.id}/force-logout`,
+        { method: "POST" },
+      );
+      const data = (await response.json()) as {
+        error?: string;
+        clearedRoomName?: string | null;
+        tabletReleased?: boolean;
+      };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Failed to clear room login.");
+      }
+
+      const room = data.clearedRoomName?.trim() || clearRoomStaff.currentRoomName;
+      toast.success(
+        room
+          ? `${clearRoomStaff.name} cleared from ${room}`
+          : `${clearRoomStaff.name} room login cleared`,
+        {
+          description: data.tabletReleased
+            ? "Tablet claim released — another device can sign in."
+            : "Room badge removed from the staff list.",
+        },
+      );
+      onChanged?.();
+    } catch (error) {
+      toast.error("Could not clear room login", {
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+      });
+    } finally {
+      setClearingRoom(false);
+      setClearRoomStaff(null);
     }
   };
 
@@ -140,6 +186,12 @@ export function StaffTable({ staff, onChanged }: StaffTableProps) {
               <Pencil className="size-4" />
               Edit
             </DropdownMenuItem>
+            {row.currentRoomName ? (
+              <DropdownMenuItem onClick={() => setClearRoomStaff(row)}>
+                <LogOut className="size-4" />
+                Clear room login
+              </DropdownMenuItem>
+            ) : null}
             <DropdownMenuItem
               className="text-destructive"
               onClick={() => setDeleteId(row.id)}
@@ -176,6 +228,20 @@ export function StaffTable({ staff, onChanged }: StaffTableProps) {
         confirmLabel={deleting ? "Deleting..." : "Delete"}
         variant="danger"
         onConfirm={() => void handleDelete()}
+      />
+
+      <ConfirmDialog
+        open={clearRoomStaff !== null}
+        onOpenChange={(open) => !open && setClearRoomStaff(null)}
+        title="Clear room login?"
+        description={
+          clearRoomStaff?.currentRoomName
+            ? `Only use when ${clearRoomStaff.currentRoomName} is empty. Removes ${clearRoomStaff.name}'s room badge and releases that room's tablet claim so another guest can use it.`
+            : "Removes this staff member's room badge and releases any tablet claim on that room."
+        }
+        confirmLabel={clearingRoom ? "Clearing..." : "Clear room login"}
+        variant="danger"
+        onConfirm={() => void handleClearRoomLogin()}
       />
     </>
   );
