@@ -15,6 +15,10 @@ import {
   hasRoomBookingConflict,
   hasStaffBookingConflict,
 } from "@/features/booking/lib/staff-conflict";
+import {
+  isWalkInBooking,
+  withWalkInNote,
+} from "@/features/booking/lib/walk-in-rotation";
 import { computeBookingPriceCents } from "@/features/services/server/get-service-price";
 import { findStaffAccountsByPin } from "@/lib/staff-pin-auth";
 import { validateStaffPin } from "@/lib/staff-pin";
@@ -83,7 +87,7 @@ export async function POST(
     const { data: primary, error: fetchError } = await supabase
       .from("bookings")
       .select(
-        "id, staff_id, room_id, starts_at, ends_at, status, checked_out_at, checked_in_at, customer_name, customer_phone, customer_postcode, customer_email",
+        "id, staff_id, room_id, starts_at, ends_at, status, checked_out_at, checked_in_at, customer_name, customer_phone, customer_postcode, customer_email, notes",
       )
       .eq("tenant_id", tenant.id)
       .eq("id", primaryBookingId)
@@ -280,7 +284,12 @@ export async function POST(
         customer_phone: primary.customer_phone.trim(),
         customer_postcode: primary.customer_postcode,
         customer_email: primary.customer_email,
-        notes: withPaymentMethodNote(paymentMethod, pairNote(primaryBookingId)),
+        notes: withPaymentMethodNote(
+          paymentMethod,
+          isWalkInBooking(primary.notes)
+            ? withWalkInNote(pairNote(primaryBookingId))
+            : pairNote(primaryBookingId),
+        ),
       })
       .select(
         "id, staff_id, room_id, starts_at, ends_at, duration_minutes, price_cents, status, checked_out_at, checked_in_at, customer_name, customer_phone, customer_postcode, customer_email, notes",
