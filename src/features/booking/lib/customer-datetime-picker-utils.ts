@@ -3,6 +3,7 @@ import { formatDisplayDate } from "@/lib/display-locale";
 import type { BookingTimeSlotOption } from "../components/schedule/booking-form-sheet";
 import {
   addDaysToDateInput,
+  BOOKING_SLOT_STEP_MINUTES,
   isoToDatetimeLocal,
 } from "./schedule-utils";
 import { slotToIso } from "./compact-time-picker-utils";
@@ -30,7 +31,6 @@ export const BOOKABLE_MONTHS = 3;
 export const BOOKABLE_DAYS_PER_MONTH = 7;
 /** Generate enough days to cover BOOKABLE_MONTHS. */
 const BOOKABLE_DAYS_AHEAD = BOOKABLE_MONTHS * 31;
-const MINUTE_STEP = 10;
 
 export function buildBookableDateOptions(
   today: string,
@@ -174,7 +174,7 @@ export function availableMinutes(
         .map((clock) => clock.minute),
     ),
   ]
-    .filter((minute) => minute % MINUTE_STEP === 0)
+    .filter((minute) => minute % BOOKING_SLOT_STEP_MINUTES === 0)
     .sort((a, b) => a - b);
 }
 

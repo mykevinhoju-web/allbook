@@ -11,8 +11,8 @@ import {
 
 const MINUTES_IN_DAY = 24 * 60;
 const SLOT_STEP_MINUTES = 5;
-/** Bookable start times are offered every 10 minutes (hour groups in the UI). */
-export const BOOKING_SLOT_STEP_MINUTES = 10;
+/** Bookable start times are offered every 5 minutes (hour groups in the UI). */
+export const BOOKING_SLOT_STEP_MINUTES = 5;
 
 /** @deprecated Use service options from API instead. */
 export const BOOKING_SERVICE_DURATIONS = [20, 30, 45, 60] as const;
@@ -558,7 +558,7 @@ export function roundToSlotMinutes(minutes: number): number {
 }
 
 /**
- * Round up to the next clean step in tenant local time (e.g. 12:05 → 12:10).
+ * Round up to the next clean step in tenant local time (e.g. 12:03 → 12:05).
  */
 export function ceilToBookingStepMs(
   timestampMs: number,
