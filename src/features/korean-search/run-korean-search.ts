@@ -2,37 +2,14 @@ import { buildSalonPathFromService } from "@/features/category";
 import { searchSalons } from "@/features/search/searchSalons";
 import { createClient } from "@/lib/supabase/server";
 
-import { parseKoreanQuery, type KoreanSearchIntent } from "./parse-korean-query";
+import { parseKoreanQuery } from "./parse-korean-query";
+import type {
+  KoreanSearchHit,
+  KoreanSearchOrigin,
+  KoreanSearchResponse,
+} from "./types";
 
-export type KoreanSearchOrigin = {
-  lat: number;
-  lng: number;
-};
-
-export type KoreanSearchHit = {
-  id: string;
-  name: string;
-  rating: number;
-  reviewCount: number;
-  price: number;
-  location: string;
-  suburb: string;
-  city: string;
-  slug: string;
-  service: string;
-  detailPath: string;
-  latitude: number;
-  longitude: number;
-  distanceKm: number | null;
-};
-
-export type KoreanSearchResponse = {
-  ok: true;
-  intent: KoreanSearchIntent;
-  origin: KoreanSearchOrigin | null;
-  results: KoreanSearchHit[];
-  total: number;
-};
+export type { KoreanSearchHit, KoreanSearchOrigin, KoreanSearchResponse };
 
 export async function runKoreanSearch(
   rawQuery: string,

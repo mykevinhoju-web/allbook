@@ -1,6 +1,6 @@
 import type { Salon } from "@/types/salon";
 
-import type { KoreanSearchHit } from "./run-korean-search";
+import type { KoreanSearchHit } from "./types";
 
 const FALLBACK_COVER =
   "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80";

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { runKoreanSearch } from "@/features/korean-search";
+import { runKoreanSearch } from "@/features/korean-search/run-korean-search";
 import { isKoreanPlatformHost } from "@/features/tenants/utils/resolve-host";
 
 export const runtime = "nodejs";
