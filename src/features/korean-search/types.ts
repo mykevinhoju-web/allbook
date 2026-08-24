@@ -22,6 +22,8 @@ export type KoreanSearchHit = {
   latitude: number;
   longitude: number;
   distanceKm: number | null;
+  bookingEnabled: boolean;
+  bookPath: string | null;
 };
 
 export type KoreanSearchResponse = {

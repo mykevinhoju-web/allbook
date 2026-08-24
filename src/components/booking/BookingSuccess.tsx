@@ -19,6 +19,25 @@ type BookingSuccessProps = {
   status: string;
   bookingId: string;
   backHref: string;
+  copy?: {
+    title?: string;
+    status?: string;
+    done?: string;
+  };
+  dateLocale?: string;
+  summaryLabels?: {
+    title?: string;
+    service?: string;
+    staff?: string;
+    date?: string;
+    time?: string;
+    duration?: string;
+    price?: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    durationUnit?: string;
+  };
 };
 
 export function BookingSuccess({
@@ -36,6 +55,9 @@ export function BookingSuccess({
   status,
   bookingId,
   backHref,
+  copy,
+  dateLocale,
+  summaryLabels,
 }: BookingSuccessProps) {
   return (
     <section className="space-y-5 text-center">
@@ -44,10 +66,11 @@ export function BookingSuccess({
       </div>
       <div>
         <h2 className="text-[22px] font-semibold text-neutral-950">
-          Booking requested
+          {copy?.title ?? "Booking requested"}
         </h2>
         <p className="mt-2 text-[14px] text-neutral-600">
-          Status: <strong className="capitalize">{status}</strong>
+          {copy?.status ?? "Status"}:{" "}
+          <strong className="capitalize">{status}</strong>
         </p>
         <p className="mt-1 font-mono text-[12px] text-neutral-400">
           Ref {bookingId}
@@ -65,12 +88,14 @@ export function BookingSuccess({
         customerName={customerName}
         customerEmail={customerEmail}
         customerPhone={customerPhone}
+        dateLocale={dateLocale}
+        labels={summaryLabels}
       />
       <Link
         href={backHref}
         className="inline-flex h-11 items-center justify-center rounded-full bg-neutral-950 px-5 text-[13px] font-semibold text-white"
       >
-        Done
+        {copy?.done ?? "Done"}
       </Link>
     </section>
   );

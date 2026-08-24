@@ -7,19 +7,21 @@ type TimeSlotSelectorProps = {
   slots: TimeSlot[];
   value: string | null;
   onChange: (startTime: string) => void;
+  emptyLabel?: string;
 };
 
 export function TimeSlotSelector({
   slots,
   value,
   onChange,
+  emptyLabel = "No available times on this day.",
 }: TimeSlotSelectorProps) {
   const available = slots.filter((s) => s.available);
 
   if (available.length === 0) {
     return (
       <p className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-8 text-center text-sm text-neutral-500">
-        No available times on this day.
+        {emptyLabel}
       </p>
     );
   }

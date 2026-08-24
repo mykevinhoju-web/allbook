@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import {
@@ -8,6 +9,7 @@ import {
 } from "@/features/category";
 import { BookingWizard } from "@/features/salon-booking";
 import { getBookingSalonContext } from "@/features/salon-booking/getBookingSalonContext";
+import { isKoreanPlatformHost } from "@/features/tenants/utils/resolve-host";
 import { createServiceSupabase } from "@/lib/supabase/service";
 
 type PageProps = {
@@ -42,11 +44,20 @@ export default async function MarketplaceSalonBookPage({ params }: PageProps) {
 
   const supabase = createServiceSupabase();
   const { context, error } = await getBookingSalonContext(supabase, slug);
+  const host =
+    (await headers()).get("x-forwarded-host") ??
+    (await headers()).get("host") ??
+    "";
+  const korean = isKoreanPlatformHost(host);
 
   if (error) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center">
-        <p className="text-sm text-rose-700">Could not load booking: {error}</p>
+        <p className="text-sm text-rose-700">
+          {korean
+            ? `예약을 불러오지 못했습니다: ${error}`
+            : `Could not load booking: ${error}`}
+        </p>
       </div>
     );
   }
@@ -58,6 +69,7 @@ export default async function MarketplaceSalonBookPage({ params }: PageProps) {
       <BookingWizard
         context={context}
         backHref={buildSalonPath(category.slug, slug)}
+        locale={korean ? "ko" : "en"}
       />
     </div>
   );

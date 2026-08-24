@@ -10,12 +10,18 @@ export type CustomerFormValue = {
 type CustomerFormProps = {
   value: CustomerFormValue;
   onChange: (next: CustomerFormValue) => void;
+  labels?: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    notes?: string;
+  };
 };
 
 const fieldClass =
   "h-11 w-full rounded-xl border border-neutral-200 px-3.5 text-[14px] outline-none focus:border-neutral-400 focus:ring-4 focus:ring-neutral-950/5";
 
-export function CustomerForm({ value, onChange }: CustomerFormProps) {
+export function CustomerForm({ value, onChange, labels }: CustomerFormProps) {
   function patch(partial: Partial<CustomerFormValue>) {
     onChange({ ...value, ...partial });
   }
@@ -25,7 +31,7 @@ export function CustomerForm({ value, onChange }: CustomerFormProps) {
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block">
           <span className="mb-1.5 block text-[13px] font-medium text-neutral-700">
-            First name *
+            {labels?.firstName ?? "First name *"}
           </span>
           <input
             className={fieldClass}
@@ -36,7 +42,7 @@ export function CustomerForm({ value, onChange }: CustomerFormProps) {
         </label>
         <label className="block">
           <span className="mb-1.5 block text-[13px] font-medium text-neutral-700">
-            Last name *
+            {labels?.lastName ?? "Last name *"}
           </span>
           <input
             className={fieldClass}
@@ -48,7 +54,7 @@ export function CustomerForm({ value, onChange }: CustomerFormProps) {
       </div>
       <label className="block">
         <span className="mb-1.5 block text-[13px] font-medium text-neutral-700">
-          Phone *
+            {labels?.phone ?? "Phone *"}
         </span>
         <input
           className={fieldClass}
@@ -59,7 +65,7 @@ export function CustomerForm({ value, onChange }: CustomerFormProps) {
       </label>
       <label className="block">
         <span className="mb-1.5 block text-[13px] font-medium text-neutral-700">
-          Notes
+            {labels?.notes ?? "Notes"}
         </span>
         <textarea
           rows={3}

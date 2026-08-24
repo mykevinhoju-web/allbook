@@ -25,6 +25,10 @@ import {
   generateAvailableSlots,
   isBookingDateDisabled,
 } from "@/features/salon-booking/generateAvailableSlots";
+import {
+  bookingWizardCopy,
+  type BookingUiLocale,
+} from "@/features/salon-booking/booking-wizard-copy";
 import type {
   ExistingBookingBlock,
   SalonBooking,
@@ -36,22 +40,19 @@ type Step = Exclude<BookingStepId, "done"> | "done";
 type BookingWizardProps = {
   context: BookingSalonContext;
   backHref: string;
+  locale?: BookingUiLocale;
 };
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
-const STEPS: { id: Exclude<BookingStepId, "done">; label: string }[] = [
-  { id: "service", label: "Service" },
-  { id: "staff", label: "Staff" },
-  { id: "date", label: "Date" },
-  { id: "time", label: "Time" },
-  { id: "customer", label: "Details" },
-  { id: "summary", label: "Confirm" },
-];
-
-export function BookingWizard({ context, backHref }: BookingWizardProps) {
+export function BookingWizard({
+  context,
+  backHref,
+  locale = "en",
+}: BookingWizardProps) {
+  const copy = bookingWizardCopy(locale);
   const [step, setStep] = useState<Step>("service");
   const [serviceId, setServiceId] = useState<string | null>(null);
   const [staffId, setStaffId] = useState<string | null>(NO_PREFERENCE_STAFF_ID);
@@ -161,29 +162,29 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
 
   const staffLabel = useMemo(() => {
     if (assignedStaffName) return assignedStaffName;
-    if (!staffId || staffId === NO_PREFERENCE_STAFF_ID) return "No preference";
+    if (!staffId || staffId === NO_PREFERENCE_STAFF_ID) return copy.noPreference;
     return (
-      context.staff.find((s) => s.id === staffId)?.displayName ?? "Staff"
+      context.staff.find((s) => s.id === staffId)?.displayName ?? copy.labelStaff
     );
-  }, [assignedStaffName, context.staff, staffId]);
+  }, [assignedStaffName, context.staff, copy.labelStaff, copy.noPreference, staffId]);
 
   function goNext() {
     setError(null);
     if (step === "service") {
-      if (!serviceId) return setError("Choose a service.");
+      if (!serviceId) return setError(copy.chooseService);
       setStaffId(NO_PREFERENCE_STAFF_ID);
       setStartTime(null);
       setStep("staff");
       return;
     }
     if (step === "staff") {
-      if (!staffId) return setError("Choose staff.");
+      if (!staffId) return setError(copy.chooseStaff);
       setStartTime(null);
       setStep("date");
       return;
     }
     if (step === "date") {
-      if (!date) return setError("Choose a date.");
+      if (!date) return setError(copy.chooseDate);
       if (
         serviceId &&
         isBookingDateDisabled({
@@ -194,22 +195,22 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
           todayIso: todayIso(),
         })
       ) {
-        return setError("That date is not available.");
+        return setError(copy.dateUnavailable);
       }
       setStartTime(null);
       setStep("time");
       return;
     }
     if (step === "time") {
-      if (!startTime) return setError("Choose a time.");
+      if (!startTime) return setError(copy.chooseTime);
       setStep("customer");
       return;
     }
     if (step === "customer") {
       if (!customer.firstName.trim() || !customer.lastName.trim()) {
-        return setError("First and last name are required.");
+        return setError(copy.nameRequired);
       }
-      if (!customer.phone.trim()) return setError("Phone is required.");
+      if (!customer.phone.trim()) return setError(copy.phoneRequired);
       setStep("summary");
     }
   }
@@ -226,7 +227,7 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
   async function confirmBooking() {
     if (!service || !startTime || !selectedSlot) return;
     if (!policyAccepted) {
-      setError("Please accept the booking policies to continue.");
+      setError(copy.acceptPolicy);
       return;
     }
     setSubmitting(true);
@@ -257,13 +258,13 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
         error?: string;
       };
       if (!res.ok || !data.booking) {
-        throw new Error(data.error || "Could not create booking.");
+        throw new Error(data.error || copy.bookFailed);
       }
       setCreated(data.booking);
       setAssignedStaffName(data.staffName ?? staffLabel);
       setStep("done");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not book.");
+      setError(err instanceof Error ? err.message : copy.bookFailed);
     } finally {
       setSubmitting(false);
     }
@@ -278,10 +279,10 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
           href={backHref}
           className="text-[13px] font-medium text-neutral-500 transition hover:text-neutral-900"
         >
-          ← Back to salon
+          ← {copy.backToSalon.replace(/^←\s*/, "")}
         </Link>
         <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
-          Book
+          {copy.book}
         </p>
       </div>
 
@@ -290,13 +291,13 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
           {context.salonName}
         </h1>
         <p className="text-[15px] text-neutral-600">
-          Book a service — available times respect hours, leave, and buffers.
+          {copy.intro}
         </p>
       </header>
 
       {step !== "done" ? (
         <div className="mb-8">
-          <BookingStepper steps={STEPS} current={step} />
+          <BookingStepper steps={copy.steps} current={step} />
         </div>
       ) : null}
 
@@ -304,12 +305,13 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
         {step === "service" ? (
           <section className="space-y-4">
             <h2 className="text-[18px] font-semibold text-neutral-950">
-              Select service
+              {copy.selectService}
             </h2>
             <ServiceSelector
               services={context.services}
               value={serviceId}
               onChange={setServiceId}
+              emptyLabel={copy.noServices}
             />
           </section>
         ) : null}
@@ -317,17 +319,18 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
         {step === "staff" ? (
           <section className="space-y-4">
             <h2 className="text-[18px] font-semibold text-neutral-950">
-              Select staff
+              {copy.selectStaff}
             </h2>
             {staffForService.length === 0 ? (
-              <p className="text-[14px] text-neutral-500">
-                No available staff for this service.
-              </p>
+              <p className="text-[14px] text-neutral-500">{copy.noStaff}</p>
             ) : (
               <StaffSelector
                 staff={staffForService}
                 value={staffId}
                 onChange={setStaffId}
+                noPreferenceLabel={copy.noPreference}
+                noPreferenceHint={copy.noPreferenceHint}
+                anyLabel={copy.any}
               />
             )}
           </section>
@@ -336,7 +339,7 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
         {step === "date" && serviceId ? (
           <section className="space-y-4">
             <h2 className="text-[18px] font-semibold text-neutral-950">
-              Select date
+              {copy.selectDate}
             </h2>
             <CalendarSelector
               value={date}
@@ -360,15 +363,16 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
         {step === "time" ? (
           <section className="space-y-4">
             <h2 className="text-[18px] font-semibold text-neutral-950">
-              Select time
+              {copy.selectTime}
             </h2>
             <p className="text-[13px] text-neutral-500">
-              {staffLabel} · {service?.duration} min
+              {staffLabel} · {service?.duration} {copy.minutes}
             </p>
             <TimeSlotSelector
               slots={slots}
               value={startTime}
               onChange={setStartTime}
+              emptyLabel={copy.noTimes}
             />
           </section>
         ) : null}
@@ -376,16 +380,25 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
         {step === "customer" ? (
           <section className="space-y-4">
             <h2 className="text-[18px] font-semibold text-neutral-950">
-              Your details
+              {copy.yourDetails}
             </h2>
-            <CustomerForm value={customer} onChange={setCustomer} />
+            <CustomerForm
+              value={customer}
+              onChange={setCustomer}
+              labels={{
+                firstName: copy.firstName,
+                lastName: copy.lastName,
+                phone: copy.phone,
+                notes: copy.notes,
+              }}
+            />
           </section>
         ) : null}
 
         {step === "summary" && service && selectedSlot ? (
           <section className="space-y-5">
             <h2 className="text-[18px] font-semibold text-neutral-950">
-              Booking summary
+              {copy.summary}
             </h2>
             <BookingSummary
               salonName={context.salonName}
@@ -398,10 +411,24 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
               priceLabel={service.priceLabel}
               customerName={customerName}
               customerPhone={customer.phone}
+              dateLocale={copy.dateLocale}
+              labels={{
+                title: copy.summaryTitle,
+                service: copy.labelService,
+                staff: copy.labelStaff,
+                date: copy.labelDate,
+                time: copy.labelTime,
+                duration: copy.labelDuration,
+                price: copy.labelPrice,
+                name: copy.labelName,
+                email: copy.labelEmail,
+                phone: copy.labelPhone,
+                durationUnit: copy.minutes,
+              }}
               confirmationNote={
                 resolvedPolicy?.instantConfirmation
-                  ? "Your booking will be confirmed instantly."
-                  : "Your booking is held as pending until the salon confirms."
+                  ? copy.confirmInstant
+                  : copy.confirmPending
               }
             />
             <PolicyAcceptancePanel
@@ -409,6 +436,16 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
               loading={policyLoading}
               accepted={policyAccepted}
               onAcceptedChange={setPolicyAccepted}
+              copy={{
+                loading: copy.loadingPolicies,
+                policies: copy.policies,
+                bookingPolicy: copy.bookingPolicy,
+                cancellationPolicy: copy.cancellationPolicy,
+                depositPolicy: copy.depositPolicy,
+                refundPolicy: copy.refundPolicy,
+                noShowPolicy: copy.noShowPolicy,
+                accept: copy.acceptPolicies,
+              }}
             />
           </section>
         ) : null}
@@ -428,6 +465,25 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
             status={created.status}
             bookingId={created.id}
             backHref={backHref}
+            dateLocale={copy.dateLocale}
+            copy={{
+              title: copy.successTitle,
+              status: copy.status,
+              done: copy.done,
+            }}
+            summaryLabels={{
+              title: copy.summaryTitle,
+              service: copy.labelService,
+              staff: copy.labelStaff,
+              date: copy.labelDate,
+              time: copy.labelTime,
+              duration: copy.labelDuration,
+              price: copy.labelPrice,
+              name: copy.labelName,
+              email: copy.labelEmail,
+              phone: copy.labelPhone,
+              durationUnit: copy.minutes,
+            }}
           />
         ) : null}
 
@@ -445,7 +501,7 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
                 onClick={goBack}
                 className="inline-flex h-11 items-center justify-center rounded-full border border-neutral-200 bg-white px-5 text-[13px] font-semibold text-neutral-800"
               >
-                Back
+                {copy.back}
               </button>
             ) : null}
             {step !== "summary" ? (
@@ -454,7 +510,7 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
                 onClick={goNext}
                 className="inline-flex h-11 items-center justify-center rounded-full bg-neutral-950 px-5 text-[13px] font-semibold text-white"
               >
-                Continue
+                {copy.continue}
               </button>
             ) : (
               <button
@@ -463,7 +519,7 @@ export function BookingWizard({ context, backHref }: BookingWizardProps) {
                 disabled={submitting || !policyAccepted}
                 className="inline-flex h-11 items-center justify-center rounded-full bg-neutral-950 px-5 text-[13px] font-semibold text-white disabled:opacity-50"
               >
-                {submitting ? "Booking…" : "Confirm booking"}
+                {submitting ? copy.confirming : copy.confirmBooking}
               </button>
             )}
           </div>

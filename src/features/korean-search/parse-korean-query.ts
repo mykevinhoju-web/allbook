@@ -9,6 +9,8 @@ export type KoreanSearchIntent = {
   sort: SearchSort;
   minRating: number | null;
   radiusKm: SearchDistanceKm;
+  /** Filter to salons.booking_enabled — used by kor search, not marketplace RPC. */
+  bookableOnly: boolean;
   notes: string[];
 };
 
@@ -73,6 +75,10 @@ function detectNearby(normalized: string): boolean {
   return /가까운|근처|내 주변|가까이|near me|nearby|closest/.test(normalized);
 }
 
+function detectBookableOnly(normalized: string): boolean {
+  return /예약\s*가능|예약할 수|온라인\s*예약|\bbookable\b/.test(normalized);
+}
+
 /**
  * Rule-based Korean (and mixed EN) query parser.
  * No LLM — canonical filters stay English for the existing search engine.
@@ -89,6 +95,7 @@ export function parseKoreanQuery(rawQuery: string): KoreanSearchIntent {
   const nearby = detectNearby(normalized);
   const cheap = detectPriceSort(normalized);
   const highRated = detectRatingSort(normalized);
+  const bookableOnly = detectBookableOnly(normalized);
 
   let location = locationHit?.location ?? "";
   if (locationHit) notes.push(locationHit.note);
@@ -122,6 +129,8 @@ export function parseKoreanQuery(rawQuery: string): KoreanSearchIntent {
     radiusKm = 10;
   }
 
+  if (bookableOnly) notes.push("예약 가능만");
+
   return {
     query,
     service: service.service,
@@ -129,6 +138,7 @@ export function parseKoreanQuery(rawQuery: string): KoreanSearchIntent {
     sort,
     minRating,
     radiusKm,
+    bookableOnly,
     notes,
   };
 }

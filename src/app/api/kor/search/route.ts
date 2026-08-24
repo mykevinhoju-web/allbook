@@ -20,6 +20,7 @@ export async function POST(request: Request) {
       query?: string;
       lat?: number;
       lng?: number;
+      bookableOnly?: boolean;
     };
     const query = body.query?.trim() ?? "";
     if (!query) {
@@ -36,7 +37,9 @@ export async function POST(request: Request) {
         ? { lat, lng }
         : null;
 
-    const result = await runKoreanSearch(query, userOrigin);
+    const result = await runKoreanSearch(query, userOrigin, {
+      bookableOnly: body.bookableOnly === true,
+    });
     return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Search failed.";

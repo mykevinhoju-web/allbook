@@ -12,6 +12,9 @@ type StaffSelectorProps = {
   onChange: (staffId: string) => void;
   /** Include "No preference" option (default true) */
   allowNoPreference?: boolean;
+  noPreferenceLabel?: string;
+  noPreferenceHint?: string;
+  anyLabel?: string;
 };
 
 export function StaffSelector({
@@ -19,6 +22,9 @@ export function StaffSelector({
   value,
   onChange,
   allowNoPreference = true,
+  noPreferenceLabel = "No preference",
+  noPreferenceHint = "First available stylist",
+  anyLabel = "Any",
 }: StaffSelectorProps) {
   const selected = value ?? (allowNoPreference ? NO_PREFERENCE_STAFF_ID : null);
 
@@ -43,10 +49,10 @@ export function StaffSelector({
                 : "bg-neutral-100 text-neutral-600",
             )}
           >
-            Any
+            {anyLabel}
           </div>
           <div>
-            <p className="text-[15px] font-semibold">No preference</p>
+            <p className="text-[15px] font-semibold">{noPreferenceLabel}</p>
             <p
               className={cn(
                 "text-[12px]",
@@ -55,7 +61,7 @@ export function StaffSelector({
                   : "text-neutral-500",
               )}
             >
-              First available stylist
+              {noPreferenceHint}
             </p>
           </div>
         </button>

@@ -34,11 +34,21 @@ const cases = [
     service: "Hair",
     location: "Sunnybank",
   },
+  {
+    q: "예약 가능한 미용실",
+    service: "Hair",
+    bookableOnly: true,
+  },
 ] as const;
 
 for (const c of cases) {
   const parsed = parseKoreanQuery(c.q);
   assert.equal(parsed.service, c.service, c.q);
+  assert.equal(
+    parsed.bookableOnly,
+    "bookableOnly" in c ? c.bookableOnly : false,
+    c.q,
+  );
   if ("sort" in c && c.sort) {
     assert.equal(parsed.sort, c.sort, c.q);
   }

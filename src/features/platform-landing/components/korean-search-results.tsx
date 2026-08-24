@@ -35,6 +35,8 @@ type KoreanSearchResultsProps = {
   total: number;
   intent: KoreanSearchIntent | null;
   origin: KoreanSearchOrigin | null;
+  bookableOnly: boolean;
+  onBookableOnlyChange: (next: boolean) => void;
 };
 
 export function KoreanSearchResults({
@@ -42,6 +44,8 @@ export function KoreanSearchResults({
   total,
   intent,
   origin,
+  bookableOnly,
+  onBookableOnlyChange,
 }: KoreanSearchResultsProps) {
   const salons = useMemo(() => results.map(koreanHitToSalon), [results]);
   const {
@@ -58,16 +62,23 @@ export function KoreanSearchResults({
       ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [selectedId, focusToken]);
 
-  if (results.length === 0) {
-    return (
-      <p className="mt-4 text-sm text-neutral-600">
-        조건에 맞는 업체를 찾지 못했습니다.
-      </p>
-    );
-  }
-
   return (
     <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-start">
+      <div>
+        <label className="mb-3 flex cursor-pointer items-center gap-2 text-sm text-neutral-700">
+          <input
+            type="checkbox"
+            className="size-4"
+            checked={bookableOnly}
+            onChange={(event) => onBookableOnlyChange(event.target.checked)}
+          />
+          예약 가능한 업체만
+        </label>
+        {results.length === 0 ? (
+          <p className="text-sm text-neutral-600">
+            조건에 맞는 업체를 찾지 못했습니다.
+          </p>
+        ) : (
       <ul className="space-y-3">
         {results.map((hit) => {
           const active = hit.id === selectedId;
@@ -97,7 +108,14 @@ export function KoreanSearchResults({
                     />
                   </div>
                   <div className="px-3 py-2.5 sm:px-4 sm:py-3">
-                    <p className="font-semibold text-neutral-900">{hit.name}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-neutral-900">{hit.name}</p>
+                      {hit.bookingEnabled ? (
+                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                          예약 가능
+                        </span>
+                      ) : null}
+                    </div>
                     <p className="mt-1 text-sm text-neutral-600">
                       {formatRating(hit.rating, hit.reviewCount)}
                       <span className="mx-2 text-neutral-300">·</span>
@@ -112,19 +130,29 @@ export function KoreanSearchResults({
                     <p className="mt-0.5 text-sm text-neutral-500">{hit.location}</p>
                   </div>
                 </button>
-                <div className="border-t border-neutral-100 px-4 py-2">
+                <div className="flex items-center gap-4 border-t border-neutral-100 px-4 py-2">
                   <Link
                     href={hit.detailPath}
-                    className="inline-block text-sm font-medium text-neutral-800 underline-offset-4 hover:underline"
+                    className="text-sm font-medium text-neutral-800 underline-offset-4 hover:underline"
                   >
                     상세 보기
                   </Link>
+                  {hit.bookingEnabled && hit.bookPath ? (
+                    <Link
+                      href={hit.bookPath}
+                      className="text-sm font-semibold text-neutral-950 underline-offset-4 hover:underline"
+                    >
+                      예약
+                    </Link>
+                  ) : null}
                 </div>
               </div>
             </li>
           );
         })}
       </ul>
+        )}
+      </div>
 
       <div className="sticky top-4 h-[min(70vh,560px)] min-h-[280px]">
         <GoogleMap

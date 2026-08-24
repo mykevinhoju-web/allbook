@@ -54,10 +54,11 @@ export function KoreanPlatformLanding() {
   const [total, setTotal] = useState(0);
 
   const [origin, setOrigin] = useState<KoreanSearchOrigin | null>(null);
+  const [bookableOnly, setBookableOnly] = useState(false);
 
   const hasResults = results != null;
 
-  async function runSearch(nextQuery: string) {
+  async function runSearch(nextQuery: string, nextBookableOnly = bookableOnly) {
     const q = nextQuery.trim();
     if (!q) return;
     setBusy(true);
@@ -71,6 +72,7 @@ export function KoreanPlatformLanding() {
           query: q,
           lat: geo?.lat,
           lng: geo?.lng,
+          bookableOnly: nextBookableOnly,
         }),
       });
       const data = (await response.json()) as {
@@ -88,6 +90,9 @@ export function KoreanPlatformLanding() {
       setOrigin(data.origin ?? geo ?? null);
       setResults(data.results ?? []);
       setTotal(data.total ?? 0);
+      if (data.intent?.bookableOnly != null) {
+        setBookableOnly(data.intent.bookableOnly);
+      }
     } catch (err) {
       setIntent(null);
       setOrigin(null);
@@ -107,7 +112,13 @@ export function KoreanPlatformLanding() {
     if (label === "내 주변") {
       const next = "가까운 미용실 찾아줘";
       setQuery(next);
-      void runSearch(next);
+      void runSearch(next, bookableOnly);
+    }
+    if (label === "예약") {
+      const next = query.trim() || "미용실 찾아줘";
+      setQuery(next);
+      setBookableOnly(true);
+      void runSearch(next, true);
     }
   }
 
@@ -212,6 +223,11 @@ export function KoreanPlatformLanding() {
               total={total}
               intent={intent}
               origin={origin}
+              bookableOnly={bookableOnly}
+              onBookableOnlyChange={(next) => {
+                setBookableOnly(next);
+                void runSearch(query, next);
+              }}
             />
           </section>
         ) : null}

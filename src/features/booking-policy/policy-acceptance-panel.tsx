@@ -9,6 +9,16 @@ type Props = {
   accepted: boolean;
   onAcceptedChange: (accepted: boolean) => void;
   className?: string;
+  copy?: {
+    loading?: string;
+    policies?: string;
+    bookingPolicy?: string;
+    cancellationPolicy?: string;
+    depositPolicy?: string;
+    refundPolicy?: string;
+    noShowPolicy?: string;
+    accept?: string;
+  };
 };
 
 export function PolicyAcceptancePanel({
@@ -17,6 +27,7 @@ export function PolicyAcceptancePanel({
   accepted,
   onAcceptedChange,
   className,
+  copy,
 }: Props) {
   if (loading || !policy) {
     return (
@@ -26,7 +37,7 @@ export function PolicyAcceptancePanel({
           className,
         )}
       >
-        Loading booking policies…
+        {copy?.loading ?? "Loading booking policies…"}
       </div>
     );
   }
@@ -41,16 +52,28 @@ export function PolicyAcceptancePanel({
       )}
     >
       <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-neutral-500">
-        Policies
+        {copy?.policies ?? "Policies"}
       </p>
-      <PolicyBlock title="Booking policy" body={customerSummary.bookingPolicy} />
       <PolicyBlock
-        title="Cancellation policy"
+        title={copy?.bookingPolicy ?? "Booking policy"}
+        body={customerSummary.bookingPolicy}
+      />
+      <PolicyBlock
+        title={copy?.cancellationPolicy ?? "Cancellation policy"}
         body={customerSummary.cancellationPolicy}
       />
-      <PolicyBlock title="Deposit policy" body={customerSummary.depositPolicy} />
-      <PolicyBlock title="Refund policy" body={customerSummary.refundPolicy} />
-      <PolicyBlock title="No-show policy" body={customerSummary.noShowPolicy} />
+      <PolicyBlock
+        title={copy?.depositPolicy ?? "Deposit policy"}
+        body={customerSummary.depositPolicy}
+      />
+      <PolicyBlock
+        title={copy?.refundPolicy ?? "Refund policy"}
+        body={customerSummary.refundPolicy}
+      />
+      <PolicyBlock
+        title={copy?.noShowPolicy ?? "No-show policy"}
+        body={customerSummary.noShowPolicy}
+      />
 
       <label className="mt-2 flex items-start gap-3 rounded-xl border border-neutral-200 bg-white px-3 py-3 text-[13px] text-neutral-800">
         <input
@@ -60,8 +83,8 @@ export function PolicyAcceptancePanel({
           onChange={(e) => onAcceptedChange(e.target.checked)}
         />
         <span>
-          I have read and accept the booking, cancellation, deposit, and refund
-          policies for this appointment.
+          {copy?.accept ??
+            "I have read and accept the booking, cancellation, deposit, and refund policies for this appointment."}
         </span>
       </label>
     </div>

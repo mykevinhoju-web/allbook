@@ -16,10 +16,24 @@ type BookingSummaryProps = {
   customerPhone?: string;
   confirmationNote?: string;
   className?: string;
+  dateLocale?: string;
+  labels?: {
+    title?: string;
+    service?: string;
+    staff?: string;
+    date?: string;
+    time?: string;
+    duration?: string;
+    price?: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    durationUnit?: string;
+  };
 };
 
-function formatDate(iso: string) {
-  return new Date(`${iso}T12:00:00`).toLocaleDateString("en-AU", {
+function formatDate(iso: string, locale: string) {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString(locale, {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -41,6 +55,8 @@ export function BookingSummary({
   customerPhone,
   confirmationNote = "Your booking is held as pending until the salon confirms.",
   className,
+  dateLocale = "en-AU",
+  labels,
 }: BookingSummaryProps) {
   return (
     <div
@@ -50,25 +66,34 @@ export function BookingSummary({
       )}
     >
       <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-neutral-500">
-        Booking summary
+        {labels?.title ?? "Booking summary"}
       </p>
       <h3 className="mt-2 text-[20px] font-semibold tracking-tight text-neutral-950">
         {salonName}
       </h3>
 
       <dl className="mt-5 space-y-3 text-[14px]">
-        <Row label="Service" value={serviceName} />
-        <Row label="Staff" value={staffName} />
-        <Row label="Date" value={formatDate(date)} />
+        <Row label={labels?.service ?? "Service"} value={serviceName} />
+        <Row label={labels?.staff ?? "Staff"} value={staffName} />
+        <Row label={labels?.date ?? "Date"} value={formatDate(date, dateLocale)} />
         <Row
-          label="Time"
+          label={labels?.time ?? "Time"}
           value={endTime ? `${startTime} – ${endTime}` : startTime}
         />
-        <Row label="Duration" value={`${duration} min`} />
-        <Row label="Price" value={priceLabel} />
-        {customerName ? <Row label="Name" value={customerName} /> : null}
-        {customerEmail ? <Row label="Email" value={customerEmail} /> : null}
-        {customerPhone ? <Row label="Phone" value={customerPhone} /> : null}
+        <Row
+          label={labels?.duration ?? "Duration"}
+          value={`${duration} ${labels?.durationUnit ?? "min"}`}
+        />
+        <Row label={labels?.price ?? "Price"} value={priceLabel} />
+        {customerName ? (
+          <Row label={labels?.name ?? "Name"} value={customerName} />
+        ) : null}
+        {customerEmail ? (
+          <Row label={labels?.email ?? "Email"} value={customerEmail} />
+        ) : null}
+        {customerPhone ? (
+          <Row label={labels?.phone ?? "Phone"} value={customerPhone} />
+        ) : null}
       </dl>
 
       <p className="mt-5 rounded-2xl bg-[#FAFBFC] px-4 py-3 text-[12px] text-neutral-500">
