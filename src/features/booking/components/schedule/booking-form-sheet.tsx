@@ -539,16 +539,22 @@ export function BookingFormSheet({
   const isOtherStaff = values.staffId === OTHER_STAFF_SENTINEL;
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet
+      open={open}
+      onOpenChange={onOpenChange}
+      disablePointerDismissal
+      closeOnEscape={false}
+    >
       <SheetContent
         side="top"
         showCloseButton
+        closeLabel="X close"
         className={adminBookingSheetClassName}
       >
         <div className={adminBookingSheetBodyClassName}>
           <div className={adminBookingSheetHandleClassName} />
 
-          <SheetHeader className="shrink-0 border-b border-stone-100 px-4 py-3 pr-12 text-left">
+          <SheetHeader className="shrink-0 border-b border-stone-100 px-4 py-3 pr-20 text-left">
             <p className={theme.eyebrow}>Admin booking</p>
             <SheetTitle className="text-lg font-semibold tracking-tight text-stone-900">
               {title}

@@ -418,12 +418,22 @@ export function BookingDetailSheet({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="top" showCloseButton className={adminBookingSheetClassName}>
+    <Sheet
+      open={open}
+      onOpenChange={onOpenChange}
+      disablePointerDismissal
+      closeOnEscape={false}
+    >
+      <SheetContent
+        side="top"
+        showCloseButton
+        closeLabel="X close"
+        className={adminBookingSheetClassName}
+      >
         <div className={adminBookingSheetBodyClassName}>
           <div className={adminBookingSheetHandleClassName} />
 
-          <SheetHeader className="shrink-0 border-b border-stone-100 px-4 py-3 text-left">
+          <SheetHeader className="shrink-0 border-b border-stone-100 px-4 py-3 pr-20 text-left">
             <p className={theme.eyebrow}>Booking</p>
             <SheetTitle className="text-lg font-semibold tracking-tight text-stone-900">
               Booking details

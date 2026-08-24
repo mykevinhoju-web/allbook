@@ -7,8 +7,26 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
 
-function Sheet({ ...props }: SheetPrimitive.Root.Props) {
-  return <SheetPrimitive.Root data-slot="sheet" {...props} />
+function Sheet({
+  closeOnEscape = true,
+  onOpenChange,
+  ...props
+}: SheetPrimitive.Root.Props & {
+  /** When false, Escape does not close the sheet. */
+  closeOnEscape?: boolean
+}) {
+  return (
+    <SheetPrimitive.Root
+      data-slot="sheet"
+      onOpenChange={(open, eventDetails) => {
+        if (!open && !closeOnEscape && eventDetails.reason === "escape-key") {
+          return
+        }
+        onOpenChange?.(open, eventDetails)
+      }}
+      {...props}
+    />
+  )
 }
 
 function SheetTrigger({ ...props }: SheetPrimitive.Trigger.Props) {
@@ -41,10 +59,13 @@ function SheetContent({
   children,
   side = "right",
   showCloseButton = true,
+  closeLabel,
   ...props
 }: SheetPrimitive.Popup.Props & {
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
+  /** Visible close control text, e.g. "X close". */
+  closeLabel?: string
 }) {
   return (
     <SheetPortal>
@@ -65,14 +86,23 @@ function SheetContent({
             render={
               <Button
                 variant="ghost"
-                className="absolute top-3 right-3"
-                size="icon-sm"
+                className={
+                  closeLabel
+                    ? "absolute top-2 right-2 h-8 px-2.5 text-xs font-semibold text-stone-700"
+                    : "absolute top-3 right-3"
+                }
+                size={closeLabel ? "sm" : "icon-sm"}
               />
             }
           >
-            <XIcon
-            />
-            <span className="sr-only">Close</span>
+            {closeLabel ? (
+              closeLabel
+            ) : (
+              <>
+                <XIcon />
+                <span className="sr-only">Close</span>
+              </>
+            )}
           </SheetPrimitive.Close>
         )}
       </SheetPrimitive.Popup>
