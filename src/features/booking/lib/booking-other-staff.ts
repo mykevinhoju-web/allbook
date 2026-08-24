@@ -5,6 +5,14 @@ import type { Database, Json } from "@/types/database";
 /** Form sentinel — not a real staff UUID. */
 export const OTHER_STAFF_SENTINEL = "__other_staff__";
 
+/** First option in the Other Staff list — unassigned until confirmed later. */
+export const ANY_GIRL_SENTINEL = "__any_girl__";
+export const ANY_GIRL_LABEL = "Any Girl";
+
+export function isAnyGirlName(name?: string | null): boolean {
+  return (name ?? "").trim().toLowerCase() === ANY_GIRL_LABEL.toLowerCase();
+}
+
 export const OTHER_STAFF_GUEST_ATTR = "otherStaffGuest";
 
 const OTHER_STAFF_MARKER_RE = /\[other-staff:([^\]]+)\]/i;

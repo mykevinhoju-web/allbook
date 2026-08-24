@@ -40,7 +40,11 @@ import {
   adminBookingSheetHandleClassName,
   adminBookingSheetScrollClassName,
 } from "../../lib/admin-booking-sheet";
-import { OTHER_STAFF_SENTINEL } from "../../lib/booking-other-staff";
+import {
+  ANY_GIRL_LABEL,
+  ANY_GIRL_SENTINEL,
+  OTHER_STAFF_SENTINEL,
+} from "../../lib/booking-other-staff";
 import { pickWalkInStaff } from "../../lib/walk-in-rotation";
 import type { RoomAvailabilityStatus } from "../../lib/room-availability";
 import {
@@ -77,6 +81,8 @@ export interface BookingFormValues {
   walkIn: boolean | null;
   /** External staff name when staffId is OTHER_STAFF_SENTINEL. */
   otherStaffName: string;
+  /** Any Girl sentinel or a real staff id not on today's booking chips. */
+  otherStaffMemberId: string;
 }
 
 export const defaultBookingFormValues: BookingFormValues = {
@@ -94,6 +100,7 @@ export const defaultBookingFormValues: BookingFormValues = {
   outCall: false,
   walkIn: null,
   otherStaffName: "",
+  otherStaffMemberId: "",
 };
 
 export interface BookingTimeSlotOption {
@@ -113,6 +120,8 @@ interface BookingFormSheetProps {
   date: string;
   onDateChange?: (date: string) => void;
   staffOptions: { id: string; name: string }[];
+  /** Active staff not shown on today's booking chips. */
+  otherStaffOptions?: { id: string; name: string }[];
   roomOptions: { id: string; name: string }[];
   serviceOptions: ServiceOption[];
   pricingAdjustments?: PricingAdjustments;
@@ -250,6 +259,7 @@ export function BookingFormSheet({
   date,
   onDateChange,
   staffOptions,
+  otherStaffOptions = [],
   roomOptions,
   serviceOptions,
   pricingAdjustments = DEFAULT_PRICING_ADJUSTMENTS,
@@ -419,6 +429,7 @@ export function BookingFormSheet({
       startsAt: "",
       allowImmediateStart: false,
       otherStaffName: "",
+      otherStaffMemberId: "",
     });
     // Only re-run when the selected id or option list changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- avoid loop on values object identity
@@ -576,26 +587,49 @@ export function BookingFormSheet({
                         staffId === OTHER_STAFF_SENTINEL
                           ? values.otherStaffName
                           : "",
+                      otherStaffMemberId:
+                        staffId === OTHER_STAFF_SENTINEL
+                          ? values.otherStaffMemberId
+                          : "",
                     });
                   }}
                 />
                 {isOtherStaff ? (
                   <div className="mt-3 space-y-1">
-                    <FieldLabel required>Other staff name</FieldLabel>
-                    <Input
-                      value={values.otherStaffName}
-                      onChange={(event) =>
+                    <FieldLabel required>Other staff</FieldLabel>
+                    <select
+                      value={values.otherStaffMemberId}
+                      onChange={(event) => {
+                        const choice = event.target.value;
+                        const picked = otherStaffOptions.find(
+                          (member) => member.id === choice,
+                        );
+                        const isAnyGirl = choice === ANY_GIRL_SENTINEL;
                         onChange({
                           ...values,
-                          otherStaffName: event.target.value,
-                        })
-                      }
-                      placeholder="Enter staff name"
-                      className="h-11 rounded-xl border-stone-200 bg-white"
-                      autoComplete="off"
-                    />
+                          otherStaffMemberId: choice,
+                          otherStaffName: isAnyGirl
+                            ? ANY_GIRL_LABEL
+                            : (picked?.name ?? ""),
+                          paymentMethod: isAnyGirl
+                            ? "pre"
+                            : values.paymentMethod,
+                          walkIn: isAnyGirl ? false : values.walkIn,
+                        });
+                      }}
+                      className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-900"
+                    >
+                      <option value="">Select staff</option>
+                      <option value={ANY_GIRL_SENTINEL}>{ANY_GIRL_LABEL}</option>
+                      {otherStaffOptions.map((member) => (
+                        <option key={member.id} value={member.id}>
+                          {member.name}
+                        </option>
+                      ))}
+                    </select>
                     <p className="text-xs text-stone-500">
-                      External staff — any time from now is available.
+                      Staff not on today&apos;s booking list — any time from now
+                      is available. {ANY_GIRL_LABEL} turns on Pre - Book.
                     </p>
                   </div>
                 ) : (

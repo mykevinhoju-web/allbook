@@ -65,6 +65,7 @@ interface BookingDetailSheetProps {
   allowCancel?: boolean;
   hideStaffField?: boolean;
   onEnterRoom?: () => void;
+  assignableStaff?: { id: string; name: string }[];
 }
 
 function DetailRow({
@@ -99,6 +100,7 @@ export function BookingDetailSheet({
   allowCancel = true,
   hideStaffField = false,
   onEnterRoom,
+  assignableStaff = [],
 }: BookingDetailSheetProps) {
   const [roomId, setRoomId] = useState("");
   const [savingRoom, setSavingRoom] = useState(false);
@@ -109,11 +111,14 @@ export function BookingDetailSheet({
   const [confirmSplitCash, setConfirmSplitCash] = useState("");
   const [confirmingPayment, setConfirmingPayment] = useState(false);
   const [resuming, setResuming] = useState(false);
+  const [assignStaffId, setAssignStaffId] = useState("");
+  const [assigningStaff, setAssigningStaff] = useState(false);
 
   useEffect(() => {
     setRoomId(booking?.roomId ?? "");
     setConfirmMethod("");
     setConfirmSplitCash("");
+    setAssignStaffId("");
   }, [booking?.id, booking?.roomId]);
 
   const canChangeRoom =
@@ -353,6 +358,40 @@ export function BookingDetailSheet({
     }
   };
 
+  const confirmAsBooking = async () => {
+    if (!booking || !assignStaffId || assigningStaff) return;
+    setAssigningStaff(true);
+    try {
+      const response = await fetchApi(
+        `/api/admin/bookings/${booking.id}/assign-staff`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ staffId: assignStaffId }),
+        },
+      );
+      const data = (await response.json()) as {
+        booking?: AdminBooking;
+        error?: string;
+      };
+      if (!response.ok || !data.booking) {
+        toast.error("Could not confirm booking", {
+          description: data.error ?? "Try another staff member.",
+        });
+        return;
+      }
+      toast.success("Pre booking confirmed");
+      onPaymentConfirmed?.(data.booking);
+      onOpenChange(false);
+    } catch {
+      toast.error("Could not confirm booking", {
+        description: "Network error. Try again.",
+      });
+    } finally {
+      setAssigningStaff(false);
+    }
+  };
+
   const resumeService = async () => {
     if (!booking || !canResumeService || resuming) return;
     setResuming(true);
@@ -511,8 +550,40 @@ export function BookingDetailSheet({
               </AppButton>
             ) : null}
 
-            {booking.paymentStatus === "unpaid" ||
-            booking.paymentMethod === "pre" ? (
+            {booking.paymentMethod === "pre" ? (
+              <div className={cn(theme.panel, "space-y-3")}>
+                <p className="text-sm font-semibold text-stone-900">
+                  Confirm Pre booking
+                </p>
+                <p className="text-xs text-stone-500">
+                  Choose staff, then convert this gray Pre booking into a regular
+                  booking.
+                </p>
+                <select
+                  value={assignStaffId}
+                  onChange={(event) => setAssignStaffId(event.target.value)}
+                  className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm"
+                >
+                  <option value="">Select staff</option>
+                  {assignableStaff.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.name}
+                    </option>
+                  ))}
+                </select>
+                <AppButton
+                  type="button"
+                  className={cn(theme.goldButton, "w-full")}
+                  disabled={!assignStaffId || assigningStaff}
+                  onClick={() => void confirmAsBooking()}
+                >
+                  {assigningStaff ? "Confirming…" : "Confirm as booking"}
+                </AppButton>
+              </div>
+            ) : null}
+
+            {booking.paymentMethod !== "pre" &&
+            booking.paymentStatus === "unpaid" ? (
               <div className={cn(theme.panel, "space-y-3")}>
                 <p className="text-sm font-semibold text-stone-900">
                   Confirm payment

@@ -27,6 +27,8 @@ import { useBookingRealtime } from "../../lib/booking-schedule-realtime";
 import { useBookingAlerts } from "../../context/booking-alert-provider";
 import { useAdminAvailabilitySlots } from "../../hooks/use-admin-availability-slots";
 import {
+  ANY_GIRL_LABEL,
+  ANY_GIRL_SENTINEL,
   OTHER_STAFF_SENTINEL,
   isOtherStaffGuestAttributes,
 } from "../../lib/booking-other-staff";
@@ -188,6 +190,34 @@ export function BookingScheduleContent() {
     [workingStaff, date, tenant.settings.timezone],
   );
 
+  const otherStaffOptions = useMemo(() => {
+    const onBookingIds = new Set(
+      (bookableStaff.length > 0 ? bookableStaff : workingStaff).map(
+        (member) => member.id,
+      ),
+    );
+    return staff
+      .filter(
+        (member) =>
+          member.status === "active" &&
+          !isOtherStaffGuestAttributes(member.attributes) &&
+          !onBookingIds.has(member.id),
+      )
+      .map((member) => ({ id: member.id, name: member.name }));
+  }, [staff, bookableStaff, workingStaff]);
+
+  const assignableStaffOptions = useMemo(
+    () =>
+      staff
+        .filter(
+          (member) =>
+            member.status === "active" &&
+            !isOtherStaffGuestAttributes(member.attributes),
+        )
+        .map((member) => ({ id: member.id, name: member.name })),
+    [staff],
+  );
+
   useEffect(() => {
     if (prefillsApplied.current || serviceOptions.length === 0) return;
 
@@ -301,9 +331,18 @@ export function BookingScheduleContent() {
 
   const createBooking = async () => {
     const isOtherStaff = form.staffId === OTHER_STAFF_SENTINEL;
-    const isWalkIn = form.walkIn === true;
+    const isAnyGirl =
+      isOtherStaff && form.otherStaffMemberId === ANY_GIRL_SENTINEL;
+    const assignedOtherStaffId =
+      isOtherStaff &&
+      form.otherStaffMemberId &&
+      form.otherStaffMemberId !== ANY_GIRL_SENTINEL
+        ? form.otherStaffMemberId
+        : "";
+    const isWalkIn = isAnyGirl ? false : form.walkIn === true;
+    const paymentMethod = isAnyGirl ? "pre" : form.paymentMethod;
 
-    if (form.walkIn !== true && form.walkIn !== false) {
+    if (form.walkIn !== true && form.walkIn !== false && !isAnyGirl) {
       toast.error("Select Walk-in or Booking");
       return;
     }
@@ -313,8 +352,8 @@ export function BookingScheduleContent() {
       return;
     }
 
-    if (isOtherStaff && !form.otherStaffName.trim()) {
-      toast.error("Enter the other staff name");
+    if (isOtherStaff && !form.otherStaffMemberId) {
+      toast.error("Select other staff");
       return;
     }
 
@@ -339,16 +378,16 @@ export function BookingScheduleContent() {
     }
 
     if (
-      form.paymentMethod !== "cash" &&
-      form.paymentMethod !== "card" &&
-      form.paymentMethod !== "split" &&
-      form.paymentMethod !== "pre"
+      paymentMethod !== "cash" &&
+      paymentMethod !== "card" &&
+      paymentMethod !== "split" &&
+      paymentMethod !== "pre"
     ) {
       toast.error("Select a payment method");
       return;
     }
 
-    if (form.paymentMethod === "split") {
+    if (paymentMethod === "split") {
       const cash = Math.round(Number(form.splitCashAmount || 0) * 100);
       if (!Number.isFinite(cash) || cash <= 0) {
         toast.error("Enter the cash amount for Split");
@@ -367,7 +406,7 @@ export function BookingScheduleContent() {
       }
 
       const splitCashCents =
-        form.paymentMethod === "split"
+        paymentMethod === "split"
           ? Math.round(Number(form.splitCashAmount || 0) * 100)
           : undefined;
 
@@ -375,11 +414,11 @@ export function BookingScheduleContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          staffId: isOtherStaff ? undefined : form.staffId,
-          otherStaff: isOtherStaff,
-          otherStaffName: isOtherStaff
-            ? form.otherStaffName.trim()
-            : undefined,
+          staffId: isAnyGirl
+            ? undefined
+            : assignedOtherStaffId || (isOtherStaff ? undefined : form.staffId),
+          otherStaff: isAnyGirl,
+          otherStaffName: isAnyGirl ? ANY_GIRL_LABEL : undefined,
           walkIn: isWalkIn,
           startsAt: resolveBookingStartsAt(
             date,
@@ -395,7 +434,7 @@ export function BookingScheduleContent() {
           ),
           customerPhone: normalizeAuMobile(form.customerPhone),
           customerPostcode: formatAuPostcodeInput(form.customerPostcode),
-          paymentMethod: form.paymentMethod,
+          paymentMethod,
           splitCashCents,
           allowImmediateStart: form.allowImmediateStart,
         }),
@@ -493,6 +532,7 @@ export function BookingScheduleContent() {
           setSelectedBooking(updated);
           void loadSchedule({ soft: true });
         }}
+        assignableStaff={assignableStaffOptions}
       />
 
       <BookingFormSheet
@@ -505,6 +545,7 @@ export function BookingScheduleContent() {
           ? bookableStaff
           : workingStaff
         ).map((member) => ({ id: member.id, name: member.name }))}
+        otherStaffOptions={otherStaffOptions}
         roomOptions={rooms}
         serviceOptions={serviceOptions}
         pricingAdjustments={pricingAdjustments}

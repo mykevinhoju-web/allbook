@@ -684,9 +684,7 @@ export function StaffGuideTimeline({
                           Boolean(booking.checkedOutAt) ||
                           booking.status === "completed";
                         const selected = selectedBookingId === booking.id;
-                        const isPreBooking =
-                          booking.paymentMethod === "pre" ||
-                          booking.paymentStatus === "unpaid";
+                        const isPreBooking = booking.paymentMethod === "pre";
                         const tone = isPreBooking
                           ? PRE_BOOKING_BLOCK_TONE
                           : booking.walkIn
