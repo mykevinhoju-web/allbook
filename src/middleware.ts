@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 
+import { isMarketplaceCategorySlug } from "@/features/category/constants";
 import { TENANT_SLUG_COOKIE, TENANT_SLUG_HEADER } from "@/features/tenants/constants";
 import { resolveDevTenantSlugFromEnv } from "@/features/tenants/utils/dev-tenant";
 import {
@@ -7,7 +8,10 @@ import {
   parseTenantPathPrefix,
   shouldPrefixTenantPath,
 } from "@/features/tenants/utils/path-tenant";
-import { isPlatformHost } from "@/features/tenants/utils/resolve-host";
+import {
+  isKoreanPlatformHost,
+  isPlatformHost,
+} from "@/features/tenants/utils/resolve-host";
 import { resolveTenantSlugFromHost } from "@/features/tenants/utils/resolve-slug";
 import {
   signTenantSlugToken,
@@ -310,11 +314,18 @@ export async function middleware(request: NextRequest) {
     return access.response;
   }
 
+  const koreanCatalogPath =
+    isKoreanPlatformHost(host) &&
+    (isMarketplaceCategorySlug(pathname.split("/").filter(Boolean)[0] ?? "") ||
+      pathname.startsWith("/salon"));
+
   // Private Preview — Marketplace + samples stay locked on apex unless
   // platform admin or signed preview-access cookie.
+  // kor catalog detail/book stays public so search "상세 보기" works.
   if (
     isPrivatePreviewEnabled() &&
     platform &&
+    !koreanCatalogPath &&
     isMarketplacePreviewProtectedPath(pathname)
   ) {
     const hasPreviewAccess = await verifyPreviewAccessToken(

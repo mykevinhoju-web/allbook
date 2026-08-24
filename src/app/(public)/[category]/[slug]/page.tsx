@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import {
@@ -12,7 +13,13 @@ import {
   isMarketplaceCategorySlug,
   resolveCategoryFromService,
 } from "@/features/category";
+import {
+  KoreanSalonDetailView,
+  KoreanSalonError,
+  KoreanSalonNotFound,
+} from "@/features/platform-landing/components/korean-salon-detail";
 import { getSalonPageDataBySlug } from "@/features/salon";
+import { isKoreanPlatformHost } from "@/features/tenants/utils/resolve-host";
 import { createClient } from "@/lib/supabase/server";
 
 type PageProps = {
@@ -61,13 +68,24 @@ export default async function MarketplaceCategorySalonPage({
 
   const supabase = await createClient();
   const result = await getSalonPageDataBySlug(supabase, slug);
+  const host =
+    (await headers()).get("x-forwarded-host") ??
+    (await headers()).get("host") ??
+    "";
+  const korean = isKoreanPlatformHost(host);
 
   if (result.status === "not_found") {
-    return <CategorySalonNotFound category={category} />;
+    return korean ? (
+      <KoreanSalonNotFound />
+    ) : (
+      <CategorySalonNotFound category={category} />
+    );
   }
 
   if (result.status === "error") {
-    return (
+    return korean ? (
+      <KoreanSalonError message={result.error} />
+    ) : (
       <CategorySalonError category={category} message={result.error} />
     );
   }
@@ -75,6 +93,12 @@ export default async function MarketplaceCategorySalonPage({
   // Prefer the category derived from salon service when it mismatches the URL.
   const salonCategory =
     resolveCategoryFromService(result.data.salon.service) ?? category;
+
+  if (korean) {
+    return (
+      <KoreanSalonDetailView category={salonCategory} data={result.data} />
+    );
+  }
 
   return (
     <CategorySalonPage category={salonCategory} data={result.data} />
