@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 
 import {
   PlatformLandingPage,
   SiteFooter,
   TenantHomePage,
 } from "@/components/common";
+import { KoreanPlatformLanding } from "@/features/platform-landing/components/korean-platform-landing";
 import {
   PLATFORM_SITE_URL,
   buildPlatformJsonLd,
@@ -19,10 +21,25 @@ import {
   isPrivatePreviewEnabled,
 } from "@/features/private-preview";
 import { getTenantOptional } from "@/features/tenants/server";
+import { isKoreanPlatformHost } from "@/features/tenants/utils/resolve-host";
+
+async function getRequestHost() {
+  const headerStore = await headers();
+  return headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "";
+}
 
 export async function generateMetadata(): Promise<Metadata> {
   const tenant = await getTenantOptional();
+  const host = await getRequestHost();
   const preview = isPrivatePreviewEnabled();
+
+  if (!tenant && isKoreanPlatformHost(host)) {
+    return {
+      title: { absolute: "AllBook" },
+      description: "무엇을 찾고 계세요?",
+      robots: { index: false, follow: false },
+    };
+  }
 
   if (tenant) {
     return {
@@ -106,6 +123,11 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function HomePage() {
   const tenant = await getTenantOptional();
+  const host = await getRequestHost();
+
+  if (!tenant && isKoreanPlatformHost(host)) {
+    return <KoreanPlatformLanding />;
+  }
 
   if (!tenant) {
     if (isPrivatePreviewEnabled()) {

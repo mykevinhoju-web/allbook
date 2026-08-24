@@ -4,6 +4,7 @@ export type { Tenant, TenantBranding, TenantSettings, TenantSlug } from "./types
 export {
   getTenantAdminUrl,
   getTenantPublicUrl,
+  isKoreanPlatformHost,
   isPlatformHost,
   isTenantSubdomainHost,
   normalizeHostname,

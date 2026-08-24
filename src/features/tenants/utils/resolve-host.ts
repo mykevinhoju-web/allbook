@@ -10,6 +10,10 @@ export function normalizeHostname(host: string): string {
   return host.split(":")[0]?.toLowerCase() ?? "";
 }
 
+export function isKoreanPlatformHost(host: string): boolean {
+  return normalizeHostname(host) === "kor.allbook.com.au";
+}
+
 export function isPlatformHost(host: string): boolean {
   const hostname = normalizeHostname(host);
 
