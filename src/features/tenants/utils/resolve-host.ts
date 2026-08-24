@@ -1,4 +1,8 @@
-const PLATFORM_APEX_HOSTS = new Set(["allbook.com.au", "www.allbook.com.au"]);
+const PLATFORM_APEX_HOSTS = new Set([
+  "allbook.com.au",
+  "www.allbook.com.au",
+  "kor.allbook.com.au",
+]);
 
 const LOCAL_PLATFORM_HOSTS = new Set(["localhost", "127.0.0.1"]);
 

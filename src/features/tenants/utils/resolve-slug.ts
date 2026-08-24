@@ -39,13 +39,17 @@ export function resolveTenantSlugFromRequest(
   return resolveTenantSlugFromEnvOrNull();
 }
 
+/** Subdomains that are platform hosts, not tenant slugs. */
+const RESERVED_PLATFORM_SUBDOMAINS = new Set(["www", "kor"]);
+
 export function resolveTenantSlugFromHost(host: string): string | null {
   const hostname = normalizeHostname(host);
 
-  // {tenant}.allbook.com.au
+  // {tenant}.allbook.com.au — never treat reserved platform hosts as tenants
   const platformMatch = hostname.match(/^([a-z0-9-]+)\.allbook\.com\.au$/);
-  if (platformMatch?.[1] && platformMatch[1] !== "www") {
-    return platformMatch[1];
+  const subdomain = platformMatch?.[1];
+  if (subdomain && !RESERVED_PLATFORM_SUBDOMAINS.has(subdomain)) {
+    return subdomain;
   }
 
   // {tenant}.localhost for local multi-tenant dev
