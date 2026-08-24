@@ -332,7 +332,10 @@ export function BookingScheduleContent() {
   const createBooking = async () => {
     const isOtherStaff = form.staffId === OTHER_STAFF_SENTINEL;
     const isAnyGirl =
-      isOtherStaff && form.otherStaffMemberId === ANY_GIRL_SENTINEL;
+      isOtherStaff &&
+      (form.otherStaffMemberId === ANY_GIRL_SENTINEL ||
+        form.otherStaffName.trim().toLowerCase() ===
+          ANY_GIRL_LABEL.toLowerCase());
     const assignedOtherStaffId =
       isOtherStaff &&
       form.otherStaffMemberId &&
@@ -352,8 +355,12 @@ export function BookingScheduleContent() {
       return;
     }
 
-    if (isOtherStaff && !form.otherStaffMemberId) {
-      toast.error("Select other staff");
+    if (
+      isOtherStaff &&
+      !form.otherStaffMemberId &&
+      !form.otherStaffName.trim()
+    ) {
+      toast.error("Select or enter the other staff name");
       return;
     }
 
@@ -417,8 +424,12 @@ export function BookingScheduleContent() {
           staffId: isAnyGirl
             ? undefined
             : assignedOtherStaffId || (isOtherStaff ? undefined : form.staffId),
-          otherStaff: isAnyGirl,
-          otherStaffName: isAnyGirl ? ANY_GIRL_LABEL : undefined,
+          otherStaff: Boolean(isAnyGirl || (isOtherStaff && !assignedOtherStaffId)),
+          otherStaffName: isAnyGirl
+            ? ANY_GIRL_LABEL
+            : isOtherStaff && !assignedOtherStaffId
+              ? form.otherStaffName.trim()
+              : undefined,
           walkIn: isWalkIn,
           startsAt: resolveBookingStartsAt(
             date,

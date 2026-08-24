@@ -595,42 +595,66 @@ export function BookingFormSheet({
                   }}
                 />
                 {isOtherStaff ? (
-                  <div className="mt-3 space-y-1">
-                    <FieldLabel required>Other staff</FieldLabel>
-                    <select
-                      value={values.otherStaffMemberId}
-                      onChange={(event) => {
-                        const choice = event.target.value;
-                        const picked = otherStaffOptions.find(
-                          (member) => member.id === choice,
-                        );
-                        const isAnyGirl = choice === ANY_GIRL_SENTINEL;
-                        onChange({
-                          ...values,
-                          otherStaffMemberId: choice,
-                          otherStaffName: isAnyGirl
-                            ? ANY_GIRL_LABEL
-                            : (picked?.name ?? ""),
-                          paymentMethod: isAnyGirl
-                            ? "pre"
-                            : values.paymentMethod,
-                          walkIn: isAnyGirl ? false : values.walkIn,
-                        });
-                      }}
-                      className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-900"
-                    >
-                      <option value="">Select staff</option>
-                      <option value={ANY_GIRL_SENTINEL}>{ANY_GIRL_LABEL}</option>
-                      {otherStaffOptions.map((member) => (
-                        <option key={member.id} value={member.id}>
-                          {member.name}
+                  <div className="mt-3 space-y-3">
+                    <div className="space-y-1">
+                      <FieldLabel required>Other staff</FieldLabel>
+                      <select
+                        value={values.otherStaffMemberId}
+                        onChange={(event) => {
+                          const choice = event.target.value;
+                          const picked = otherStaffOptions.find(
+                            (member) => member.id === choice,
+                          );
+                          const isAnyGirl = choice === ANY_GIRL_SENTINEL;
+                          onChange({
+                            ...values,
+                            otherStaffMemberId: choice,
+                            otherStaffName: isAnyGirl
+                              ? ANY_GIRL_LABEL
+                              : (picked?.name ?? values.otherStaffName),
+                            paymentMethod: isAnyGirl
+                              ? "pre"
+                              : values.paymentMethod,
+                            walkIn: isAnyGirl ? false : values.walkIn,
+                          });
+                        }}
+                        className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-900"
+                      >
+                        <option value="">Select staff</option>
+                        <option value={ANY_GIRL_SENTINEL}>
+                          {ANY_GIRL_LABEL}
                         </option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-stone-500">
-                      Staff not on today&apos;s booking list — any time from now
-                      is available. {ANY_GIRL_LABEL} turns on Pre - Book.
-                    </p>
+                        {otherStaffOptions.map((member) => (
+                          <option key={member.id} value={member.id}>
+                            {member.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <FieldLabel required>Other staff name</FieldLabel>
+                      <Input
+                        value={values.otherStaffName}
+                        onChange={(event) =>
+                          onChange({
+                            ...values,
+                            otherStaffName: event.target.value,
+                            otherStaffMemberId:
+                              event.target.value.trim().toLowerCase() ===
+                              ANY_GIRL_LABEL.toLowerCase()
+                                ? ANY_GIRL_SENTINEL
+                                : "",
+                          })
+                        }
+                        placeholder="Enter staff name"
+                        className="h-11 rounded-xl border-stone-200 bg-white"
+                        autoComplete="off"
+                      />
+                      <p className="text-xs text-stone-500">
+                        Pick from the list or type a name. Any time from now is
+                        available. {ANY_GIRL_LABEL} turns on Pre - Book.
+                      </p>
+                    </div>
                   </div>
                 ) : (
                   <p className="mt-2 text-xs leading-relaxed text-stone-500">

@@ -550,7 +550,7 @@ export function BookingDetailSheet({
               </AppButton>
             ) : null}
 
-            {booking.paymentMethod === "pre" ? (
+            {booking.paymentMethod === "pre" && booking.otherStaff ? (
               <div className={cn(theme.panel, "space-y-3")}>
                 <p className="text-sm font-semibold text-stone-900">
                   Confirm Pre booking
@@ -582,8 +582,8 @@ export function BookingDetailSheet({
               </div>
             ) : null}
 
-            {booking.paymentMethod !== "pre" &&
-            booking.paymentStatus === "unpaid" ? (
+            {booking.paymentStatus === "unpaid" ||
+            booking.paymentMethod === "pre" ? (
               <div className={cn(theme.panel, "space-y-3")}>
                 <p className="text-sm font-semibold text-stone-900">
                   Confirm payment
