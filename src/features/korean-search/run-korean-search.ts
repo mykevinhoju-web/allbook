@@ -4,6 +4,11 @@ import { createClient } from "@/lib/supabase/server";
 
 import { parseKoreanQuery, type KoreanSearchIntent } from "./parse-korean-query";
 
+export type KoreanSearchOrigin = {
+  lat: number;
+  lng: number;
+};
+
 export type KoreanSearchHit = {
   id: string;
   name: string;
@@ -11,18 +16,27 @@ export type KoreanSearchHit = {
   reviewCount: number;
   price: number;
   location: string;
+  suburb: string;
+  city: string;
+  slug: string;
+  service: string;
   detailPath: string;
+  latitude: number;
+  longitude: number;
+  distanceKm: number | null;
 };
 
 export type KoreanSearchResponse = {
   ok: true;
   intent: KoreanSearchIntent;
+  origin: KoreanSearchOrigin | null;
   results: KoreanSearchHit[];
   total: number;
 };
 
 export async function runKoreanSearch(
   rawQuery: string,
+  userOrigin?: KoreanSearchOrigin | null,
 ): Promise<KoreanSearchResponse> {
   const intent = parseKoreanQuery(rawQuery);
   const supabase = await createClient();
@@ -34,25 +48,45 @@ export async function runKoreanSearch(
       sort: intent.sort,
       minRating: intent.minRating,
       radiusKm: intent.radiusKm,
+      latitude: userOrigin?.lat,
+      longitude: userOrigin?.lng,
       page: 1,
       pageSize: 20,
     },
     { skipGoogleFill: true },
   );
 
-  const results: KoreanSearchHit[] = result.salons.map((salon) => ({
-    id: salon.id,
-    name: salon.name,
-    rating: salon.rating,
-    reviewCount: salon.reviewCount,
-    price: salon.price,
-    location: [salon.suburb, salon.city].filter(Boolean).join(", "),
-    detailPath: buildSalonPathFromService(salon.service, salon.slug),
-  }));
+  const results: KoreanSearchHit[] = result.salons
+    .filter(
+      (salon) =>
+        Number.isFinite(salon.latitude) && Number.isFinite(salon.longitude),
+    )
+    .map((salon) => ({
+      id: salon.id,
+      name: salon.name,
+      rating: salon.rating,
+      reviewCount: salon.reviewCount,
+      price: salon.price,
+      location: [salon.suburb, salon.city].filter(Boolean).join(", "),
+      suburb: salon.suburb,
+      city: salon.city,
+      slug: salon.slug,
+      service: salon.service,
+      detailPath: buildSalonPathFromService(salon.service, salon.slug),
+      latitude: salon.latitude,
+      longitude: salon.longitude,
+      distanceKm:
+        salon.distanceKm != null && Number.isFinite(salon.distanceKm)
+          ? Number(salon.distanceKm)
+          : null,
+    }));
 
   return {
     ok: true,
     intent,
+    origin: result.origin
+      ? { lat: result.origin.lat, lng: result.origin.lng }
+      : userOrigin ?? null,
     results,
     total: result.total,
   };

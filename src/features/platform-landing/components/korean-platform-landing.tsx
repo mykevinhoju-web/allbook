@@ -1,14 +1,18 @@
 "use client";
 
-import Link from "next/link";
 import { Search } from "lucide-react";
 import { type FormEvent, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { KoreanSearchHit, KoreanSearchIntent } from "@/features/korean-search";
+import type {
+  KoreanSearchHit,
+  KoreanSearchIntent,
+  KoreanSearchOrigin,
+} from "@/features/korean-search";
 
 import { AllBookLogo } from "./allbook-logo";
+import { KoreanSearchResults } from "./korean-search-results";
 
 const QUICK_MENUS = ["FREE", "예약", "내 주변", "DEAL"] as const;
 
@@ -20,15 +24,22 @@ const EXAMPLE_QUERIES = [
   "Sunnybank 미용실",
 ] as const;
 
-function formatPrice(price: number) {
-  if (!Number.isFinite(price) || price <= 0) return "가격 문의";
-  return `$${Math.round(price)}`;
+function wantsNearby(text: string) {
+  return /가까운|근처|내 주변|가까이|near me|nearby|closest/i.test(text);
 }
 
-function formatRating(rating: number, reviewCount: number) {
-  if (!rating) return "평점 없음";
-  const count = reviewCount > 0 ? ` (${reviewCount})` : "";
-  return `★ ${rating.toFixed(1)}${count}`;
+function requestBrowserOrigin(): Promise<KoreanSearchOrigin | null> {
+  if (typeof navigator === "undefined" || !navigator.geolocation) {
+    return Promise.resolve(null);
+  }
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) =>
+        resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => resolve(null),
+      { enableHighAccuracy: false, timeout: 4000, maximumAge: 60_000 },
+    );
+  });
 }
 
 /**
@@ -42,6 +53,8 @@ export function KoreanPlatformLanding() {
   const [results, setResults] = useState<KoreanSearchHit[] | null>(null);
   const [total, setTotal] = useState(0);
 
+  const [origin, setOrigin] = useState<KoreanSearchOrigin | null>(null);
+
   const hasResults = results != null;
 
   async function runSearch(nextQuery: string) {
@@ -50,15 +63,21 @@ export function KoreanPlatformLanding() {
     setBusy(true);
     setError(null);
     try {
+      const geo = wantsNearby(q) ? await requestBrowserOrigin() : null;
       const response = await fetch("/api/kor/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q }),
+        body: JSON.stringify({
+          query: q,
+          lat: geo?.lat,
+          lng: geo?.lng,
+        }),
       });
       const data = (await response.json()) as {
         ok?: boolean;
         error?: string;
         intent?: KoreanSearchIntent;
+        origin?: KoreanSearchOrigin | null;
         results?: KoreanSearchHit[];
         total?: number;
       };
@@ -66,10 +85,12 @@ export function KoreanPlatformLanding() {
         throw new Error(data.error || "검색에 실패했습니다.");
       }
       setIntent(data.intent ?? null);
+      setOrigin(data.origin ?? geo ?? null);
       setResults(data.results ?? []);
       setTotal(data.total ?? 0);
     } catch (err) {
       setIntent(null);
+      setOrigin(null);
       setResults(null);
       setError(err instanceof Error ? err.message : "검색에 실패했습니다.");
     } finally {
@@ -93,10 +114,10 @@ export function KoreanPlatformLanding() {
   return (
     <div className="flex min-h-svh flex-col bg-white text-neutral-950">
       <main
-        className={`mx-auto flex w-full max-w-xl flex-1 flex-col px-5 sm:px-6 ${
+        className={`mx-auto flex w-full flex-1 flex-col px-5 sm:px-6 ${
           hasResults
-            ? "items-stretch justify-start py-8"
-            : "items-center justify-center py-16"
+            ? "max-w-6xl items-stretch justify-start py-8"
+            : "max-w-xl items-center justify-center py-16"
         }`}
       >
         <AllBookLogo
@@ -186,30 +207,12 @@ export function KoreanPlatformLanding() {
             <p className="text-sm text-neutral-500">
               {total}곳 · {intent?.location} · {intent?.service}
             </p>
-            {results.length === 0 ? (
-              <p className="mt-4 text-sm text-neutral-600">
-                조건에 맞는 업체를 찾지 못했습니다.
-              </p>
-            ) : (
-              <ul className="mt-4 space-y-3">
-                {results.map((hit) => (
-                  <li key={hit.id}>
-                    <Link
-                      href={hit.detailPath}
-                      className="block rounded-2xl border border-neutral-200 bg-white px-4 py-3 transition hover:border-neutral-400 hover:shadow-sm"
-                    >
-                      <p className="font-semibold text-neutral-900">{hit.name}</p>
-                      <p className="mt-1 text-sm text-neutral-600">
-                        {formatRating(hit.rating, hit.reviewCount)}
-                        <span className="mx-2 text-neutral-300">·</span>
-                        {formatPrice(hit.price)}
-                      </p>
-                      <p className="mt-0.5 text-sm text-neutral-500">{hit.location}</p>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <KoreanSearchResults
+              results={results}
+              total={total}
+              intent={intent}
+              origin={origin}
+            />
           </section>
         ) : null}
       </main>
