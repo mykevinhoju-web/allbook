@@ -41,6 +41,7 @@ import {
   toRoomSlotBookings,
 } from "../../lib/room-availability";
 import { isBookingOccupyingRoom } from "../../lib/room-occupancy";
+import { ANY_GIRL_LABEL, isAnyGirlName } from "../../lib/booking-other-staff";
 import type { AdminBooking } from "../../types/admin-booking";
 import { BookingCheckoutButton } from "./booking-checkout-button";
 
@@ -112,7 +113,6 @@ export function BookingDetailSheet({
   const [confirmingPayment, setConfirmingPayment] = useState(false);
   const [resuming, setResuming] = useState(false);
   const [assignStaffId, setAssignStaffId] = useState("");
-  const [assigningStaff, setAssigningStaff] = useState(false);
 
   useEffect(() => {
     setRoomId(booking?.roomId ?? "");
@@ -221,6 +221,17 @@ export function BookingDetailSheet({
       ? formatPriceFromCents(booking.priceCents, currency)
       : null;
 
+  const isPreBooking = booking.paymentMethod === "pre";
+  const needsStaffAssign =
+    isPreBooking &&
+    (booking.otherStaff ||
+      isAnyGirlName(booking.otherStaffName) ||
+      isAnyGirlName(booking.staffName));
+  const canConfirmPre =
+    Boolean(confirmMethod) &&
+    (!needsStaffAssign || Boolean(assignStaffId)) &&
+    !confirmingPayment;
+
   const roomDirty = roomId !== (booking.roomId ?? "");
   const selectedStatus = roomChange?.statuses.find((room) => room.id === roomId);
   const canSaveRoom =
@@ -303,8 +314,17 @@ export function BookingDetailSheet({
     }
   };
 
-  const confirmPayment = async () => {
+  const confirmPreBooking = async () => {
     if (!booking || !confirmMethod || confirmingPayment) return;
+
+    const needsStaff =
+      booking.otherStaff ||
+      isAnyGirlName(booking.otherStaffName) ||
+      isAnyGirlName(booking.staffName);
+    if (needsStaff && !assignStaffId) {
+      toast.error("Select a staff member");
+      return;
+    }
 
     const splitCashCents =
       confirmMethod === "split"
@@ -324,14 +344,24 @@ export function BookingDetailSheet({
     setConfirmingPayment(true);
     try {
       const response = await fetchApi(
-        `/api/admin/bookings/${booking.id}/confirm-payment`,
+        needsStaff
+          ? `/api/admin/bookings/${booking.id}/assign-staff`
+          : `/api/admin/bookings/${booking.id}/confirm-payment`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            paymentMethod: confirmMethod,
-            splitCashCents,
-          }),
+          body: JSON.stringify(
+            needsStaff
+              ? {
+                  staffId: assignStaffId,
+                  paymentMethod: confirmMethod,
+                  splitCashCents,
+                }
+              : {
+                  paymentMethod: confirmMethod,
+                  splitCashCents,
+                },
+          ),
         },
       );
       const data = (await response.json()) as {
@@ -340,55 +370,21 @@ export function BookingDetailSheet({
       };
 
       if (!response.ok) {
-        toast.error("Could not confirm payment", {
+        toast.error("Could not confirm booking", {
           description: data.error ?? "Try again.",
         });
         return;
       }
 
-      toast.success("Payment confirmed");
+      toast.success("Booking confirmed");
       if (data.booking) onPaymentConfirmed?.(data.booking);
-      onOpenChange(false);
-    } catch {
-      toast.error("Could not confirm payment", {
-        description: "Network error. Try again.",
-      });
-    } finally {
-      setConfirmingPayment(false);
-    }
-  };
-
-  const confirmAsBooking = async () => {
-    if (!booking || !assignStaffId || assigningStaff) return;
-    setAssigningStaff(true);
-    try {
-      const response = await fetchApi(
-        `/api/admin/bookings/${booking.id}/assign-staff`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ staffId: assignStaffId }),
-        },
-      );
-      const data = (await response.json()) as {
-        booking?: AdminBooking;
-        error?: string;
-      };
-      if (!response.ok || !data.booking) {
-        toast.error("Could not confirm booking", {
-          description: data.error ?? "Try another staff member.",
-        });
-        return;
-      }
-      toast.success("Pre booking confirmed");
-      onPaymentConfirmed?.(data.booking);
       onOpenChange(false);
     } catch {
       toast.error("Could not confirm booking", {
         description: "Network error. Try again.",
       });
     } finally {
-      setAssigningStaff(false);
+      setConfirmingPayment(false);
     }
   };
 
@@ -550,46 +546,93 @@ export function BookingDetailSheet({
               </AppButton>
             ) : null}
 
-            {booking.paymentMethod === "pre" && booking.otherStaff ? (
+            {isPreBooking ? (
               <div className={cn(theme.panel, "space-y-3")}>
                 <p className="text-sm font-semibold text-stone-900">
-                  Confirm Pre booking
+                  Confirm booking
                 </p>
                 <p className="text-xs text-stone-500">
-                  Choose staff, then convert this gray Pre booking into a regular
-                  booking.
+                  {needsStaffAssign
+                    ? `${ANY_GIRL_LABEL} is not assigned. Select staff, then payment, to activate this booking.`
+                    : "Choose how the guest paid to activate this Pre booking."}
                 </p>
-                <select
-                  value={assignStaffId}
-                  onChange={(event) => setAssignStaffId(event.target.value)}
-                  className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm"
-                >
-                  <option value="">Select staff</option>
-                  {assignableStaff.map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {member.name}
-                    </option>
-                  ))}
-                </select>
+                {needsStaffAssign ? (
+                  <select
+                    value={assignStaffId}
+                    onChange={(event) => setAssignStaffId(event.target.value)}
+                    className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm"
+                  >
+                    <option value="">Select staff</option>
+                    {assignableStaff.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
+                <div className="grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      { value: "cash" as const, label: "Cash" },
+                      { value: "card" as const, label: "Card" },
+                      { value: "split" as const, label: "Split" },
+                    ] as const
+                  ).map((option) => {
+                    const selected = confirmMethod === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => {
+                          setConfirmMethod(option.value);
+                          if (option.value !== "split") setConfirmSplitCash("");
+                        }}
+                        className={cn(
+                          "min-h-10 rounded-xl border text-sm font-semibold transition",
+                          selected
+                            ? "border-[#8A6A3A] bg-[#8A6A3A]/10 text-stone-900 ring-2 ring-[#8A6A3A]/25"
+                            : "border-stone-200 bg-white text-stone-700",
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {confirmMethod === "split" ? (
+                  <label className="block space-y-1">
+                    <span className="text-xs font-medium text-stone-500">
+                      Cash amount ({currency})
+                    </span>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="1"
+                      value={confirmSplitCash}
+                      onChange={(event) =>
+                        setConfirmSplitCash(event.target.value)
+                      }
+                      placeholder="e.g. 20"
+                      className="h-11 rounded-xl border-stone-200"
+                    />
+                  </label>
+                ) : null}
                 <AppButton
                   type="button"
                   className={cn(theme.goldButton, "w-full")}
-                  disabled={!assignStaffId || assigningStaff}
-                  onClick={() => void confirmAsBooking()}
+                  disabled={!canConfirmPre}
+                  onClick={() => void confirmPreBooking()}
                 >
-                  {assigningStaff ? "Confirming…" : "Confirm as booking"}
+                  {confirmingPayment ? "Confirming…" : "Confirm booking"}
                 </AppButton>
               </div>
-            ) : null}
-
-            {booking.paymentStatus === "unpaid" ||
-            booking.paymentMethod === "pre" ? (
+            ) : booking.paymentStatus === "unpaid" ? (
               <div className={cn(theme.panel, "space-y-3")}>
                 <p className="text-sm font-semibold text-stone-900">
                   Confirm payment
                 </p>
                 <p className="text-xs text-stone-500">
-                  Pre booking — choose how the guest paid to add it to revenue.
+                  Choose how the guest paid to add it to revenue.
                 </p>
                 <div className="grid grid-cols-3 gap-2">
                   {(
@@ -642,7 +685,7 @@ export function BookingDetailSheet({
                   type="button"
                   className={cn(theme.goldButton, "w-full")}
                   disabled={!confirmMethod || confirmingPayment}
-                  onClick={() => void confirmPayment()}
+                  onClick={() => void confirmPreBooking()}
                 >
                   {confirmingPayment ? "Confirming…" : "Confirm payment"}
                 </AppButton>

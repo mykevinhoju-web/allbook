@@ -11,9 +11,11 @@ import {
   visibleBookingNotes,
 } from "@/features/booking/lib/booking-outcall";
 import {
+  isSettledInternalPaymentMethod,
   parsePaymentMethodFromNotes,
   parseSplitCashCentsFromNotes,
-  stripPaymentMethodNote,
+  validateSplitCashCents,
+  withPaymentMethodNote,
 } from "@/features/booking/lib/internal-payment-method";
 import { hasStaffBookingConflict } from "@/features/booking/lib/staff-conflict";
 import { isWalkInBooking } from "@/features/booking/lib/walk-in-rotation";
@@ -98,7 +100,11 @@ export async function POST(
       allowStaff: true,
     });
     const { id } = await params;
-    const body = (await request.json()) as { staffId?: string };
+    const body = (await request.json()) as {
+      staffId?: string;
+      paymentMethod?: string;
+      splitCashCents?: number;
+    };
     const staffId = body.staffId?.trim() ?? "";
 
     if (!staffId) {
@@ -107,11 +113,20 @@ export async function POST(
         { status: 400 },
       );
     }
+    if (!isSettledInternalPaymentMethod(body.paymentMethod)) {
+      return NextResponse.json(
+        { error: "Select Cash, Card, or Split to confirm the booking." },
+        { status: 400 },
+      );
+    }
+    const settledPayment = body.paymentMethod;
 
     const supabase = createServiceSupabase();
     const { data: existing, error: existingError } = await supabase
       .from("bookings")
-      .select("id, staff_id, starts_at, ends_at, notes, payment_status, status")
+      .select(
+        "id, staff_id, starts_at, ends_at, notes, payment_status, status, price_cents",
+      )
       .eq("tenant_id", tenant.id)
       .eq("id", id)
       .maybeSingle();
@@ -167,7 +182,28 @@ export async function POST(
       );
     }
 
-    const notes = stripPaymentMethodNote(stripOtherStaffNote(existing.notes));
+    let splitCashCents: number | null = null;
+    if (settledPayment === "split") {
+      splitCashCents = validateSplitCashCents(
+        body.splitCashCents,
+        existing.price_cents,
+      );
+      if (splitCashCents == null) {
+        return NextResponse.json(
+          {
+            error:
+              "Enter a cash amount greater than 0 and less than the total for Split.",
+          },
+          { status: 400 },
+        );
+      }
+    }
+
+    const notes = withPaymentMethodNote(
+      settledPayment,
+      stripOtherStaffNote(existing.notes),
+      splitCashCents,
+    );
 
     const { data, error } = await supabase
       .from("bookings")
