@@ -50,6 +50,8 @@ export async function runKoreanSearch(
       slug: salon.slug,
       service: salon.service,
       detailPath: buildSalonPathFromService(salon.service, salon.slug),
+      coverImage: salon.coverImage,
+      logo: salon.logo,
       latitude: salon.latitude,
       longitude: salon.longitude,
       distanceKm:

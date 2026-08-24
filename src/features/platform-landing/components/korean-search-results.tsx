@@ -76,7 +76,7 @@ export function KoreanSearchResults({
             <li key={hit.id} id={`kor-hit-${hit.id}`}>
               <div
                 className={cn(
-                  "rounded-2xl border bg-white px-4 py-3 transition",
+                  "overflow-hidden rounded-2xl border bg-white transition",
                   active
                     ? "border-neutral-900 shadow-sm ring-1 ring-neutral-900/10"
                     : "border-neutral-200 hover:border-neutral-400",
@@ -85,28 +85,41 @@ export function KoreanSearchResults({
                 <button
                   type="button"
                   onClick={() => selectSalonFromCard(hit.id)}
-                  className="w-full text-left"
+                  className="grid w-full grid-cols-[96px_minmax(0,1fr)] text-left sm:grid-cols-[120px_minmax(0,1fr)]"
                 >
-                  <p className="font-semibold text-neutral-900">{hit.name}</p>
-                  <p className="mt-1 text-sm text-neutral-600">
-                    {formatRating(hit.rating, hit.reviewCount)}
-                    <span className="mx-2 text-neutral-300">·</span>
-                    {formatPrice(hit.price)}
-                    {distance ? (
-                      <>
-                        <span className="mx-2 text-neutral-300">·</span>
-                        {distance}
-                      </>
-                    ) : null}
-                  </p>
-                  <p className="mt-0.5 text-sm text-neutral-500">{hit.location}</p>
+                  <div className="relative min-h-[96px] bg-neutral-100">
+                    {/* Native img: salon covers may be Google/CDN URLs not in next/image hosts. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={hit.coverImage}
+                      alt=""
+                      className="absolute inset-0 size-full object-cover"
+                    />
+                  </div>
+                  <div className="px-3 py-2.5 sm:px-4 sm:py-3">
+                    <p className="font-semibold text-neutral-900">{hit.name}</p>
+                    <p className="mt-1 text-sm text-neutral-600">
+                      {formatRating(hit.rating, hit.reviewCount)}
+                      <span className="mx-2 text-neutral-300">·</span>
+                      {formatPrice(hit.price)}
+                      {distance ? (
+                        <>
+                          <span className="mx-2 text-neutral-300">·</span>
+                          {distance}
+                        </>
+                      ) : null}
+                    </p>
+                    <p className="mt-0.5 text-sm text-neutral-500">{hit.location}</p>
+                  </div>
                 </button>
-                <Link
-                  href={hit.detailPath}
-                  className="mt-2 inline-block text-sm font-medium text-neutral-800 underline-offset-4 hover:underline"
-                >
-                  상세 보기
-                </Link>
+                <div className="border-t border-neutral-100 px-4 py-2">
+                  <Link
+                    href={hit.detailPath}
+                    className="inline-block text-sm font-medium text-neutral-800 underline-offset-4 hover:underline"
+                  >
+                    상세 보기
+                  </Link>
+                </div>
               </div>
             </li>
           );

@@ -17,6 +17,8 @@ export type KoreanSearchHit = {
   slug: string;
   service: string;
   detailPath: string;
+  coverImage: string;
+  logo: string | null;
   latitude: number;
   longitude: number;
   distanceKm: number | null;
