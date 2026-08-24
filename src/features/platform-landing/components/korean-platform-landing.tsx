@@ -10,6 +10,7 @@ import type {
   KoreanSearchIntent,
   KoreanSearchOrigin,
 } from "@/features/korean-search";
+import { formatKoreanSearchCriteria } from "@/features/korean-search";
 
 import { AllBookLogo } from "./allbook-logo";
 import { KoreanSearchResults } from "./korean-search-results";
@@ -18,10 +19,10 @@ const QUICK_MENUS = ["FREE", "예약", "내 주변", "DEAL"] as const;
 
 const EXAMPLE_QUERIES = [
   "싼 미용실 찾아줘",
-  "평점 높은 미용실 찾아줘",
+  "평점 높은 미용실",
+  "Sunnybank 근처 미용실",
+  "오늘 예약 가능한 미용실",
   "가까운 미용실 찾아줘",
-  "브리즈번 미용실",
-  "Sunnybank 미용실",
 ] as const;
 
 function wantsNearby(text: string) {
@@ -215,9 +216,22 @@ export function KoreanPlatformLanding() {
 
         {results ? (
           <section className="mt-8 w-full" aria-live="polite">
-            <p className="text-sm text-neutral-500">
-              {total}곳 · {intent?.location} · {intent?.service}
-            </p>
+            <p className="text-sm text-neutral-500">{total}곳</p>
+            {intent ? (
+              <ul className="mt-2 flex flex-wrap gap-2">
+                {formatKoreanSearchCriteria(intent).map((chip) => (
+                  <li
+                    key={chip.key}
+                    className="rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-xs text-neutral-700"
+                  >
+                    <span className="text-neutral-400">{chip.label}</span>
+                    <span className="ml-1.5 font-medium text-neutral-900">
+                      {chip.value}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
             <KoreanSearchResults
               results={results}
               total={total}

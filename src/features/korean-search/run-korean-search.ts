@@ -47,9 +47,9 @@ export async function runKoreanSearch(
     ...parsed,
     bookableOnly,
     notes: bookableOnly
-      ? parsed.notes.includes("예약 가능만")
+      ? parsed.notes.includes("예약 가능 여부: 가능")
         ? parsed.notes
-        : [...parsed.notes, "예약 가능만"]
+        : [...parsed.notes, "예약 가능 여부: 가능"]
       : parsed.notes,
   };
 

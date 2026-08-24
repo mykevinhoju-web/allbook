@@ -3,15 +3,25 @@ import type { SearchDistanceKm, SearchSort } from "@/features/search/constants";
 
 export type KoreanSearchIntent = {
   query: string;
-  /** Canonical marketplace service filter, e.g. Hair */
+  /** Canonical marketplace service filter, e.g. Hair. Empty when not in the query. */
   service: string;
+  /** Korean (or suburb) label for the extracted service, if any. */
+  serviceLabel: string | null;
   location: string;
   sort: SearchSort;
   minRating: number | null;
   radiusKm: SearchDistanceKm;
-  /** Filter to salons.booking_enabled — used by kor search, not marketplace RPC. */
   bookableOnly: boolean;
+  priceLow: boolean;
+  ratingHigh: boolean;
+  near: boolean;
   notes: string[];
+};
+
+export type KoreanSearchCriterionChip = {
+  key: string;
+  label: string;
+  value: string;
 };
 
 const SUBURB_ALIASES: Array<{ pattern: RegExp; location: string }> = [
@@ -23,30 +33,40 @@ const SUBURB_ALIASES: Array<{ pattern: RegExp; location: string }> = [
   { pattern: /서니뱅크|\bsunnybank\b/i, location: "Sunnybank" },
 ];
 
-function detectService(normalized: string): { service: string; note: string } {
+function detectService(
+  normalized: string,
+): { service: string; label: string } | null {
   if (/네일|마니큐어|manicure|\bnails?\b/.test(normalized)) {
-    return { service: "Nails", note: "업종: Nails" };
+    return { service: "Nails", label: "네일" };
   }
   if (/바버|이발|\bbarber\b/.test(normalized)) {
-    return { service: "Barber", note: "업종: Barber" };
+    return { service: "Barber", label: "바버" };
   }
   if (/마사지|\bmassage\b/.test(normalized)) {
-    return { service: "Massage", note: "업종: Massage" };
+    return { service: "Massage", label: "마사지" };
   }
   if (/스파|\bspa\b/.test(normalized)) {
-    return { service: "Spa", note: "업종: Spa" };
+    return { service: "Spa", label: "스파" };
   }
-  // 미용실 / 헤어 / hair — default for the Korean home examples
+  if (/왁싱|\bwax/.test(normalized)) {
+    return { service: "Waxing", label: "왁싱" };
+  }
+  if (/페이셜|피부|\bfacial\b/.test(normalized)) {
+    return { service: "Facial", label: "페이셜" };
+  }
+  if (/속눈썹|래쉬|\blash/.test(normalized)) {
+    return { service: "Lashes", label: "속눈썹" };
+  }
   if (/미용|헤어|머리|\bhair\b|salon/.test(normalized)) {
-    return { service: "Hair", note: "업종: Hair" };
+    return { service: "Hair", label: "미용실" };
   }
-  return { service: "Hair", note: "업종 미검출 → Hair 기본" };
+  return null;
 }
 
-function detectLocation(text: string): { location: string; note: string } | null {
+function detectLocation(text: string): string | null {
   for (const alias of SUBURB_ALIASES) {
     if (alias.pattern.test(text)) {
-      return { location: alias.location, note: `위치: ${alias.location}` };
+      return alias.location;
     }
   }
 
@@ -55,18 +75,18 @@ function detectLocation(text: string): { location: string; note: string } | null
   for (const name of names) {
     if (name.length < 3) continue;
     if (lower.includes(name.toLowerCase())) {
-      return { location: name, note: `위치: ${name}` };
+      return name;
     }
   }
   return null;
 }
 
-function detectPriceSort(normalized: string): boolean {
+function detectPriceLow(normalized: string): boolean {
   return /싼|저렴|싸게|가성비|싼값|cheap|inexpensive|budget/.test(normalized);
 }
 
-function detectRatingSort(normalized: string): boolean {
-  return /평점|별점|리뷰\s*좋|평이 좋|높은 미용|인기 있|\brating\b|top rated|best review/.test(
+function detectRatingHigh(normalized: string): boolean {
+  return /평점\s*높|별점\s*높|리뷰\s*좋|평이 좋|\btop rated\b|best review/.test(
     normalized,
   );
 }
@@ -76,69 +96,84 @@ function detectNearby(normalized: string): boolean {
 }
 
 function detectBookableOnly(normalized: string): boolean {
-  return /예약\s*가능|예약할 수|온라인\s*예약|\bbookable\b/.test(normalized);
+  return /오늘\s*예약|예약\s*가능|예약할 수|온라인\s*예약|\bbookable\b/.test(
+    normalized,
+  );
+}
+
+/** Chips for “AI가 이해한 검색 조건” — only extracted fields. */
+export function formatKoreanSearchCriteria(
+  intent: KoreanSearchIntent,
+): KoreanSearchCriterionChip[] {
+  const chips: KoreanSearchCriterionChip[] = [];
+  if (intent.serviceLabel) {
+    chips.push({ key: "service", label: "업종", value: intent.serviceLabel });
+  }
+  if (intent.location) {
+    chips.push({ key: "location", label: "지역", value: intent.location });
+  }
+  if (intent.priceLow) {
+    chips.push({ key: "price", label: "가격", value: "낮은 순" });
+  }
+  if (intent.ratingHigh) {
+    chips.push({ key: "rating", label: "평점", value: "높은 순" });
+  }
+  if (intent.near) {
+    chips.push({ key: "distance", label: "거리", value: "가까운 순" });
+  }
+  if (intent.bookableOnly) {
+    chips.push({ key: "bookable", label: "예약 가능 여부", value: "가능" });
+  }
+  return chips;
 }
 
 /**
  * Rule-based Korean (and mixed EN) query parser.
- * No LLM — canonical filters stay English for the existing search engine.
+ * Missing fields stay empty — no Brisbane/Hair/minRating guesses.
  */
 export function parseKoreanQuery(rawQuery: string): KoreanSearchIntent {
   const query = rawQuery.trim();
   const normalized = query.toLowerCase();
   const notes: string[] = [];
 
-  const service = detectService(normalized);
-  notes.push(service.note);
-
-  const locationHit = detectLocation(query);
-  const nearby = detectNearby(normalized);
-  const cheap = detectPriceSort(normalized);
-  const highRated = detectRatingSort(normalized);
+  const serviceHit = detectService(normalized);
+  const location = detectLocation(query) ?? "";
+  const near = detectNearby(normalized);
+  const priceLow = detectPriceLow(normalized);
+  const ratingHigh = detectRatingHigh(normalized);
   const bookableOnly = detectBookableOnly(normalized);
 
-  let location = locationHit?.location ?? "";
-  if (locationHit) notes.push(locationHit.note);
-
-  if (!location && nearby) {
-    location = "Brisbane City";
-    notes.push("가까운 검색 → Brisbane City 기본");
-  }
-  if (!location) {
-    location = "Brisbane City";
-    notes.push("위치 미검출 → Brisbane City 기본");
-  }
+  if (serviceHit) notes.push(`업종: ${serviceHit.label}`);
+  if (location) notes.push(`지역: ${location}`);
+  if (priceLow) notes.push("가격: 낮은 순");
+  if (ratingHigh) notes.push("평점: 높은 순");
+  if (near) notes.push("거리: 가까운 순");
+  if (bookableOnly) notes.push("예약 가능 여부: 가능");
 
   let sort: SearchSort = "distance";
-  let minRating: number | null = null;
   let radiusKm: SearchDistanceKm = 20;
 
-  if (cheap) {
+  if (priceLow) {
     sort = "price";
-    notes.push("가격: 낮은 순");
-  } else if (highRated) {
+  } else if (ratingHigh) {
     sort = "rating";
-    minRating = 4;
-    notes.push("평점: 4.0+ · 높은 순");
-  } else if (nearby) {
-    sort = "distance";
-    radiusKm = 10;
-    notes.push("거리: 가까운 순");
-  } else if (locationHit) {
+  } else if (near || location) {
     sort = "distance";
     radiusKm = 10;
   }
-
-  if (bookableOnly) notes.push("예약 가능만");
 
   return {
     query,
-    service: service.service,
+    service: serviceHit?.service ?? "",
+    serviceLabel: serviceHit?.label ?? null,
     location,
     sort,
-    minRating,
+    minRating: null,
     radiusKm,
     bookableOnly,
+    priceLow,
+    ratingHigh,
+    near,
     notes,
   };
 }
