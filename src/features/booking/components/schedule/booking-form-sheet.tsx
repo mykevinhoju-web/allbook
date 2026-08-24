@@ -530,7 +530,7 @@ export function BookingFormSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
-        side="bottom"
+        side="top"
         showCloseButton
         className={adminBookingSheetClassName}
       >

@@ -384,7 +384,7 @@ export function BookingDetailSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" showCloseButton className={adminBookingSheetClassName}>
+      <SheetContent side="top" showCloseButton className={adminBookingSheetClassName}>
         <div className={adminBookingSheetBodyClassName}>
           <div className={adminBookingSheetHandleClassName} />
 
