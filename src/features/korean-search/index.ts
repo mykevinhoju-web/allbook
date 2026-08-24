@@ -7,5 +7,6 @@ export type {
   KoreanSearchHit,
   KoreanSearchOrigin,
   KoreanSearchResponse,
+  KoreanSearchFunnelStep,
 } from "./types";
 export { koreanHitToSalon } from "./hit-to-salon";

@@ -6,6 +6,7 @@ import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type {
+  KoreanSearchFunnelStep,
   KoreanSearchHit,
   KoreanSearchIntent,
   KoreanSearchOrigin,
@@ -18,11 +19,11 @@ import { KoreanSearchResults } from "./korean-search-results";
 const QUICK_MENUS = ["FREE", "예약", "내 주변", "DEAL"] as const;
 
 const EXAMPLE_QUERIES = [
+  "써니뱅크에서 가까우면서 평점 4.5 이상이고 50불 이하인 미용실",
+  "오늘 5시 이후 예약 가능한 평점 좋은 미용실",
+  "브리즈번에서 가장 저렴하면서 예약 가능한 미용실",
   "싼 미용실 찾아줘",
-  "평점 높은 미용실",
   "Sunnybank 근처 미용실",
-  "오늘 예약 가능한 미용실",
-  "가까운 미용실 찾아줘",
 ] as const;
 
 function wantsNearby(text: string) {
@@ -56,6 +57,8 @@ export function KoreanPlatformLanding() {
 
   const [origin, setOrigin] = useState<KoreanSearchOrigin | null>(null);
   const [bookableOnly, setBookableOnly] = useState(false);
+  const [shortage, setShortage] = useState<string | null>(null);
+  const [funnel, setFunnel] = useState<KoreanSearchFunnelStep[]>([]);
 
   const hasResults = results != null;
 
@@ -83,6 +86,8 @@ export function KoreanPlatformLanding() {
         origin?: KoreanSearchOrigin | null;
         results?: KoreanSearchHit[];
         total?: number;
+        shortage?: string | null;
+        funnel?: KoreanSearchFunnelStep[];
       };
       if (!response.ok || !data.ok) {
         throw new Error(data.error || "검색에 실패했습니다.");
@@ -91,6 +96,8 @@ export function KoreanPlatformLanding() {
       setOrigin(data.origin ?? geo ?? null);
       setResults(data.results ?? []);
       setTotal(data.total ?? 0);
+      setShortage(data.shortage ?? null);
+      setFunnel(data.funnel ?? []);
       if (data.intent?.bookableOnly != null) {
         setBookableOnly(data.intent.bookableOnly);
       }
@@ -98,6 +105,8 @@ export function KoreanPlatformLanding() {
       setIntent(null);
       setOrigin(null);
       setResults(null);
+      setShortage(null);
+      setFunnel([]);
       setError(err instanceof Error ? err.message : "검색에 실패했습니다.");
     } finally {
       setBusy(false);
@@ -231,6 +240,14 @@ export function KoreanPlatformLanding() {
                   </li>
                 ))}
               </ul>
+            ) : null}
+            {funnel.length > 1 ? (
+              <p className="mt-2 text-xs text-neutral-400">
+                {funnel.map((step) => `${step.label} ${step.count}곳`).join(" → ")}
+              </p>
+            ) : null}
+            {shortage ? (
+              <p className="mt-2 text-sm text-amber-800">{shortage}</p>
             ) : null}
             <KoreanSearchResults
               results={results}

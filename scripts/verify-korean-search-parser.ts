@@ -17,6 +17,7 @@ const cases = [
     sort: "price",
     location: "",
     priceLow: true,
+    minRating: null,
   },
   {
     q: "평점 높은 미용실",
@@ -54,12 +55,39 @@ const cases = [
     service: "Hair",
     location: "Sunnybank",
   },
+  {
+    q: "써니뱅크에서 가까우면서 평점 4.5 이상이고 50불 이하인 미용실",
+    service: "Hair",
+    location: "Sunnybank",
+    near: true,
+    minRating: 4.5,
+    maxPrice: 50,
+    sort: "distance",
+  },
+  {
+    q: "오늘 5시 이후 예약 가능한 평점 좋은 미용실",
+    service: "Hair",
+    bookableOnly: true,
+    ratingHigh: true,
+    timeAfter: "17:00",
+    hasBookingDate: true,
+  },
+  {
+    q: "브리즈번에서 가장 저렴하면서 예약 가능한 미용실",
+    service: "Hair",
+    location: "Brisbane City",
+    priceLow: true,
+    bookableOnly: true,
+    sort: "price",
+  },
 ] as const;
 
 for (const c of cases) {
   const parsed = parseKoreanQuery(c.q);
   assert.equal(parsed.service, c.service, c.q);
-  assert.equal(parsed.minRating, null, `${c.q} minRating`);
+  if ("minRating" in c) {
+    assert.equal(parsed.minRating, c.minRating, `${c.q} minRating`);
+  }
   assert.equal(
     parsed.bookableOnly,
     "bookableOnly" in c ? c.bookableOnly : false,
@@ -80,8 +108,14 @@ for (const c of cases) {
   if ("near" in c) {
     assert.equal(parsed.near, c.near, c.q);
   }
-  if ("serviceLabel" in c) {
-    assert.equal(parsed.serviceLabel, c.serviceLabel, c.q);
+  if ("maxPrice" in c) {
+    assert.equal(parsed.maxPrice, c.maxPrice, c.q);
+  }
+  if ("timeAfter" in c) {
+    assert.equal(parsed.timeAfter, c.timeAfter, c.q);
+  }
+  if ("hasBookingDate" in c) {
+    assert.ok(parsed.bookingDate, c.q);
   }
   const chips = formatKoreanSearchCriteria(parsed);
   if (parsed.serviceLabel) {

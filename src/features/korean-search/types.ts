@@ -26,10 +26,17 @@ export type KoreanSearchHit = {
   bookPath: string | null;
 };
 
+export type KoreanSearchFunnelStep = {
+  label: string;
+  count: number;
+};
+
 export type KoreanSearchResponse = {
   ok: true;
   intent: KoreanSearchIntent;
   origin: KoreanSearchOrigin | null;
   results: KoreanSearchHit[];
   total: number;
+  funnel: KoreanSearchFunnelStep[];
+  shortage: string | null;
 };
