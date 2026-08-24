@@ -1,39 +1,118 @@
 "use client";
 
+import Link from "next/link";
 import { Search } from "lucide-react";
-import { type FormEvent } from "react";
+import { type FormEvent, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import type { KoreanSearchHit, KoreanSearchIntent } from "@/features/korean-search";
 
 import { AllBookLogo } from "./allbook-logo";
 
 const QUICK_MENUS = ["FREE", "예약", "내 주변", "DEAL"] as const;
 
+const EXAMPLE_QUERIES = [
+  "싼 미용실 찾아줘",
+  "평점 높은 미용실 찾아줘",
+  "가까운 미용실 찾아줘",
+  "브리즈번 미용실",
+  "Sunnybank 미용실",
+] as const;
+
+function formatPrice(price: number) {
+  if (!Number.isFinite(price) || price <= 0) return "가격 문의";
+  return `$${Math.round(price)}`;
+}
+
+function formatRating(rating: number, reviewCount: number) {
+  if (!rating) return "평점 없음";
+  const count = reviewCount > 0 ? ` (${reviewCount})` : "";
+  return `★ ${rating.toFixed(1)}${count}`;
+}
+
 /**
  * Search-first home for kor.allbook.com.au only.
- * Submit is visual-only — matching is not wired in this pass.
  */
 export function KoreanPlatformLanding() {
+  const [query, setQuery] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [intent, setIntent] = useState<KoreanSearchIntent | null>(null);
+  const [results, setResults] = useState<KoreanSearchHit[] | null>(null);
+  const [total, setTotal] = useState(0);
+
+  const hasResults = results != null;
+
+  async function runSearch(nextQuery: string) {
+    const q = nextQuery.trim();
+    if (!q) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/kor/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: q }),
+      });
+      const data = (await response.json()) as {
+        ok?: boolean;
+        error?: string;
+        intent?: KoreanSearchIntent;
+        results?: KoreanSearchHit[];
+        total?: number;
+      };
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "검색에 실패했습니다.");
+      }
+      setIntent(data.intent ?? null);
+      setResults(data.results ?? []);
+      setTotal(data.total ?? 0);
+    } catch (err) {
+      setIntent(null);
+      setResults(null);
+      setError(err instanceof Error ? err.message : "검색에 실패했습니다.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function onSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    void runSearch(query);
+  }
+
+  function onQuickMenu(label: (typeof QUICK_MENUS)[number]) {
+    if (label === "내 주변") {
+      const next = "가까운 미용실 찾아줘";
+      setQuery(next);
+      void runSearch(next);
+    }
   }
 
   return (
     <div className="flex min-h-svh flex-col bg-white text-neutral-950">
-      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center px-5 py-16 sm:px-6">
+      <main
+        className={`mx-auto flex w-full max-w-xl flex-1 flex-col px-5 sm:px-6 ${
+          hasResults
+            ? "items-stretch justify-start py-8"
+            : "items-center justify-center py-16"
+        }`}
+      >
         <AllBookLogo
-          size="lg"
+          size={hasResults ? "md" : "lg"}
           variant="blue"
           layout="vertical"
-          className="mb-8 sm:mb-10"
+          className={hasResults ? "mb-5 self-center" : "mb-8 self-center sm:mb-10"}
         />
 
-        <h1 className="text-center text-2xl font-semibold tracking-tight text-neutral-900 sm:text-[1.75rem]">
-          무엇을 찾고 계세요?
-        </h1>
+        {!hasResults ? (
+          <h1 className="text-center text-2xl font-semibold tracking-tight text-neutral-900 sm:text-[1.75rem]">
+            무엇을 찾고 계세요?
+          </h1>
+        ) : null}
 
-        <form onSubmit={onSearch} className="mt-7 w-full sm:mt-8">
+        <form onSubmit={onSearch} className={`w-full ${hasResults ? "mt-0" : "mt-7 sm:mt-8"}`}>
           <label htmlFor="kor-home-search" className="sr-only">
             검색
           </label>
@@ -46,6 +125,8 @@ export function KoreanPlatformLanding() {
               id="kor-home-search"
               name="q"
               type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
               enterKeyHint="search"
               autoComplete="off"
               placeholder="싼 미용실 찾아줘"
@@ -53,9 +134,10 @@ export function KoreanPlatformLanding() {
             />
             <Button
               type="submit"
+              disabled={busy}
               className="mr-0.5 h-10 rounded-full px-4 sm:px-5"
             >
-              검색
+              {busy ? "검색 중" : "검색"}
             </Button>
           </div>
         </form>
@@ -70,11 +152,66 @@ export function KoreanPlatformLanding() {
               type="button"
               variant="secondary"
               className="h-9 rounded-full px-4 text-[13px] font-medium tracking-wide"
+              onClick={() => onQuickMenu(label)}
             >
               {label}
             </Button>
           ))}
         </nav>
+
+        {!hasResults ? (
+          <div className="mt-5 flex w-full flex-wrap justify-center gap-2">
+            {EXAMPLE_QUERIES.map((example) => (
+              <button
+                key={example}
+                type="button"
+                className="rounded-full border border-neutral-200 px-3 py-1 text-xs text-neutral-600 hover:border-neutral-400 hover:text-neutral-900"
+                onClick={() => {
+                  setQuery(example);
+                  void runSearch(example);
+                }}
+              >
+                {example}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {error ? (
+          <p className="mt-6 text-center text-sm text-red-600">{error}</p>
+        ) : null}
+
+        {results ? (
+          <section className="mt-8 w-full" aria-live="polite">
+            <p className="text-sm text-neutral-500">
+              {total}곳 · {intent?.location} · {intent?.service}
+            </p>
+            {results.length === 0 ? (
+              <p className="mt-4 text-sm text-neutral-600">
+                조건에 맞는 업체를 찾지 못했습니다.
+              </p>
+            ) : (
+              <ul className="mt-4 space-y-3">
+                {results.map((hit) => (
+                  <li key={hit.id}>
+                    <Link
+                      href={hit.detailPath}
+                      className="block rounded-2xl border border-neutral-200 bg-white px-4 py-3 transition hover:border-neutral-400 hover:shadow-sm"
+                    >
+                      <p className="font-semibold text-neutral-900">{hit.name}</p>
+                      <p className="mt-1 text-sm text-neutral-600">
+                        {formatRating(hit.rating, hit.reviewCount)}
+                        <span className="mx-2 text-neutral-300">·</span>
+                        {formatPrice(hit.price)}
+                      </p>
+                      <p className="mt-0.5 text-sm text-neutral-500">{hit.location}</p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        ) : null}
       </main>
     </div>
   );
