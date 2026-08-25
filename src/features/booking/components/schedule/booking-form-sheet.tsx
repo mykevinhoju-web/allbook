@@ -422,7 +422,8 @@ export function BookingFormSheet({
           if (!cancelled) {
             setPhoneHint(null);
             setCustomerRating(null);
-          } finally {
+          }
+        } finally {
           if (!cancelled) setPhoneLookingUp(false);
         }
       })();
