@@ -22,6 +22,7 @@ interface PricingRow {
   durationMinutes: string;
   price: string;
   staffPayout: string;
+  outcallPrice: string;
 }
 
 function emptyRow(): PricingRow {
@@ -30,6 +31,7 @@ function emptyRow(): PricingRow {
     durationMinutes: "",
     price: "",
     staffPayout: "",
+    outcallPrice: "",
   };
 }
 
@@ -73,6 +75,7 @@ export function ServicePricingContent() {
           durationMinutes: number;
           priceCents: number;
           staffPayoutCents?: number;
+          outcallPriceCents?: number;
         }[];
         currency?: string;
         pricingAdjustments?: PricingAdjustments;
@@ -109,14 +112,15 @@ export function ServicePricingContent() {
             durationMinutes: String(option.durationMinutes),
             price: String(option.priceCents / 100),
             staffPayout: dollarsInputFromCents(option.staffPayoutCents ?? 0),
+            outcallPrice: dollarsInputFromCents(option.outcallPriceCents ?? 0),
           })),
         );
       } else {
         setRows([
-          { key: crypto.randomUUID(), durationMinutes: "20", price: "30", staffPayout: "" },
-          { key: crypto.randomUUID(), durationMinutes: "30", price: "45", staffPayout: "" },
-          { key: crypto.randomUUID(), durationMinutes: "45", price: "65", staffPayout: "" },
-          { key: crypto.randomUUID(), durationMinutes: "60", price: "100", staffPayout: "" },
+          { key: crypto.randomUUID(), durationMinutes: "20", price: "30", staffPayout: "", outcallPrice: "" },
+          { key: crypto.randomUUID(), durationMinutes: "30", price: "45", staffPayout: "", outcallPrice: "" },
+          { key: crypto.randomUUID(), durationMinutes: "45", price: "65", staffPayout: "", outcallPrice: "" },
+          { key: crypto.randomUUID(), durationMinutes: "60", price: "100", staffPayout: "", outcallPrice: "" },
         ]);
       }
     } catch (error) {
@@ -146,6 +150,7 @@ export function ServicePricingContent() {
         durationMinutes: Number(row.durationMinutes),
         price: Number(row.price),
         staffPayout: row.staffPayout.trim() ? Number(row.staffPayout) : 0,
+        outcallPrice: row.outcallPrice.trim() ? Number(row.outcallPrice) : 0,
       }));
 
     if (options.length === 0) {
@@ -328,6 +333,48 @@ export function ServicePricingContent() {
       </div>
 
       <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft sm:p-6">
+        <h2 className="text-sm font-semibold text-foreground">Out call pricing</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Same service times as above. When an internal booking is marked Out
+          call, this amount is added to the customer total.
+        </p>
+        <div className="mt-4 mb-2 hidden gap-3 text-xs font-medium text-muted-foreground sm:grid sm:grid-cols-[1fr_1fr]">
+          <span>Duration</span>
+          <span>Out call extra ({currency})</span>
+        </div>
+        <div className="space-y-3">
+          {rows
+            .filter((row) => row.durationMinutes.trim())
+            .map((row) => (
+              <div
+                key={`outcall-${row.key}`}
+                className="grid grid-cols-1 gap-2 rounded-xl border border-border/40 p-3 sm:grid-cols-[1fr_1fr] sm:items-center sm:gap-3 sm:border-0 sm:p-0"
+              >
+                <p className="text-sm font-medium text-foreground">
+                  {row.durationMinutes} min
+                </p>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  placeholder="e.g. 40"
+                  value={row.outcallPrice}
+                  onChange={(event) =>
+                    updateRow(row.key, "outcallPrice", event.target.value)
+                  }
+                  className="h-11 rounded-xl"
+                />
+              </div>
+            ))}
+        </div>
+        {rows.every((row) => !row.durationMinutes.trim()) ? (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Add service durations above first.
+          </p>
+        ) : null}
+      </div>
+
+      <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-soft sm:p-6">
         <h2 className="text-sm font-semibold text-foreground">Night surcharge</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Extra amount added when a booking starts in this window. Applies to
@@ -488,6 +535,12 @@ export function ServicePricingContent() {
                   Math.round(Number(row.price) * 100),
                   currency,
                 )}
+                {row.outcallPrice.trim()
+                  ? ` · out call +${formatPriceFromCents(
+                      centsFromDollarsInput(row.outcallPrice),
+                      currency,
+                    )}`
+                  : ""}
               </li>
             ))}
         </ul>

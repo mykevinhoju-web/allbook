@@ -686,6 +686,7 @@ export type Database = {
           duration_minutes: number;
           price_cents: number;
           staff_payout_cents: number;
+          outcall_price_cents: number;
           sort_order: number;
           is_active: boolean;
           created_at: string;
@@ -697,6 +698,7 @@ export type Database = {
           duration_minutes: number;
           price_cents: number;
           staff_payout_cents?: number;
+          outcall_price_cents?: number;
           sort_order?: number;
           is_active?: boolean;
           created_at?: string;
@@ -708,6 +710,7 @@ export type Database = {
           duration_minutes?: number;
           price_cents?: number;
           staff_payout_cents?: number;
+          outcall_price_cents?: number;
           sort_order?: number;
           is_active?: boolean;
           created_at?: string;

@@ -28,10 +28,14 @@ export async function getServiceOptionPricing(
   supabase: SupabaseClient<Database>,
   tenantId: string,
   durationMinutes: number,
-): Promise<{ priceCents: number; staffPayoutCents: number } | null> {
+): Promise<{
+  priceCents: number;
+  staffPayoutCents: number;
+  outcallPriceCents: number;
+} | null> {
   const { data } = await supabase
     .from("service_options")
-    .select("price_cents, staff_payout_cents")
+    .select("price_cents, staff_payout_cents, outcall_price_cents")
     .eq("tenant_id", tenantId)
     .eq("duration_minutes", durationMinutes)
     .eq("is_active", true)
@@ -41,6 +45,7 @@ export async function getServiceOptionPricing(
   return {
     priceCents: data.price_cents,
     staffPayoutCents: Math.max(0, data.staff_payout_cents ?? 0),
+    outcallPriceCents: Math.max(0, data.outcall_price_cents ?? 0),
   };
 }
 
@@ -93,6 +98,7 @@ export async function computeBookingPriceCents(
     channel: BookingPriceChannel;
     adjustments?: PricingAdjustments;
     paymentMethod?: "cash" | "card" | null;
+    outCall?: boolean;
   },
 ): Promise<BookingPriceBreakdown | null> {
   const option = await getServiceOptionPricing(
@@ -113,6 +119,7 @@ export async function computeBookingPriceCents(
     channel: args.channel,
     adjustments,
     paymentMethod: args.paymentMethod,
+    outCallCents: args.outCall ? option.outcallPriceCents : 0,
   });
 
   return {

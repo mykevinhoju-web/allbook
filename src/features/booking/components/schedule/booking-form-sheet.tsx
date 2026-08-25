@@ -487,6 +487,9 @@ export function BookingFormSheet({
         paymentMethod: paymentMethodForPricing(
           values.paymentMethod || null,
         ),
+        outCallCents: values.outCall
+          ? (selectedOption.outcallPriceCents ?? 0)
+          : 0,
       })
     : null;
 
@@ -805,18 +808,22 @@ export function BookingFormSheet({
                 </div>
                 {priceBreakdown &&
                 (priceBreakdown.nightSurchargeCents > 0 ||
-                  priceBreakdown.discountCents > 0) ? (
+                  priceBreakdown.discountCents > 0 ||
+                  priceBreakdown.outCallCents > 0) ? (
                   <p className="mt-1 text-right text-xs text-stone-500">
-                    {priceBreakdown.nightSurchargeCents > 0
-                      ? `+ night ${formatPriceFromCents(priceBreakdown.nightSurchargeCents, currency)}`
-                      : ""}
-                    {priceBreakdown.nightSurchargeCents > 0 &&
-                    priceBreakdown.discountCents > 0
-                      ? " · "
-                      : ""}
-                    {priceBreakdown.discountCents > 0
-                      ? `− cash discount ${formatPriceFromCents(priceBreakdown.discountCents, currency)}`
-                      : ""}
+                    {[
+                      priceBreakdown.outCallCents > 0
+                        ? `+ out call ${formatPriceFromCents(priceBreakdown.outCallCents, currency)}`
+                        : "",
+                      priceBreakdown.nightSurchargeCents > 0
+                        ? `+ night ${formatPriceFromCents(priceBreakdown.nightSurchargeCents, currency)}`
+                        : "",
+                      priceBreakdown.discountCents > 0
+                        ? `− cash discount ${formatPriceFromCents(priceBreakdown.discountCents, currency)}`
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </p>
                 ) : !values.startsAt ? (
                   <p className="mt-1 text-right text-xs text-stone-400">

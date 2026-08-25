@@ -125,6 +125,7 @@ export interface BookingPriceBreakdown {
   baseCents: number;
   nightSurchargeCents: number;
   discountCents: number;
+  outCallCents: number;
   totalCents: number;
   staffPayoutCents?: number;
 }
@@ -140,6 +141,8 @@ export function applyPricingAdjustments(args: {
    * Ignored for external (uses discountApplyExternal + discountExternalCents).
    */
   paymentMethod?: "cash" | "card" | null;
+  /** Extra amount when this booking is an out call. */
+  outCallCents?: number;
 }): BookingPriceBreakdown {
   const adjustments = mergePricingAdjustments(args.adjustments);
   const nightSurchargeCents =
@@ -167,15 +170,18 @@ export function applyPricingAdjustments(args: {
     discountCents = adjustments.discountCents;
   }
 
+  const outCallCents = Math.max(0, Math.round(args.outCallCents ?? 0));
+
   const totalCents = Math.max(
     0,
-    args.baseCents + nightSurchargeCents - discountCents,
+    args.baseCents + nightSurchargeCents + outCallCents - discountCents,
   );
 
   return {
     baseCents: args.baseCents,
     nightSurchargeCents,
     discountCents,
+    outCallCents,
     totalCents,
   };
 }

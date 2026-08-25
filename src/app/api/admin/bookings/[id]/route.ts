@@ -192,6 +192,7 @@ export async function PATCH(
         paymentMethod: paymentMethodForPricing(
           parsePaymentMethodFromNotes(existing.notes),
         ),
+        outCall: isOutCallBooking(existing.notes),
       });
 
       if (priced === null) {

@@ -324,6 +324,7 @@ export async function POST(request: Request) {
       channel: "internal",
       adjustments: tenant.settings.pricingAdjustments,
       paymentMethod: paymentMethodForPricing(paymentMethod),
+      outCall: Boolean(body.outCall),
     });
 
     if (priced === null) {

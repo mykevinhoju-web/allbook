@@ -21,6 +21,7 @@ function mapOption(row: {
   duration_minutes: number;
   price_cents: number;
   staff_payout_cents?: number | null;
+  outcall_price_cents?: number | null;
   sort_order: number;
   is_active: boolean;
 }) {
@@ -29,6 +30,7 @@ function mapOption(row: {
     durationMinutes: row.duration_minutes,
     priceCents: row.price_cents,
     staffPayoutCents: Math.max(0, row.staff_payout_cents ?? 0),
+    outcallPriceCents: Math.max(0, row.outcall_price_cents ?? 0),
     sortOrder: row.sort_order,
     isActive: row.is_active,
   };
@@ -54,7 +56,7 @@ export async function GET(request: Request) {
 
     const { data, error } = await supabase
       .from("service_options")
-      .select("id, duration_minutes, price_cents, staff_payout_cents, sort_order, is_active")
+      .select("id, duration_minutes, price_cents, staff_payout_cents, outcall_price_cents, sort_order, is_active")
       .eq("tenant_id", tenant.id)
       .eq("is_active", true)
       .order("sort_order", { ascending: true })
@@ -82,7 +84,12 @@ export async function PUT(request: Request) {
   try {
     const { tenant } = await requireTenantAndAdminActor(request);
     const body = (await request.json()) as {
-      options?: { durationMinutes?: number; price?: number; staffPayout?: number }[];
+      options?: {
+        durationMinutes?: number;
+        price?: number;
+        staffPayout?: number;
+        outcallPrice?: number;
+      }[];
       pricingAdjustments?: unknown;
     };
 
@@ -97,6 +104,7 @@ export async function PUT(request: Request) {
       const durationMinutes = Number(option.durationMinutes);
       const price = Number(option.price);
       const staffPayout = Number(option.staffPayout ?? 0);
+      const outcallPrice = Number(option.outcallPrice ?? 0);
 
       if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
         throw new Error("Each option needs a valid duration in minutes.");
@@ -110,10 +118,15 @@ export async function PUT(request: Request) {
         throw new Error("Each option needs a valid staff amount.");
       }
 
+      if (!Number.isFinite(outcallPrice) || outcallPrice < 0) {
+        throw new Error("Each option needs a valid out call amount.");
+      }
+
       return {
         durationMinutes: Math.round(durationMinutes),
         priceCents: Math.round(price * 100),
         staffPayoutCents: Math.round(staffPayout * 100),
+        outcallPriceCents: Math.round(outcallPrice * 100),
         sortOrder: index + 1,
       };
     });
@@ -187,10 +200,11 @@ export async function PUT(request: Request) {
           duration_minutes: option.durationMinutes,
           price_cents: option.priceCents,
           staff_payout_cents: option.staffPayoutCents,
+          outcall_price_cents: option.outcallPriceCents,
           sort_order: option.sortOrder,
         })),
       )
-      .select("id, duration_minutes, price_cents, staff_payout_cents, sort_order, is_active");
+      .select("id, duration_minutes, price_cents, staff_payout_cents, outcall_price_cents, sort_order, is_active");
 
     if (insertError) {
       return NextResponse.json({ error: insertError.message }, { status: 503 });
