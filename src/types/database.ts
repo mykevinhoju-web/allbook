@@ -283,6 +283,7 @@ export type Database = {
           customer_key: string;
           rating: string | null;
           note: string;
+          hidden: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -291,6 +292,7 @@ export type Database = {
           customer_key: string;
           rating?: string | null;
           note?: string;
+          hidden?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -299,6 +301,7 @@ export type Database = {
           customer_key?: string;
           rating?: string | null;
           note?: string;
+          hidden?: boolean;
           created_at?: string;
           updated_at?: string;
         };

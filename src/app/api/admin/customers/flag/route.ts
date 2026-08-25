@@ -35,8 +35,15 @@ export async function PATCH(request: Request) {
       typeof body.note === "string" ? body.note.trim().slice(0, NOTE_MAX) : "";
 
     const supabase = createServiceSupabase();
+    const { data: existing } = await supabase
+      .from("tenant_customer_flags")
+      .select("hidden")
+      .eq("tenant_id", tenant.id)
+      .eq("customer_key", customerKey)
+      .maybeSingle();
+    const hidden = Boolean(existing?.hidden);
 
-    if (!rating && !note) {
+    if (!rating && !note && !hidden) {
       const { error } = await supabase
         .from("tenant_customer_flags")
         .delete()
@@ -60,6 +67,7 @@ export async function PATCH(request: Request) {
         customer_key: customerKey,
         rating,
         note,
+        hidden,
         updated_at: now,
       },
       { onConflict: "tenant_id,customer_key" },

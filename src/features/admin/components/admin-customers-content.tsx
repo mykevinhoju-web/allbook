@@ -1,9 +1,9 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronDown, Loader2, Minus, Plus, Search, Users } from "lucide-react";
+import { ChevronDown, Loader2, Minus, Plus, Search, Trash2, Users } from "lucide-react";
 
-import { AppButton, toast } from "@/components/common";
+import { AppButton, ConfirmDialog, toast } from "@/components/common";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
@@ -105,6 +105,8 @@ export function AdminCustomersContent() {
   const [search, setSearch] = useState("");
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [flagKey, setFlagKey] = useState<string | null>(null);
+  const [deleteKey, setDeleteKey] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
 
@@ -147,6 +149,34 @@ export function AdminCustomersContent() {
       toast.error("Could not save customer note");
     } finally {
       setSavingKey(null);
+    }
+  };
+
+  const deleteCustomer = async () => {
+    if (!deleteKey || deleting) return;
+    setDeleting(true);
+    try {
+      const response = await fetchAdminApi("/api/admin/customers", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerKey: deleteKey }),
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        toast.error("Could not delete guest", {
+          description: data.error ?? "Try again.",
+        });
+        return;
+      }
+      setCustomers((current) =>
+        current.filter((row) => row.key !== deleteKey),
+      );
+      setDeleteKey(null);
+      toast.success("Guest removed from the list");
+    } catch {
+      toast.error("Could not delete guest");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -297,7 +327,7 @@ export function AdminCustomersContent() {
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
+            <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b border-border/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
                   <th className="px-4 py-3 font-medium">Customer</th>
@@ -312,6 +342,7 @@ export function AdminCustomersContent() {
                     {view === "all" ? "Last visit" : "Visit date"}
                   </th>
                   <th className="px-4 py-3 font-medium">History</th>
+                  <th className="px-4 py-3 font-medium"> </th>
                 </tr>
               </thead>
               <tbody>
@@ -491,10 +522,23 @@ export function AdminCustomersContent() {
                             />
                           </button>
                         </td>
+                        <td className="px-4 py-3">
+                          <AppButton
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-8 rounded-lg px-2.5 text-xs"
+                            aria-label="Delete guest"
+                            onClick={() => setDeleteKey(customer.key)}
+                          >
+                            <Trash2 className="size-3.5" />
+                            Delete
+                          </AppButton>
+                        </td>
                       </tr>
                       {open ? (
                         <tr className="border-b border-border/40 bg-muted/15">
-                          <td colSpan={6} className="p-0">
+                          <td colSpan={7} className="p-0">
                             <p className="px-4 pt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                               Service history
                             </p>
@@ -513,6 +557,16 @@ export function AdminCustomersContent() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={deleteKey !== null}
+        onOpenChange={(open) => !open && setDeleteKey(null)}
+        title="Delete this guest?"
+        description="Removes them from the customer list. Past bookings stay on reports."
+        confirmLabel={deleting ? "Deleting..." : "Delete"}
+        variant="danger"
+        onConfirm={() => void deleteCustomer()}
+      />
     </div>
   );
 }

@@ -53,6 +53,8 @@ function parseView(value: string | null): CustomersView {
   return "all";
 }
 
+const CUSTOMER_KEY_RE = /^(phone|email|name):.+$/;
+
 export async function GET(request: Request) {
   try {
     const { tenant } = await requireTenantAndAdminActor(request);
@@ -102,12 +104,12 @@ export async function GET(request: Request) {
 
     const { data: flagRows } = await supabase
       .from("tenant_customer_flags")
-      .select("customer_key, rating, note")
+      .select("customer_key, rating, note, hidden")
       .eq("tenant_id", tenant.id);
 
     const flags = new Map<
       string,
-      { rating: "good" | "bad" | null; note: string }
+      { rating: "good" | "bad" | null; note: string; hidden: boolean }
     >(
       (flagRows ?? []).map((row) => [
         row.customer_key,
@@ -115,18 +117,21 @@ export async function GET(request: Request) {
           rating:
             row.rating === "good" || row.rating === "bad" ? row.rating : null,
           note: row.note ?? "",
+          hidden: Boolean(row.hidden),
         },
       ]),
     );
 
-    customers = customers.map((customer) => {
-      const flag = flags.get(customer.key);
-      return {
-        ...customer,
-        rating: flag?.rating ?? null,
-        note: flag?.note ?? "",
-      };
-    });
+    customers = customers
+      .filter((customer) => !flags.get(customer.key)?.hidden)
+      .map((customer) => {
+        const flag = flags.get(customer.key);
+        return {
+          ...customer,
+          rating: flag?.rating ?? null,
+          note: flag?.note ?? "",
+        };
+      });
 
     if (query) {
       customers = customers.filter((customer) => {
@@ -153,6 +158,54 @@ export async function GET(request: Request) {
       customers,
       total: customers.length,
     });
+  } catch (error) {
+    const guard = handleAdminRouteError(error);
+    if (guard) return guard;
+    throw error;
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { tenant } = await requireTenantAndAdminActor(request);
+    const body = (await request.json()) as { customerKey?: string };
+    const customerKey = body.customerKey?.trim() ?? "";
+    if (!CUSTOMER_KEY_RE.test(customerKey) || customerKey.length > 200) {
+      return NextResponse.json(
+        { error: "customerKey is invalid." },
+        { status: 400 },
+      );
+    }
+
+    const supabase = createServiceSupabase();
+    const { data: existing } = await supabase
+      .from("tenant_customer_flags")
+      .select("rating, note")
+      .eq("tenant_id", tenant.id)
+      .eq("customer_key", customerKey)
+      .maybeSingle();
+
+    const now = new Date().toISOString();
+    const { error } = await supabase.from("tenant_customer_flags").upsert(
+      {
+        tenant_id: tenant.id,
+        customer_key: customerKey,
+        rating:
+          existing?.rating === "good" || existing?.rating === "bad"
+            ? existing.rating
+            : null,
+        note: existing?.note ?? "",
+        hidden: true,
+        updated_at: now,
+      },
+      { onConflict: "tenant_id,customer_key" },
+    );
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 503 });
+    }
+
+    return NextResponse.json({ ok: true, customerKey });
   } catch (error) {
     const guard = handleAdminRouteError(error);
     if (guard) return guard;
