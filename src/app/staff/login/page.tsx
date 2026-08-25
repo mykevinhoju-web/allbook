@@ -16,7 +16,23 @@ export default function StaffLoginPage() {
 
   useEffect(() => {
     let cancelled = false;
+    const forcePin =
+      new URLSearchParams(window.location.search).get("fresh") === "1";
+
     void (async () => {
+      if (forcePin) {
+        try {
+          await fetch("/api/staff/auth/logout", {
+            method: "POST",
+            credentials: "include",
+          });
+        } catch {
+          // show PIN form anyway
+        }
+        if (!cancelled) setCheckingSession(false);
+        return;
+      }
+
       try {
         const response = await fetch("/api/staff/auth/me");
         const data = (await response.json()) as {

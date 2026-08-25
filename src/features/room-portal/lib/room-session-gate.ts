@@ -29,3 +29,20 @@ export function clearRoomClientSession(): void {
     // ignore
   }
 }
+
+/** Drop the room PIN staff cookie, then open staff login so PIN is required again. */
+export async function openStaffLoginWithoutRoomSession() {
+  try {
+    await fetch("/api/room/staff/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+    await fetch("/api/staff/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch {
+    // Still open the login form.
+  }
+  window.location.assign("/staff/login?fresh=1");
+}

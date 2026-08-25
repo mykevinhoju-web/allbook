@@ -15,6 +15,7 @@ import {
   requireRoomSession,
 } from "@/lib/server/require-room-session";
 import { StaffAuthError, requireStaffSession } from "@/lib/server/require-staff-session";
+import { expireNamedSessionCookie } from "@/lib/app-session";
 import { getStaffSessionCookieName } from "@/lib/staff-session";
 import { markStaffSessionOffline } from "@/features/staff/lib/staff-presence";
 
@@ -152,7 +153,11 @@ export async function POST(
         roomId: data.room_id,
       },
     });
-    response.cookies.delete(getStaffSessionCookieName());
+    expireNamedSessionCookie(
+      response,
+      getStaffSessionCookieName(),
+      request.headers.get("host"),
+    );
     return response;
   } catch (error) {
     if (error instanceof TenantContextError) {

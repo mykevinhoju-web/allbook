@@ -235,13 +235,16 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  const isAuthed = adminOk || staffOk;
+    const isAuthed = adminOk || staffOk;
+    const forceStaffPin =
+      effectivePathname === "/staff/login" &&
+      request.nextUrl.searchParams.get("fresh") === "1";
 
-  if (
-    effectivePathname === "/admin/login" ||
-    effectivePathname === "/staff/login"
-  ) {
-    if (isAuthed) {
+    if (
+      effectivePathname === "/admin/login" ||
+      effectivePathname === "/staff/login"
+    ) {
+      if (isAuthed && !forceStaffPin) {
       const target = staffOk && !adminOk ? "/staff" : "/admin";
       const dest = tenantSlug && platform ? `/${tenantSlug}${target}` : target;
       const redirect = NextResponse.redirect(new URL(dest, request.url));
