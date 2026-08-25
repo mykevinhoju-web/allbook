@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { BarChart3, CalendarDays, LogOut } from "lucide-react";
 
-import { AppButton } from "@/components/common";
 import { BookingAlertProvider } from "@/features/booking/context/booking-alert-provider";
 import { PwaInstallHint } from "@/features/pwa";
 import { useTenant } from "@/features/tenants";
@@ -20,13 +19,18 @@ interface StaffShellProps {
 
 export function StaffShell({ children, user }: StaffShellProps) {
   const tenant = useTenant();
-  const router = useRouter();
   const pathname = usePathname();
 
   const logout = async () => {
-    await fetch("/api/staff/auth/logout", { method: "POST" });
-    router.replace("/staff/login");
-    router.refresh();
+    try {
+      await fetch("/api/staff/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      // Still leave the portal.
+    }
+    window.location.assign("/staff/login?fresh=1");
   };
 
   const nav = [
@@ -47,16 +51,14 @@ export function StaffShell({ children, user }: StaffShellProps) {
                 {tenant.branding.displayName}
               </p>
             </div>
-            <AppButton
+            <button
               type="button"
-              variant="ghost"
-              size="sm"
-              className="shrink-0 rounded-xl"
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 text-sm font-semibold text-foreground shadow-soft"
               onClick={() => void logout()}
             >
               <LogOut className="size-4" />
               Sign out
-            </AppButton>
+            </button>
           </div>
         </header>
 
