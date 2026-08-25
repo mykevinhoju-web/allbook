@@ -251,6 +251,9 @@ export function RoomHomeContent() {
   const [bookStartLoading, setBookStartLoading] = useState(false);
   const [phoneLookingUp, setPhoneLookingUp] = useState(false);
   const [phoneHint, setPhoneHint] = useState<string | null>(null);
+  const [customerRating, setCustomerRating] = useState<"good" | "bad" | null>(
+    null,
+  );
   const lastLookupPhoneRef = useRef("");
   const bookStartContactRef = useRef(bookStartContact);
   bookStartContactRef.current = bookStartContact;
@@ -691,6 +694,7 @@ export function RoomHomeContent() {
     setJoinPayment("");
     lastLookupPhoneRef.current = "";
     setPhoneHint(null);
+    setCustomerRating(null);
     setPhoneLookingUp(false);
   };
 
@@ -699,6 +703,7 @@ export function RoomHomeContent() {
     const phone = bookStartContact.phone;
     if (!isValidAuMobile(phone)) {
       setPhoneHint(null);
+      setCustomerRating(null);
       setPhoneLookingUp(false);
       return;
     }
@@ -720,6 +725,8 @@ export function RoomHomeContent() {
               secondName: string;
               email: string | null;
               postcode: string | null;
+              name?: string | null;
+              rating?: "good" | "bad" | null;
             } | null;
           };
 
@@ -728,6 +735,7 @@ export function RoomHomeContent() {
 
           if (!response.ok || !data.customer) {
             setPhoneHint(null);
+            setCustomerRating(null);
             return;
           }
 
@@ -744,7 +752,18 @@ export function RoomHomeContent() {
               ? formatAuPostcodeInput(guest.postcode)
               : current.postcode,
           });
-          setPhoneHint("Saved contact filled in");
+          setCustomerRating(
+            guest.rating === "good" || guest.rating === "bad"
+              ? guest.rating
+              : null,
+          );
+          setPhoneHint(
+            guest.rating === "good"
+              ? "Good customer — details filled"
+              : guest.rating === "bad"
+                ? "Bad customer — details filled"
+                : "Saved contact filled in",
+          );
         } finally {
           if (!cancelled) setPhoneLookingUp(false);
         }
@@ -1710,6 +1729,7 @@ export function RoomHomeContent() {
                       phoneFirst
                       phoneLookingUp={phoneLookingUp}
                       phoneHint={phoneHint}
+                      customerRating={customerRating}
                       values={bookStartContact}
                       onChange={(next) => {
                         const phoneChanged =
@@ -1718,6 +1738,7 @@ export function RoomHomeContent() {
                         if (phoneChanged) {
                           lastLookupPhoneRef.current = "";
                           setPhoneHint(null);
+                          setCustomerRating(null);
                         }
                         setBookStartContact(next);
                       }}

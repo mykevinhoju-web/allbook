@@ -6,6 +6,10 @@ import {
 } from "@/features/booking/lib/au-contact";
 import { parseCustomerBookingName } from "@/features/booking/lib/customer-booking-name";
 import {
+  customerIdentityKey,
+  parseCustomerFlagRating,
+} from "@/features/admin/lib/customers-report";
+import {
   createServiceSupabase,
   requireTenantFromRequest,
   TenantContextError,
@@ -74,6 +78,21 @@ export async function GET(request: Request) {
     }
 
     const { firstName, secondName } = parseCustomerBookingName(row.customer_name);
+    const identityKey = customerIdentityKey({
+      customerPhone: phone,
+      customerEmail: row.customer_email,
+      customerName: row.customer_name,
+    });
+    let rating: "good" | "bad" | null = null;
+    if (identityKey) {
+      const { data: flag } = await supabase
+        .from("tenant_customer_flags")
+        .select("rating")
+        .eq("tenant_id", tenant.id)
+        .eq("customer_key", identityKey)
+        .maybeSingle();
+      rating = parseCustomerFlagRating(flag?.rating);
+    }
 
     return NextResponse.json({
       customer: {
@@ -83,6 +102,7 @@ export async function GET(request: Request) {
         phone,
         email: row.customer_email?.trim() || null,
         postcode: row.customer_postcode?.trim() || null,
+        rating,
       },
     });
   } catch (error) {

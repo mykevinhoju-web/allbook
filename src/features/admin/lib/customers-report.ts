@@ -52,6 +52,13 @@ function normalizePhone(phone: string): string {
   return phone.replace(/\D/g, "");
 }
 
+export function parseCustomerFlagRating(
+  value: unknown,
+): "good" | "bad" | null {
+  if (value === "good" || value === "bad") return value;
+  return null;
+}
+
 export function customerIdentityKey(booking: {
   customerPhone: string | null;
   customerEmail: string | null;

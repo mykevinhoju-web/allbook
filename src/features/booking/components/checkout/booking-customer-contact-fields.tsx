@@ -38,7 +38,14 @@ type BookingCustomerContactFieldsProps = {
   phoneFirst?: boolean;
   phoneHint?: string | null;
   phoneLookingUp?: boolean;
+  customerRating?: "good" | "bad" | null;
 };
+
+function nameRatingClass(rating: "good" | "bad" | null | undefined) {
+  if (rating === "good") return "text-blue-600";
+  if (rating === "bad") return "text-red-600";
+  return null;
+}
 
 export function BookingCustomerContactFields({
   values,
@@ -50,20 +57,22 @@ export function BookingCustomerContactFields({
   phoneFirst = false,
   phoneHint = null,
   phoneLookingUp = false,
+  customerRating = null,
 }: BookingCustomerContactFieldsProps) {
   const patch = (partial: Partial<BookingCustomerContactValues>) => {
     onChange({ ...values, ...partial });
     onFieldChange?.();
   };
+  const ratedNameClass = nameRatingClass(customerRating);
 
   const nameFields = (
     <div className="space-y-1">
-      <label className={labelClass}>Name</label>
+      <label className={cn(labelClass, ratedNameClass)}>Name</label>
       <div className="grid grid-cols-2 gap-2">
         <Input
           value={values.firstName}
           onChange={(event) => patch({ firstName: event.target.value })}
-          className={fieldClass}
+          className={cn(fieldClass, ratedNameClass)}
           placeholder="First name"
           autoCapitalize="words"
           autoComplete="given-name"
@@ -76,7 +85,7 @@ export function BookingCustomerContactFields({
               secondName: formatCustomerSecondNameInput(event.target.value),
             })
           }
-          className={fieldClass}
+          className={cn(fieldClass, ratedNameClass)}
           placeholder="Lastname"
           autoCapitalize="characters"
           autoComplete="family-name"
@@ -117,7 +126,13 @@ export function BookingCustomerContactFields({
           Looking up saved contact…
         </p>
       ) : phoneHint ? (
-        <p className={cn(helperTextClass ?? "text-xs text-stone-500", "mt-1 px-0.5")}>
+        <p
+          className={cn(
+            helperTextClass ?? "text-xs text-stone-500",
+            "mt-1 px-0.5",
+            ratedNameClass,
+          )}
+        >
           {phoneHint}
         </p>
       ) : helperTextClass ? (

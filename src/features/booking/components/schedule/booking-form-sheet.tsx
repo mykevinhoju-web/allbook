@@ -276,6 +276,9 @@ export function BookingFormSheet({
   const lastLookupPhoneRef = useRef<string>("");
   const [phoneLookingUp, setPhoneLookingUp] = useState(false);
   const [phoneHint, setPhoneHint] = useState<string | null>(null);
+  const [customerRating, setCustomerRating] = useState<"good" | "bad" | null>(
+    null,
+  );
   const [nextRotationStaffId, setNextRotationStaffId] = useState<string | null>(
     null,
   );
@@ -336,6 +339,7 @@ export function BookingFormSheet({
     if (!open) {
       lastLookupPhoneRef.current = "";
       setPhoneHint(null);
+      setCustomerRating(null);
       setPhoneLookingUp(false);
     }
   }, [open]);
@@ -346,6 +350,7 @@ export function BookingFormSheet({
     const phone = values.customerPhone;
     if (!isValidAuMobile(phone)) {
       setPhoneHint(null);
+      setCustomerRating(null);
       setPhoneLookingUp(false);
       return;
     }
@@ -368,6 +373,7 @@ export function BookingFormSheet({
               email: string | null;
               postcode: string | null;
               name: string | null;
+              rating?: "good" | "bad" | null;
             } | null;
           };
 
@@ -376,6 +382,7 @@ export function BookingFormSheet({
 
           if (!response.ok || !data.customer) {
             setPhoneHint(null);
+            setCustomerRating(null);
             return;
           }
 
@@ -393,14 +400,29 @@ export function BookingFormSheet({
               ? formatAuPostcodeInput(guest.postcode)
               : current.customerPostcode,
           });
+          setCustomerRating(
+            guest.rating === "good" || guest.rating === "bad"
+              ? guest.rating
+              : null,
+          );
           setPhoneHint(
-            guest.name
-              ? `Saved contact — filled from ${guest.name}`
-              : "Saved contact — details filled",
+            guest.rating === "good"
+              ? guest.name
+                ? `Good customer — filled from ${guest.name}`
+                : "Good customer — details filled"
+              : guest.rating === "bad"
+                ? guest.name
+                  ? `Bad customer — filled from ${guest.name}`
+                  : "Bad customer — details filled"
+                : guest.name
+                  ? `Saved contact — filled from ${guest.name}`
+                  : "Saved contact — details filled",
           );
         } catch {
-          if (!cancelled) setPhoneHint(null);
-        } finally {
+          if (!cancelled) {
+            setPhoneHint(null);
+            setCustomerRating(null);
+          } finally {
           if (!cancelled) setPhoneLookingUp(false);
         }
       })();
@@ -748,6 +770,7 @@ export function BookingFormSheet({
                 phoneFirst
                 phoneLookingUp={phoneLookingUp}
                 phoneHint={phoneHint}
+                customerRating={customerRating}
                 values={{
                   firstName: values.customerFirstName,
                   secondName: values.customerLastName,
@@ -761,6 +784,7 @@ export function BookingFormSheet({
                   if (phoneChanged) {
                     lastLookupPhoneRef.current = "";
                     setPhoneHint(null);
+                    setCustomerRating(null);
                   }
                   onChange({
                     ...values,
