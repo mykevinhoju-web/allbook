@@ -505,7 +505,6 @@ export function StaffHome() {
         open={detailBooking !== null}
         onOpenChange={(open) => !open && setDetailBooking(null)}
         currency={currency}
-        rooms={rooms}
         dayBookings={dayBookings}
         fetchApi={fetchStaffApi}
         allowCancel={false}

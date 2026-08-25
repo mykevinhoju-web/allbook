@@ -511,7 +511,6 @@ export function BookingScheduleContent() {
           if (!open) setSelectedBooking(null);
         }}
         currency={tenant.settings.currency}
-        rooms={rooms}
         dayBookings={bookings}
         onCheckedOut={() => void loadSchedule({ soft: true })}
         onRoomChanged={(updated) => {

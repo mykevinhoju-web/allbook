@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { AppButton, toast } from "@/components/common";
 import {
@@ -35,11 +35,6 @@ import {
   formatScheduleDate,
   formatShiftDateTime,
 } from "../../lib/schedule-utils";
-import {
-  getBookingRoomChangeWindow,
-  getRoomAvailabilityInWindow,
-  toRoomSlotBookings,
-} from "../../lib/room-availability";
 import { isBookingOccupyingRoom } from "../../lib/room-occupancy";
 import { ANY_GIRL_LABEL, isAnyGirlName } from "../../lib/booking-other-staff";
 import type { AdminBooking } from "../../types/admin-booking";
@@ -55,8 +50,7 @@ interface BookingDetailSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currency?: string;
-  rooms?: { id: string; name: string }[];
-  /** Other bookings on the same day (for room free/busy). */
+  /** Other bookings on the same day (for extend availability). */
   dayBookings?: AdminBooking[];
   onCheckedOut?: () => void;
   onRoomChanged?: (booking: AdminBooking) => void;
@@ -91,7 +85,6 @@ export function BookingDetailSheet({
   open,
   onOpenChange,
   currency = "AUD",
-  rooms = [],
   dayBookings = [],
   onCheckedOut,
   onRoomChanged,
@@ -103,8 +96,6 @@ export function BookingDetailSheet({
   onEnterRoom,
   assignableStaff = [],
 }: BookingDetailSheetProps) {
-  const [roomId, setRoomId] = useState("");
-  const [savingRoom, setSavingRoom] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [extending, setExtending] = useState<number | null>(null);
   const [confirmMethod, setConfirmMethod] =
@@ -115,54 +106,16 @@ export function BookingDetailSheet({
   const [assignStaffId, setAssignStaffId] = useState("");
 
   useEffect(() => {
-    setRoomId(booking?.roomId ?? "");
     setConfirmMethod("");
     setConfirmSplitCash("");
     setAssignStaffId("");
-  }, [booking?.id, booking?.roomId]);
-
-  const canChangeRoom =
-    Boolean(booking) &&
-    !booking!.outCall &&
-    booking!.status !== "cancelled" &&
-    booking!.status !== "completed";
+  }, [booking?.id]);
 
   const canCancel =
     allowCancel &&
     Boolean(booking) &&
     booking!.status !== "cancelled" &&
     booking!.status !== "completed";
-
-  const roomChange = useMemo(() => {
-    if (!booking || !canChangeRoom || rooms.length === 0) {
-      return null;
-    }
-
-    const window = getBookingRoomChangeWindow(
-      booking.startsAt,
-      booking.endsAt,
-    );
-    if (!window) return null;
-
-    return {
-      window,
-      statuses: getRoomAvailabilityInWindow(
-        rooms,
-        window.startsAt,
-        window.endsAt,
-        toRoomSlotBookings(dayBookings),
-        {
-          excludeBookingId: booking.id,
-          currentRoomId: booking.roomId,
-        },
-      ),
-    };
-  }, [
-    booking,
-    canChangeRoom,
-    rooms,
-    dayBookings,
-  ]);
 
   if (!booking) return null;
 
@@ -231,54 +184,6 @@ export function BookingDetailSheet({
     Boolean(confirmMethod) &&
     (!needsStaffAssign || Boolean(assignStaffId)) &&
     !confirmingPayment;
-
-  const roomDirty = roomId !== (booking.roomId ?? "");
-  const selectedStatus = roomChange?.statuses.find((room) => room.id === roomId);
-  const canSaveRoom =
-    canChangeRoom &&
-    roomDirty &&
-    Boolean(roomId) &&
-    (selectedStatus?.available ?? false);
-
-  const saveRoom = async () => {
-    if (!canSaveRoom) return;
-
-    setSavingRoom(true);
-    try {
-      const response = await fetchApi(`/api/admin/bookings/${booking.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomId }),
-      });
-      const data = (await response.json()) as {
-        error?: string;
-        booking?: AdminBooking;
-      };
-
-      if (!response.ok) {
-        toast.error("Could not change room", {
-          description: data.error ?? "Try another room.",
-        });
-        return;
-      }
-
-      toast.success("Room updated", {
-        description: data.booking?.roomName
-          ? `Moved to ${data.booking.roomName}.`
-          : "Room assignment saved.",
-      });
-
-      if (data.booking) {
-        onRoomChanged?.(data.booking);
-      }
-    } catch {
-      toast.error("Could not change room", {
-        description: "Network error. Try again.",
-      });
-    } finally {
-      setSavingRoom(false);
-    }
-  };
 
   const cancelBooking = async () => {
     if (!canCancel || cancelling) return;
@@ -497,51 +402,6 @@ export function BookingDetailSheet({
                 value={formatShiftDateTime(booking.endsAt)}
               />
             </div>
-
-            {roomChange ? (
-              <div className={cn(theme.panel, "space-y-3")}>
-                <p className="text-sm font-semibold text-stone-900">Change room</p>
-                <p className="text-xs text-stone-500">
-                  {roomChange.window.remainingOnly
-                    ? "Only rooms free for the remaining time are shown as available."
-                    : "Only rooms free for this booking window are shown as available."}
-                </p>
-                <select
-                  className={theme.field}
-                  value={roomId}
-                  onChange={(event) => setRoomId(event.target.value)}
-                  disabled={savingRoom}
-                >
-                  <option value="" disabled>
-                    Select a room
-                  </option>
-                  {roomChange.statuses.map((room) => (
-                    <option
-                      key={room.id}
-                      value={room.id}
-                      disabled={!room.available && room.id !== booking.roomId}
-                    >
-                      {room.name}
-                      {room.id === booking.roomId
-                        ? " (current)"
-                        : room.available
-                          ? " · Available"
-                          : room.conflictLabel
-                            ? ` · Busy ${room.conflictLabel}`
-                            : " · Busy"}
-                    </option>
-                  ))}
-                </select>
-                <AppButton
-                  type="button"
-                  className={cn(theme.goldButton, "mt-1")}
-                  disabled={!canSaveRoom || savingRoom}
-                  onClick={() => void saveRoom()}
-                >
-                  {savingRoom ? "Saving…" : "Save room"}
-                </AppButton>
-              </div>
-            ) : null}
 
             {canEnterRoom ? (
               <AppButton
