@@ -406,17 +406,9 @@ export function BookingFormSheet({
               : null,
           );
           setPhoneHint(
-            guest.rating === "good"
-              ? guest.name
-                ? `Good customer — filled from ${guest.name}`
-                : "Good customer — details filled"
-              : guest.rating === "bad"
-                ? guest.name
-                  ? `Bad customer — filled from ${guest.name}`
-                  : "Bad customer — details filled"
-                : guest.name
-                  ? `Saved contact — filled from ${guest.name}`
-                  : "Saved contact — details filled",
+            guest.name
+              ? `Saved contact — filled from ${guest.name}`
+              : "Saved contact — details filled",
           );
         } catch {
           if (!cancelled) {

@@ -126,13 +126,7 @@ export function BookingCustomerContactFields({
           Looking up saved contact…
         </p>
       ) : phoneHint ? (
-        <p
-          className={cn(
-            helperTextClass ?? "text-xs text-stone-500",
-            "mt-1 px-0.5",
-            ratedNameClass,
-          )}
-        >
+        <p className={cn(helperTextClass ?? "text-xs text-stone-500", "mt-1 px-0.5")}>
           {phoneHint}
         </p>
       ) : helperTextClass ? (

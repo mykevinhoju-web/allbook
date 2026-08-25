@@ -763,13 +763,7 @@ export function RoomHomeContent() {
               ? guest.rating
               : null,
           );
-          setPhoneHint(
-            guest.rating === "good"
-              ? "Good customer — details filled"
-              : guest.rating === "bad"
-                ? "Bad customer — details filled"
-                : "Saved contact filled in",
-          );
+          setPhoneHint("Saved contact filled in");
         } finally {
           if (!cancelled) setPhoneLookingUp(false);
         }
