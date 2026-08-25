@@ -173,8 +173,8 @@ function StaffDailyDetail({
                 <span>Type</span>
                 <span className="text-right">Payment</span>
                 <span className="text-right">Sales</span>
-                <span className="text-right">Staff</span>
                 <span className="text-right">Shop</span>
+                <span className="text-right">Staff</span>
               </div>
               <ul className="divide-y divide-border/40">
                 {day.bookings.map((booking) => (
@@ -210,11 +210,11 @@ function StaffDailyDetail({
                     <p className="mt-0.5 text-sm font-semibold tabular-nums sm:mt-0 sm:text-right">
                       {formatPriceFromCents(booking.priceCents, currency)}
                     </p>
-                    <p className="mt-0.5 text-sm tabular-nums sm:mt-0 sm:text-right">
-                      {formatPriceFromCents(booking.staffPayoutCents, currency)}
-                    </p>
                     <p className="mt-0.5 text-sm tabular-nums text-muted-foreground sm:mt-0 sm:text-right">
                       {formatPriceFromCents(booking.shopCents, currency)}
+                    </p>
+                    <p className="mt-0.5 text-sm tabular-nums sm:mt-0 sm:text-right">
+                      {formatPriceFromCents(booking.staffPayoutCents, currency)}
                     </p>
                   </li>
                 ))}
@@ -254,8 +254,8 @@ function StaffSection({
             </p>
             <p className="text-xs text-muted-foreground">
               {staff.bookingCount} booking{staff.bookingCount === 1 ? "" : "s"} ·{" "}
-              staff {formatPriceFromCents(staff.staffPayoutCents, currency)} ·
-              shop {formatPriceFromCents(staff.shopCents, currency)}
+              shop {formatPriceFromCents(staff.shopCents, currency)} · staff{" "}
+              {formatPriceFromCents(staff.staffPayoutCents, currency)}
             </p>
           </div>
         </div>
@@ -293,15 +293,15 @@ function StaffSection({
               </p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Staff</p>
-              <p className="text-sm font-semibold tabular-nums">
-                {formatPriceFromCents(staff.staffPayoutCents, currency)}
-              </p>
-            </div>
-            <div>
               <p className="text-xs text-muted-foreground">Shop</p>
               <p className="text-sm font-semibold tabular-nums">
                 {formatPriceFromCents(staff.shopCents, currency)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Staff</p>
+              <p className="text-sm font-semibold tabular-nums">
+                {formatPriceFromCents(staff.staffPayoutCents, currency)}
               </p>
             </div>
             <div className="col-span-2 sm:col-span-1">
