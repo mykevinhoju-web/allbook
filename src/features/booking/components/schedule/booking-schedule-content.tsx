@@ -329,10 +329,10 @@ export function BookingScheduleContent() {
       form.otherStaffMemberId !== ANY_GIRL_SENTINEL
         ? form.otherStaffMemberId
         : "";
-    const isWalkIn = isAnyGirl ? false : form.walkIn === true;
+    const isWalkIn = form.walkIn === true;
     const paymentMethod = isAnyGirl ? "pre" : form.paymentMethod;
 
-    if (form.walkIn !== true && form.walkIn !== false && !isAnyGirl) {
+    if (form.walkIn !== true && form.walkIn !== false) {
       toast.error("Select Walk-in or Booking");
       return;
     }

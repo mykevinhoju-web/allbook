@@ -630,7 +630,6 @@ export function BookingFormSheet({
                             paymentMethod: isAnyGirl
                               ? "pre"
                               : values.paymentMethod,
-                            walkIn: isAnyGirl ? false : values.walkIn,
                           });
                         }}
                         className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-900"
