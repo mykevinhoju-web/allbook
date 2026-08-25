@@ -6,6 +6,7 @@ import {
   inclusiveDaySpan,
   isValidReportDate,
   MAX_REPORT_RANGE_DAYS,
+  parseReportTime,
   reportDateRangeToUtc,
   todayDateInZone,
   resolveStaffPayoutCents,
@@ -99,10 +100,24 @@ export async function GET(request: Request) {
     const today = todayDateInZone(timeZone);
     let from = searchParams.get("from")?.trim() || today;
     let to = searchParams.get("to")?.trim() || today;
+    const parsedFromTime = parseReportTime(
+      searchParams.get("fromTime")?.trim() || "00:00",
+    );
+    const parsedToTime = parseReportTime(
+      searchParams.get("toTime")?.trim() || "23:59",
+    );
+    let fromTime = parsedFromTime;
+    let toTime = parsedToTime;
 
     if (!isValidReportDate(from) || !isValidReportDate(to)) {
       return NextResponse.json(
         { error: "from and to must be YYYY-MM-DD dates." },
+        { status: 400 },
+      );
+    }
+    if (!fromTime || !toTime) {
+      return NextResponse.json(
+        { error: "fromTime and toTime must be HH:mm." },
         { status: 400 },
       );
     }
@@ -111,6 +126,13 @@ export async function GET(request: Request) {
       const swap = from;
       from = to;
       to = swap;
+      const swapTime = fromTime;
+      fromTime = toTime;
+      toTime = swapTime;
+    } else if (from === to && fromTime > toTime) {
+      const swapTime = fromTime;
+      fromTime = toTime;
+      toTime = swapTime;
     }
 
     const span = inclusiveDaySpan(from, to);
@@ -123,7 +145,10 @@ export async function GET(request: Request) {
       );
     }
 
-    const { rangeStart, rangeEnd } = reportDateRangeToUtc(from, to, timeZone);
+    const { rangeStart, rangeEnd } = reportDateRangeToUtc(from, to, timeZone, {
+      fromTime,
+      toTime,
+    });
     const supabase = createServiceSupabase();
 
     const { data, error } = await supabase
@@ -155,6 +180,8 @@ export async function GET(request: Request) {
       timezone: timeZone,
       from,
       to,
+      fromTime,
+      toTime,
       staffId: session.staffId,
       ...report,
     });
