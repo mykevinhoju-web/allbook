@@ -55,3 +55,30 @@ export async function openStaffLoginWithoutRoomSession() {
   }
   window.location.assign("/staff/login?fresh=1");
 }
+
+/** After staff portal Sign out, return to this tablet's room PIN if a room is still claimed. */
+export async function redirectAfterStaffPortalLogout() {
+  try {
+    await fetch("/api/staff/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch {
+    // Continue to the next screen.
+  }
+
+  try {
+    const response = await fetch("/api/room/me", { credentials: "include" });
+    const data = (await response.json()) as {
+      user?: { roomId?: string } | null;
+    };
+    if (response.ok && data.user?.roomId) {
+      window.location.assign("/room");
+      return;
+    }
+  } catch {
+    // Fall through to staff login.
+  }
+
+  window.location.assign("/staff/login?fresh=1");
+}

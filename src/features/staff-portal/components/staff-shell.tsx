@@ -6,6 +6,7 @@ import { BarChart3, CalendarDays, LogOut } from "lucide-react";
 
 import { BookingAlertProvider } from "@/features/booking/context/booking-alert-provider";
 import { PwaInstallHint } from "@/features/pwa";
+import { redirectAfterStaffPortalLogout } from "@/features/room-portal/lib/room-session-gate";
 import { useTenant } from "@/features/tenants";
 import { cn } from "@/lib/utils";
 
@@ -21,16 +22,8 @@ export function StaffShell({ children, user }: StaffShellProps) {
   const tenant = useTenant();
   const pathname = usePathname();
 
-  const logout = async () => {
-    try {
-      await fetch("/api/staff/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-    } catch {
-      // Still leave the portal.
-    }
-    window.location.assign("/staff/login?fresh=1");
+  const logout = () => {
+    void redirectAfterStaffPortalLogout();
   };
 
   const nav = [
