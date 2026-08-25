@@ -245,6 +245,29 @@ export async function countWalkInsByStaff(
   return counts;
 }
 
+export function resolveWalkInCountWorkDate(args: {
+  status: StaffStatus;
+  attributes: StaffAttributes | unknown;
+  calendarDate: string;
+  timeZone: string;
+  workingHoursStart?: string | null;
+  workingHoursEnd?: string | null;
+  now?: Date;
+}): string {
+  const now = args.now ?? new Date();
+  const yesterday = addDaysToDateInput(args.calendarDate, -1);
+  const anchor = getActiveShiftAnchorDate({
+    status: args.status,
+    attributes: args.attributes as StaffAttributes,
+    date: args.calendarDate,
+    timeZone: args.timeZone,
+    workingHoursStart: args.workingHoursStart,
+    workingHoursEnd: args.workingHoursEnd,
+    now,
+  });
+  return anchor === yesterday ? yesterday : args.calendarDate;
+}
+
 export async function bumpWalkInCountAdjust(args: {
   supabase: ServiceClient;
   tenantId: string;

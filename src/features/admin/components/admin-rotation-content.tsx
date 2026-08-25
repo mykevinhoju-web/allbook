@@ -7,13 +7,11 @@ import { AppButton, toast } from "@/components/common";
 import { Input } from "@/components/ui/input";
 import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { fetchAdminApi } from "@/features/admin/lib/admin-api-client";
-import { todayDateInZone } from "@/features/booking/lib/schedule-utils";
 import {
   pickWalkInStaff,
   appendNewcomersAtEnd,
   reindexBlankRotationOrders,
 } from "@/features/booking/lib/walk-in-rotation";
-import { useOptionalTenant } from "@/features/tenants";
 import { cn } from "@/lib/utils";
 
 type WorkingStaff = {
@@ -103,7 +101,9 @@ function mergeLiveFields(
       name: staff.name,
       inService: staff.inService,
       roomName: staff.roomName,
-      walkInCount: staff.walkInCount,
+      walkInCount: pendingWalkInRef.current.has(row.staffId)
+        ? row.walkInCount
+        : staff.walkInCount,
     };
   });
 }
@@ -134,13 +134,11 @@ function applyDraftsForSave(
 }
 
 export function AdminRotationContent() {
-  const tenant = useOptionalTenant();
-  const timeZone = tenant?.settings.timezone || "Australia/Sydney";
-  const today = todayDateInZone(timeZone);
   const [rotation, setRotation] = useState<RotationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [adjustingId, setAdjustingId] = useState<string | null>(null);
+  const pendingWalkInRef = useRef(new Set<string>());
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -254,13 +252,21 @@ export function AdminRotationContent() {
   };
 
   const bumpWalkInCount = async (staffId: string, step: 1 | -1) => {
-    if (adjustingId) return;
+    if (pendingWalkInRef.current.has(staffId)) return;
+    pendingWalkInRef.current.add(staffId);
     setAdjustingId(staffId);
+    setRotation((current) =>
+      current.map((row) =>
+        row.staffId === staffId
+          ? { ...row, walkInCount: Math.max(0, row.walkInCount + step) }
+          : row,
+      ),
+    );
     try {
       const response = await fetchAdminApi("/api/admin/rotation/walk-in-count", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: today, staffId, step }),
+        body: JSON.stringify({ staffId, step }),
       });
       const data = (await response.json()) as {
         walkInCount?: number;
@@ -270,6 +276,8 @@ export function AdminRotationContent() {
         toast.error("Could not update walk-ins", {
           description: data.error ?? "Try again.",
         });
+        pendingWalkInRef.current.delete(staffId);
+        await load({ silent: true });
         return;
       }
       const nextCount = Math.max(0, data.walkInCount ?? 0);
@@ -280,7 +288,10 @@ export function AdminRotationContent() {
       );
     } catch {
       toast.error("Could not update walk-ins");
+      pendingWalkInRef.current.delete(staffId);
+      await load({ silent: true });
     } finally {
+      pendingWalkInRef.current.delete(staffId);
       setAdjustingId(null);
     }
   };
@@ -411,7 +422,11 @@ export function AdminRotationContent() {
                         walk-in {row.walkInCount}
                       </p>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1">
+                    <div
+                      className="flex shrink-0 items-center gap-1"
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onMouseDown={(event) => event.stopPropagation()}
+                    >
                       <AppButton
                         type="button"
                         variant="outline"
@@ -419,7 +434,7 @@ export function AdminRotationContent() {
                         className="size-9 rounded-lg"
                         disabled={
                           saving ||
-                          Boolean(adjustingId) ||
+                          adjustingId === row.staffId ||
                           row.walkInCount <= 0
                         }
                         aria-label={`Decrease walk-ins for ${row.name}`}
@@ -435,7 +450,7 @@ export function AdminRotationContent() {
                         variant="outline"
                         size="icon"
                         className="size-9 rounded-lg"
-                        disabled={saving || Boolean(adjustingId)}
+                        disabled={saving || adjustingId === row.staffId}
                         aria-label={`Increase walk-ins for ${row.name}`}
                         onClick={() => void bumpWalkInCount(row.staffId, 1)}
                       >
@@ -451,7 +466,7 @@ export function AdminRotationContent() {
           <AppButton
             type="button"
             className="mt-4 h-11 w-full rounded-xl"
-            disabled={saving || Boolean(adjustingId) || rotation.length === 0}
+            disabled={saving || rotation.length === 0}
             onClick={() => void save()}
           >
             {saving ? "Saving…" : "Save rotation"}
@@ -463,11 +478,6 @@ export function AdminRotationContent() {
           ) : null}
         </section>
       )}
-      {Boolean(adjustingId) ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70">
-          <Loader2 className="size-8 animate-spin text-muted-foreground" />
-        </div>
-      ) : null}
     </div>
   );
 }

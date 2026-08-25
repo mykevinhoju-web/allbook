@@ -9,6 +9,7 @@ import {
   loadWalkInRotation,
   appendWalkInRotationNewcomers,
   saveWalkInRotationRoster,
+  resolveWalkInCountWorkDate,
 } from "@/features/booking/server/assign-walk-in-staff";
 import { appendNewcomersAtEnd } from "@/features/booking/lib/walk-in-rotation";
 import type { StaffAttributes, StaffStatus } from "@/features/staff/types";
@@ -126,11 +127,11 @@ export async function GET(request: Request) {
     const walkInCounts: Record<string, number> = {};
     for (const id of staffIds) {
       const row = staffById.get(id);
-      const anchor = row
-        ? getActiveShiftAnchorDate({
+      const workDate = row
+        ? resolveWalkInCountWorkDate({
             status: (row.status as StaffStatus) ?? "active",
             attributes: (row.attributes ?? {}) as StaffAttributes,
-            date,
+            calendarDate: date,
             timeZone,
             workingHoursStart: row.working_hours_start,
             workingHoursEnd: row.working_hours_end,
@@ -138,7 +139,7 @@ export async function GET(request: Request) {
           })
         : date;
       walkInCounts[id] =
-        anchor === yesterday
+        workDate === yesterday
           ? (walkInCountsYesterday[id] ?? 0)
           : (walkInCountsToday[id] ?? 0);
     }
