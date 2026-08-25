@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { LogOut, Loader2 } from "lucide-react";
 
 import { AppButton, toast } from "@/components/common";
@@ -1978,7 +1979,13 @@ export function RoomHomeContent() {
       <RoomPwaSetup />
       <div className="mx-auto w-full max-w-2xl rounded-[2rem] border border-border bg-card px-6 py-10 shadow-sm md:max-w-3xl md:px-12 md:py-14">
         <div className="relative mb-1">
-          <p className="text-center text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground md:text-sm">
+          <Link
+            href="/staff/login"
+            className="absolute left-0 top-1/2 -translate-y-1/2 text-[11px] font-medium text-white/70 underline-offset-2 hover:text-white hover:underline md:text-xs"
+          >
+            Staff login
+          </Link>
+          <p className="px-20 text-center text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground md:text-sm">
             This tablet
           </p>
           <button
