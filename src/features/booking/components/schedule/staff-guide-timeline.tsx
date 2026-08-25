@@ -685,10 +685,10 @@ export function StaffGuideTimeline({
                           booking.status === "completed";
                         const selected = selectedBookingId === booking.id;
                         const isPreBooking = booking.paymentMethod === "pre";
-                        const tone = isPreBooking
-                          ? PRE_BOOKING_BLOCK_TONE
-                          : booking.walkIn
-                            ? WALK_IN_BLOCK_TONE
+                        const tone = booking.walkIn
+                          ? WALK_IN_BLOCK_TONE
+                          : isPreBooking
+                            ? PRE_BOOKING_BLOCK_TONE
                             : REGULAR_BLOCK_TONE;
                         return (
                           <button
