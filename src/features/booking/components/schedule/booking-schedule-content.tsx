@@ -342,12 +342,8 @@ export function BookingScheduleContent() {
       return;
     }
 
-    if (
-      isOtherStaff &&
-      !form.otherStaffMemberId &&
-      !form.otherStaffName.trim()
-    ) {
-      toast.error("Select or enter the other staff name");
+    if (isOtherStaff && !form.otherStaffMemberId) {
+      toast.error("Select the other staff");
       return;
     }
 

@@ -627,29 +627,9 @@ export function BookingFormSheet({
                           </option>
                         ))}
                       </select>
-                    </div>
-                    <div className="space-y-1">
-                      <FieldLabel required>Other staff name</FieldLabel>
-                      <Input
-                        value={values.otherStaffName}
-                        onChange={(event) =>
-                          onChange({
-                            ...values,
-                            otherStaffName: event.target.value,
-                            otherStaffMemberId:
-                              event.target.value.trim().toLowerCase() ===
-                              ANY_GIRL_LABEL.toLowerCase()
-                                ? ANY_GIRL_SENTINEL
-                                : "",
-                          })
-                        }
-                        placeholder="Enter staff name"
-                        className="h-11 rounded-xl border-stone-200 bg-white"
-                        autoComplete="off"
-                      />
                       <p className="text-xs text-stone-500">
-                        Pick from the list or type a name. Any time from now is
-                        available. {ANY_GIRL_LABEL} turns on Pre - Book.
+                        Pick from the list. Any time from now is available.{" "}
+                        {ANY_GIRL_LABEL} turns on Pre - Book.
                       </p>
                     </div>
                   </div>
