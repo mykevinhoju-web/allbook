@@ -33,7 +33,6 @@ import {
   isOtherStaffGuestAttributes,
 } from "../../lib/booking-other-staff";
 import {
-  getRoomAvailabilityAtTime,
   pickFirstAvailableRoom,
   toRoomSlotBookings,
 } from "../../lib/room-availability";
@@ -229,7 +228,6 @@ export function BookingScheduleContent() {
     setForm({
       ...defaultBookingFormValues,
       staffId: staffId ?? "",
-      roomId: roomId ?? "",
       durationMinutes:
         serviceOptions[0]?.durationMinutes != null
           ? String(serviceOptions[0].durationMinutes)
@@ -281,16 +279,6 @@ export function BookingScheduleContent() {
     }
   }, [date, form.startsAt, tenant.settings.timezone]);
 
-  const roomStatuses = useMemo(() => {
-    if (!resolvedStartsAt || !form.durationMinutes) return undefined;
-    return getRoomAvailabilityAtTime(
-      rooms,
-      resolvedStartsAt,
-      Number(form.durationMinutes),
-      allRoomBookings,
-    );
-  }, [resolvedStartsAt, form.durationMinutes, rooms, allRoomBookings]);
-
   const suggestedAutoRoomName = useMemo(() => {
     if (form.outCall) return null;
     if (!resolvedStartsAt || !form.durationMinutes || form.roomId) return null;
@@ -322,7 +310,6 @@ export function BookingScheduleContent() {
       staffId,
       startsAt: partial?.startsAt ?? "",
       durationMinutes: partial?.durationMinutes ?? defaultDuration,
-      roomId: partial?.roomId ?? "",
       customerFirstName: "",
       customerLastName: "",
     });
@@ -557,14 +544,12 @@ export function BookingScheduleContent() {
           : workingStaff
         ).map((member) => ({ id: member.id, name: member.name }))}
         otherStaffOptions={otherStaffOptions}
-        roomOptions={rooms}
         serviceOptions={serviceOptions}
         pricingAdjustments={pricingAdjustments}
         currency={tenant.settings.currency}
         timeSlotOptions={timeSlotOptions}
         timeSlotsLoading={timeSlotsLoading}
         timeSlotsHint={timeSlotsHint}
-        roomStatuses={roomStatuses}
         suggestedAutoRoomName={suggestedAutoRoomName}
         values={form}
         onChange={setForm}

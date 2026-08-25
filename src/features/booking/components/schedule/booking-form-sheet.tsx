@@ -46,7 +46,6 @@ import {
   OTHER_STAFF_SENTINEL,
 } from "../../lib/booking-other-staff";
 import { pickWalkInStaff } from "../../lib/walk-in-rotation";
-import type { RoomAvailabilityStatus } from "../../lib/room-availability";
 import {
   buildStartsAtIso,
   formatAmPmTime,
@@ -122,7 +121,6 @@ interface BookingFormSheetProps {
   staffOptions: { id: string; name: string }[];
   /** Active staff not shown on today's booking chips. */
   otherStaffOptions?: { id: string; name: string }[];
-  roomOptions: { id: string; name: string }[];
   serviceOptions: ServiceOption[];
   pricingAdjustments?: PricingAdjustments;
   currency?: string;
@@ -132,7 +130,6 @@ interface BookingFormSheetProps {
   timeSlotOptions?: BookingTimeSlotOption[];
   timeSlotsLoading?: boolean;
   timeSlotsHint?: string | null;
-  roomStatuses?: RoomAvailabilityStatus[];
   suggestedAutoRoomName?: string | null;
   timeZone: string;
   values: BookingFormValues;
@@ -260,7 +257,6 @@ export function BookingFormSheet({
   onDateChange,
   staffOptions,
   otherStaffOptions = [],
-  roomOptions,
   serviceOptions,
   pricingAdjustments = DEFAULT_PRICING_ADJUSTMENTS,
   currency = "AUD",
@@ -268,7 +264,6 @@ export function BookingFormSheet({
   timeSlotOptions,
   timeSlotsLoading = false,
   timeSlotsHint = null,
-  roomStatuses,
   suggestedAutoRoomName = null,
   timeZone,
   values,
@@ -526,10 +521,6 @@ export function BookingFormSheet({
     });
   };
 
-  const selectedRoomName = values.roomId
-    ? (roomOptions.find((room) => room.id === values.roomId)?.name ?? null)
-    : null;
-
   const selectedStaffName =
     values.staffId === OTHER_STAFF_SENTINEL
       ? values.otherStaffName.trim() || "Other Staff"
@@ -727,11 +718,7 @@ export function BookingFormSheet({
               }
               loading={timeSlotsLoading}
               hint={timePickerHint}
-              roomPreview={
-                values.outCall
-                  ? null
-                  : (selectedRoomName ?? suggestedAutoRoomName)
-              }
+              roomPreview={values.outCall ? null : suggestedAutoRoomName}
               autoSelectFirst={!timePickerDisabled}
               earliestLeadMinutes={0}
               startTimeRightActions={
@@ -752,55 +739,6 @@ export function BookingFormSheet({
             />
 
             <div className={cn(theme.panel, "space-y-3")}>
-              <FormField label="Treatment room">
-                <select
-                  value={values.roomId}
-                  onChange={(event) =>
-                    onChange({
-                      ...values,
-                      roomId: event.target.value,
-                      startsAt: "",
-                      allowImmediateStart: false,
-                    })
-                  }
-                  disabled={values.outCall}
-                  className={cn(theme.field, values.outCall && "opacity-50")}
-                >
-                  <option value="">
-                    {values.outCall
-                      ? "Not needed for out call"
-                      : suggestedAutoRoomName
-                        ? `Auto-assign (${suggestedAutoRoomName})`
-                        : "Auto-assign (first free room)"}
-                  </option>
-                  {(
-                    roomStatuses ??
-                    roomOptions.map((room) => ({
-                      id: room.id,
-                      name: room.name,
-                      available: true,
-                    }))
-                  ).map((room) => (
-                    <option
-                      key={room.id}
-                      value={room.id}
-                      disabled={room.available === false}
-                    >
-                      {room.available
-                        ? room.name
-                        : `${room.name} — booked${room.conflictLabel ? ` ${room.conflictLabel}` : ""}`}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-stone-500">
-                  {values.outCall
-                    ? "Out call is off-site — no treatment room is assigned."
-                    : values.startsAt
-                      ? "Unavailable rooms are disabled for the selected time."
-                      : "Pick a time to see which rooms are free."}
-                </p>
-              </FormField>
-
               <label className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white px-3 py-3">
                 <input
                   type="checkbox"
@@ -809,7 +747,7 @@ export function BookingFormSheet({
                     onChange({
                       ...values,
                       outCall: event.target.checked,
-                      roomId: event.target.checked ? "" : values.roomId,
+                      roomId: "",
                     })
                   }
                   className="size-5 accent-[#8A6A3A]"
