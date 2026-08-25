@@ -53,10 +53,18 @@ export async function POST(request: Request) {
       ? await verifyRoomSession(existingToken)
       : null;
 
-    const deviceId = randomUUID();
+    const requestedDeviceId =
+      typeof body.deviceId === "string" ? body.deviceId.trim() : "";
+    const deviceId =
+      (existingSession?.tenantId === tenant.id
+        ? existingSession.deviceId
+        : null) ||
+      requestedDeviceId ||
+      randomUUID();
 
     const claimedByOther =
-      room.claimed_device_id && room.claimed_device_id !== deviceId;
+      Boolean(room.claimed_device_id) &&
+      room.claimed_device_id !== deviceId;
 
     if (claimedByOther && !body.force) {
       return NextResponse.json(

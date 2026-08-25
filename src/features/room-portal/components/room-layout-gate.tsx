@@ -10,6 +10,12 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 
 import { PortalThemeRoot } from "@/features/portal-theme";
+import {
+  persistRoomDeviceId,
+  readRoomDeviceId,
+  readRoomReturn,
+  rememberRoomReturn,
+} from "../lib/room-session-gate";
 
 interface RoomUser {
   role: "room";
@@ -51,10 +57,38 @@ export function RoomLayoutGate({ children }: RoomLayoutGateProps) {
       if (cancelled) return;
 
       if (!response.ok || !data.user) {
-        router.replace("/room/login");
+        const remembered = readRoomReturn();
+        const deviceId = readRoomDeviceId();
+        if (remembered) {
+          const claim = await fetch("/api/room/auth/login", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              roomId: remembered.roomId,
+              deviceId: deviceId || undefined,
+            }),
+          });
+          if (claim.ok) {
+            const retry = await fetch("/api/room/me");
+            const retryData = (await retry.json()) as {
+              user?: RoomUser | null;
+            };
+            if (!cancelled && retry.ok && retryData.user) {
+              rememberRoomReturn(retryData.user);
+              persistRoomDeviceId(retryData.user.deviceId);
+              setRoom(retryData.user);
+              setReady(true);
+              return;
+            }
+          }
+        }
+        if (!cancelled) router.replace("/room/login");
         return;
       }
 
+      rememberRoomReturn(data.user);
+      persistRoomDeviceId(data.user.deviceId);
       setRoom(data.user);
       setReady(true);
     })();

@@ -7,8 +7,10 @@ import { AppButton, toast } from "@/components/common";
 import { cn } from "@/lib/utils";
 
 import {
-  clearRoomClientSession,
   openStaffLoginWithoutRoomSession,
+  persistRoomDeviceId,
+  readRoomDeviceId,
+  rememberRoomReturn,
 } from "../lib/room-session-gate";
 
 interface RoomOption {
@@ -44,18 +46,7 @@ export function RoomLoginContent() {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      clearRoomClientSession();
-      await fetch("/api/room/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-      if (!cancelled) await loadRooms();
-    })();
-    return () => {
-      cancelled = true;
-    };
+    void loadRooms();
   }, [loadRooms]);
 
   const claimRoom = async (roomId: string, force = false) => {
@@ -68,13 +59,14 @@ export function RoomLoginContent() {
         body: JSON.stringify({
           roomId,
           force,
+          deviceId: readRoomDeviceId() || undefined,
         }),
       });
       const data = (await response.json()) as {
         error?: string;
         code?: string;
         deviceId?: string;
-        room?: { name: string };
+        room?: { id?: string; name: string };
       };
 
       if (response.status === 409 && data.code === "ROOM_CLAIMED") {
@@ -90,6 +82,15 @@ export function RoomLoginContent() {
       if (!response.ok) {
         toast.error("Could not sign in room", { description: data.error });
         return;
+      }
+
+      if (data.deviceId) persistRoomDeviceId(data.deviceId);
+      if (data.room?.id) {
+        rememberRoomReturn({
+          roomId: data.room.id,
+          roomName: data.room.name ?? "Room",
+          deviceId: data.deviceId,
+        });
       }
 
       toast.success(`${data.room?.name ?? "Room"} ready — enter staff PIN`);

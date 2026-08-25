@@ -1,5 +1,6 @@
 export const ROOM_PIN_GATE_KEY = "allbook_room_pin_ok";
 export const ROOM_DEVICE_STORAGE_KEY = "allbook_room_device_id";
+const ROOM_RETURN_KEY = "allbook_room_return";
 
 export function hasRoomPinGate(): boolean {
   try {
@@ -25,10 +26,55 @@ export function clearRoomPinGate(): void {
   }
 }
 
+export function persistRoomDeviceId(deviceId: string): void {
+  try {
+    localStorage.setItem(ROOM_DEVICE_STORAGE_KEY, deviceId);
+  } catch {
+    // ignore
+  }
+}
+
+export function readRoomDeviceId(): string | null {
+  try {
+    return localStorage.getItem(ROOM_DEVICE_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function rememberRoomReturn(room: {
+  roomId: string;
+  roomName: string;
+  deviceId?: string;
+}): void {
+  try {
+    sessionStorage.setItem(
+      ROOM_RETURN_KEY,
+      JSON.stringify({ roomId: room.roomId, roomName: room.roomName }),
+    );
+  } catch {
+    // ignore
+  }
+  if (room.deviceId) persistRoomDeviceId(room.deviceId);
+}
+
+export function readRoomReturn(): { roomId: string; roomName: string } | null {
+  try {
+    const raw = sessionStorage.getItem(ROOM_RETURN_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { roomId?: string; roomName?: string };
+    if (!parsed.roomId) return null;
+    return { roomId: parsed.roomId, roomName: parsed.roomName ?? "" };
+  } catch {
+    return null;
+  }
+}
+
 export function clearRoomClientSession(): void {
   clearRoomPinGate();
   try {
     sessionStorage.removeItem(ROOM_PIN_GATE_KEY);
+    sessionStorage.removeItem(ROOM_RETURN_KEY);
   } catch {
     // ignore
   }
@@ -39,7 +85,7 @@ export function clearRoomClientSession(): void {
   }
 }
 
-/** Drop the room PIN staff cookie, then open staff login so PIN is required again. */
+/** Drop the staff PIN cookie, then open staff login. Room claim stays. */
 export async function openStaffLoginWithoutRoomSession() {
   try {
     await fetch("/api/room/staff/logout", {
@@ -56,7 +102,7 @@ export async function openStaffLoginWithoutRoomSession() {
   window.location.assign("/staff/login?fresh=1");
 }
 
-/** After staff portal Sign out, return to this tablet's room PIN if a room is still claimed. */
+/** After staff portal Sign out, return to this tablet's claimed room PIN. */
 export async function redirectAfterStaffPortalLogout() {
   try {
     await fetch("/api/staff/auth/logout", {
@@ -67,6 +113,7 @@ export async function redirectAfterStaffPortalLogout() {
     // Continue to the next screen.
   }
 
+  const remembered = readRoomReturn();
   try {
     const response = await fetch("/api/room/me", { credentials: "include" });
     const data = (await response.json()) as {
@@ -77,7 +124,12 @@ export async function redirectAfterStaffPortalLogout() {
       return;
     }
   } catch {
-    // Fall through to staff login.
+    // Fall through.
+  }
+
+  if (remembered) {
+    window.location.assign("/room");
+    return;
   }
 
   window.location.assign("/staff/login?fresh=1");

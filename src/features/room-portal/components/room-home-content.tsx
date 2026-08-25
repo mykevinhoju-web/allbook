@@ -71,6 +71,7 @@ import {
   clearRoomPinGate,
   hasRoomPinGate,
   openStaffLoginWithoutRoomSession,
+  rememberRoomReturn,
   setRoomPinGate,
 } from "../lib/room-session-gate";
 import { useIdleStaffLogout } from "../hooks/use-idle-staff-logout";
@@ -219,6 +220,11 @@ export function RoomHomeContent() {
   const tenant = useTenant();
   const roomSession = useRoomSession();
   const roomLabel = roomSession?.roomName ?? "This room";
+
+  useEffect(() => {
+    if (!roomSession) return;
+    rememberRoomReturn(roomSession);
+  }, [roomSession]);
   const timeZone = tenant.settings.timezone || "Australia/Sydney";
   const now = useNowTick(1000);
   const today = todayDateInZone(timeZone, now);
