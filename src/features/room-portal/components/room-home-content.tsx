@@ -68,7 +68,6 @@ import { cn } from "@/lib/utils";
 import { useRoomSession } from "./room-layout-gate";
 import { RoomPwaSetup } from "./room-pwa-setup";
 import {
-  clearRoomClientSession,
   clearRoomPinGate,
   hasRoomPinGate,
   openStaffLoginWithoutRoomSession,
@@ -1948,15 +1947,6 @@ export function RoomHomeContent() {
     );
   }
 
-  const changeRoom = async () => {
-    clearRoomClientSession();
-    await fetch("/api/room/auth/logout", {
-      method: "POST",
-      credentials: "include",
-    });
-    window.location.replace("/room/login");
-  };
-
   return (
     <div className="flex min-h-[calc(100svh-2rem)] flex-col justify-center md:min-h-[calc(100svh-4rem)]">
       <RoomPwaSetup />
@@ -1972,13 +1962,6 @@ export function RoomHomeContent() {
           <p className="px-20 text-center text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground md:text-sm">
             This tablet
           </p>
-          <button
-            type="button"
-            onClick={() => void changeRoom()}
-            className="absolute right-0 top-1/2 -translate-y-1/2 text-[11px] font-medium text-white/70 underline-offset-2 hover:text-white hover:underline md:text-xs"
-          >
-            Change room
-          </button>
         </div>
         <h1 className="mt-3 text-center text-6xl font-bold tracking-tight text-foreground md:text-7xl lg:text-8xl">
           {roomLabel}

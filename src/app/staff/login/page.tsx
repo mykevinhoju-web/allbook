@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { UserRound } from "lucide-react";
 
@@ -143,13 +142,6 @@ export default function StaffLoginPage() {
             {loading ? "Signing in..." : "Sign in"}
           </AppButton>
         </div>
-
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          Room tablet?{" "}
-          <Link href="/room/login" className="font-medium text-foreground underline">
-            Select room
-          </Link>
-        </p>
       </div>
     </div>
   );
