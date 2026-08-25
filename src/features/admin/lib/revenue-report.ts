@@ -176,14 +176,42 @@ function getTimeZoneOffsetMs(timeZone: string, utcDate: Date): number {
 
 /** Tenant-local calendar midnight → UTC ISO. */
 export function zonedMidnightToUtcIso(date: string, timeZone: string): string {
+  return zonedDateTimeToUtcIso(date, "00:00", timeZone);
+}
+
+/** Tenant-local YYYY-MM-DD + HH:mm → UTC ISO. */
+export function zonedDateTimeToUtcIso(
+  date: string,
+  time: string,
+  timeZone: string,
+): string {
   const [yearStr, monthStr, dayStr] = date.split("-");
+  const [hourStr, minuteStr] = time.split(":");
   const year = Number(yearStr);
   const month = Number(monthStr);
   const day = Number(dayStr);
+  const hour = Number(hourStr);
+  const minute = Number(minuteStr);
 
-  const utcGuess = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
+  const utcGuess = new Date(
+    Date.UTC(year, month - 1, day, hour || 0, minute || 0, 0),
+  );
   const offsetMs = getTimeZoneOffsetMs(timeZone, utcGuess);
-  return new Date(utcGuess.getTime() - offsetMs).toISOString();
+  const adjusted = new Date(utcGuess.getTime() - offsetMs);
+  const offsetMs2 = getTimeZoneOffsetMs(timeZone, adjusted);
+  return new Date(utcGuess.getTime() - offsetMs2).toISOString();
+}
+
+export function parseReportTime(value: string): string | null {
+  const match = value
+    .trim()
+    .match(/^([01]?\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?$/);
+  if (!match) return null;
+  return `${match[1]!.padStart(2, "0")}:${match[2]}`;
+}
+
+export function isValidReportTime(value: string): boolean {
+  return parseReportTime(value) !== null;
 }
 
 /** Next calendar day after YYYY-MM-DD (date-only math). */
@@ -194,15 +222,30 @@ export function nextDateInput(date: string): string {
   return next.toISOString().slice(0, 10);
 }
 
-/** Inclusive from..to → half-open UTC [rangeStart, rangeEnd). */
+/** Inclusive from..to → half-open UTC [rangeStart, rangeEnd).
+ * Optional HH:mm times; To time includes that minute.
+ */
 export function reportDateRangeToUtc(
   from: string,
   to: string,
   timeZone: string,
+  times?: { fromTime?: string | null; toTime?: string | null },
 ): { rangeStart: string; rangeEnd: string } {
+  const fromTime = parseReportTime(times?.fromTime ?? "") ?? "00:00";
+  const toTime = parseReportTime(times?.toTime ?? "");
+
+  const rangeStart = zonedDateTimeToUtcIso(from, fromTime, timeZone);
+  if (!toTime) {
+    return {
+      rangeStart,
+      rangeEnd: zonedMidnightToUtcIso(nextDateInput(to), timeZone),
+    };
+  }
+
+  const toInclusive = zonedDateTimeToUtcIso(to, toTime, timeZone);
   return {
-    rangeStart: zonedMidnightToUtcIso(from, timeZone),
-    rangeEnd: zonedMidnightToUtcIso(nextDateInput(to), timeZone),
+    rangeStart,
+    rangeEnd: new Date(new Date(toInclusive).getTime() + 60_000).toISOString(),
   };
 }
 

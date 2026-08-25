@@ -5,6 +5,7 @@ import {
   compareDateInputs,
   inclusiveDaySpan,
   isValidReportDate,
+  parseReportTime,
   MAX_REPORT_RANGE_DAYS,
   reportDateRangeToUtc,
   todayDateInZone,
@@ -116,6 +117,14 @@ export async function GET(request: Request) {
     const today = todayDateInZone(timeZone);
     let from = searchParams.get("from")?.trim() || today;
     let to = searchParams.get("to")?.trim() || today;
+    const parsedFromTime = parseReportTime(
+      searchParams.get("fromTime")?.trim() || "00:00",
+    );
+    const parsedToTime = parseReportTime(
+      searchParams.get("toTime")?.trim() || "23:59",
+    );
+    let fromTime = parsedFromTime;
+    let toTime = parsedToTime;
     const staffId = searchParams.get("staffId")?.trim() || null;
 
     if (!isValidReportDate(from) || !isValidReportDate(to)) {
@@ -124,11 +133,23 @@ export async function GET(request: Request) {
         { status: 400 },
       );
     }
-
+    if (!fromTime || !toTime) {
+      return NextResponse.json(
+        { error: "fromTime and toTime must be HH:mm." },
+        { status: 400 },
+      );
+    }
     if (compareDateInputs(from, to) > 0) {
       const swap = from;
       from = to;
       to = swap;
+      const swapTime = fromTime;
+      fromTime = toTime;
+      toTime = swapTime;
+    } else if (from === to && fromTime > toTime) {
+      const swapTime = fromTime;
+      fromTime = toTime;
+      toTime = swapTime;
     }
 
     const span = inclusiveDaySpan(from, to);
@@ -141,7 +162,10 @@ export async function GET(request: Request) {
       );
     }
 
-    const { rangeStart, rangeEnd } = reportDateRangeToUtc(from, to, timeZone);
+    const { rangeStart, rangeEnd } = reportDateRangeToUtc(from, to, timeZone, {
+      fromTime,
+      toTime,
+    });
     const supabase = createServiceSupabase();
 
     let query = supabase
@@ -179,6 +203,8 @@ export async function GET(request: Request) {
       timezone: timeZone,
       from,
       to,
+      fromTime,
+      toTime,
       staffId,
       ...report,
     });

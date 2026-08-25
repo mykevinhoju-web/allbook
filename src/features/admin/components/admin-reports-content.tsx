@@ -30,6 +30,8 @@ type RevenueResponse = {
   timezone: string;
   from: string;
   to: string;
+  fromTime?: string;
+  toTime?: string;
   grandTotalCents: number;
   staffPayoutTotalCents: number;
   staffPayoutCashCents: number;
@@ -325,6 +327,8 @@ export function AdminReportsContent() {
   const today = useMemo(() => todayDateInZone(timeZone), [timeZone]);
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
+  const [fromTime, setFromTime] = useState("00:00");
+  const [toTime, setToTime] = useState("23:59");
   const [staffId, setStaffId] = useState("");
   const [staffOptions, setStaffOptions] = useState<StaffOption[]>([]);
   const [report, setReport] = useState<RevenueResponse | null>(null);
@@ -379,7 +383,12 @@ export function AdminReportsContent() {
     if (!unlocked) return;
     setLoading(true);
     try {
-      const params = new URLSearchParams({ from, to });
+      const params = new URLSearchParams({
+        from,
+        to,
+        fromTime,
+        toTime,
+      });
       if (staffId) params.set("staffId", staffId);
 
       const response = await fetch(
@@ -413,7 +422,7 @@ export function AdminReportsContent() {
     } finally {
       setLoading(false);
     }
-  }, [from, to, staffId, unlocked]);
+  }, [from, to, fromTime, toTime, staffId, unlocked]);
 
   useEffect(() => {
     void loadReport();
@@ -448,6 +457,8 @@ export function AdminReportsContent() {
 
   const currency = report?.currency ?? tenantCurrency;
   const applyPreset = (preset: "today" | "7d" | "month") => {
+    setFromTime("00:00");
+    setToTime("23:59");
     if (preset === "today") {
       setFrom(today);
       setTo(today);
@@ -512,7 +523,7 @@ export function AdminReportsContent() {
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-3 py-4 sm:gap-5 sm:px-4 lg:p-6">
       <AdminPageHeader
         title="Reports"
-        description="Booking revenue by staff and day for the dates you select."
+        description="Booking revenue by staff and day for the date and time range you select."
       />
 
       <section className="rounded-2xl border border-border/50 bg-card p-3 shadow-soft sm:p-4">
@@ -537,29 +548,51 @@ export function AdminReportsContent() {
           ))}
         </div>
 
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1.2fr_auto]">
-          <label className="space-y-1.5">
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1.15fr_1.15fr_1.2fr_auto]">
+          <div className="space-y-1.5">
             <span className="text-xs font-medium text-muted-foreground">
               From
             </span>
-            <Input
-              type="date"
-              value={from}
-              max={to}
-              onChange={(event) => setFrom(event.target.value)}
-              className="h-11 rounded-xl"
-            />
-          </label>
-          <label className="space-y-1.5">
+            <div className="grid grid-cols-[minmax(0,1fr)_7.25rem] gap-2">
+              <Input
+                type="date"
+                value={from}
+                max={to}
+                onChange={(event) => setFrom(event.target.value)}
+                className="h-11 rounded-xl"
+              />
+              <Input
+                type="time"
+                step={300}
+                value={fromTime}
+                onChange={(event) =>
+                  setFromTime(event.target.value.slice(0, 5))
+                }
+                className="h-11 rounded-xl"
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
             <span className="text-xs font-medium text-muted-foreground">To</span>
-            <Input
-              type="date"
-              value={to}
-              min={from}
-              onChange={(event) => setTo(event.target.value)}
-              className="h-11 rounded-xl"
-            />
-          </label>
+            <div className="grid grid-cols-[minmax(0,1fr)_7.25rem] gap-2">
+              <Input
+                type="date"
+                value={to}
+                min={from}
+                onChange={(event) => setTo(event.target.value)}
+                className="h-11 rounded-xl"
+              />
+              <Input
+                type="time"
+                step={300}
+                value={toTime}
+                onChange={(event) =>
+                  setToTime(event.target.value.slice(0, 5))
+                }
+                className="h-11 rounded-xl"
+              />
+            </div>
+          </div>
           <label className="space-y-1.5 sm:col-span-2 lg:col-span-1">
             <span className="text-xs font-medium text-muted-foreground">
               Staff
@@ -604,7 +637,9 @@ export function AdminReportsContent() {
                     )}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                {from === to ? from : `${from} → ${to}`}
+                {from === to && fromTime === "00:00" && toTime === "23:59"
+                  ? from
+                  : `${from} ${fromTime} → ${to} ${toTime}`}
                 {staffId
                   ? ` · ${staffOptions.find((s) => s.id === staffId)?.name ?? "Staff"}`
                   : " · All staff"}
