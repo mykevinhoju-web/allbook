@@ -91,6 +91,7 @@ function mergeOnShiftRotation(
 function mergeLiveFields(
   current: RotationRow[],
   working: WorkingStaff[],
+  keepWalkInIds?: Set<string>,
 ): RotationRow[] {
   const workingById = new Map(working.map((row) => [row.id, row]));
   return current.map((row) => {
@@ -101,7 +102,7 @@ function mergeLiveFields(
       name: staff.name,
       inService: staff.inService,
       roomName: staff.roomName,
-      walkInCount: pendingWalkInRef.current.has(row.staffId)
+      walkInCount: keepWalkInIds?.has(row.staffId)
         ? row.walkInCount
         : staff.walkInCount,
     };
@@ -176,7 +177,33 @@ export function AdminRotationContent() {
 
         // While editing, only refresh live status — never overwrite unsaved 순번.
         if (opts?.silent && dirtyRef.current && !opts.force) {
-          setRotation((current) => mergeLiveFields(current, working));
+          setRotation((current) =>
+            mergeLiveFields(current, working, pendingWalkInRef.current),
+          );
+          return;
+        }
+
+        if (opts?.silent && pendingWalkInRef.current.size > 0) {
+          setRotation((current) => {
+            const merged = mergeOnShiftRotation(nextRotation, working);
+            return mergeLiveFields(
+              merged.map((row) => {
+                const prev = current.find((item) => item.staffId === row.staffId);
+                return prev && pendingWalkInRef.current.has(row.staffId)
+                  ? { ...row, walkInCount: prev.walkInCount }
+                  : row;
+              }),
+              working,
+              pendingWalkInRef.current,
+            );
+          });
+          const merged = mergeOnShiftRotation(nextRotation, working);
+          setDrafts(
+            Object.fromEntries(
+              merged.map((row) => [row.staffId, draftValue(row.sortOrder)]),
+            ),
+          );
+          setDirty(false);
           return;
         }
 
