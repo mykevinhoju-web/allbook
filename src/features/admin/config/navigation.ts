@@ -25,7 +25,7 @@ export const adminNavItems: AdminNavItem[] = [
     icon: Users,
   },
   {
-    title: "Services",
+    title: "Price",
     href: "/admin/services",
     icon: Wrench,
   },
