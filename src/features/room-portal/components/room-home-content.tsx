@@ -69,6 +69,7 @@ import { useRoomSession } from "./room-layout-gate";
 import { RoomPwaSetup } from "./room-pwa-setup";
 import {
   clearRoomClientSession,
+  clearRoomPinGate,
   hasRoomPinGate,
   openStaffLoginWithoutRoomSession,
   setRoomPinGate,
@@ -524,6 +525,7 @@ export function RoomHomeContent() {
     setStaffBookings([]);
     setPin("");
     clearVisit();
+    clearRoomPinGate();
     await fetch("/api/room/staff/logout", {
       method: "POST",
       credentials: "include",
@@ -1309,27 +1311,8 @@ export function RoomHomeContent() {
   };
 
   const roomOut = async () => {
-    const current = staff;
-    clearRoomClientSession();
-    setStaff(null);
-    // Leave the room tablet completely — never check out / end the in-progress booking.
-    await fetch("/api/room/staff/logout", {
-      method: "POST",
-      credentials: "include",
-    });
-    if (current) {
-      void broadcastStaffPresence(tenant.slug, {
-        type: "offline",
-        staffId: current.id,
-        staffName: current.name,
-        roomName: roomLabel,
-      }).catch(() => {});
-    }
-    await fetch("/api/room/auth/logout", {
-      method: "POST",
-      credentials: "include",
-    });
-    window.location.replace("/room/login");
+    // Lock this tablet back to the PIN pad. Keep the room claim (e.g. Room 6).
+    await signOutStaffCompletely();
   };
 
   const roomServiceInProgress = useMemo(

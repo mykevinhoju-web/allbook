@@ -17,7 +17,16 @@ export function setRoomPinGate(): void {
   }
 }
 
+export function clearRoomPinGate(): void {
+  try {
+    sessionStorage.removeItem(ROOM_PIN_GATE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 export function clearRoomClientSession(): void {
+  clearRoomPinGate();
   try {
     sessionStorage.removeItem(ROOM_PIN_GATE_KEY);
   } catch {
