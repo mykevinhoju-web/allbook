@@ -720,12 +720,13 @@ export function StaffGuideTimeline({
                               {formatAmPmTime(booking.startsAt)}~
                               {formatAmPmTime(booking.endsAt)} ·{" "}
                               {formatDurationLabel(booking.durationMinutes)}
-                              {!booking.outCall && booking.roomName
-                                ? ` · ${booking.roomName}`
-                                : ""}
+                              {booking.outCall
+                                ? " · Out call"
+                                : booking.roomName
+                                  ? ` · ${booking.roomName}`
+                                  : ""}
                             </p>
-                            {booking.outCall ||
-                            booking.otherStaff ||
+                            {booking.otherStaff ||
                             booking.walkIn ||
                             booking.paymentMethod === "pre" ||
                             booking.paymentStatus === "unpaid" ? (
@@ -738,7 +739,6 @@ export function StaffGuideTimeline({
                                 {[
                                   isPreBooking ? "Pre - Booking" : null,
                                   booking.walkIn ? "Walk-in" : null,
-                                  booking.outCall ? "out call" : null,
                                   booking.otherStaff ? "Other Staff" : null,
                                 ]
                                   .filter(Boolean)
