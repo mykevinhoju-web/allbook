@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
-import { SpaSampleSwitcher } from "./spa-sample-switcher";
+import { EverLandingSwitcher } from "../landing-switcher";
 
 const HERO =
   "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=2400&q=80";
@@ -16,11 +16,7 @@ const BOOK = "/booking";
  * Sample 1 — Nocturne
  * Dark, quiet luxury. Brand-first full-bleed hero with champagne accents.
  */
-export function SpaSampleNocturne({
-  sampleBasePath = "/rand",
-}: {
-  sampleBasePath?: "/rand" | "/landing/spa-samples";
-} = {}) {
+export function EverLandingNocturne() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -32,7 +28,7 @@ export function SpaSampleNocturne({
     <div
       className={cn(
         "spa-nocturne min-h-svh bg-[#0C0D0C] text-[#F2EFE8]",
-        "font-[family-name:var(--font-spa-nocturne-body)]",
+        "font-[family-name:var(--font-ever-nocturne-body)]",
       )}
       data-ready={ready ? "true" : "false"}
     >
@@ -117,7 +113,7 @@ export function SpaSampleNocturne({
         <div className="flex flex-1 flex-col items-center justify-center px-5 pb-20 pt-16 text-center sm:px-10">
           <p
             data-rise="2"
-            className="font-[family-name:var(--font-spa-nocturne-display)] text-[clamp(3.25rem,11vw,7.5rem)] leading-[0.9] tracking-[-0.02em] text-[#F2EFE8]"
+            className="font-[family-name:var(--font-ever-nocturne-display)] text-[clamp(3.25rem,11vw,7.5rem)] leading-[0.9] tracking-[-0.02em] text-[#F2EFE8]"
           >
             Everwell Massage
           </p>
@@ -152,7 +148,7 @@ export function SpaSampleNocturne({
           <p className="text-[11px] uppercase tracking-[0.28em] text-[#D4B87A]/80">
             Treatments
           </p>
-          <h2 className="mt-3 font-[family-name:var(--font-spa-nocturne-display)] text-3xl tracking-tight sm:text-4xl">
+          <h2 className="mt-3 font-[family-name:var(--font-ever-nocturne-display)] text-3xl tracking-tight sm:text-4xl">
             Care for body and mind
           </h2>
           <ul className="mt-14 grid gap-0 border-t border-white/10 sm:grid-cols-2">
@@ -181,7 +177,7 @@ export function SpaSampleNocturne({
             <p className="text-[11px] uppercase tracking-[0.28em] text-[#F2EFE8]/40">
               Brisbane CBD
             </p>
-            <p className="mt-3 font-[family-name:var(--font-spa-nocturne-display)] text-2xl">
+            <p className="mt-3 font-[family-name:var(--font-ever-nocturne-display)] text-2xl">
               1/120 Mary Street
             </p>
             <p className="mt-2 text-sm text-[#F2EFE8]/50">
@@ -204,7 +200,7 @@ export function SpaSampleNocturne({
         </div>
       </footer>
 
-      <SpaSampleSwitcher active={1} tone="dark" basePath={sampleBasePath} />
+      <EverLandingSwitcher active={1} tone="dark" />
     </div>
   );
 }

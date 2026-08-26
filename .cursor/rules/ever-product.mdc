@@ -19,16 +19,21 @@ alwaysApply: true
 - In chat and docs, call this product **Ever** (에버).
 - Code/DB slug stays `everwellmassage`; public brand **Everwell Massage** / Ever.
 
+## Code layout
+
+All Ever UI and logic lives under **`src/features/ever/`** and routes under **`src/app/(ever)/`**.
+
+Do **not** add Ever pages under `src/app/(landing)/` or AllBook platform paths. The canonical site is always **`https://everwellmassage.com.au`** — not `allbook.com.au/everwellmassage` (that path redirects to the custom domain).
+
 ## URLs
 
 - Site (live index): `https://everwellmassage.com.au` — under construction until landing is ready
-- Landing WIP: `https://everwellmassage.com.au/rand` (promote to index when finished)
+- Landing WIP: `https://everwellmassage.com.au/rand` (samples `/rand/1`, `/rand/2`, `/rand/3`)
 - Booking: `https://everwellmassage.com.au/booking`
 - Admin: `https://everwellmassage.com.au/admin`
-- Fallback path (before DNS): `https://allbook.com.au/everwellmassage/...`
 
 ## Landing workflow
 
-- Build and iterate the public landing under **`/rand`** (samples at `/rand/1`, `/rand/2`, `/rand/3`).
+- Build and iterate the public landing under **`/rand`** on the Ever domain.
 - Keep **`/`** as the under-construction placeholder until a landing direction is chosen.
 - When ready, promote the chosen `/rand` design to the site index.

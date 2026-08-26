@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
-import { SpaSampleSwitcher } from "./spa-sample-switcher";
+import { EverLandingSwitcher } from "../landing-switcher";
 
 const HERO =
   "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=2400&q=80";
@@ -16,11 +16,7 @@ const BOOK = "/booking";
  * Sample 2 — Still
  * Light, modern, airy. Cool stone palette — brand as the hero signal.
  */
-export function SpaSampleStill({
-  sampleBasePath = "/rand",
-}: {
-  sampleBasePath?: "/rand" | "/landing/spa-samples";
-} = {}) {
+export function EverLandingStill() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -32,7 +28,7 @@ export function SpaSampleStill({
     <div
       className={cn(
         "spa-still min-h-svh bg-[#E8EBE7] text-[#1C211E]",
-        "font-[family-name:var(--font-spa-still-body)]",
+        "font-[family-name:var(--font-ever-still-body)]",
       )}
       data-ready={ready ? "true" : "false"}
     >
@@ -118,7 +114,7 @@ export function SpaSampleStill({
         <div className="flex flex-1 flex-col justify-end px-5 pb-16 pt-28 sm:px-10 sm:pb-20 lg:max-w-3xl">
           <p
             data-rise="2"
-            className="font-[family-name:var(--font-spa-still-display)] text-[clamp(3rem,9vw,6.25rem)] leading-[0.92] tracking-[-0.03em] text-[#1C211E]"
+            className="font-[family-name:var(--font-ever-still-display)] text-[clamp(3rem,9vw,6.25rem)] leading-[0.92] tracking-[-0.03em] text-[#1C211E]"
           >
             Everwell
             <br />
@@ -152,7 +148,7 @@ export function SpaSampleStill({
         className="bg-[#F4F6F3] px-5 py-24 sm:px-10"
       >
         <div className="mx-auto max-w-5xl">
-          <h2 className="font-[family-name:var(--font-spa-still-display)] text-3xl tracking-tight sm:text-4xl">
+          <h2 className="font-[family-name:var(--font-ever-still-display)] text-3xl tracking-tight sm:text-4xl">
             Popular treatments
           </h2>
           <p className="mt-3 max-w-md text-[15px] leading-relaxed text-[#1C211E]/55">
@@ -194,7 +190,7 @@ export function SpaSampleStill({
       <section className="bg-[#1C211E] px-5 py-20 text-[#E8EBE7] sm:px-10">
         <div className="mx-auto flex max-w-5xl flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="font-[family-name:var(--font-spa-still-display)] text-2xl sm:text-3xl">
+            <p className="font-[family-name:var(--font-ever-still-display)] text-2xl sm:text-3xl">
               Ready when you are
             </p>
             <p className="mt-2 text-sm text-[#E8EBE7]/55">
@@ -217,7 +213,7 @@ export function SpaSampleStill({
         </div>
       </footer>
 
-      <SpaSampleSwitcher active={2} tone="light" basePath={sampleBasePath} />
+      <EverLandingSwitcher active={2} tone="light" />
     </div>
   );
 }

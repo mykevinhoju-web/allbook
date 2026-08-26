@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
-import { SpaSampleSwitcher } from "./spa-sample-switcher";
+import { EverLandingSwitcher } from "../landing-switcher";
 
 const HERO =
   "https://images.unsplash.com/photo-1519823551278-64ac92734fb1?auto=format&fit=crop&w=2400&q=80";
@@ -16,11 +16,7 @@ const BOOK = "/booking";
  * Sample 3 — Verdant
  * Deep forest calm with soft gold light — modern spa, quietly gorgeous.
  */
-export function SpaSampleVerdant({
-  sampleBasePath = "/rand",
-}: {
-  sampleBasePath?: "/rand" | "/landing/spa-samples";
-} = {}) {
+export function EverLandingVerdant() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -32,7 +28,7 @@ export function SpaSampleVerdant({
     <div
       className={cn(
         "spa-verdant min-h-svh bg-[#121814] text-[#E9EDE8]",
-        "font-[family-name:var(--font-spa-verdant-body)]",
+        "font-[family-name:var(--font-ever-verdant-body)]",
       )}
       data-ready={ready ? "true" : "false"}
     >
@@ -112,7 +108,7 @@ export function SpaSampleVerdant({
           <Link
             href="/rand/3"
             data-rise="1"
-            className="font-[family-name:var(--font-spa-verdant-display)] text-xl tracking-tight text-[#E9EDE8] sm:text-2xl"
+            className="font-[family-name:var(--font-ever-verdant-display)] text-xl tracking-tight text-[#E9EDE8] sm:text-2xl"
           >
             Everwell Massage
           </Link>
@@ -128,7 +124,7 @@ export function SpaSampleVerdant({
         <div className="flex flex-1 flex-col justify-center px-5 pb-24 pt-20 sm:px-10 lg:max-w-2xl">
           <p
             data-rise="2"
-            className="font-[family-name:var(--font-spa-verdant-display)] text-[clamp(2.75rem,7.5vw,5.25rem)] leading-[1.02] tracking-[-0.02em]"
+            className="font-[family-name:var(--font-ever-verdant-display)] text-[clamp(2.75rem,7.5vw,5.25rem)] leading-[1.02] tracking-[-0.02em]"
           >
             A quieter kind of luxury
           </p>
@@ -176,7 +172,7 @@ export function SpaSampleVerdant({
             },
           ].map((item) => (
             <div key={item.title} className="space-y-3">
-              <h2 className="font-[family-name:var(--font-spa-verdant-display)] text-2xl text-[#C4A862]">
+              <h2 className="font-[family-name:var(--font-ever-verdant-display)] text-2xl text-[#C4A862]">
                 {item.title}
               </h2>
               <p className="text-sm leading-relaxed text-[#E9EDE8]/55 sm:text-[15px]">
@@ -189,7 +185,7 @@ export function SpaSampleVerdant({
 
       <section className="border-t border-white/8 px-5 py-20 sm:px-10">
         <div className="mx-auto max-w-5xl text-center">
-          <p className="font-[family-name:var(--font-spa-verdant-display)] text-3xl sm:text-4xl">
+          <p className="font-[family-name:var(--font-ever-verdant-display)] text-3xl sm:text-4xl">
             Make your time golden
           </p>
           <p className="mx-auto mt-4 max-w-md text-sm text-[#E9EDE8]/50">
@@ -211,7 +207,7 @@ export function SpaSampleVerdant({
         </div>
       </footer>
 
-      <SpaSampleSwitcher active={3} tone="dark" basePath={sampleBasePath} />
+      <EverLandingSwitcher active={3} tone="dark" />
     </div>
   );
 }

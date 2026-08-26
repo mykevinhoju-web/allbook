@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { SiteFooter, SiteHeader } from "@/components/common";
+import { isEverTenant } from "@/features/ever";
 import { getIsPlatformAdmin } from "@/features/private-preview/access";
 import { isPrivatePreviewEnabled } from "@/features/private-preview";
 import { getTenantOptional } from "@/features/tenants/server";
@@ -20,7 +21,7 @@ export default async function PublicLayout({
 
   // Platform apex uses a full-bleed marketing landing (no site chrome).
   // Ever is full-bleed while under construction (no shared site chrome).
-  if (!tenant || tenant.slug === "everwellmassage") {
+  if (!tenant || isEverTenant(tenant.slug)) {
     return children;
   }
 

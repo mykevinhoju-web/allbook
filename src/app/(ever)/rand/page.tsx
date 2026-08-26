@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
-import { requireEverTenant } from "@/features/spa-landing/server/require-ever-tenant";
+import { EVER_SITE_URL } from "@/features/ever";
+import { requireEverTenant } from "@/features/ever/server/require-ever-tenant";
 
 export const metadata: Metadata = {
   title: "Ever landing WIP",
@@ -16,7 +17,7 @@ export default async function EverRandIndexPage() {
       <div className="mx-auto max-w-3xl space-y-10">
         <div className="space-y-3">
           <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-[#D4B87A]/80">
-            Ever · /rand
+            Ever · {EVER_SITE_URL}/rand
           </p>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
             Landing page WIP

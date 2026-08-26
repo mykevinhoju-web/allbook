@@ -1,5 +1,5 @@
 /**
- * Ever (everwellmassage) temporary homepage — site under construction.
+ * Ever temporary homepage — everwellmassage.com.au index while under construction.
  */
 export function EverUnderConstruction() {
   return (

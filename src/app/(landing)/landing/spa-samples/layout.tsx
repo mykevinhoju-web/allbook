@@ -1,9 +1,0 @@
-import { SpaLandingFonts } from "@/features/spa-landing/components/spa-landing-fonts";
-
-export default function SpaSamplesLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return <SpaLandingFonts>{children}</SpaLandingFonts>;
-}

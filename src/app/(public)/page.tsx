@@ -20,7 +20,7 @@ import {
   PrivatePreviewLanding,
   isPrivatePreviewEnabled,
 } from "@/features/private-preview";
-import { EverUnderConstruction } from "@/features/spa-landing";
+import { EverUnderConstruction, isEverTenant } from "@/features/ever";
 import { getTenantOptional } from "@/features/tenants/server";
 import { isKoreanPlatformHost } from "@/features/tenants/utils/resolve-host";
 
@@ -43,7 +43,7 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 
   if (tenant) {
-    if (tenant.slug === "everwellmassage") {
+    if (isEverTenant(tenant.slug)) {
       return {
         title: "Everwell Massage",
         description: "Under construction — please check back soon.",
@@ -172,7 +172,7 @@ export default async function HomePage() {
     );
   }
 
-  if (tenant.slug === "everwellmassage") {
+  if (isEverTenant(tenant.slug)) {
     return <EverUnderConstruction />;
   }
 

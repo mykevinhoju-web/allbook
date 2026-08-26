@@ -10,6 +10,28 @@
       ],
       "destination": "https://everwellmassage.com.au/:path*",
       "permanent": true
+    },
+    {
+      "source": "/everwellmassage/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "allbook.com.au"
+        }
+      ],
+      "destination": "https://everwellmassage.com.au/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/everwellmassage/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.allbook.com.au"
+        }
+      ],
+      "destination": "https://everwellmassage.com.au/:path*",
+      "permanent": true
     }
   ],
   "crons": [
