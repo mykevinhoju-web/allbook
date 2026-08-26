@@ -10,13 +10,17 @@ import { SpaSampleSwitcher } from "./spa-sample-switcher";
 
 const HERO =
   "https://images.unsplash.com/photo-1519823551278-64ac92734fb1?auto=format&fit=crop&w=2400&q=80";
-const BOOK = "https://dayspa.allbook.com.au/booking";
+const BOOK = "/booking";
 
 /**
  * Sample 3 — Verdant
  * Deep forest calm with soft gold light — modern spa, quietly gorgeous.
  */
-export function SpaSampleVerdant() {
+export function SpaSampleVerdant({
+  sampleBasePath = "/rand",
+}: {
+  sampleBasePath?: "/rand" | "/landing/spa-samples";
+} = {}) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -106,11 +110,11 @@ export function SpaSampleVerdant() {
 
         <header className="flex items-center justify-between px-5 pt-7 sm:px-10 sm:pt-9">
           <Link
-            href="/landing/spa-samples/3"
+            href="/rand/3"
             data-rise="1"
             className="font-[family-name:var(--font-spa-verdant-display)] text-xl tracking-tight text-[#E9EDE8] sm:text-2xl"
           >
-            Time Massage
+            Everwell Massage
           </Link>
           <Link
             href={BOOK}
@@ -202,12 +206,12 @@ export function SpaSampleVerdant() {
 
       <footer className="border-t border-white/8 px-5 py-8 text-xs text-[#E9EDE8]/30 sm:px-10">
         <div className="mx-auto flex max-w-5xl justify-between gap-3">
-          <span>Time Massage Day Spa</span>
-          <span>Sample 3 · Verdant</span>
+          <span>Everwell Massage</span>
+          <span>Ever /rand · Verdant</span>
         </div>
       </footer>
 
-      <SpaSampleSwitcher active={3} tone="dark" />
+      <SpaSampleSwitcher active={3} tone="dark" basePath={sampleBasePath} />
     </div>
   );
 }

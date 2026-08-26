@@ -29,6 +29,7 @@ export const RESERVED_PATH_SEGMENTS = new Set([
   "nails",
   "partner",
   "platform",
+  "rand",
   "register",
   "room",
   "robots.txt",

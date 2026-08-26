@@ -2,18 +2,17 @@ import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 
-const SAMPLES = [
-  { href: "/landing/spa-samples/1", name: "Nocturne" },
-  { href: "/landing/spa-samples/2", name: "Still" },
-  { href: "/landing/spa-samples/3", name: "Verdant" },
-] as const;
+const SAMPLE_NAMES = ["Nocturne", "Still", "Verdant"] as const;
 
 export function SpaSampleSwitcher({
   active,
   tone = "dark",
+  basePath = "/rand",
 }: {
   active: 1 | 2 | 3;
   tone?: "light" | "dark";
+  /** Landing WIP lives at /rand; legacy samples used /landing/spa-samples */
+  basePath?: "/rand" | "/landing/spa-samples";
 }) {
   return (
     <div
@@ -25,15 +24,16 @@ export function SpaSampleSwitcher({
       )}
     >
       <span className="hidden px-2 text-[10px] uppercase tracking-wider opacity-70 sm:inline">
-        Spa
+        Ever
       </span>
-      {SAMPLES.map((sample, index) => {
+      {SAMPLE_NAMES.map((name, index) => {
         const n = (index + 1) as 1 | 2 | 3;
+        const href = `${basePath}/${n}`;
         const isActive = active === n;
         return (
           <Link
-            key={sample.href}
-            href={sample.href}
+            key={href}
+            href={href}
             className={cn(
               "shrink-0 rounded-full px-3 py-1.5 font-medium transition",
               isActive
@@ -41,12 +41,12 @@ export function SpaSampleSwitcher({
                 : "text-white/80 hover:bg-white/10 hover:text-white",
             )}
           >
-            {sample.name}
+            {name}
           </Link>
         );
       })}
       <Link
-        href="/landing/spa-samples"
+        href={basePath}
         className="shrink-0 rounded-full px-2 py-1.5 text-white/60 hover:text-white"
       >
         All

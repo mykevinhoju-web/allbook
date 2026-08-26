@@ -1,0 +1,34 @@
+---
+description: Ever (everwellmassage.com.au) product scope — simple site booking, separate from dayspa
+alwaysApply: true
+---
+
+# Ever (Everwell Massage)
+
+**Ever** = tenant `everwellmassage`, domain `everwellmassage.com.au` (also `www`).
+
+## Product model
+
+- Public site with a **simple booking form** (customer requests from the website).
+- Admin receives **only bookings that came in from the site** — no walk-in / room / complex dayspa flows.
+- **Do not link or share data with dayspa.** Separate tenant, separate bookings, separate branding.
+- Keep the product **simple**: site → form → admin inbox. Avoid dayspa schedule/staff-portal complexity unless Ever explicitly needs it later.
+
+## Naming
+
+- In chat and docs, call this product **Ever** (에버).
+- Code/DB slug stays `everwellmassage`; public brand **Everwell Massage** / Ever.
+
+## URLs
+
+- Site (live index): `https://everwellmassage.com.au` — under construction until landing is ready
+- Landing WIP: `https://everwellmassage.com.au/rand` (promote to index when finished)
+- Booking: `https://everwellmassage.com.au/booking`
+- Admin: `https://everwellmassage.com.au/admin`
+- Fallback path (before DNS): `https://allbook.com.au/everwellmassage/...`
+
+## Landing workflow
+
+- Build and iterate the public landing under **`/rand`** (samples at `/rand/1`, `/rand/2`, `/rand/3`).
+- Keep **`/`** as the under-construction placeholder until a landing direction is chosen.
+- When ready, promote the chosen `/rand` design to the site index.

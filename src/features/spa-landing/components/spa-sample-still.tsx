@@ -10,13 +10,17 @@ import { SpaSampleSwitcher } from "./spa-sample-switcher";
 
 const HERO =
   "https://images.unsplash.com/photo-1600334089648-b0d9d70cba7f?auto=format&fit=crop&w=2400&q=80";
-const BOOK = "https://dayspa.allbook.com.au/booking";
+const BOOK = "/booking";
 
 /**
  * Sample 2 — Still
  * Light, modern, airy. Cool stone palette — brand as the hero signal.
  */
-export function SpaSampleStill() {
+export function SpaSampleStill({
+  sampleBasePath = "/rand",
+}: {
+  sampleBasePath?: "/rand" | "/landing/spa-samples";
+} = {}) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -115,7 +119,7 @@ export function SpaSampleStill() {
             data-rise="2"
             className="font-[family-name:var(--font-spa-still-display)] text-[clamp(3rem,9vw,6.25rem)] leading-[0.92] tracking-[-0.03em] text-[#1C211E]"
           >
-            Time
+            Everwell
             <br />
             Massage
           </p>
@@ -207,12 +211,12 @@ export function SpaSampleStill() {
 
       <footer className="bg-[#F4F6F3] px-5 py-8 text-xs text-[#1C211E]/40 sm:px-10">
         <div className="mx-auto flex max-w-5xl justify-between gap-3">
-          <span>Time Massage Day Spa</span>
-          <span>Sample 2 · Still</span>
+          <span>Everwell Massage</span>
+          <span>Ever /rand · Still</span>
         </div>
       </footer>
 
-      <SpaSampleSwitcher active={2} tone="light" />
+      <SpaSampleSwitcher active={2} tone="light" basePath={sampleBasePath} />
     </div>
   );
 }

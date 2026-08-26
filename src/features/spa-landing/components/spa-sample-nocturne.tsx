@@ -10,13 +10,17 @@ import { SpaSampleSwitcher } from "./spa-sample-switcher";
 
 const HERO =
   "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=2400&q=80";
-const BOOK = "https://dayspa.allbook.com.au/booking";
+const BOOK = "/booking";
 
 /**
  * Sample 1 — Nocturne
  * Dark, quiet luxury. Brand-first full-bleed hero with champagne accents.
  */
-export function SpaSampleNocturne() {
+export function SpaSampleNocturne({
+  sampleBasePath = "/rand",
+}: {
+  sampleBasePath?: "/rand" | "/landing/spa-samples";
+} = {}) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -115,7 +119,7 @@ export function SpaSampleNocturne() {
             data-rise="2"
             className="font-[family-name:var(--font-spa-nocturne-display)] text-[clamp(3.25rem,11vw,7.5rem)] leading-[0.9] tracking-[-0.02em] text-[#F2EFE8]"
           >
-            Time Massage
+            Everwell Massage
           </p>
           <h1
             data-rise="3"
@@ -195,12 +199,12 @@ export function SpaSampleNocturne() {
 
       <footer className="border-t border-white/10 px-5 py-8 text-xs text-[#F2EFE8]/35 sm:px-10">
         <div className="mx-auto flex max-w-5xl justify-between gap-3">
-          <span>Time Massage Day Spa</span>
-          <span>Sample 1 · Nocturne</span>
+          <span>Everwell Massage</span>
+          <span>Ever /rand · Nocturne</span>
         </div>
       </footer>
 
-      <SpaSampleSwitcher active={1} tone="dark" />
+      <SpaSampleSwitcher active={1} tone="dark" basePath={sampleBasePath} />
     </div>
   );
 }

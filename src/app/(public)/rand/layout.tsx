@@ -1,6 +1,6 @@
 import { SpaLandingFonts } from "@/features/spa-landing/components/spa-landing-fonts";
 
-export default function SpaSamplesLayout({
+export default function EverRandLayout({
   children,
 }: {
   children: React.ReactNode;
