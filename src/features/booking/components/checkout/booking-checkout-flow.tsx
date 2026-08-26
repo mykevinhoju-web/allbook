@@ -414,7 +414,8 @@ export function BookingCheckoutFlow({
       <div className={cn(theme.page, "mx-auto flex max-w-md flex-col items-center justify-center px-6 text-center min-h-svh")}>
         <p className={cn(theme.sectionTitle)}>Open on your spa site</p>
         <p className={cn(theme.bodyMuted, "mt-2")}>
-          Booking requires a tenant subdomain (e.g. dayspa.allbook.com.au).
+          Booking requires a spa site (e.g. everwellmassage.com.au or
+          dayspa.allbook.com.au).
         </p>
         <Link href={returnTo} className={cn(pillButtonClass, "mt-6 max-w-xs")}>
           Back

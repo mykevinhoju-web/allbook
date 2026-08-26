@@ -1,4 +1,17 @@
 {
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.everwellmassage.com.au"
+        }
+      ],
+      "destination": "https://everwellmassage.com.au/:path*",
+      "permanent": true
+    }
+  ],
   "crons": [
     {
       "path": "/api/maintenance/cleanup-push-subscriptions",

@@ -1,3 +1,8 @@
+import {
+  getTenantCustomOrigin,
+  resolveTenantSlugFromCustomDomain,
+} from "@/config/tenant-custom-domains";
+
 const PLATFORM_APEX_HOSTS = new Set([
   "allbook.com.au",
   "www.allbook.com.au",
@@ -41,6 +46,18 @@ export function isTenantSubdomainHost(host: string): boolean {
   );
 }
 
+/** True when the host maps to a tenant (subdomain or custom domain). */
+export function isTenantHost(host: string): boolean {
+  if (isPlatformHost(host)) {
+    return false;
+  }
+  const hostname = normalizeHostname(host);
+  if (resolveTenantSlugFromCustomDomain(hostname)) {
+    return true;
+  }
+  return isTenantSubdomainHost(host);
+}
+
 function getPlatformOrigin(): string {
   if (process.env.NODE_ENV === "development") {
     return "http://localhost:3000";
@@ -48,12 +65,21 @@ function getPlatformOrigin(): string {
   return "https://allbook.com.au";
 }
 
-/** Public URL for a tenant: allbook.com.au/{slug} (path-based). */
+/** Public URL for a tenant: custom domain when set, else allbook.com.au/{slug}. */
 export function getTenantPublicUrl(slug: string): string {
+  const custom = getTenantCustomOrigin(slug);
+  if (custom) {
+    return custom;
+  }
   return `${getPlatformOrigin()}/${slug}`;
 }
 
-/** Admin URL for a tenant: allbook.com.au/{slug}/admin */
+/** Admin URL for a tenant (custom domain /admin when configured). */
 export function getTenantAdminUrl(slug: string): string {
   return `${getTenantPublicUrl(slug)}/admin`;
+}
+
+/** Booking URL for a tenant (custom domain /booking when configured). */
+export function getTenantBookingUrl(slug: string): string {
+  return `${getTenantPublicUrl(slug)}/booking`;
 }

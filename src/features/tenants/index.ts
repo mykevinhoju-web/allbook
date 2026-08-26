@@ -7,6 +7,8 @@ export {
   isKoreanPlatformHost,
   isPlatformHost,
   isTenantSubdomainHost,
+  isTenantHost,
+  getTenantBookingUrl,
   normalizeHostname,
 } from "./utils/resolve-host";
 export {

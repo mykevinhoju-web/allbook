@@ -1,5 +1,7 @@
 import type { NextRequest } from "next/server";
 
+import { resolveTenantSlugFromCustomDomain } from "@/config/tenant-custom-domains";
+
 import { TENANT_ENV, TENANT_SLUG_COOKIE, TENANT_SLUG_HEADER } from "../constants";
 import { resolveDevTenantSlugFromEnv } from "./dev-tenant";
 import {
@@ -44,6 +46,11 @@ const RESERVED_PLATFORM_SUBDOMAINS = new Set(["www", "kor"]);
 
 export function resolveTenantSlugFromHost(host: string): string | null {
   const hostname = normalizeHostname(host);
+
+  const customSlug = resolveTenantSlugFromCustomDomain(hostname);
+  if (customSlug) {
+    return customSlug;
+  }
 
   // {tenant}.allbook.com.au — never treat reserved platform hosts as tenants
   const platformMatch = hostname.match(/^([a-z0-9-]+)\.allbook\.com\.au$/);
