@@ -19,7 +19,8 @@ export default async function PublicLayout({
   const tenant = await getTenantOptional();
 
   // Platform apex uses a full-bleed marketing landing (no site chrome).
-  if (!tenant) {
+  // Ever is full-bleed while under construction (no shared site chrome).
+  if (!tenant || tenant.slug === "everwellmassage") {
     return children;
   }
 
