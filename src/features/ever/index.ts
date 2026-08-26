@@ -1,5 +1,7 @@
 export { EVER_TENANT_SLUG, EVER_SITE_URL, isEverTenant } from "./config";
+export { EVER_BRAND } from "./theme";
 export { EverUnderConstruction } from "./components/ever-under-construction";
+export { EverLogo } from "./components/ever-logo";
 export { EverLandingFonts } from "./components/landing-fonts";
 export { EverLandingSwitcher } from "./components/landing-switcher";
 export { EverLandingNocturne } from "./components/samples/landing-nocturne";

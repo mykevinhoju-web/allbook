@@ -20,7 +20,7 @@ import {
   PrivatePreviewLanding,
   isPrivatePreviewEnabled,
 } from "@/features/private-preview";
-import { EverUnderConstruction, isEverTenant } from "@/features/ever";
+import { EverLandingFonts, EverUnderConstruction, isEverTenant } from "@/features/ever";
 import { getTenantOptional } from "@/features/tenants/server";
 import { isKoreanPlatformHost } from "@/features/tenants/utils/resolve-host";
 
@@ -173,7 +173,11 @@ export default async function HomePage() {
   }
 
   if (isEverTenant(tenant.slug)) {
-    return <EverUnderConstruction />;
+    return (
+      <EverLandingFonts>
+        <EverUnderConstruction />
+      </EverLandingFonts>
+    );
   }
 
   return <TenantHomePage tenant={tenant} />;

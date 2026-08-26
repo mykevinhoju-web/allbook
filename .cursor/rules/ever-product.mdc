@@ -35,5 +35,6 @@ Do **not** add Ever pages under `src/app/(landing)/` or AllBook platform paths. 
 ## Landing workflow
 
 - Build and iterate the public landing under **`/rand`** on the Ever domain.
-- Keep **`/`** as the under-construction placeholder until a landing direction is chosen.
-- When ready, promote the chosen `/rand` design to the site index.
+- **Selected direction: Verdant (`/rand/3`)** — forest calm, soft gold, logo in header.
+- Keep **`/`** as the under-construction placeholder (Verdant night + logo) until the full landing ships.
+- When ready, promote the Verdant design to the site index.

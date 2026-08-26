@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
+import { EverLogo } from "../ever-logo";
+import { EVER_BRAND } from "../../theme";
 import { EverLandingSwitcher } from "../landing-switcher";
 
 const HERO =
@@ -105,17 +107,17 @@ export function EverLandingVerdant() {
         </div>
 
         <header className="flex items-center justify-between px-5 pt-7 sm:px-10 sm:pt-9">
-          <Link
-            href="/rand/3"
-            data-rise="1"
-            className="font-[family-name:var(--font-ever-verdant-display)] text-xl tracking-tight text-[#E9EDE8] sm:text-2xl"
-          >
-            Everwell Massage
-          </Link>
+          <div data-rise="1">
+            <EverLogo href="/" width={160} priority />
+          </div>
           <Link
             href={BOOK}
             data-rise="1"
-            className="inline-flex h-10 items-center rounded-full border border-[#C4A862]/45 px-5 text-[12px] tracking-wide text-[#E9EDE8] transition hover:border-[#C4A862] hover:bg-[#C4A862]/10"
+            className="inline-flex h-10 items-center rounded-full border px-5 text-[12px] tracking-wide transition hover:bg-[#C4A862]/10"
+            style={{
+              borderColor: `${EVER_BRAND.gold}73`,
+              color: EVER_BRAND.text,
+            }}
           >
             Book
           </Link>
@@ -202,8 +204,8 @@ export function EverLandingVerdant() {
 
       <footer className="border-t border-white/8 px-5 py-8 text-xs text-[#E9EDE8]/30 sm:px-10">
         <div className="mx-auto flex max-w-5xl justify-between gap-3">
-          <span>Everwell Massage</span>
-          <span>Ever /rand · Verdant</span>
+          <span>Everwell Massage &amp; Wellness</span>
+          <span>Selected · Verdant</span>
         </div>
       </footer>
 
