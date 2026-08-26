@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { SpaSampleSwitcher } from "./spa-sample-switcher";
 
 const HERO =
-  "https://images.unsplash.com/photo-1600334089648-b0d9d70cba7f?auto=format&fit=crop&w=2400&q=80";
+  "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=2400&q=80";
 const BOOK = "/booking";
 
 /**
@@ -89,9 +89,10 @@ export function SpaSampleStill({
             priority
             sizes="100vw"
             data-reveal
-            className="object-cover object-[center_35%] opacity-90"
+            className="object-cover object-[center_30%]"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#E8EBE7]/88 via-[#E8EBE7]/45 to-[#E8EBE7]/92" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#E8EBE7]/55 via-[#E8EBE7]/20 to-[#E8EBE7]/85" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#E8EBE7]/50 via-transparent to-transparent" />
         </div>
 
         <header className="flex items-center justify-between px-5 pt-7 sm:px-10 sm:pt-9">
