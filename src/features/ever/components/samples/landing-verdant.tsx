@@ -106,9 +106,9 @@ export function EverLandingVerdant() {
           <div className="absolute inset-0 bg-gradient-to-t from-[#121814] via-transparent to-[#121814]/50" />
         </div>
 
-        <header className="flex items-center justify-between px-5 pt-7 sm:px-10 sm:pt-9">
-          <div data-rise="1">
-            <EverLogo href="/" width={160} priority />
+        <header className="flex items-center justify-between gap-4 px-5 pt-7 sm:px-10 sm:pt-9">
+          <div data-rise="1" className="rounded-sm bg-black">
+            <EverLogo href="/" width={140} priority />
           </div>
           <Link
             href={BOOK}

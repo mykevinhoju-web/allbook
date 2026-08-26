@@ -8,7 +8,7 @@ import { EverLogo } from "./ever-logo";
 import { EVER_BRAND } from "../theme";
 
 /**
- * Ever index — Verdant night background + brand logo while the full landing ships.
+ * Ever index — black field matches the opaque logo plate; soft verdant glow around it.
  */
 export function EverUnderConstruction() {
   const [ready, setReady] = useState(false);
@@ -21,7 +21,7 @@ export function EverUnderConstruction() {
   return (
     <div
       className={cn(
-        "ever-home min-h-svh bg-[#121814] text-[#E9EDE8]",
+        "ever-home min-h-svh bg-black text-[#E9EDE8]",
         "font-[family-name:var(--font-ever-verdant-body)]",
       )}
       data-ready={ready ? "true" : "false"}
@@ -59,14 +59,13 @@ export function EverUnderConstruction() {
           className="pointer-events-none absolute inset-0 -z-10"
           aria-hidden
         >
-          <div className="absolute inset-0 bg-[#121814]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_35%,rgba(196,168,98,0.14),transparent_58%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_80%,rgba(27,46,38,0.55),transparent_45%)]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#121814] via-transparent to-[#121814]/60" />
+          <div className="absolute inset-0 bg-black" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_40%,rgba(196,168,98,0.12),transparent_55%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_70%,rgba(27,46,38,0.45),transparent_50%)]" />
         </div>
 
-        <div data-rise="1" className="mx-auto max-w-[min(100%,280px)] sm:max-w-xs">
-          <EverLogo href={undefined} width={260} priority className="mx-auto shadow-black/25" />
+        <div data-rise="1" className="mx-auto max-w-[min(100%,300px)] sm:max-w-sm">
+          <EverLogo href={null} width={280} priority className="mx-auto" />
         </div>
 
         <h1

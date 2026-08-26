@@ -3,6 +3,8 @@ export const EVER_BRAND = {
   logoPath: "/ever/logo.png",
   forest: "#1B2E26",
   forestDeep: "#121814",
+  /** Matches opaque logo plate (no transparency in the PNG). */
+  logoPlate: "#000000",
   gold: "#C4A862",
   goldSoft: "#D4B87A",
   cream: "#F5F3EE",

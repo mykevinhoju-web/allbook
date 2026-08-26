@@ -6,13 +6,17 @@ import { cn } from "@/lib/utils";
 import { EVER_BRAND } from "../theme";
 
 type EverLogoProps = {
-  href?: string;
+  href?: string | null;
   className?: string;
   /** Display width in px — height scales with logo aspect ratio. */
   width?: number;
   priority?: boolean;
 };
 
+/**
+ * Brand mark on solid black (logo file has no transparency).
+ * Sit it on black / near-black surfaces so the square blends.
+ */
 export function EverLogo({
   href = "/",
   className,
@@ -22,21 +26,14 @@ export function EverLogo({
   const height = Math.round(width * 1.15);
 
   const image = (
-    <span
-      className={cn(
-        "inline-block rounded-lg bg-[#F5F3EE] px-5 py-4 shadow-lg shadow-black/15",
-        className,
-      )}
-    >
-      <Image
-        src={EVER_BRAND.logoPath}
-        alt="Everwell Massage & Wellness"
-        width={width}
-        height={height}
-        priority={priority}
-        className="h-auto w-auto max-w-full"
-      />
-    </span>
+    <Image
+      src={EVER_BRAND.logoPath}
+      alt="Everwell Massage & Wellness"
+      width={width}
+      height={height}
+      priority={priority}
+      className={cn("h-auto w-auto max-w-full bg-black", className)}
+    />
   );
 
   if (!href) {
