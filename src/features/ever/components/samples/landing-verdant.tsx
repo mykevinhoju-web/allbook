@@ -107,7 +107,7 @@ export function EverLandingVerdant() {
         </div>
 
         <header className="flex items-center justify-between gap-4 px-5 pt-7 sm:px-10 sm:pt-9">
-          <div data-rise="1" className="rounded-sm bg-black">
+          <div data-rise="1">
             <EverLogo href="/" width={168} priority />
           </div>
           <Link

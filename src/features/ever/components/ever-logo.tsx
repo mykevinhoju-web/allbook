@@ -13,10 +13,7 @@ type EverLogoProps = {
   priority?: boolean;
 };
 
-/**
- * Brand mark on solid black (logo file has no transparency).
- * Sit it on black / near-black surfaces so the square blends.
- */
+/** Brand mark — transparent PNG, sits on any dark Ever surface. */
 export function EverLogo({
   href = "/",
   className,
@@ -32,7 +29,7 @@ export function EverLogo({
       width={width}
       height={height}
       priority={priority}
-      className={cn("h-auto w-auto max-w-full bg-black", className)}
+      className={cn("h-auto w-auto max-w-full", className)}
     />
   );
 

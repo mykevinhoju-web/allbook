@@ -8,7 +8,7 @@ import { EverLogo } from "./ever-logo";
 import { EVER_BRAND } from "../theme";
 
 /**
- * Ever index — black field matches the opaque logo plate; soft verdant glow around it.
+ * Ever index — Verdant night + transparent logo while the full landing ships.
  */
 export function EverUnderConstruction() {
   const [ready, setReady] = useState(false);
@@ -21,7 +21,7 @@ export function EverUnderConstruction() {
   return (
     <div
       className={cn(
-        "ever-home min-h-svh bg-black text-[#E9EDE8]",
+        "ever-home min-h-svh bg-[#121814] text-[#E9EDE8]",
         "font-[family-name:var(--font-ever-verdant-body)]",
       )}
       data-ready={ready ? "true" : "false"}
@@ -59,7 +59,7 @@ export function EverUnderConstruction() {
           className="pointer-events-none absolute inset-0 -z-10"
           aria-hidden
         >
-          <div className="absolute inset-0 bg-black" />
+          <div className="absolute inset-0 bg-[#121814]" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_40%,rgba(196,168,98,0.12),transparent_55%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_70%,rgba(27,46,38,0.45),transparent_50%)]" />
         </div>

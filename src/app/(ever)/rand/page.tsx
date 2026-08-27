@@ -13,7 +13,7 @@ export default async function EverRandIndexPage() {
   await requireEverTenant();
 
   return (
-    <main className="min-h-svh bg-black px-5 py-16 text-[#E9EDE8] sm:px-10">
+    <main className="min-h-svh bg-[#121814] px-5 py-16 text-[#E9EDE8] sm:px-10">
       <div className="mx-auto max-w-3xl space-y-10">
         <div className="space-y-6">
           <EverLogo href="/" width={200} />
