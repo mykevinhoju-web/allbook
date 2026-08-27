@@ -1,6 +1,6 @@
 /** Ever brand tokens — aligned with logo (forest green, gold, verdant night). */
 export const EVER_BRAND = {
-  logoPath: "/ever/logo.png",
+  logoPath: "/ever/logo.png?v=3",
   forest: "#1B2E26",
   forestDeep: "#121814",
   /** Matches opaque logo plate (no transparency in the PNG). */
