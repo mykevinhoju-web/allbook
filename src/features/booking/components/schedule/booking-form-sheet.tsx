@@ -593,9 +593,14 @@ export function BookingFormSheet({
                   value={values.staffId}
                   nextStaffId={nextRotationStaffId}
                   onSelect={(staffId) => {
+                    const rotationPick =
+                      Boolean(nextRotationStaffId) &&
+                      staffId === nextRotationStaffId &&
+                      staffId !== OTHER_STAFF_SENTINEL;
                     onChange({
                       ...values,
                       staffId,
+                      walkIn: rotationPick ? true : values.walkIn,
                       startsAt: "",
                       allowImmediateStart: false,
                       otherStaffName:
@@ -848,7 +853,20 @@ export function BookingFormSheet({
                     <button
                       key={option.label}
                       type="button"
-                      onClick={() => update("walkIn", option.value)}
+                      onClick={() => {
+                        if (option.value === true) {
+                          onChange({
+                            ...values,
+                            walkIn: true,
+                            staffId:
+                              !values.staffId && nextRotationStaffId
+                                ? nextRotationStaffId
+                                : values.staffId,
+                          });
+                          return;
+                        }
+                        update("walkIn", option.value);
+                      }}
                       className={cn(
                         "min-h-11 rounded-xl border text-sm font-semibold transition",
                         selected

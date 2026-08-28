@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  dateInTimeZone,
   reportDateRangeToUtc,
   todayDateInZone,
 } from "@/features/admin/lib/revenue-report";
@@ -200,27 +201,60 @@ export async function countWalkInsByStaff(
   for (const id of args.staffIds) counts[id] = 0;
   if (args.staffIds.length === 0) return counts;
 
-  const { rangeStart, rangeEnd } = reportDateRangeToUtc(
-    args.workDate,
-    args.workDate,
+  // Include adjacent calendar days so overnight-shift walk-ins after midnight
+  // attribute to the same work date shown on the rotation screen.
+  const queryFrom = addDaysToDateInput(args.workDate, -1);
+  const queryTo = addDaysToDateInput(args.workDate, 1);
+  const { rangeStart } = reportDateRangeToUtc(
+    queryFrom,
+    queryFrom,
     args.timeZone,
   );
+  const { rangeEnd } = reportDateRangeToUtc(queryTo, queryTo, args.timeZone);
 
-  const { data, error } = await supabase
-    .from("bookings")
-    .select("staff_id, notes")
-    .eq("tenant_id", args.tenantId)
-    .in("staff_id", args.staffIds)
-    .neq("status", "cancelled")
-    .gte("starts_at", rangeStart)
-    .lt("starts_at", rangeEnd);
+  const [{ data, error }, { data: staffRows, error: staffError }] =
+    await Promise.all([
+      supabase
+        .from("bookings")
+        .select("staff_id, notes, starts_at")
+        .eq("tenant_id", args.tenantId)
+        .in("staff_id", args.staffIds)
+        .neq("status", "cancelled")
+        .gte("starts_at", rangeStart)
+        .lt("starts_at", rangeEnd),
+      supabase
+        .from("staff")
+        .select(
+          "id, status, attributes, working_hours_start, working_hours_end",
+        )
+        .eq("tenant_id", args.tenantId)
+        .in("id", args.staffIds),
+    ]);
 
   if (error) {
     throw new Error(error.message);
   }
+  if (staffError) {
+    throw new Error(staffError.message);
+  }
+
+  const staffById = new Map((staffRows ?? []).map((row) => [row.id, row]));
 
   for (const row of data ?? []) {
     if (!isWalkInBooking(row.notes)) continue;
+    const staff = staffById.get(row.staff_id);
+    const bookingWorkDate = staff
+      ? resolveWalkInCountWorkDate({
+          status: (staff.status as StaffStatus) ?? "active",
+          attributes: (staff.attributes ?? {}) as StaffAttributes,
+          calendarDate: dateInTimeZone(row.starts_at, args.timeZone),
+          timeZone: args.timeZone,
+          workingHoursStart: staff.working_hours_start,
+          workingHoursEnd: staff.working_hours_end,
+          now: new Date(row.starts_at),
+        })
+      : dateInTimeZone(row.starts_at, args.timeZone);
+    if (bookingWorkDate !== args.workDate) continue;
     counts[row.staff_id] = (counts[row.staff_id] ?? 0) + 1;
   }
 
