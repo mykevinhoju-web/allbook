@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   ListOrdered,
   Palette,
+  StickyNote,
   UserCircle,
   Users,
   Wrench,
@@ -57,6 +58,11 @@ export const adminNavItems: AdminNavItem[] = [
     title: "Rotation",
     href: "/admin/rotation",
     icon: ListOrdered,
+  },
+  {
+    title: "Note",
+    href: "/admin/notes",
+    icon: StickyNote,
   },
   {
     title: "Rooms",

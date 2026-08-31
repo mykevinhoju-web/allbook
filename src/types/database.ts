@@ -277,6 +277,36 @@ export type Database = {
         };
         Relationships: [];
       };
+      staff_notes: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          staff_id: string;
+          note_date: string;
+          body: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          staff_id: string;
+          note_date: string;
+          body: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          staff_id?: string;
+          note_date?: string;
+          body?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       tenant_customer_flags: {
         Row: {
           tenant_id: string;

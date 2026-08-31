@@ -36,6 +36,8 @@ type BookingCustomerContactFieldsProps = {
   onFieldChange?: () => void;
   /** Internal booking: phone before name for returning-guest lookup. */
   phoneFirst?: boolean;
+  /** Admin internal booking — postcode collected silently (default on save). */
+  hidePostcode?: boolean;
   phoneHint?: string | null;
   phoneLookingUp?: boolean;
   customerRating?: "good" | "bad" | null;
@@ -55,6 +57,7 @@ export function BookingCustomerContactFields({
   helperTextClass,
   onFieldChange,
   phoneFirst = false,
+  hidePostcode = false,
   phoneHint = null,
   phoneLookingUp = false,
   customerRating = null,
@@ -132,9 +135,11 @@ export function BookingCustomerContactFields({
       ) : helperTextClass ? (
         <p className={cn(helperTextClass, "mt-1 px-0.5")}>
           Australian mobile — starts with 04
-          {phoneFirst
+          {phoneFirst && !hidePostcode
             ? ". Any saved phone autofills name & postcode."
-            : ""}
+            : phoneFirst
+              ? ". Any saved phone autofills name."
+              : ""}
         </p>
       ) : null}
     </div>
@@ -175,7 +180,7 @@ export function BookingCustomerContactFields({
       <>
         {phoneField}
         {nameFields}
-        {postcodeField}
+        {hidePostcode ? null : postcodeField}
       </>
     );
   }
@@ -184,7 +189,7 @@ export function BookingCustomerContactFields({
     <>
       {nameFields}
       {phoneField}
-      {postcodeField}
+      {hidePostcode ? null : postcodeField}
     </>
   );
 }

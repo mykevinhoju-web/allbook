@@ -768,6 +768,7 @@ export function BookingFormSheet({
             <div className={cn(theme.panel, "space-y-4")}>
               <BookingCustomerContactFields
                 phoneFirst
+                hidePostcode
                 phoneLookingUp={phoneLookingUp}
                 phoneHint={phoneHint}
                 customerRating={customerRating}

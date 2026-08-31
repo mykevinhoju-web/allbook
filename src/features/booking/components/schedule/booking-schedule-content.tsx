@@ -362,10 +362,9 @@ export function BookingScheduleContent() {
       return;
     }
 
-    if (!isValidAuPostcode(form.customerPostcode)) {
-      toast.error("Enter a valid Queensland postcode (4XXX)");
-      return;
-    }
+    const customerPostcode = isValidAuPostcode(form.customerPostcode)
+      ? formatAuPostcodeInput(form.customerPostcode)
+      : "4000";
 
     if (
       paymentMethod !== "cash" &&
@@ -427,7 +426,7 @@ export function BookingScheduleContent() {
             form.customerLastName,
           ),
           customerPhone: normalizeAuMobile(form.customerPhone),
-          customerPostcode: formatAuPostcodeInput(form.customerPostcode),
+          customerPostcode,
           paymentMethod,
           splitCashCents,
           allowImmediateStart: form.allowImmediateStart,
