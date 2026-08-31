@@ -27,14 +27,13 @@ Do **not** add Ever pages under `src/app/(landing)/` or AllBook platform paths. 
 
 ## URLs
 
-- Site (live index): `https://everwellmassage.com.au` — under construction until landing is ready
-- Landing WIP: `https://everwellmassage.com.au/rand` (samples `/rand/1`, `/rand/2`, `/rand/3`)
+- Site (live index): `https://everwellmassage.com.au` — full Verdant marketing homepage
+- Landing WIP / samples: `https://everwellmassage.com.au/rand` (`/rand/1`, `/rand/2`, `/rand/3`)
 - Booking: `https://everwellmassage.com.au/booking`
 - Admin: `https://everwellmassage.com.au/admin`
 
 ## Landing workflow
 
-- Build and iterate the public landing under **`/rand`** on the Ever domain.
-- **Selected direction: Verdant (`/rand/3`)** — forest calm, soft gold, logo in header.
-- Keep **`/`** as the under-construction placeholder (Verdant night + logo) until the full landing ships.
-- When ready, promote the Verdant design to the site index.
+- **Selected direction: Verdant** — forest calm, soft gold, logo in header.
+- The live index (`/`) is the full Ever homepage (services, prices, about, reviews, gallery, contact).
+- Keep `/rand` samples for design reference; do not put Ever marketing under AllBook platform paths.

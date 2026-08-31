@@ -718,6 +718,84 @@ export type Database = {
         };
         Relationships: [];
       };
+      ever_services: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          name: string;
+          duration_minutes: number;
+          price_cents: number | null;
+          sort_order: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          name: string;
+          duration_minutes?: number;
+          price_cents?: number | null;
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          name?: string;
+          duration_minutes?: number;
+          price_cents?: number | null;
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      ever_site_bookings: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          service_id: string;
+          starts_at: string;
+          customer_name: string;
+          customer_phone: string;
+          customer_email: string;
+          customer_postcode: string;
+          status: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          service_id: string;
+          starts_at: string;
+          customer_name: string;
+          customer_phone: string;
+          customer_email: string;
+          customer_postcode: string;
+          status?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          tenant_id?: string;
+          service_id?: string;
+          starts_at?: string;
+          customer_name?: string;
+          customer_phone?: string;
+          customer_email?: string;
+          customer_postcode?: string;
+          status?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       search_area_coverage: {
         Row: {
           id: string;

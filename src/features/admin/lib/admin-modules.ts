@@ -1,6 +1,7 @@
+import { isEverTenant } from "@/features/ever/config";
 import type { Tenant } from "@/features/tenants/types";
 
-import { adminNavItems } from "../config/navigation";
+import { adminNavItems, everAdminNavItems } from "../config/navigation";
 import type { AdminNavItem } from "../types";
 
 export type AdminModuleId = "customers" | "gallery" | "settings";
@@ -25,6 +26,10 @@ export function getAdminNavItemsForTenant(
   tenant: Tenant,
   options: { isStaff?: boolean } = {},
 ): AdminNavItem[] {
+  if (isEverTenant(tenant.slug)) {
+    return everAdminNavItems;
+  }
+
   if (options.isStaff) {
     return adminNavItems.filter((item) => item.href === "/admin/bookings");
   }

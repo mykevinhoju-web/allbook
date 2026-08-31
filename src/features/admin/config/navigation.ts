@@ -12,6 +12,25 @@ import {
 
 import type { AdminNavItem } from "../types";
 
+/** Ever (Everwell Massage) — simple site booking admin only. */
+export const everAdminNavItems: AdminNavItem[] = [
+  {
+    title: "Dashboard",
+    href: "/admin",
+    icon: LayoutDashboard,
+  },
+  {
+    title: "Bookings",
+    href: "/admin/bookings",
+    icon: CalendarDays,
+  },
+  {
+    title: "Services",
+    href: "/admin/services",
+    icon: Wrench,
+  },
+];
+
 /** Live tenant-admin destinations only — placeholders omitted from production menus. */
 export const adminNavItems: AdminNavItem[] = [
   {
