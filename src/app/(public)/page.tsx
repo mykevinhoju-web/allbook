@@ -20,7 +20,11 @@ import {
   PrivatePreviewLanding,
   isPrivatePreviewEnabled,
 } from "@/features/private-preview";
-import { EverHomePage, EverLandingFonts, isEverTenant } from "@/features/ever";
+import {
+  EverLandingFonts,
+  EverUnderConstruction,
+  isEverTenant,
+} from "@/features/ever";
 import { getTenantOptional } from "@/features/tenants/server";
 import { isKoreanPlatformHost } from "@/features/tenants/utils/resolve-host";
 
@@ -44,13 +48,12 @@ export async function generateMetadata(): Promise<Metadata> {
 
   if (tenant) {
     if (isEverTenant(tenant.slug)) {
-    return {
-      title: "Everwell Massage | Professional Massage & Wellness in Brisbane",
-      description:
-        "Calm, personalised massage therapy in Brisbane CBD. Thai, remedial, deep tissue, relaxation, sports and pregnancy massage. Book online.",
-      robots: { index: true, follow: true },
-    };
-  }
+      return {
+        title: "Everwell Massage",
+        description: "Under construction — please check back soon.",
+        robots: { index: false, follow: false },
+      };
+    }
     return {
       title: tenant.branding.displayName,
       description: tenant.branding.tagline,
@@ -176,7 +179,7 @@ export default async function HomePage() {
   if (isEverTenant(tenant.slug)) {
     return (
       <EverLandingFonts>
-        <EverHomePage />
+        <EverUnderConstruction />
       </EverLandingFonts>
     );
   }
