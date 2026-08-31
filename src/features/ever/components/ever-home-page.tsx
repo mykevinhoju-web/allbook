@@ -20,8 +20,26 @@ import {
 } from "../site-content";
 
 const BOOK = "/booking";
-const HERO =
-  "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=2400&q=80";
+
+const HERO_SLIDES = [
+  {
+    src: "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=2400&q=80",
+    alt: "Professional massage therapy in a calm spa setting",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1519823551278-64ac92734fb1?auto=format&fit=crop&w=2400&q=80",
+    alt: "Spa oils and wellness atmosphere",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1600334129128-685c5582fd35?auto=format&fit=crop&w=2400&q=80",
+    alt: "Therapeutic massage treatment",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=2400&q=80",
+    alt: "Premium treatment room with soft lighting",
+  },
+] as const;
+
 const ABOUT_IMG =
   "https://images.unsplash.com/photo-1600334129128-685c5582fd35?auto=format&fit=crop&w=1400&q=80";
 const GIFT_IMG =
@@ -75,14 +93,6 @@ export function EverHomePage() {
             transform: translateY(0);
           }
         }
-        @keyframes ever-drift {
-          from {
-            transform: scale(1.06) translateY(1.5%);
-          }
-          to {
-            transform: scale(1) translateY(0);
-          }
-        }
         @keyframes ever-glow {
           from {
             opacity: 0.25;
@@ -109,9 +119,6 @@ export function EverHomePage() {
         .ever-site[data-ready="true"] [data-rise="4"] {
           animation-delay: 0.42s;
         }
-        .ever-site[data-ready="true"] [data-drift] {
-          animation: ever-drift 12s ease-out forwards;
-        }
         .ever-site[data-ready="true"] [data-glow] {
           animation: ever-glow 2.4s ease-out forwards;
         }
@@ -129,9 +136,9 @@ export function EverHomePage() {
             : "border-b border-transparent bg-transparent",
         )}
       >
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-5 sm:h-[4.25rem] sm:px-8">
-          <EverLogo href="/" width={132} priority className="sm:hidden" />
-          <EverLogo href="/" width={156} priority className="hidden sm:block" />
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-5 sm:h-16 sm:px-8">
+          <EverLogo href="/" width={76} priority className="sm:hidden" />
+          <EverLogo href="/" width={92} priority className="hidden sm:block" />
 
           <nav
             className="hidden items-center gap-1 lg:flex"
@@ -202,25 +209,9 @@ export function EverHomePage() {
           id="home"
           className="relative isolate flex min-h-[100svh] flex-col overflow-hidden"
         >
-          <div className="absolute inset-0 -z-10">
-            <Image
-              src={HERO}
-              alt="Professional massage therapy session in a calm spa setting"
-              fill
-              priority
-              sizes="100vw"
-              data-drift
-              className="object-cover object-[center_30%]"
-            />
-            <div className="absolute inset-0 bg-[#121814]/72" />
-            <div
-              data-glow
-              className="absolute inset-0 bg-[radial-gradient(ellipse_at_28%_38%,rgba(196,168,98,0.2),transparent_55%)]"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#121814] via-[#121814]/35 to-[#121814]/55" />
-          </div>
+          <EverHeroBackground />
 
-          <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-end px-5 pb-28 pt-28 sm:px-8 sm:pb-32 lg:justify-center lg:pb-24">
+          <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-end px-5 pb-28 pt-24 sm:px-8 sm:pb-32 lg:justify-center lg:pb-24">
             <p
               data-rise="1"
               className="text-[11px] font-medium uppercase tracking-[0.28em] text-[#C4A862]"
@@ -610,7 +601,7 @@ export function EverHomePage() {
       <footer className="border-t border-white/8 px-5 py-12 sm:px-8">
         <div className="mx-auto flex max-w-6xl flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <EverLogo href="/" width={140} />
+            <EverLogo href="/" width={96} />
             <p className="mt-4 max-w-xs text-sm text-[#E9EDE8]/40">
               Professional massage &amp; wellness in Brisbane CBD.
             </p>
@@ -668,6 +659,52 @@ export function EverHomePage() {
       </div>
       {/* Spacer so sticky CTA doesn't cover footer on mobile */}
       <div className="h-20 sm:hidden" aria-hidden />
+    </div>
+  );
+}
+
+function EverHeroBackground() {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    if (reducedMotion) return;
+
+    const id = window.setInterval(() => {
+      setActiveIndex((current) => (current + 1) % HERO_SLIDES.length);
+    }, 5500);
+
+    return () => window.clearInterval(id);
+  }, []);
+
+  return (
+    <div className="absolute inset-0 -z-10" aria-hidden>
+      {HERO_SLIDES.map((slide, index) => (
+        <div
+          key={slide.src}
+          className={cn(
+            "absolute inset-0 transition-opacity duration-[2400ms] ease-in-out",
+            index === activeIndex ? "opacity-100" : "opacity-0",
+          )}
+        >
+          <Image
+            src={slide.src}
+            alt=""
+            fill
+            priority={index === 0}
+            sizes="100vw"
+            className="object-cover object-[center_30%]"
+          />
+        </div>
+      ))}
+      <div className="absolute inset-0 bg-[#121814]/72" />
+      <div
+        data-glow
+        className="absolute inset-0 bg-[radial-gradient(ellipse_at_28%_38%,rgba(196,168,98,0.2),transparent_55%)]"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#121814] via-[#121814]/35 to-[#121814]/55" />
     </div>
   );
 }
