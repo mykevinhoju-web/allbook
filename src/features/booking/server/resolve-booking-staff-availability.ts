@@ -157,7 +157,7 @@ export function resolveBookingStaffAvailability(args: {
     return {
       tier: isNow ? "now" : "soon",
       tierRank: TIER_RANK[isNow ? "now" : "soon"],
-      label: isNow ? "지금 서비스 가능" : "곧 서비스 가능",
+      label: isNow ? "Available now" : "Available soon",
       detail: null,
       available: true,
     };
@@ -172,7 +172,7 @@ export function resolveBookingStaffAvailability(args: {
     return {
       tier: "tomorrow",
       tierRank: TIER_RANK.tomorrow,
-      label: "내일 서비스 가능",
+      label: "Available tomorrow",
       detail: null,
       available: true,
     };
@@ -190,7 +190,7 @@ export function resolveBookingStaffAvailability(args: {
     return {
       tier: "later",
       tierRank: TIER_RANK.later,
-      label: "예약 가능",
+      label: "Bookings open",
       detail: laterDates.map((date) => formatShortDate(date, timeZone)).join(" · "),
       available: true,
     };
@@ -199,7 +199,7 @@ export function resolveBookingStaffAvailability(args: {
   return {
     tier: "none",
     tierRank: TIER_RANK.none,
-    label: "예약 불가",
+    label: "Unavailable",
     detail: null,
     available: false,
   };
