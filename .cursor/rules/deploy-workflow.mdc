@@ -32,7 +32,7 @@ Use `{tenant}.allbook.com.au` for other tenants.
 
 **Goal:** keep local, GitHub (`master`), and production aligned — as fast as possible.
 
-After finishing a user-requested change that should be visible on production (or when the user says commit / push / deploy), do **all three together** without asking again:
+After finishing a user-requested change that should be visible on production, do **all three together automatically** — the user does **not** need to say commit / push / deploy / 배포해:
 
 1. **Commit** related changes only (git safety protocol; never commit secrets).
 2. **In parallel:** `git push origin master` + `npx vercel deploy --prod --yes`
@@ -40,7 +40,7 @@ After finishing a user-requested change that should be visible on production (or
 
 | Step | When |
 |------|------|
-| Commit + push + deploy | After completing related prod-facing work, or when user says commit / 커밋 / push / 푸시 / deploy / 배포해 |
+| Commit + push + deploy | **Default:** as soon as related prod-facing work is done — no separate deploy request needed |
 | Deploy only | Code already committed/pushed and only a redeploy is needed |
 
 Do **not** auto commit/push/deploy (ask or pause first) when the change is high-risk / “important”:
