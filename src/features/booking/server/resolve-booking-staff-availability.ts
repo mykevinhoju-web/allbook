@@ -2,6 +2,7 @@ import {
   addDaysToDateInput,
   getSlotsInShiftWindow,
   isoToDatetimeLocal,
+  resolveShiftContainingTime,
   resolveStaffShiftForDate,
   todayDateInZone,
 } from "@/features/booking/lib/schedule-utils";
@@ -10,6 +11,7 @@ import {
   isStaffWorkingOnDate,
   parseDaySchedule,
 } from "@/features/staff/utils/day-schedule";
+import { isStaffOnShiftNow } from "@/features/staff/utils/shift-label";
 import { parseShiftPlan, resolveShiftForCalendarDate } from "@/features/staff/utils/shift-plan";
 import type { ShiftPlan } from "@/features/staff/utils/shift-plan";
 import type { StaffStatus } from "@/features/staff/types";
@@ -38,8 +40,6 @@ const TIER_RANK: Record<BookingStaffAvailabilityTier, number> = {
 };
 
 const NOW_WINDOW_MS = 60 * 60_000;
-const SOON_WINDOW_MS = 6 * 60 * 60_000;
-const TOMORROW_MIN_MS = 12 * 60 * 60_000;
 const LOOKAHEAD_DAYS = 14;
 
 function formatShortDate(date: string, timeZone: string): string {
@@ -152,7 +152,7 @@ export function resolveBookingStaffAvailability(args: {
     bookings: args.bookings,
   };
 
-  let firstSlot: { startsAt: string } | null = null;
+  let firstSlot: { startsAt: string; anchorDate: string } | null = null;
   const bookableDates: string[] = [];
 
   for (let offset = 0; offset <= LOOKAHEAD_DAYS; offset += 1) {
@@ -165,7 +165,23 @@ export function resolveBookingStaffAvailability(args: {
     if (slots.length === 0) continue;
     bookableDates.push(date);
     if (!firstSlot) {
-      firstSlot = slots[0]!;
+      const slot = slots[0]!;
+      const shiftMatch = resolveShiftContainingTime(
+        slot.startsAt,
+        args.durationMinutes,
+        timeZone,
+        configured,
+        args.workingHoursStart,
+        args.workingHoursEnd,
+        now,
+        shiftPlan,
+      );
+      const shiftContext = resolveShiftForCalendarDate(shiftPlan, date, timeZone);
+      const anchorDate =
+        shiftMatch?.anchorDate ??
+        shiftContext?.anchorDate ??
+        isoToDatetimeLocal(slot.startsAt, timeZone).slice(0, 10);
+      firstSlot = { startsAt: slot.startsAt, anchorDate };
       break;
     }
   }
@@ -180,21 +196,35 @@ export function resolveBookingStaffAvailability(args: {
     };
   }
 
+  const tomorrow = addDaysToDateInput(today, 1);
+  const anchorDate = firstSlot.anchorDate;
   const firstMs = new Date(firstSlot.startsAt).getTime();
   const deltaMs = firstMs - now.getTime();
   const slotDate = isoToDatetimeLocal(firstSlot.startsAt, timeZone).slice(0, 10);
 
-  if (deltaMs <= NOW_WINDOW_MS) {
-    return {
-      tier: "now",
-      tierRank: TIER_RANK.now,
-      label: "Available now",
-      detail: null,
-      available: true,
-    };
-  }
+  const onShiftNow = isStaffOnShiftNow({
+    status: args.status,
+    attributes: args.attributes,
+    date: today,
+    timeZone,
+    workingHoursStart: args.workingHoursStart,
+    workingHoursEnd: args.workingHoursEnd,
+    now,
+  });
 
-  if (deltaMs <= SOON_WINDOW_MS) {
+  // Classify by shift anchor (work day), not slot calendar date — overnight tails
+  // into the next morning still belong to today's shift.
+  if (anchorDate <= today) {
+    if (onShiftNow || deltaMs <= NOW_WINDOW_MS) {
+      return {
+        tier: "now",
+        tierRank: TIER_RANK.now,
+        label: "Available now",
+        detail: null,
+        available: true,
+      };
+    }
+
     return {
       tier: "soon",
       tierRank: TIER_RANK.soon,
@@ -204,7 +234,7 @@ export function resolveBookingStaffAvailability(args: {
     };
   }
 
-  if (deltaMs >= TOMORROW_MIN_MS && slotDate !== today) {
+  if (anchorDate === tomorrow) {
     return {
       tier: "tomorrow",
       tierRank: TIER_RANK.tomorrow,
