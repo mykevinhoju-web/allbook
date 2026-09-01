@@ -1,6 +1,7 @@
 import {
   addDaysToDateInput,
   getSlotsInShiftWindow,
+  isoToDatetimeLocal,
   resolveStaffShiftForDate,
   todayDateInZone,
 } from "@/features/booking/lib/schedule-utils";
@@ -37,6 +38,8 @@ const TIER_RANK: Record<BookingStaffAvailabilityTier, number> = {
 };
 
 const NOW_WINDOW_MS = 60 * 60_000;
+const SOON_WINDOW_MS = 6 * 60 * 60_000;
+const TOMORROW_MIN_MS = 12 * 60 * 60_000;
 const LOOKAHEAD_DAYS = 14;
 
 function formatShortDate(date: string, timeZone: string): string {
@@ -131,7 +134,6 @@ export function resolveBookingStaffAvailability(args: {
   const now = args.now ?? new Date();
   const timeZone = args.timeZone;
   const today = todayDateInZone(timeZone, now);
-  const tomorrow = addDaysToDateInput(today, 1);
   const attrs = parseStaffAttributes(args.attributes as never);
   const configured = getShiftWindowFromAttributes(attrs);
   const shiftPlan = parseShiftPlan(attrs.shiftPlan);
@@ -150,25 +152,59 @@ export function resolveBookingStaffAvailability(args: {
     bookings: args.bookings,
   };
 
-  const todaySlots = slotsForDate({ ...base, date: today, useNow: true });
-  if (todaySlots.length > 0) {
-    const firstMs = new Date(todaySlots[0]!.startsAt).getTime();
-    const isNow = firstMs - now.getTime() <= NOW_WINDOW_MS;
+  let firstSlot: { startsAt: string } | null = null;
+  const bookableDates: string[] = [];
+
+  for (let offset = 0; offset <= LOOKAHEAD_DAYS; offset += 1) {
+    const date = addDaysToDateInput(today, offset);
+    const slots = slotsForDate({
+      ...base,
+      date,
+      useNow: offset === 0,
+    });
+    if (slots.length === 0) continue;
+    bookableDates.push(date);
+    if (!firstSlot) {
+      firstSlot = slots[0]!;
+      break;
+    }
+  }
+
+  if (!firstSlot) {
     return {
-      tier: isNow ? "now" : "soon",
-      tierRank: TIER_RANK[isNow ? "now" : "soon"],
-      label: isNow ? "Available now" : "Available soon",
+      tier: "none",
+      tierRank: TIER_RANK.none,
+      label: "Unavailable",
+      detail: null,
+      available: false,
+    };
+  }
+
+  const firstMs = new Date(firstSlot.startsAt).getTime();
+  const deltaMs = firstMs - now.getTime();
+  const slotDate = isoToDatetimeLocal(firstSlot.startsAt, timeZone).slice(0, 10);
+
+  if (deltaMs <= NOW_WINDOW_MS) {
+    return {
+      tier: "now",
+      tierRank: TIER_RANK.now,
+      label: "Available now",
       detail: null,
       available: true,
     };
   }
 
-  const tomorrowSlots = slotsForDate({
-    ...base,
-    date: tomorrow,
-    useNow: false,
-  });
-  if (tomorrowSlots.length > 0) {
+  if (deltaMs <= SOON_WINDOW_MS) {
+    return {
+      tier: "soon",
+      tierRank: TIER_RANK.soon,
+      label: "Available soon",
+      detail: null,
+      available: true,
+    };
+  }
+
+  if (deltaMs >= TOMORROW_MIN_MS && slotDate !== today) {
     return {
       tier: "tomorrow",
       tierRank: TIER_RANK.tomorrow,
@@ -178,30 +214,23 @@ export function resolveBookingStaffAvailability(args: {
     };
   }
 
-  const laterDates: string[] = [];
-  for (let offset = 2; offset <= LOOKAHEAD_DAYS; offset += 1) {
-    const date = addDaysToDateInput(today, offset);
-    const slots = slotsForDate({ ...base, date, useNow: false });
-    if (slots.length > 0) laterDates.push(date);
-    if (laterDates.length >= 4) break;
-  }
+  const laterDates = bookableDates
+    .filter((date) => date !== today)
+    .slice(0, 4);
 
-  if (laterDates.length > 0) {
-    return {
-      tier: "later",
-      tierRank: TIER_RANK.later,
-      label: "Bookings open",
-      detail: laterDates.map((date) => formatShortDate(date, timeZone)).join(" · "),
-      available: true,
-    };
+  if (laterDates.length === 0 && slotDate !== today) {
+    laterDates.push(slotDate);
   }
 
   return {
-    tier: "none",
-    tierRank: TIER_RANK.none,
-    label: "Unavailable",
-    detail: null,
-    available: false,
+    tier: "later",
+    tierRank: TIER_RANK.later,
+    label: "Bookings open",
+    detail:
+      laterDates.length > 0
+        ? laterDates.map((date) => formatShortDate(date, timeZone)).join(" · ")
+        : formatShortDate(slotDate, timeZone),
+    available: true,
   };
 }
 
