@@ -176,11 +176,14 @@ export function resolveBookingStaffAvailability(args: {
         now,
         shiftPlan,
       );
-      const shiftContext = resolveShiftForCalendarDate(shiftPlan, date, timeZone);
+      const slotLocalDate = isoToDatetimeLocal(slot.startsAt, timeZone).slice(0, 10);
+      const shiftContext =
+        resolveShiftForCalendarDate(shiftPlan, slotLocalDate, timeZone) ??
+        resolveShiftForCalendarDate(shiftPlan, date, timeZone);
       const anchorDate =
         shiftMatch?.anchorDate ??
         shiftContext?.anchorDate ??
-        isoToDatetimeLocal(slot.startsAt, timeZone).slice(0, 10);
+        slotLocalDate;
       firstSlot = { startsAt: slot.startsAt, anchorDate };
       break;
     }
@@ -212,9 +215,12 @@ export function resolveBookingStaffAvailability(args: {
     now,
   });
 
-  // Classify by shift anchor (work day), not slot calendar date — overnight tails
-  // into the next morning still belong to today's shift.
-  if (anchorDate <= today) {
+  // Today's bucket: same shift anchor OR same calendar day as the first slot.
+  // Overnight tails (e.g. 4am on the 4th belonging to the 3rd shift) use anchor;
+  // a 3rd-afternoon slot must never show "tomorrow" just because anchor resolution failed.
+  const isTodaysAvailability = anchorDate <= today || slotDate === today;
+
+  if (isTodaysAvailability) {
     if (onShiftNow || deltaMs <= NOW_WINDOW_MS) {
       return {
         tier: "now",
