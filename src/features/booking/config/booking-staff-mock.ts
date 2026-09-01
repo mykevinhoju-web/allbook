@@ -6,6 +6,9 @@ export interface BookingStaffItem {
   photoUrl: string;
   photos?: string[];
   available: boolean;
+  availabilityTier?: "now" | "soon" | "tomorrow" | "later" | "none";
+  availabilityLabel?: string;
+  availabilityDetail?: string | null;
 }
 
 /** Demo portraits for platform preview — Unsplash (not real staff / not dayspa). */

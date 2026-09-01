@@ -57,6 +57,21 @@ function SelectButton({ staff }: { staff: BookingStaffItem }) {
   );
 }
 
+function availabilityClass(tier?: BookingStaffItem["availabilityTier"]) {
+  switch (tier) {
+    case "now":
+      return "font-semibold text-emerald-700";
+    case "soon":
+      return "font-semibold text-sky-700";
+    case "tomorrow":
+      return "font-semibold text-amber-700";
+    case "later":
+      return "font-medium text-stone-600";
+    default:
+      return theme.role;
+  }
+}
+
 export function BookingStaffPicker({
   isPlatformDemo = false,
 }: {
@@ -111,7 +126,23 @@ export function BookingStaffPicker({
                 <div className="flex min-w-0 flex-1 flex-col gap-3">
                   <div>
                     <p className={theme.staffName}>{member.name}</p>
-                    <p className={theme.role}>{member.role}</p>
+                    {member.availabilityLabel ? (
+                      <p
+                        className={cn(
+                          "mt-0.5 text-sm leading-relaxed",
+                          availabilityClass(member.availabilityTier),
+                        )}
+                      >
+                        {member.availabilityLabel}
+                      </p>
+                    ) : (
+                      <p className={theme.role}>{member.role}</p>
+                    )}
+                    {member.availabilityDetail ? (
+                      <p className="mt-1 text-[11px] leading-relaxed text-stone-400">
+                        {member.availabilityDetail}
+                      </p>
+                    ) : null}
                   </div>
                   <SelectButton staff={member} />
                 </div>

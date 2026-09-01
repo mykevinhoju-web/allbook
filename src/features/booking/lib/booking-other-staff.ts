@@ -13,6 +13,20 @@ export function isAnyGirlName(name?: string | null): boolean {
   return (name ?? "").trim().toLowerCase() === ANY_GIRL_LABEL.toLowerCase();
 }
 
+/** Placeholder staff rows — internal booking only, not public /booking. */
+export function isPublicBookingStaff(args: {
+  name: string;
+  attributes: unknown;
+}): boolean {
+  if (isOtherStaffGuestAttributes(args.attributes)) return false;
+  const normalized = args.name.trim().toLowerCase();
+  if (!normalized) return false;
+  if (isAnyGirlName(normalized)) return false;
+  if (normalized === "any one" || normalized === "anyone") return false;
+  if (/^any\s/.test(normalized)) return false;
+  return true;
+}
+
 export const OTHER_STAFF_GUEST_ATTR = "otherStaffGuest";
 
 const OTHER_STAFF_MARKER_RE = /\[other-staff:([^\]]+)\]/i;
