@@ -10,10 +10,12 @@ import { cn } from "@/lib/utils";
 import { EverLogo } from "./ever-logo";
 import { EVER_BRAND } from "../theme";
 import {
+  EVER_ABOUT,
   EVER_CONTACT,
   EVER_GALLERY,
+  EVER_HERO,
   EVER_NAV,
-  EVER_PRICES,
+  EVER_PRICE_MENUS,
   EVER_REVIEWS,
   EVER_SERVICES,
   EVER_WHY,
@@ -200,20 +202,19 @@ export function EverHomePage() {
               data-rise="1"
               className="text-[11px] font-medium uppercase tracking-[0.28em] text-[#C4A862]"
             >
-              Everwell Massage · Brisbane
+              {EVER_HERO.eyebrow}
             </p>
             <h1
               data-rise="2"
               className="mt-5 max-w-3xl font-[family-name:var(--font-ever-verdant-display)] text-[clamp(2.35rem,6.5vw,4.6rem)] leading-[1.08] tracking-[-0.02em]"
             >
-              Professional Massage &amp; Wellness in Brisbane
+              {EVER_HERO.title}
             </h1>
             <p
               data-rise="3"
               className="mt-5 max-w-xl text-base leading-relaxed text-[#E9EDE8]/70 sm:text-lg"
             >
-              Calm, personalised treatments in a premium CBD space — restore
-              balance, ease tension, and leave feeling renewed.
+              {EVER_HERO.description}
             </p>
             <div data-rise="4" className="mt-9 flex flex-wrap items-center gap-3">
               <Link
@@ -237,8 +238,8 @@ export function EverHomePage() {
           <div className="mx-auto max-w-6xl">
             <SectionIntro
               eyebrow="Services"
-              title="Treatments tailored to you"
-              copy="From deep tissue relief to pure relaxation — choose the care your body needs today."
+              title="Our treatments"
+              copy="Therapeutic massage and rejuvenating spa care designed to relax your body, refresh your mind, and restore natural balance."
             />
             <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {EVER_SERVICES.map((service) => (
@@ -277,28 +278,38 @@ export function EverHomePage() {
         >
           <div className="mx-auto max-w-6xl">
             <SectionIntro
-              eyebrow="Prices"
-              title="Clear, simple pricing"
-              copy="Transparent rates for every visit. Select a duration and book online."
+              eyebrow="Popular services"
+              title="Transparent pricing"
+              copy="Wellness should feel both accessible and luxurious. Explore our clear rates and choose the treatment that suits you."
             />
-            <div className="mt-12 grid gap-5 md:grid-cols-3">
-              {EVER_PRICES.map((tier) => (
+            <div className="mt-12 grid gap-6 lg:grid-cols-2">
+              {EVER_PRICE_MENUS.map((menu) => (
                 <div
-                  key={tier.duration}
+                  key={menu.name}
                   className="flex flex-col rounded-3xl border border-[#C4A862]/25 bg-[#121814] p-7"
                 >
                   <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-[#C4A862]">
-                    {tier.note}
+                    {menu.note}
                   </p>
-                  <p className="mt-4 font-[family-name:var(--font-ever-verdant-display)] text-3xl">
-                    {tier.duration}
+                  <h3 className="mt-4 font-[family-name:var(--font-ever-verdant-display)] text-3xl">
+                    {menu.name}
+                  </h3>
+                  <p className="mt-3 text-sm leading-relaxed text-[#E9EDE8]/55">
+                    {menu.description}
                   </p>
-                  <p className="mt-3 text-4xl font-medium tracking-tight text-[#C4A862]">
-                    {tier.price}
-                  </p>
-                  <p className="mt-2 text-sm text-[#E9EDE8]/45">
-                    All treatments · Brisbane CBD
-                  </p>
+                  <ul className="mt-6 space-y-3">
+                    {menu.tiers.map((tier) => (
+                      <li
+                        key={`${menu.name}-${tier.duration}`}
+                        className="flex items-baseline justify-between gap-4 border-b border-white/8 pb-3 text-sm last:border-0 last:pb-0"
+                      >
+                        <span className="text-[#E9EDE8]/75">{tier.duration}</span>
+                        <span className="text-lg font-medium tracking-tight text-[#C4A862]">
+                          {tier.price}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
                   <Link
                     href={BOOK}
                     className="mt-8 inline-flex h-11 items-center justify-center rounded-full bg-[#C4A862] text-sm font-medium text-[#16140C] transition hover:bg-[#D2B872]"
@@ -317,7 +328,7 @@ export function EverHomePage() {
             <SectionIntro
               eyebrow="Why Everwell"
               title="Why choose us"
-              copy="A modern Australian wellness experience — calm, trustworthy, and designed around you."
+              copy="A welcoming Brisbane CBD space dedicated to helping you slow down, recharge, and reconnect with your best self."
             />
             <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
               {EVER_WHY.map((item) => (
@@ -356,24 +367,15 @@ export function EverHomePage() {
             </div>
             <div>
               <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-[#C4A862]">
-                About us
+                {EVER_ABOUT.eyebrow}
               </p>
               <h2 className="mt-4 font-[family-name:var(--font-ever-verdant-display)] text-3xl sm:text-4xl">
-                Care that feels considered
+                {EVER_ABOUT.title}
               </h2>
               <div className="mt-6 space-y-4 text-[15px] leading-relaxed text-[#E9EDE8]/65">
-                <p>
-                  Everwell Massage is a Brisbane wellness studio dedicated to
-                  professional, personalised massage therapy. We combine skilled
-                  technique with a quietly premium environment so every visit
-                  feels restorative — never rushed.
-                </p>
-                <p>
-                  Whether you need remedial relief, deep tissue work, or a
-                  gentle escape from the week, our therapists listen carefully
-                  and shape each treatment around what your body asks for that
-                  day.
-                </p>
+                {EVER_ABOUT.paragraphs.map((paragraph) => (
+                  <p key={paragraph.slice(0, 32)}>{paragraph}</p>
+                ))}
               </div>
               <Link
                 href={BOOK}
@@ -500,7 +502,7 @@ export function EverHomePage() {
             <SectionIntro
               eyebrow="Visit us"
               title="Location &amp; hours"
-              copy="Find us in Brisbane CBD — easy to reach, calm once you’re inside."
+              copy="Find us at 120 Mary Street, Brisbane City — easy to reach, calm once you’re inside."
             />
             <div className="mt-12 grid gap-8 lg:grid-cols-2">
               <div className="space-y-8">
@@ -587,7 +589,7 @@ export function EverHomePage() {
           <div>
             <EverLogo href="/" width={96} />
             <p className="mt-4 max-w-xs text-sm text-[#E9EDE8]/40">
-              Professional massage &amp; wellness in Brisbane CBD.
+              Your escape to total relaxation in Brisbane CBD.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-8 text-sm sm:gap-12">
