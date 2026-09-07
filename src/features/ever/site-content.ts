@@ -47,64 +47,55 @@ export const EVER_SERVICES = [
     name: "Deep Tissue Massage",
     description:
       "Firm, focused work on deeper muscle layers to ease stubborn tightness, knots, and chronic tension.",
-    image:
-      "https://images.unsplash.com/photo-1600334129128-685c5582fd35?auto=format&fit=crop&w=900&q=80",
+    image: "/ever/services/deep-tissue.jpg",
   },
   {
     name: "Relaxing Massage",
     description:
       "Gentle, flowing techniques to quiet the mind, melt everyday stress, and leave you deeply restored.",
-    image:
-      "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=900&q=80",
+    image: "/ever/services/relaxing.jpg",
   },
   {
     name: "Traditional Chinese Massage",
     description:
       "Time-honoured techniques to encourage circulation, balance energy, and support whole-body wellness.",
-    image:
-      "https://images.unsplash.com/photo-1507652313519-d4e9174996dd?auto=format&fit=crop&w=900&q=80",
+    image: "/ever/services/chinese.jpg",
   },
   {
     name: "Thai Massage",
     description:
       "Traditional stretches and rhythmic pressure to release tension and restore mobility.",
-    image:
-      "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=900&q=80",
+    image: "/ever/services/thai.jpg",
   },
   {
     name: "Hot Stone Massage",
     description:
       "Warm stones and soothing strokes melt deep tension and promote lasting calm throughout the body.",
-    image:
-      "https://images.unsplash.com/photo-1583416750470-965b2707b355?auto=format&fit=crop&w=900&q=80",
+    image: "/ever/services/hot-stone.jpg",
   },
   {
     name: "Body Scrub",
     description:
       "Exfoliating spa care that refreshes the skin, boosts circulation, and leaves you soft and glowing.",
-    image:
-      "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=900&q=80",
+    image: "/ever/services/body-scrub.jpg",
   },
   {
     name: "Waxing",
     description:
       "Clean, careful waxing services for smooth results in a calm and private treatment setting.",
-    image:
-      "https://images.unsplash.com/photo-1522337660859-02fbefca4702?auto=format&fit=crop&w=900&q=80",
+    image: "/ever/services/waxing.jpg",
   },
   {
     name: "Cupping",
     description:
       "Therapeutic cupping to ease muscle tightness, support recovery, and encourage healthy circulation.",
-    image:
-      "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=900&q=80",
+    image: "/ever/services/cupping-therapy.jpg",
   },
   {
     name: "Aromatherapy",
     description:
       "Essential oils paired with soothing massage to calm the senses and deepen your relaxation.",
-    image:
-      "https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=900&q=80",
+    image: "/ever/services/aromatherapy.jpg",
   },
 ] as const;
 
