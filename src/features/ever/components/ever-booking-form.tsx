@@ -11,8 +11,15 @@ import { EverLogo } from "./ever-logo";
 import { EVER_BRAND } from "../theme";
 import type { EverService } from "../types";
 
-const STEPS = ["Date", "Time", "Service", "Details"] as const;
+const STEPS = ["date", "time", "service", "details"] as const;
 type Step = (typeof STEPS)[number];
+
+const STEP_LABELS: Record<Step, string> = {
+  date: "Date",
+  time: "Time",
+  service: "Service",
+  details: "Details",
+};
 
 const WEEKDAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"] as const;
 
@@ -42,18 +49,11 @@ function todayIso(): string {
 }
 
 function toIso(year: number, monthIndex: number, day: number): string {
-  const m = String(monthIndex + 1).padStart(2, "0");
-  const d = String(day).padStart(2, "0");
-  return `${year}-${m}-${d}`;
-}
-
-function parseIso(iso: string): Date {
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, m - 1, d, 12);
+  return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 function formatDisplayDate(iso: string): string {
-  return parseIso(iso).toLocaleDateString("en-AU", {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString("en-AU", {
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -67,7 +67,7 @@ export function EverBookingForm() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [step, setStep] = useState<Step>("Date");
+  const [step, setStep] = useState<Step>("date");
 
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -113,40 +113,36 @@ export function EverBookingForm() {
   const stepIndex = STEPS.indexOf(step);
 
   const goNext = () => {
-    if (step === "Date") {
-      if (!date) {
-        toast.error("Please select a date.");
-        return;
-      }
-      setStep("Time");
+    if (step === "date" && !date) {
+      toast.error("Please select a date.");
       return;
     }
-    if (step === "Time") {
-      if (!time) {
-        toast.error("Please select a time.");
-        return;
-      }
-      setStep("Service");
+    if (step === "time" && !time) {
+      toast.error("Please select a time.");
       return;
     }
-    if (step === "Service") {
-      if (!serviceId) {
-        toast.error("Please select a service.");
-        return;
-      }
-      setStep("Details");
+    if (step === "service" && !serviceId) {
+      toast.error("Please select a service.");
+      return;
+    }
+    if (stepIndex < STEPS.length - 1) {
+      setStep(STEPS[stepIndex + 1]);
     }
   };
 
   const goBack = () => {
-    if (step === "Time") setStep("Date");
-    else if (step === "Service") setStep("Time");
-    else if (step === "Details") setStep("Service");
+    if (stepIndex > 0) {
+      setStep(STEPS[stepIndex - 1]);
+    }
   };
 
   const submit = async () => {
     if (!date || !time || !serviceId) {
-      toast.error("Please choose a date, time, and service.");
+      toast.error("Please complete date, time, and service.");
+      return;
+    }
+    if (!customerName.trim() || !customerPhone.trim() || !customerEmail.trim() || !customerPostcode.trim()) {
+      toast.error("Please fill in your details.");
       return;
     }
 
@@ -192,7 +188,8 @@ export function EverBookingForm() {
           </p>
           <h1 className="mt-3 text-3xl font-light tracking-tight">Thank you</h1>
           <p className="mt-4 text-sm leading-relaxed" style={{ color: EVER_BRAND.textMuted }}>
-            We&apos;ve received your booking request and will confirm by email or phone shortly.
+            We&apos;ve received your booking request and will confirm by email or
+            phone shortly.
           </p>
           <Link
             href="/"
@@ -218,71 +215,61 @@ export function EverBookingForm() {
         <h1 className="mt-2 text-3xl font-light tracking-tight sm:text-4xl">
           Request an appointment
         </h1>
+        <p className="mt-3 text-sm leading-relaxed" style={{ color: EVER_BRAND.textMuted }}>
+          Choose a date, then a time, then a treatment, and leave your details.
+        </p>
 
-        <ol className="mt-8 flex items-center gap-1 sm:gap-2">
-          {STEPS.map((label, index) => {
+        <div className="mt-8 flex gap-2 overflow-x-auto pb-1">
+          {STEPS.map((id, index) => {
             const active = index === stepIndex;
             const done = index < stepIndex;
             return (
-              <li key={label} className="flex flex-1 flex-col items-center gap-2">
-                <span
-                  className={cn(
-                    "flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium transition",
-                    active || done ? "text-[#121814]" : "text-white/40",
-                  )}
-                  style={{
-                    background:
-                      active || done ? EVER_BRAND.gold : "rgba(255,255,255,0.08)",
-                  }}
-                >
-                  {index + 1}
-                </span>
-                <span
-                  className="text-[10px] font-medium uppercase tracking-wider sm:text-xs"
-                  style={{
-                    color: active ? EVER_BRAND.goldSoft : EVER_BRAND.textMuted,
-                  }}
-                >
-                  {label}
-                </span>
-              </li>
+              <div
+                key={id}
+                className={cn(
+                  "shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold tracking-wide",
+                  active || done
+                    ? "text-[#121814]"
+                    : "bg-white/5 text-white/40",
+                )}
+                style={
+                  active || done
+                    ? { background: active ? EVER_BRAND.gold : "rgba(196,168,98,0.45)" }
+                    : undefined
+                }
+              >
+                {index + 1}. {STEP_LABELS[id]}
+              </div>
             );
           })}
-        </ol>
+        </div>
 
         {loading ? (
           <p className="mt-10 text-sm" style={{ color: EVER_BRAND.textMuted }}>
             Loading…
           </p>
         ) : (
-          <form
-            className="mt-8"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (step === "Details") void submit();
-              else goNext();
-            }}
-          >
-            {step === "Date" && (
-              <section>
-                <h2 className="mb-4 text-sm font-medium" style={{ color: EVER_BRAND.goldSoft }}>
+          <div className="mt-8">
+            {step === "date" && (
+              <section className="space-y-4">
+                <h2 className="text-sm font-medium" style={{ color: EVER_BRAND.goldSoft }}>
                   Select a date
                 </h2>
-                <EverCalendar value={date} onChange={setDate} minDate={todayIso()} />
+                <EverMonthCalendar value={date} onChange={setDate} />
                 {date && (
-                  <p className="mt-4 text-sm" style={{ color: EVER_BRAND.textMuted }}>
+                  <p className="text-xs" style={{ color: EVER_BRAND.textMuted }}>
                     Selected: {formatDisplayDate(date)}
                   </p>
                 )}
               </section>
             )}
 
-            {step === "Time" && (
-              <section>
-                <h2 className="mb-1 text-sm font-medium" style={{ color: EVER_BRAND.goldSoft }}>
+            {step === "time" && (
+              <section className="space-y-4">
+                <h2 className="text-sm font-medium" style={{ color: EVER_BRAND.goldSoft }}>
                   Select a time
                 </h2>
-                <p className="mb-4 text-xs" style={{ color: EVER_BRAND.textMuted }}>
+                <p className="text-xs" style={{ color: EVER_BRAND.textMuted }}>
                   {formatDisplayDate(date)}
                 </p>
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
@@ -294,9 +281,9 @@ export function EverBookingForm() {
                         type="button"
                         onClick={() => setTime(slot)}
                         className={cn(
-                          "rounded-xl border px-2 py-3 text-sm transition",
+                          "rounded-xl border px-3 py-3 text-sm tabular-nums transition",
                           active
-                            ? "border-[#C4A862]/60 bg-[#C4A862]/15 font-medium text-[#E9EDE8]"
+                            ? "border-[#C4A862]/70 bg-[#C4A862]/15 text-[#E9EDE8]"
                             : "border-white/10 bg-white/[0.03] text-[#E9EDE8]/80 hover:border-white/25",
                         )}
                       >
@@ -308,9 +295,9 @@ export function EverBookingForm() {
               </section>
             )}
 
-            {step === "Service" && (
-              <section>
-                <h2 className="mb-4 text-sm font-medium" style={{ color: EVER_BRAND.goldSoft }}>
+            {step === "service" && (
+              <section className="space-y-4">
+                <h2 className="text-sm font-medium" style={{ color: EVER_BRAND.goldSoft }}>
                   Select a service
                 </h2>
                 <div className="space-y-2">
@@ -335,10 +322,7 @@ export function EverBookingForm() {
                           </span>
                         </span>
                         {service.priceCents !== null && (
-                          <span
-                            className="text-sm font-medium"
-                            style={{ color: EVER_BRAND.gold }}
-                          >
+                          <span className="text-sm font-medium" style={{ color: EVER_BRAND.gold }}>
                             {formatPrice(service.priceCents, currency)}
                           </span>
                         )}
@@ -346,10 +330,15 @@ export function EverBookingForm() {
                     );
                   })}
                 </div>
+                {services.length === 0 && (
+                  <p className="text-sm" style={{ color: EVER_BRAND.textMuted }}>
+                    No services available right now.
+                  </p>
+                )}
               </section>
             )}
 
-            {step === "Details" && (
+            {step === "details" && (
               <section className="space-y-4">
                 <h2 className="text-sm font-medium" style={{ color: EVER_BRAND.goldSoft }}>
                   Your details
@@ -425,79 +414,65 @@ export function EverBookingForm() {
                 <button
                   type="button"
                   onClick={goBack}
-                  className="rounded-full border border-white/15 px-5 py-3.5 text-sm font-medium transition hover:border-white/30"
+                  className="rounded-full border border-white/15 px-5 py-3 text-sm font-medium transition hover:border-white/30"
                   style={{ color: EVER_BRAND.text }}
                 >
                   Back
                 </button>
               )}
-              {step === "Details" ? (
+              {step !== "details" ? (
                 <button
-                  type="submit"
-                  disabled={submitting || services.length === 0}
-                  className="flex-1 rounded-full px-6 py-3.5 text-sm font-medium transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                  style={{ background: EVER_BRAND.gold, color: EVER_BRAND.forestDeep }}
-                >
-                  {submitting ? "Sending request…" : "Request booking"}
-                </button>
-              ) : (
-                <button
-                  type="submit"
+                  type="button"
+                  onClick={goNext}
                   className="flex-1 rounded-full px-6 py-3.5 text-sm font-medium transition hover:opacity-90"
                   style={{ background: EVER_BRAND.gold, color: EVER_BRAND.forestDeep }}
                 >
                   Next
                 </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={submitting || services.length === 0}
+                  onClick={() => void submit()}
+                  className="flex-1 rounded-full px-6 py-3.5 text-sm font-medium transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  style={{ background: EVER_BRAND.gold, color: EVER_BRAND.forestDeep }}
+                >
+                  {submitting ? "Sending request…" : "Request booking"}
+                </button>
               )}
             </div>
-          </form>
+          </div>
         )}
       </div>
     </EverBookingShell>
   );
 }
 
-type EverCalendarProps = {
+function EverMonthCalendar({
+  value,
+  onChange,
+}: {
   value: string;
-  onChange: (date: string) => void;
-  minDate: string;
-};
-
-function EverCalendar({ value, onChange, minDate }: EverCalendarProps) {
-  const initial = value ? parseIso(value) : parseIso(minDate);
+  onChange: (iso: string) => void;
+}) {
+  const initial = value ? new Date(`${value}T12:00:00`) : new Date();
   const [cursor, setCursor] = useState({
     year: initial.getFullYear(),
     month: initial.getMonth(),
   });
 
-  const weeks = useMemo(() => {
-    const first = new Date(cursor.year, cursor.month, 1);
-    const startPad = first.getDay(); // Sunday-first
-    const daysInMonth = new Date(cursor.year, cursor.month + 1, 0).getDate();
-    const cells: Array<{ iso: string; day: number; inMonth: boolean }[]> = [];
-    let week: { iso: string; day: number; inMonth: boolean }[] = [];
+  const today = todayIso();
+  const daysInMonth = new Date(cursor.year, cursor.month + 1, 0).getDate();
+  const firstWeekday = new Date(cursor.year, cursor.month, 1).getDay(); // Sunday=0
 
-    for (let i = 0; i < startPad; i += 1) {
-      week.push({ iso: "", day: 0, inMonth: false });
-    }
-
+  const cells = useMemo(() => {
+    const list: Array<{ day: number; iso: string } | null> = [];
+    for (let i = 0; i < firstWeekday; i += 1) list.push(null);
     for (let day = 1; day <= daysInMonth; day += 1) {
-      week.push({
-        iso: toIso(cursor.year, cursor.month, day),
-        day,
-        inMonth: true,
-      });
-      if (week.length === 7) {
-        cells.push(week);
-        week = [];
-      }
+      list.push({ day, iso: toIso(cursor.year, cursor.month, day) });
     }
-    if (week.length) {
-      while (week.length < 7) week.push({ iso: "", day: 0, inMonth: false });
-      cells.push(week);
-    }
-    return cells;
-  }, [cursor.month, cursor.year]);
+    return list;
+  }, [cursor.month, cursor.year, daysInMonth, firstWeekday]);
 
   const monthLabel = new Date(cursor.year, cursor.month, 1).toLocaleDateString(
     "en-AU",
@@ -506,24 +481,22 @@ function EverCalendar({ value, onChange, minDate }: EverCalendarProps) {
 
   const shiftMonth = (delta: number) => {
     setCursor((current) => {
-      const next = new Date(current.year, current.month + delta, 1);
-      return { year: next.getFullYear(), month: next.getMonth() };
+      const date = new Date(current.year, current.month + delta, 1);
+      return { year: date.getFullYear(), month: date.getMonth() };
     });
   };
 
-  const minCursor = parseIso(minDate);
-  const canGoPrev =
-    cursor.year > minCursor.getFullYear() ||
-    (cursor.year === minCursor.getFullYear() && cursor.month > minCursor.getMonth());
-
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#F7F6F2] text-[#1a1a1a]">
-      <div className="flex items-end justify-between px-5 pb-2 pt-5">
+    <div
+      className="overflow-hidden rounded-3xl px-5 py-6 sm:px-6"
+      style={{ background: EVER_BRAND.cream, color: EVER_BRAND.forestDeep }}
+    >
+      <div className="mb-6 flex items-end justify-between gap-3">
         <div className="flex items-end gap-3">
-          <span className="text-5xl font-semibold leading-none tracking-tight">
+          <span className="text-5xl font-semibold leading-none tracking-tight sm:text-6xl">
             {cursor.month + 1}
           </span>
-          <span className="pb-1 text-sm font-semibold uppercase tracking-[0.12em]">
+          <span className="pb-1 text-sm font-semibold uppercase tracking-[0.14em] sm:text-base">
             {monthLabel}
           </span>
         </div>
@@ -531,64 +504,66 @@ function EverCalendar({ value, onChange, minDate }: EverCalendarProps) {
           <button
             type="button"
             aria-label="Previous month"
-            disabled={!canGoPrev}
             onClick={() => shiftMonth(-1)}
-            className="rounded-lg p-1.5 text-[#1a1a1a]/70 transition hover:bg-black/5 disabled:opacity-30"
+            className="inline-flex size-9 items-center justify-center rounded-full transition hover:bg-black/5"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="size-4" />
           </button>
           <button
             type="button"
             aria-label="Next month"
             onClick={() => shiftMonth(1)}
-            className="rounded-lg p-1.5 text-[#1a1a1a]/70 transition hover:bg-black/5"
+            className="inline-flex size-9 items-center justify-center rounded-full transition hover:bg-black/5"
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="size-4" />
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-7 border-t border-black/5 px-2 pb-1 pt-3 text-center text-[11px] font-semibold tracking-wide">
+      <div className="mb-3 grid grid-cols-7 text-center text-[11px] font-semibold tracking-wide">
         {WEEKDAYS.map((day, index) => (
-          <span key={day} className={index === 0 ? "text-[#c0392b]" : "text-[#1a1a1a]"}>
+          <span
+            key={day}
+            style={{ color: index === 0 ? "#C45C5C" : "rgba(18,24,20,0.45)" }}
+          >
             {day}
           </span>
         ))}
       </div>
 
-      <div className="space-y-1 px-2 pb-4 pt-1">
-        {weeks.map((week, weekIndex) => (
-          <div key={weekIndex} className="grid grid-cols-7 gap-1">
-            {week.map((cell, cellIndex) => {
-              if (!cell.inMonth) {
-                return <span key={`empty-${weekIndex}-${cellIndex}`} className="h-11" />;
+      <div className="grid grid-cols-7 gap-y-2">
+        {cells.map((cell, index) => {
+          if (!cell) {
+            return <div key={`empty-${index}`} className="h-11" />;
+          }
+
+          const weekday = (firstWeekday + cell.day - 1) % 7;
+          const isSunday = weekday === 0;
+          const disabled = cell.iso < today;
+          const active = value === cell.iso;
+
+          return (
+            <button
+              key={cell.iso}
+              type="button"
+              disabled={disabled}
+              onClick={() => onChange(cell.iso)}
+              className={cn(
+                "mx-auto flex h-11 w-11 items-center justify-center rounded-full text-[15px] font-medium tabular-nums transition",
+                disabled && "cursor-not-allowed opacity-25",
+                active && "text-[#121814]",
+                !disabled && !active && "hover:bg-black/5",
+              )}
+              style={
+                active
+                  ? { background: EVER_BRAND.gold }
+                  : { color: isSunday ? "#C45C5C" : EVER_BRAND.forestDeep }
               }
-
-              const disabled = cell.iso < minDate;
-              const selected = cell.iso === value;
-              const isSunday = cellIndex === 0;
-
-              return (
-                <button
-                  key={cell.iso}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => onChange(cell.iso)}
-                  className={cn(
-                    "flex h-11 items-center justify-center rounded-lg text-sm font-medium transition",
-                    disabled && "cursor-not-allowed opacity-25",
-                    selected && "bg-[#1B2E26] text-[#F5F3EE]",
-                    !selected && !disabled && "hover:bg-black/5",
-                    !selected && isSunday && "text-[#c0392b]",
-                    !selected && !isSunday && "text-[#1a1a1a]",
-                  )}
-                >
-                  {cell.day}
-                </button>
-              );
-            })}
-          </div>
-        ))}
+            >
+              {cell.day}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
