@@ -95,7 +95,7 @@ export const EVER_SERVICES = [
     name: "Aromatherapy",
     description:
       "Essential oils paired with soothing massage to calm the senses and deepen your relaxation.",
-    image: "/ever/services/aromatherapy.jpg",
+    image: "/ever/services/aromatherapy-v2.jpg",
   },
 ] as const;
 
