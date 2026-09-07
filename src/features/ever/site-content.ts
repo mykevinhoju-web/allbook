@@ -55,56 +55,56 @@ export const EVER_SERVICES = [
     description:
       "Gentle, flowing techniques to quiet the mind, melt everyday stress, and leave you deeply restored.",
     image:
-      "https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=900&q=80",
   },
   {
     name: "Traditional Chinese Massage",
     description:
       "Time-honoured techniques to encourage circulation, balance energy, and support whole-body wellness.",
     image:
-      "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1507652313519-d4e9174996dd?auto=format&fit=crop&w=900&q=80",
   },
   {
     name: "Thai Massage",
     description:
       "Traditional stretches and rhythmic pressure to release tension and restore mobility.",
     image:
-      "https://images.unsplash.com/photo-1519824145371-296947a0b381?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=900&q=80",
   },
   {
     name: "Hot Stone Massage",
     description:
       "Warm stones and soothing strokes melt deep tension and promote lasting calm throughout the body.",
     image:
-      "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1583416750470-965b2707b355?auto=format&fit=crop&w=900&q=80",
   },
   {
     name: "Body Scrub",
     description:
       "Exfoliating spa care that refreshes the skin, boosts circulation, and leaves you soft and glowing.",
     image:
-      "https://images.unsplash.com/photo-1596178065887-1198b6148b2b?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=900&q=80",
   },
   {
     name: "Waxing",
     description:
       "Clean, careful waxing services for smooth results in a calm and private treatment setting.",
     image:
-      "https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1522337660859-02fbefca4702?auto=format&fit=crop&w=900&q=80",
   },
   {
     name: "Cupping",
     description:
       "Therapeutic cupping to ease muscle tightness, support recovery, and encourage healthy circulation.",
     image:
-      "https://images.unsplash.com/photo-1600334129128-685c5582fd35?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=900&q=80",
   },
   {
     name: "Aromatherapy",
     description:
       "Essential oils paired with soothing massage to calm the senses and deepen your relaxation.",
     image:
-      "https://images.unsplash.com/photo-1519823551278-64ac92734fb1?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=900&q=80",
   },
 ] as const;
 
@@ -171,19 +171,25 @@ export const EVER_REVIEWS = [
 
 export const EVER_GALLERY = [
   {
-    src: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=1200&q=80",
-    alt: "Calm treatment room with soft lighting",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1600334129128-685c5582fd35?auto=format&fit=crop&w=1200&q=80",
-    alt: "Massage therapist during a treatment",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1596178065887-1198b6148b2b?auto=format&fit=crop&w=1200&q=80",
-    alt: "Spa interior and wellness space",
-  },
-  {
     src: "https://images.unsplash.com/photo-1519823551278-64ac92734fb1?auto=format&fit=crop&w=1200&q=80",
-    alt: "Massage oils and wellness atmosphere",
+    alt: "Spa oils and calm wellness atmosphere",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=1200&q=80",
+    alt: "Massage therapist preparing a treatment",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?auto=format&fit=crop&w=1200&q=80",
+    alt: "Premium spa interior detail",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=1200&q=80",
+    alt: "Restorative spa treatment experience",
   },
 ] as const;
+
+export const EVER_ABOUT_IMAGE =
+  "https://images.unsplash.com/photo-1552693673-1bf958298935?auto=format&fit=crop&w=1400&q=80";
+
+export const EVER_GIFT_IMAGE =
+  "https://images.unsplash.com/photo-1591343395082-e120087004b4?auto=format&fit=crop&w=1400&q=80";

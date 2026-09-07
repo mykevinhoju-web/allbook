@@ -11,8 +11,10 @@ import { EverLogo } from "./ever-logo";
 import { EVER_BRAND } from "../theme";
 import {
   EVER_ABOUT,
+  EVER_ABOUT_IMAGE,
   EVER_CONTACT,
   EVER_GALLERY,
+  EVER_GIFT_IMAGE,
   EVER_HERO,
   EVER_NAV,
   EVER_PRICE_MENUS,
@@ -25,11 +27,6 @@ const BOOK = "/booking";
 
 /** Hero playlist: `public/ever/hero1.mp4`, `public/ever/hero2.mp4` */
 const HERO_VIDEOS = ["/ever/hero1.mp4", "/ever/hero2.mp4"] as const;
-
-const ABOUT_IMG =
-  "https://images.unsplash.com/photo-1600334129128-685c5582fd35?auto=format&fit=crop&w=1400&q=80";
-const GIFT_IMG =
-  "https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=1400&q=80";
 
 /**
  * Ever public homepage — Verdant forest + soft gold, full marketing site.
@@ -358,7 +355,7 @@ export function EverHomePage() {
           <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-2 lg:gap-16">
             <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem]">
               <Image
-                src={ABOUT_IMG}
+                src={EVER_ABOUT_IMAGE}
                 alt="Professional massage therapist providing a treatment"
                 fill
                 sizes="(max-width: 1024px) 100vw, 50vw"
@@ -464,7 +461,7 @@ export function EverHomePage() {
           <div className="mx-auto grid max-w-6xl items-center gap-10 overflow-hidden rounded-[2rem] border border-[#C4A862]/20 bg-[#1B2E26]/40 lg:grid-cols-2">
             <div className="relative aspect-[5/4] lg:aspect-auto lg:min-h-[420px]">
               <Image
-                src={GIFT_IMG}
+                src={EVER_GIFT_IMAGE}
                 alt="Spa wellness gift experience"
                 fill
                 sizes="(max-width: 1024px) 100vw, 50vw"
