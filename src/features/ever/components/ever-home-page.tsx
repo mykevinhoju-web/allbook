@@ -23,8 +23,6 @@ const BOOK = "/booking";
 
 /** Hero video: `public/ever/hero1.mp4` */
 const HERO_VIDEO_MP4 = "/ever/hero1.mp4";
-const HERO_POSTER =
-  "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=2400&q=80";
 
 const ABOUT_IMG =
   "https://images.unsplash.com/photo-1600334129128-685c5582fd35?auto=format&fit=crop&w=1400&q=80";
@@ -651,18 +649,8 @@ export function EverHomePage() {
 
 function EverHeroBackground() {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [preferStatic, setPreferStatic] = useState(false);
 
   useEffect(() => {
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const sync = () => setPreferStatic(media.matches);
-    sync();
-    media.addEventListener("change", sync);
-    return () => media.removeEventListener("change", sync);
-  }, []);
-
-  useEffect(() => {
-    if (preferStatic) return;
     const video = videoRef.current;
     if (!video) return;
 
@@ -671,9 +659,7 @@ function EverHeroBackground() {
     video.playsInline = true;
 
     const tryPlay = () => {
-      void video.play().catch(() => {
-        // Autoplay can fail until a user gesture; muted loop usually succeeds.
-      });
+      void video.play().catch(() => {});
     };
 
     tryPlay();
@@ -683,38 +669,26 @@ function EverHeroBackground() {
       video.removeEventListener("loadeddata", tryPlay);
       video.removeEventListener("canplay", tryPlay);
     };
-  }, [preferStatic]);
+  }, []);
 
   return (
-    <div className="absolute inset-0 overflow-hidden" aria-hidden>
-      {preferStatic ? (
-        <Image
-          src={HERO_POSTER}
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-center"
-        />
-      ) : (
-        <video
-          ref={videoRef}
-          className="absolute inset-0 h-full w-full object-cover object-center"
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="auto"
-          poster={HERO_POSTER}
-          src={HERO_VIDEO_MP4}
-        />
-      )}
-      <div className="absolute inset-0 bg-[#121814]/55" />
+    <div className="absolute inset-0 overflow-hidden bg-[#121814]" aria-hidden>
+      <video
+        ref={videoRef}
+        className="absolute inset-0 h-full w-full object-cover object-center"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="auto"
+        src={HERO_VIDEO_MP4}
+      />
+      <div className="absolute inset-0 bg-[#121814]/45" />
       <div
         data-glow
-        className="absolute inset-0 bg-[radial-gradient(ellipse_at_28%_38%,rgba(196,168,98,0.18),transparent_55%)]"
+        className="absolute inset-0 bg-[radial-gradient(ellipse_at_28%_38%,rgba(196,168,98,0.16),transparent_55%)]"
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-[#121814] via-[#121814]/25 to-[#121814]/40" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#121814] via-[#121814]/20 to-[#121814]/35" />
     </div>
   );
 }
