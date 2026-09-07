@@ -23,10 +23,9 @@ const STEP_LABELS: Record<Step, string> = {
 
 const WEEKDAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"] as const;
 
-const TIME_SLOTS = Array.from({ length: 19 }, (_, index) => {
-  const totalMinutes = 9 * 60 + index * 30;
-  const hour = Math.floor(totalMinutes / 60);
-  const minute = totalMinutes % 60;
+const TIME_SLOTS = Array.from({ length: 48 }, (_, index) => {
+  const hour = Math.floor(index / 2);
+  const minute = index % 2 === 0 ? 0 : 30;
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 });
 
