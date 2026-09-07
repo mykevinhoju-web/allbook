@@ -21,8 +21,8 @@ import {
 
 const BOOK = "/booking";
 
-/** Hero video: `public/ever/hero1.mp4` */
-const HERO_VIDEO_MP4 = "/ever/hero1.mp4";
+/** Hero playlist: `public/ever/hero1.mp4`, `public/ever/hero2.mp4` */
+const HERO_VIDEOS = ["/ever/hero1.mp4", "/ever/hero2.mp4"] as const;
 
 const ABOUT_IMG =
   "https://images.unsplash.com/photo-1600334129128-685c5582fd35?auto=format&fit=crop&w=1400&q=80";
@@ -648,41 +648,95 @@ export function EverHomePage() {
 }
 
 function EverHeroBackground() {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([null, null]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const switchingRef = useRef(false);
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
+    const videos = videoRefs.current;
+    videos.forEach((video) => {
+      if (!video) return;
+      video.muted = true;
+      video.defaultMuted = true;
+      video.playsInline = true;
+    });
 
-    video.muted = true;
-    video.defaultMuted = true;
-    video.playsInline = true;
-
-    const tryPlay = () => {
-      void video.play().catch(() => {});
-    };
-
-    tryPlay();
-    video.addEventListener("loadeddata", tryPlay);
-    video.addEventListener("canplay", tryPlay);
-    return () => {
-      video.removeEventListener("loadeddata", tryPlay);
-      video.removeEventListener("canplay", tryPlay);
-    };
+    const current = videos[0];
+    if (!current) return;
+    void current.play().catch(() => {});
   }, []);
+
+  useEffect(() => {
+    switchingRef.current = false;
+    const current = videoRefs.current[activeIndex];
+    if (!current) return;
+
+    const nextIndex = (activeIndex + 1) % HERO_VIDEOS.length;
+    const next = videoRefs.current[nextIndex];
+
+    if (next) {
+      next.preload = "auto";
+      if (next.readyState < 2) next.load();
+    }
+
+    const advance = () => {
+      if (switchingRef.current) return;
+      switchingRef.current = true;
+
+      const upcoming = videoRefs.current[nextIndex];
+      if (!upcoming) {
+        switchingRef.current = false;
+        return;
+      }
+
+      upcoming.currentTime = 0;
+      void upcoming.play().catch(() => {});
+      setActiveIndex(nextIndex);
+
+      window.setTimeout(() => {
+        current.pause();
+      }, 950);
+    };
+
+    const onTimeUpdate = () => {
+      if (
+        Number.isFinite(current.duration) &&
+        current.duration > 1 &&
+        current.duration - current.currentTime <= 0.85
+      ) {
+        advance();
+      }
+    };
+
+    current.addEventListener("timeupdate", onTimeUpdate);
+    current.addEventListener("ended", advance);
+    void current.play().catch(() => {});
+
+    return () => {
+      current.removeEventListener("timeupdate", onTimeUpdate);
+      current.removeEventListener("ended", advance);
+    };
+  }, [activeIndex]);
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-[#121814]" aria-hidden>
-      <video
-        ref={videoRef}
-        className="absolute inset-0 h-full w-full object-cover object-center"
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="auto"
-        src={HERO_VIDEO_MP4}
-      />
+      {HERO_VIDEOS.map((src, index) => (
+        <video
+          key={src}
+          ref={(el) => {
+            videoRefs.current[index] = el;
+          }}
+          className={cn(
+            "absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-[900ms] ease-in-out",
+            index === activeIndex ? "opacity-100" : "opacity-0",
+          )}
+          muted
+          playsInline
+          preload={index === 0 ? "auto" : "metadata"}
+          src={src}
+          autoPlay={index === 0}
+        />
+      ))}
       <div className="absolute inset-0 bg-[#121814]/45" />
       <div
         data-glow
