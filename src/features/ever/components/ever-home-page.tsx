@@ -21,24 +21,10 @@ import {
 
 const BOOK = "/booking";
 
-const HERO_SLIDES = [
-  {
-    src: "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=2400&q=80",
-    alt: "Professional massage therapy in a calm spa setting",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1519823551278-64ac92734fb1?auto=format&fit=crop&w=2400&q=80",
-    alt: "Spa oils and wellness atmosphere",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1600334129128-685c5582fd35?auto=format&fit=crop&w=2400&q=80",
-    alt: "Therapeutic massage treatment",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=2400&q=80",
-    alt: "Premium treatment room with soft lighting",
-  },
-] as const;
+/** Hero video: `public/ever/hero1.mp4` */
+const HERO_VIDEO_MP4 = "/ever/hero1.mp4";
+const HERO_POSTER =
+  "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=2400&q=80";
 
 const ABOUT_IMG =
   "https://images.unsplash.com/photo-1600334129128-685c5582fd35?auto=format&fit=crop&w=1400&q=80";
@@ -664,41 +650,40 @@ export function EverHomePage() {
 }
 
 function EverHeroBackground() {
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [preferStatic, setPreferStatic] = useState(false);
 
   useEffect(() => {
-    const reducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    if (reducedMotion) return;
-
-    const id = window.setInterval(() => {
-      setActiveIndex((current) => (current + 1) % HERO_SLIDES.length);
-    }, 5500);
-
-    return () => window.clearInterval(id);
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setPreferStatic(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
   }, []);
 
   return (
     <div className="absolute inset-0 -z-10" aria-hidden>
-      {HERO_SLIDES.map((slide, index) => (
-        <div
-          key={slide.src}
-          className={cn(
-            "absolute inset-0 transition-opacity duration-[2400ms] ease-in-out",
-            index === activeIndex ? "opacity-100" : "opacity-0",
-          )}
+      {preferStatic ? (
+        <Image
+          src={HERO_POSTER}
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-[center_30%]"
+        />
+      ) : (
+        <video
+          className="absolute inset-0 h-full w-full object-cover object-[center_30%]"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          poster={HERO_POSTER}
         >
-          <Image
-            src={slide.src}
-            alt=""
-            fill
-            priority={index === 0}
-            sizes="100vw"
-            className="object-cover object-[center_30%]"
-          />
-        </div>
-      ))}
+          <source src={HERO_VIDEO_MP4} type="video/mp4" />
+        </video>
+      )}
       <div className="absolute inset-0 bg-[#121814]/72" />
       <div
         data-glow
