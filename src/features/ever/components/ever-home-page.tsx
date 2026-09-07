@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Menu, Star, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -197,7 +197,7 @@ export function EverHomePage() {
         >
           <EverHeroBackground />
 
-          <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-end px-5 pb-28 pt-24 sm:px-8 sm:pb-32 lg:justify-center lg:pb-24">
+          <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-end px-5 pb-28 pt-24 sm:px-8 sm:pb-32 lg:justify-center lg:pb-24">
             <p
               data-rise="1"
               className="text-[11px] font-medium uppercase tracking-[0.28em] text-[#C4A862]"
@@ -650,6 +650,7 @@ export function EverHomePage() {
 }
 
 function EverHeroBackground() {
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [preferStatic, setPreferStatic] = useState(false);
 
   useEffect(() => {
@@ -660,8 +661,32 @@ function EverHeroBackground() {
     return () => media.removeEventListener("change", sync);
   }, []);
 
+  useEffect(() => {
+    if (preferStatic) return;
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.muted = true;
+    video.defaultMuted = true;
+    video.playsInline = true;
+
+    const tryPlay = () => {
+      void video.play().catch(() => {
+        // Autoplay can fail until a user gesture; muted loop usually succeeds.
+      });
+    };
+
+    tryPlay();
+    video.addEventListener("loadeddata", tryPlay);
+    video.addEventListener("canplay", tryPlay);
+    return () => {
+      video.removeEventListener("loadeddata", tryPlay);
+      video.removeEventListener("canplay", tryPlay);
+    };
+  }, [preferStatic]);
+
   return (
-    <div className="absolute inset-0 -z-10" aria-hidden>
+    <div className="absolute inset-0 overflow-hidden" aria-hidden>
       {preferStatic ? (
         <Image
           src={HERO_POSTER}
@@ -669,27 +694,27 @@ function EverHeroBackground() {
           fill
           priority
           sizes="100vw"
-          className="object-cover object-[center_30%]"
+          className="object-cover object-center"
         />
       ) : (
         <video
-          className="absolute inset-0 h-full w-full object-cover object-[center_30%]"
+          ref={videoRef}
+          className="absolute inset-0 h-full w-full object-cover object-center"
           autoPlay
           muted
           loop
           playsInline
           preload="auto"
           poster={HERO_POSTER}
-        >
-          <source src={HERO_VIDEO_MP4} type="video/mp4" />
-        </video>
+          src={HERO_VIDEO_MP4}
+        />
       )}
-      <div className="absolute inset-0 bg-[#121814]/72" />
+      <div className="absolute inset-0 bg-[#121814]/55" />
       <div
         data-glow
-        className="absolute inset-0 bg-[radial-gradient(ellipse_at_28%_38%,rgba(196,168,98,0.2),transparent_55%)]"
+        className="absolute inset-0 bg-[radial-gradient(ellipse_at_28%_38%,rgba(196,168,98,0.18),transparent_55%)]"
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-[#121814] via-[#121814]/35 to-[#121814]/55" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#121814] via-[#121814]/25 to-[#121814]/40" />
     </div>
   );
 }
