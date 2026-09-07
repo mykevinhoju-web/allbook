@@ -29,6 +29,16 @@ const TIME_SLOTS = Array.from({ length: 48 }, (_, index) => {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 });
 
+const AM_SLOTS = TIME_SLOTS.filter((slot) => Number(slot.slice(0, 2)) < 12);
+const PM_SLOTS = TIME_SLOTS.filter((slot) => Number(slot.slice(0, 2)) >= 12);
+
+function formatSlotLabel(slot: string): string {
+  const [hourRaw, minute] = slot.split(":");
+  const hour = Number(hourRaw);
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${hour12}:${minute}`;
+}
+
 function formatPrice(cents: number | null, currency: string): string {
   if (cents === null) return "";
   return new Intl.NumberFormat("en-AU", {
@@ -204,21 +214,21 @@ export function EverBookingForm() {
 
   return (
     <EverBookingShell>
-      <div className="mx-auto max-w-xl">
+      <div className="mx-auto w-full max-w-xl pb-24 sm:pb-8">
         <p
           className="text-xs font-medium uppercase tracking-[0.2em]"
           style={{ color: EVER_BRAND.gold }}
         >
           Book a visit
         </p>
-        <h1 className="mt-2 text-3xl font-light tracking-tight sm:text-4xl">
+        <h1 className="mt-2 text-[1.75rem] font-light tracking-tight sm:text-4xl">
           Request an appointment
         </h1>
         <p className="mt-3 text-sm leading-relaxed" style={{ color: EVER_BRAND.textMuted }}>
           Choose a date, then a time, then a treatment, and leave your details.
         </p>
 
-        <div className="mt-8 flex gap-2 overflow-x-auto pb-1">
+        <div className="-mx-1 mt-6 flex gap-1.5 overflow-x-auto px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mt-8 sm:gap-2">
           {STEPS.map((id, index) => {
             const active = index === stepIndex;
             const done = index < stepIndex;
@@ -226,7 +236,7 @@ export function EverBookingForm() {
               <div
                 key={id}
                 className={cn(
-                  "shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold tracking-wide",
+                  "shrink-0 rounded-full px-2.5 py-1.5 text-[10px] font-semibold tracking-wide sm:px-3 sm:text-[11px]",
                   active || done
                     ? "text-[#121814]"
                     : "bg-white/5 text-white/40",
@@ -248,7 +258,7 @@ export function EverBookingForm() {
             Loading…
           </p>
         ) : (
-          <div className="mt-8">
+          <div className="mt-6 sm:mt-8">
             {step === "date" && (
               <section className="space-y-4">
                 <h2 className="text-sm font-medium" style={{ color: EVER_BRAND.goldSoft }}>
@@ -264,33 +274,27 @@ export function EverBookingForm() {
             )}
 
             {step === "time" && (
-              <section className="space-y-4">
-                <h2 className="text-sm font-medium" style={{ color: EVER_BRAND.goldSoft }}>
-                  Select a time
-                </h2>
-                <p className="text-xs" style={{ color: EVER_BRAND.textMuted }}>
-                  {formatDisplayDate(date)}
-                </p>
-                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                  {TIME_SLOTS.map((slot) => {
-                    const active = time === slot;
-                    return (
-                      <button
-                        key={slot}
-                        type="button"
-                        onClick={() => setTime(slot)}
-                        className={cn(
-                          "rounded-xl border px-3 py-3 text-sm tabular-nums transition",
-                          active
-                            ? "border-[#C4A862]/70 bg-[#C4A862]/15 text-[#E9EDE8]"
-                            : "border-white/10 bg-white/[0.03] text-[#E9EDE8]/80 hover:border-white/25",
-                        )}
-                      >
-                        {slot}
-                      </button>
-                    );
-                  })}
+              <section className="space-y-5">
+                <div>
+                  <h2 className="text-sm font-medium" style={{ color: EVER_BRAND.goldSoft }}>
+                    Select a time
+                  </h2>
+                  <p className="mt-1 text-xs" style={{ color: EVER_BRAND.textMuted }}>
+                    {formatDisplayDate(date)}
+                  </p>
                 </div>
+                <TimePeriodBlock
+                  label="AM"
+                  slots={AM_SLOTS}
+                  selected={time}
+                  onSelect={setTime}
+                />
+                <TimePeriodBlock
+                  label="PM"
+                  slots={PM_SLOTS}
+                  selected={time}
+                  onSelect={setTime}
+                />
               </section>
             )}
 
@@ -347,7 +351,8 @@ export function EverBookingForm() {
                   style={{ color: EVER_BRAND.textMuted }}
                 >
                   <p>
-                    {formatDisplayDate(date)} · {time}
+                    {formatDisplayDate(date)} · {formatSlotLabel(time)}{" "}
+                    {Number(time.slice(0, 2)) < 12 ? "AM" : "PM"}
                   </p>
                   {selectedService && (
                     <p className="mt-1">
@@ -408,42 +413,90 @@ export function EverBookingForm() {
               </section>
             )}
 
-            <div className="mt-8 flex gap-3">
-              {stepIndex > 0 && (
-                <button
-                  type="button"
-                  onClick={goBack}
-                  className="rounded-full border border-white/15 px-5 py-3 text-sm font-medium transition hover:border-white/30"
-                  style={{ color: EVER_BRAND.text }}
-                >
-                  Back
-                </button>
-              )}
-              {step !== "details" ? (
-                <button
-                  type="button"
-                  onClick={goNext}
-                  className="flex-1 rounded-full px-6 py-3.5 text-sm font-medium transition hover:opacity-90"
-                  style={{ background: EVER_BRAND.gold, color: EVER_BRAND.forestDeep }}
-                >
-                  Next
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={submitting || services.length === 0}
-                  onClick={() => void submit()}
-                  className="flex-1 rounded-full px-6 py-3.5 text-sm font-medium transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                  style={{ background: EVER_BRAND.gold, color: EVER_BRAND.forestDeep }}
-                >
-                  {submitting ? "Sending request…" : "Request booking"}
-                </button>
-              )}
+            <div className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#121814]/95 px-4 pt-3 backdrop-blur-md pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:static sm:mt-8 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+              <div className="mx-auto flex max-w-xl gap-3">
+                {stepIndex > 0 && (
+                  <button
+                    type="button"
+                    onClick={goBack}
+                    className="min-h-12 rounded-full border border-white/15 px-5 py-3 text-sm font-medium transition hover:border-white/30"
+                    style={{ color: EVER_BRAND.text }}
+                  >
+                    Back
+                  </button>
+                )}
+                {step !== "details" ? (
+                  <button
+                    type="button"
+                    onClick={goNext}
+                    className="min-h-12 flex-1 rounded-full px-6 py-3.5 text-sm font-medium transition hover:opacity-90"
+                    style={{ background: EVER_BRAND.gold, color: EVER_BRAND.forestDeep }}
+                  >
+                    Next
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={submitting || services.length === 0}
+                    onClick={() => void submit()}
+                    className="min-h-12 flex-1 rounded-full px-6 py-3.5 text-sm font-medium transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    style={{ background: EVER_BRAND.gold, color: EVER_BRAND.forestDeep }}
+                  >
+                    {submitting ? "Sending request…" : "Request booking"}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
       </div>
     </EverBookingShell>
+  );
+}
+
+function TimePeriodBlock({
+  label,
+  slots,
+  selected,
+  onSelect,
+}: {
+  label: "AM" | "PM";
+  slots: string[];
+  selected: string;
+  onSelect: (slot: string) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3" aria-hidden>
+        <span
+          className="shrink-0 text-[11px] font-semibold tracking-[0.18em]"
+          style={{ color: EVER_BRAND.goldSoft }}
+        >
+          {label}
+        </span>
+        <div className="h-px min-w-0 flex-1 bg-white/15" />
+      </div>
+      <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-4 sm:gap-2">
+        {slots.map((slot) => {
+          const active = selected === slot;
+          return (
+            <button
+              key={slot}
+              type="button"
+              onClick={() => onSelect(slot)}
+              className={cn(
+                "min-h-11 rounded-xl border px-1.5 py-2.5 text-[13px] tabular-nums transition sm:min-h-12 sm:px-3 sm:text-sm",
+                active
+                  ? "border-[#C4A862]/70 bg-[#C4A862]/15 text-[#E9EDE8]"
+                  : "border-white/10 bg-white/[0.03] text-[#E9EDE8]/80 hover:border-white/25",
+              )}
+            >
+              {formatSlotLabel(slot)}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -487,19 +540,19 @@ function EverMonthCalendar({
 
   return (
     <div
-      className="overflow-hidden rounded-3xl px-5 py-6 sm:px-6"
+      className="overflow-hidden rounded-3xl px-3 py-5 sm:px-6 sm:py-6"
       style={{ background: EVER_BRAND.cream, color: EVER_BRAND.forestDeep }}
     >
-      <div className="mb-6 flex items-end justify-between gap-3">
-        <div className="flex items-end gap-3">
-          <span className="text-5xl font-semibold leading-none tracking-tight sm:text-6xl">
+      <div className="mb-5 flex items-end justify-between gap-2 sm:mb-6 sm:gap-3">
+        <div className="flex min-w-0 items-end gap-2 sm:gap-3">
+          <span className="text-4xl font-semibold leading-none tracking-tight sm:text-6xl">
             {cursor.month + 1}
           </span>
-          <span className="pb-1 text-sm font-semibold uppercase tracking-[0.14em] sm:text-base">
+          <span className="truncate pb-0.5 text-xs font-semibold uppercase tracking-[0.12em] sm:pb-1 sm:text-base sm:tracking-[0.14em]">
             {monthLabel}
           </span>
         </div>
-        <div className="flex gap-1 pb-1">
+        <div className="flex shrink-0 gap-1 pb-0.5 sm:pb-1">
           <button
             type="button"
             aria-label="Previous month"
@@ -519,7 +572,7 @@ function EverMonthCalendar({
         </div>
       </div>
 
-      <div className="mb-3 grid grid-cols-7 text-center text-[11px] font-semibold tracking-wide">
+      <div className="mb-2 grid grid-cols-7 text-center text-[10px] font-semibold tracking-wide sm:mb-3 sm:text-[11px]">
         {WEEKDAYS.map((day, index) => (
           <span
             key={day}
@@ -530,10 +583,10 @@ function EverMonthCalendar({
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-y-2">
+      <div className="grid grid-cols-7 gap-y-1 sm:gap-y-2">
         {cells.map((cell, index) => {
           if (!cell) {
-            return <div key={`empty-${index}`} className="h-11" />;
+            return <div key={`empty-${index}`} className="h-9 sm:h-11" />;
           }
 
           const weekday = (firstWeekday + cell.day - 1) % 7;
@@ -548,7 +601,7 @@ function EverMonthCalendar({
               disabled={disabled}
               onClick={() => onChange(cell.iso)}
               className={cn(
-                "mx-auto flex h-11 w-11 items-center justify-center rounded-full text-[15px] font-medium tabular-nums transition",
+                "mx-auto flex h-9 w-9 items-center justify-center rounded-full text-[13px] font-medium tabular-nums transition sm:h-11 sm:w-11 sm:text-[15px]",
                 disabled && "cursor-not-allowed opacity-25",
                 active && "text-[#121814]",
                 !disabled && !active && "hover:bg-black/5",
@@ -574,12 +627,12 @@ const everInputClass =
 function EverBookingShell({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="min-h-svh px-5 py-10 sm:px-8"
+      className="min-h-svh overflow-x-hidden px-4 py-8 sm:px-8 sm:py-10"
       style={{ background: EVER_BRAND.forestDeep, color: EVER_BRAND.text }}
     >
-      <header className="mx-auto mb-12 flex max-w-xl items-center justify-between">
+      <header className="mx-auto mb-8 flex max-w-xl items-center justify-between sm:mb-12">
         <Link href="/" className="inline-flex">
-          <EverLogo className="h-9 w-auto" />
+          <EverLogo className="h-8 w-auto sm:h-9" />
         </Link>
         <Link
           href="/"

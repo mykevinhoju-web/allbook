@@ -60,7 +60,7 @@ export function EverHomePage() {
   return (
     <div
       className={cn(
-        "ever-site min-h-svh bg-[#121814] text-[#E9EDE8]",
+        "ever-site min-h-svh overflow-x-hidden bg-[#121814] text-[#E9EDE8]",
         "font-[family-name:var(--font-ever-verdant-body)]",
       )}
       data-ready={ready ? "true" : "false"}
@@ -119,7 +119,7 @@ export function EverHomePage() {
             : "border-b border-transparent bg-transparent",
         )}
       >
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-5 sm:h-16 sm:px-8">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 sm:h-16 sm:gap-4 sm:px-8">
           <EverLogo href="/" width={76} priority className="sm:hidden" />
           <EverLogo href="/" width={92} priority className="hidden sm:block" />
 
@@ -141,9 +141,10 @@ export function EverHomePage() {
           <div className="flex items-center gap-2">
             <Link
               href={BOOK}
-              className="hidden h-10 items-center rounded-full bg-[#C4A862] px-5 text-[13px] font-medium text-[#16140C] transition hover:bg-[#D2B872] sm:inline-flex"
+              className="inline-flex h-9 items-center rounded-full bg-[#C4A862] px-3.5 text-[12px] font-medium text-[#16140C] transition hover:bg-[#D2B872] sm:h-10 sm:px-5 sm:text-[13px]"
             >
-              Book Now
+              Book
+              <span className="hidden sm:inline">&nbsp;Now</span>
             </Link>
             <button
               type="button"
@@ -161,7 +162,7 @@ export function EverHomePage() {
         {menuOpen && (
           <div
             id="ever-mobile-nav"
-            className="border-t border-white/8 bg-[#121814] px-5 pb-8 pt-4 lg:hidden"
+            className="border-t border-white/8 bg-[#121814] px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4 lg:hidden"
           >
             <nav className="flex flex-col gap-1" aria-label="Mobile">
               {EVER_NAV.map((item) => (
@@ -194,7 +195,7 @@ export function EverHomePage() {
         >
           <EverHeroBackground />
 
-          <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-end px-5 pb-28 pt-24 sm:px-8 sm:pb-32 lg:justify-center lg:pb-24">
+          <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-end px-4 pb-24 pt-20 sm:px-8 sm:pb-32 sm:pt-24 lg:justify-center lg:pb-24">
             <p
               data-rise="1"
               className="text-[11px] font-medium uppercase tracking-[0.28em] text-[#C4A862]"
@@ -203,26 +204,26 @@ export function EverHomePage() {
             </p>
             <h1
               data-rise="2"
-              className="mt-5 max-w-3xl font-[family-name:var(--font-ever-verdant-display)] text-[clamp(2.35rem,6.5vw,4.6rem)] leading-[1.08] tracking-[-0.02em]"
+              className="mt-4 max-w-3xl font-[family-name:var(--font-ever-verdant-display)] text-[clamp(2rem,8vw,4.6rem)] leading-[1.08] tracking-[-0.02em] sm:mt-5"
             >
               {EVER_HERO.title}
             </h1>
             <p
               data-rise="3"
-              className="mt-5 max-w-xl text-base leading-relaxed text-[#E9EDE8]/70 sm:text-lg"
+              className="mt-4 max-w-xl text-[15px] leading-relaxed text-[#E9EDE8]/70 sm:mt-5 sm:text-lg"
             >
               {EVER_HERO.description}
             </p>
-            <div data-rise="4" className="mt-9 flex flex-wrap items-center gap-3">
+            <div data-rise="4" className="mt-8 flex w-full flex-col gap-3 sm:mt-9 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
               <Link
                 href={BOOK}
-                className="inline-flex h-12 items-center justify-center rounded-full bg-[#C4A862] px-8 text-sm font-medium text-[#16140C] transition hover:bg-[#D2B872]"
+                className="inline-flex h-12 w-full items-center justify-center rounded-full bg-[#C4A862] px-8 text-sm font-medium text-[#16140C] transition hover:bg-[#D2B872] sm:w-auto"
               >
                 Book Now
               </Link>
               <a
                 href="#services"
-                className="inline-flex h-12 items-center justify-center rounded-full border border-white/25 px-7 text-sm text-[#E9EDE8] transition hover:border-[#C4A862]/60 hover:bg-white/5"
+                className="inline-flex h-12 w-full items-center justify-center rounded-full border border-white/25 px-7 text-sm text-[#E9EDE8] transition hover:border-[#C4A862]/60 hover:bg-white/5 sm:w-auto"
               >
                 View Services
               </a>
@@ -231,7 +232,7 @@ export function EverHomePage() {
         </section>
 
         {/* Services */}
-        <section id="services" className="scroll-mt-24 border-t border-white/8 px-5 py-20 sm:px-8 sm:py-28">
+        <section id="services" className="scroll-mt-20 border-t border-white/8 px-4 py-14 sm:scroll-mt-24 sm:px-8 sm:py-28">
           <div className="mx-auto max-w-6xl">
             <SectionIntro
               eyebrow="Services"
@@ -271,7 +272,7 @@ export function EverHomePage() {
         {/* Pricing */}
         <section
           id="prices"
-          className="scroll-mt-24 border-t border-white/8 bg-[#0E1210] px-5 py-20 sm:px-8 sm:py-28"
+          className="scroll-mt-20 border-t border-white/8 bg-[#0E1210] px-4 py-14 sm:scroll-mt-24 sm:px-8 sm:py-28"
         >
           <div className="mx-auto max-w-6xl">
             <SectionIntro
@@ -283,7 +284,7 @@ export function EverHomePage() {
               {EVER_PRICE_MENUS.map((menu) => (
                 <div
                   key={menu.name}
-                  className="flex flex-col rounded-3xl border border-[#C4A862]/25 bg-[#121814] p-7"
+                  className="flex flex-col rounded-3xl border border-[#C4A862]/25 bg-[#121814] p-5 sm:p-7"
                 >
                   <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-[#C4A862]">
                     {menu.note}
@@ -320,7 +321,7 @@ export function EverHomePage() {
         </section>
 
         {/* Why choose us */}
-        <section className="border-t border-white/8 px-5 py-20 sm:px-8 sm:py-28">
+        <section className="border-t border-white/8 px-4 py-14 sm:px-8 sm:py-28">
           <div className="mx-auto max-w-6xl">
             <SectionIntro
               eyebrow="Why Everwell"
@@ -350,10 +351,10 @@ export function EverHomePage() {
         {/* About */}
         <section
           id="about"
-          className="scroll-mt-24 border-t border-white/8 px-5 py-20 sm:px-8 sm:py-28"
+          className="scroll-mt-20 border-t border-white/8 px-4 py-14 sm:scroll-mt-24 sm:px-8 sm:py-28"
         >
           <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-2 lg:gap-16">
-            <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem]">
+            <div className="relative aspect-[4/5] max-h-[70vh] overflow-hidden rounded-[1.5rem] sm:rounded-[2rem] lg:max-h-none">
               <Image
                 src={EVER_ABOUT_IMAGE}
                 alt="Professional massage therapist providing a treatment"
@@ -387,7 +388,7 @@ export function EverHomePage() {
         {/* Reviews */}
         <section
           id="reviews"
-          className="scroll-mt-24 border-t border-white/8 bg-[#0E1210] px-5 py-20 sm:px-8 sm:py-28"
+          className="scroll-mt-20 border-t border-white/8 bg-[#0E1210] px-4 py-14 sm:scroll-mt-24 sm:px-8 sm:py-28"
         >
           <div className="mx-auto max-w-6xl">
             <SectionIntro
@@ -429,7 +430,7 @@ export function EverHomePage() {
         {/* Gallery */}
         <section
           id="gallery"
-          className="scroll-mt-24 border-t border-white/8 px-5 py-20 sm:px-8 sm:py-28"
+          className="scroll-mt-20 border-t border-white/8 px-4 py-14 sm:scroll-mt-24 sm:px-8 sm:py-28"
         >
           <div className="mx-auto max-w-6xl">
             <SectionIntro
@@ -457,8 +458,8 @@ export function EverHomePage() {
         </section>
 
         {/* Gift voucher */}
-        <section className="border-t border-white/8 px-5 py-20 sm:px-8 sm:py-28">
-          <div className="mx-auto grid max-w-6xl items-center gap-10 overflow-hidden rounded-[2rem] border border-[#C4A862]/20 bg-[#1B2E26]/40 lg:grid-cols-2">
+        <section className="border-t border-white/8 px-4 py-14 sm:px-8 sm:py-28">
+          <div className="mx-auto grid max-w-6xl items-center gap-0 overflow-hidden rounded-[1.5rem] border border-[#C4A862]/20 bg-[#1B2E26]/40 sm:rounded-[2rem] lg:grid-cols-2">
             <div className="relative aspect-[5/4] lg:aspect-auto lg:min-h-[420px]">
               <Image
                 src={EVER_GIFT_IMAGE}
@@ -468,7 +469,7 @@ export function EverHomePage() {
                 className="object-cover"
               />
             </div>
-            <div className="px-6 pb-10 pt-2 sm:px-10 lg:py-12">
+            <div className="px-5 py-8 sm:px-10 sm:pb-10 sm:pt-2 lg:py-12">
               <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-[#C4A862]">
                 Gift vouchers
               </p>
@@ -493,7 +494,7 @@ export function EverHomePage() {
         {/* Location */}
         <section
           id="contact"
-          className="scroll-mt-24 border-t border-white/8 bg-[#0E1210] px-5 py-20 sm:px-8 sm:py-28"
+          className="scroll-mt-20 border-t border-white/8 bg-[#0E1210] px-4 py-14 sm:scroll-mt-24 sm:px-8 sm:py-28"
         >
           <div className="mx-auto max-w-6xl">
             <SectionIntro
@@ -561,9 +562,9 @@ export function EverHomePage() {
         </section>
 
         {/* Final CTA */}
-        <section className="border-t border-white/8 px-5 py-24 text-center sm:px-8 sm:py-32">
+        <section className="border-t border-white/8 px-4 py-16 text-center sm:px-8 sm:py-32">
           <div className="mx-auto max-w-2xl">
-            <h2 className="font-[family-name:var(--font-ever-verdant-display)] text-4xl sm:text-5xl">
+            <h2 className="font-[family-name:var(--font-ever-verdant-display)] text-[clamp(2rem,8vw,3.25rem)] sm:text-5xl">
               Ready to Relax?
             </h2>
             <p className="mx-auto mt-5 max-w-md text-[15px] leading-relaxed text-[#E9EDE8]/55">
@@ -581,7 +582,7 @@ export function EverHomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-white/8 px-5 py-12 sm:px-8">
+      <footer className="border-t border-white/8 px-4 py-10 sm:px-8 sm:py-12">
         <div className="mx-auto flex max-w-6xl flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <EverLogo href="/" width={96} />
@@ -760,10 +761,10 @@ function SectionIntro({
       <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-[#C4A862]">
         {eyebrow}
       </p>
-      <h2 className="mt-4 font-[family-name:var(--font-ever-verdant-display)] text-3xl sm:text-4xl">
+      <h2 className="mt-3 font-[family-name:var(--font-ever-verdant-display)] text-[1.75rem] leading-tight sm:mt-4 sm:text-4xl">
         {title}
       </h2>
-      <p className="mt-4 text-[15px] leading-relaxed text-[#E9EDE8]/55">
+      <p className="mt-3 text-sm leading-relaxed text-[#E9EDE8]/55 sm:mt-4 sm:text-[15px]">
         {copy}
       </p>
     </div>
