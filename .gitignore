@@ -45,3 +45,7 @@ next-env.d.ts
 .env*
 
 tmp/
+
+# Local QLDVision HTML scrapes (seeds JSON lives under src/features/google-import/data)
+data/korean-directory/*.html
+data/korean-directory/brisbane-seeds.json

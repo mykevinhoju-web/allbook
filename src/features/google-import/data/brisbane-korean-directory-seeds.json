@@ -1,0 +1,180 @@
+{
+  "source": "qldvision.com.au/upso?area=bne",
+  "generatedAt": "2026-09-15T05:11:31.428Z",
+  "scope": "Brisbane area only; seeds with street addresses for Places matching",
+  "note": "Public directory listings used as match seeds only. Google Places remains the catalogue source of truth.",
+  "counts": {
+    "restaurant": 15,
+    "hair": 1,
+    "nails": 0,
+    "massage": 0
+  },
+  "categories": {
+    "restaurant": [
+      {
+        "name": "Holy Hock",
+        "phone": "0493 821 168",
+        "address": "Shop29/11-21 Kingston Rd, Underwood QLD 4119",
+        "mapsQuery": "Shop29/11-21 Kingston Rd, Underwood QLD 4119",
+        "website": null,
+        "detailUrl": "https://www.qldvision.com.au/upso/780?area=bne&sca=%EC%8B%9D%EB%8B%B9",
+        "category": "restaurant",
+        "source": "qldvision"
+      },
+      {
+        "name": "Uncle Sam's K-Cheesy Corn Dog",
+        "phone": "0430 331 144",
+        "address": "Westfield Chermside",
+        "mapsQuery": "Westfield Chermside",
+        "website": null,
+        "detailUrl": "https://www.qldvision.com.au/upso/771?area=bne&sca=%EC%8B%9D%EB%8B%B9",
+        "category": "restaurant",
+        "source": "qldvision"
+      },
+      {
+        "name": "Gamdang",
+        "phone": "0494 086 618",
+        "address": "127 Margaret St, Brisbane City QLD 4000",
+        "mapsQuery": "127 Margaret St, Brisbane City QLD 4000",
+        "website": "https://order-now.app/m/gamdang",
+        "detailUrl": "https://www.qldvision.com.au/upso/769?area=bne&sca=%EC%8B%9D%EB%8B%B9",
+        "category": "restaurant",
+        "source": "qldvision"
+      },
+      {
+        "name": "NanGam",
+        "phone": "0433 894 294",
+        "address": "shop8 / 168 Gowan rd, sunnybank Hills, Brisbane, Queensland, Australia 4109",
+        "mapsQuery": "shop8 / 168 Gowan rd, sunnybank Hills, Brisbane, Queensland, Australia 4109",
+        "website": null,
+        "detailUrl": "https://www.qldvision.com.au/upso/778?area=bne&sca=%EC%8B%9D%EB%8B%B9",
+        "category": "restaurant",
+        "source": "qldvision"
+      },
+      {
+        "name": "The Manjok korean restaurant",
+        "phone": "0493 639 336",
+        "address": "Shop 8/261 Warrigal Rd, Eight Mile Plains QLD 4113",
+        "mapsQuery": "Shop 8/261 Warrigal Rd, Eight Mile Plains QLD 4113",
+        "website": null,
+        "detailUrl": "https://www.qldvision.com.au/upso/770?area=bne&sca=%EC%8B%9D%EB%8B%B9",
+        "category": "restaurant",
+        "source": "qldvision"
+      },
+      {
+        "name": "Manok Park",
+        "phone": "0433 276 449",
+        "address": "S18/11-21 Kingston Rd. underwood",
+        "mapsQuery": "S18/11-21 Kingston Rd. underwood",
+        "website": null,
+        "detailUrl": "https://www.qldvision.com.au/upso/725?area=bne&sca=%EC%8B%9D%EB%8B%B9",
+        "category": "restaurant",
+        "source": "qldvision"
+      },
+      {
+        "name": "Mandu place",
+        "phone": "0430 610 226",
+        "address": "7/18 Fitzgerald Ave, Springwood QLD 4127",
+        "mapsQuery": "7/18 Fitzgerald Ave, Springwood QLD 4127",
+        "website": null,
+        "detailUrl": "https://www.qldvision.com.au/upso/779?area=bne&sca=%EC%8B%9D%EB%8B%B9",
+        "category": "restaurant",
+        "source": "qldvision"
+      },
+      {
+        "name": "Mien",
+        "phone": "07 3841 8216",
+        "address": "11/258 Warrigal Rd, Runcorn QLD 4113",
+        "mapsQuery": "11/258 Warrigal Rd, Runcorn QLD 4113",
+        "website": null,
+        "detailUrl": "https://www.qldvision.com.au/upso/796?area=bne&sca=%EC%8B%9D%EB%8B%B9",
+        "category": "restaurant",
+        "source": "qldvision"
+      },
+      {
+        "name": "Park Bong Sook Sunnybank Hills",
+        "phone": "0499 305 236",
+        "address": "Shop 3/21 Farne St, Sunnybank Hills QLD 4109",
+        "mapsQuery": "Shop 3/21 Farne St, Sunnybank Hills QLD 4109",
+        "website": null,
+        "detailUrl": "https://www.qldvision.com.au/upso/787?area=bne&sca=%EC%8B%9D%EB%8B%B9",
+        "category": "restaurant",
+        "source": "qldvision"
+      },
+      {
+        "name": "Bori korean restaurant",
+        "phone": "0423 922 317",
+        "address": "12/17 Barrett St, Robertson QLD 4109",
+        "mapsQuery": "12/17 Barrett St, Robertson QLD 4109",
+        "website": null,
+        "detailUrl": "https://www.qldvision.com.au/upso/785?area=bne&sca=%EC%8B%9D%EB%8B%B9",
+        "category": "restaurant",
+        "source": "qldvision"
+      },
+      {
+        "name": "BOMNAL",
+        "phone": "0420 951 677",
+        "address": "7 Zamia St, Sunnybank QLD 4109",
+        "mapsQuery": "7 Zamia St, Sunnybank QLD 4109",
+        "website": null,
+        "detailUrl": "https://www.qldvision.com.au/upso/795?area=bne&sca=%EC%8B%9D%EB%8B%B9",
+        "category": "restaurant",
+        "source": "qldvision"
+      },
+      {
+        "name": "YE DANG",
+        "phone": "0413 419 689",
+        "address": "43C Dixon St, Sunnybank QLD 4109",
+        "mapsQuery": "43C Dixon St, Sunnybank QLD 4109",
+        "website": null,
+        "detailUrl": "https://www.qldvision.com.au/upso/797?area=bne&sca=%EC%8B%9D%EB%8B%B9",
+        "category": "restaurant",
+        "source": "qldvision"
+      },
+      {
+        "name": "Jokchelin Brisbane",
+        "phone": "0485 559 086",
+        "address": "Shop 36/38 Pinelands Plaza, 663 Beenleigh Rd, Sunnybank Hills QLD 4109, Australia",
+        "mapsQuery": "Shop 36/38 Pinelands Plaza, 663 Beenleigh Rd, Sunnybank Hills QLD 4109, Australia",
+        "website": null,
+        "detailUrl": "https://www.qldvision.com.au/upso/768?area=bne&sca=%EC%8B%9D%EB%8B%B9",
+        "category": "restaurant",
+        "source": "qldvision"
+      },
+      {
+        "name": "Queens Gimbap",
+        "phone": "0413 791 320",
+        "address": "11/21 Kingston Rd, Underwood QLD 4119",
+        "mapsQuery": "11/21 Kingston Rd, Underwood QLD 4119",
+        "website": null,
+        "detailUrl": "https://www.qldvision.com.au/upso/793?area=bne&sca=%EC%8B%9D%EB%8B%B9",
+        "category": "restaurant",
+        "source": "qldvision"
+      },
+      {
+        "name": "Hanseong Korean food & Chicken",
+        "phone": "0475598233",
+        "address": "Shop 1/27 Station Rd, Indooroopilly QLD 4068",
+        "mapsQuery": "Shop 1/27 Station Rd, Indooroopilly QLD 4068",
+        "website": "https://www.kausie.com/",
+        "detailUrl": "https://www.qldvision.com.au/upso/794?area=bne&sca=%EC%8B%9D%EB%8B%B9",
+        "category": "restaurant",
+        "source": "qldvision"
+      }
+    ],
+    "hair": [
+      {
+        "name": "Dreamers Beauty",
+        "phone": "0493 437 135",
+        "address": "7A/11/21 Kingston Rd, Underwood QLD 4119",
+        "mapsQuery": "7A/11/21 Kingston Rd, Underwood QLD 4119",
+        "website": null,
+        "detailUrl": "https://www.qldvision.com.au/upso/777?area=bne&sca=%EB%AF%B8%EC%9A%A9%EC%8B%A4",
+        "category": "hair",
+        "source": "qldvision"
+      }
+    ],
+    "nails": [],
+    "massage": []
+  }
+}

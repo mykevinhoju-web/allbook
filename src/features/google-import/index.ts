@@ -29,6 +29,15 @@ export {
   runKoreanBusinessDiscovery,
 } from "./run-korean-discovery";
 export type { KoreanDiscoveryQuery } from "./run-korean-discovery";
+export {
+  loadBundledKoreanDirectorySeeds,
+  runKoreanDirectoryMatch,
+} from "./run-korean-directory-match";
+export type {
+  KoreanDirectoryMatchOptions,
+  KoreanDirectorySeed,
+  KoreanDirectorySeedFile,
+} from "./run-korean-directory-match";
 export { upsertGoogleSalon } from "./upsert-google-salon";
 export type {
   GoogleImportGeoScope,
