@@ -27,6 +27,7 @@ export type KoreanDirectorySeed = {
   website: string | null;
   detailUrl: string | null;
   category: string;
+  directoryCategory?: string;
   source: string;
 };
 
@@ -117,19 +118,29 @@ async function mergeSearchKeywords(
     .eq("id", salonId);
 }
 
-async function ensureRestaurantCategory(supabase: AnySupabase) {
-  const { data } = await supabase
-    .from("business_categories")
-    .select("id")
-    .eq("slug", "restaurant")
-    .maybeSingle();
-  if (data?.id) return;
-  await supabase.from("business_categories").insert({
-    name: "Restaurant",
-    slug: "restaurant",
-    icon: "utensils",
-    sort_order: 7,
-  });
+async function ensureMarketplaceCategories(supabase: AnySupabase) {
+  const rows = [
+    { name: "Restaurant", slug: "restaurant", icon: "utensils", sort_order: 7 },
+    { name: "Mart", slug: "mart", icon: "shopping-bag", sort_order: 8 },
+    { name: "Medical", slug: "medical", icon: "stethoscope", sort_order: 9 },
+    { name: "Academy", slug: "academy", icon: "graduation-cap", sort_order: 10 },
+    {
+      name: "Entertainment",
+      slug: "entertainment",
+      icon: "music",
+      sort_order: 11,
+    },
+    { name: "Services", slug: "services", icon: "briefcase", sort_order: 12 },
+  ];
+  for (const row of rows) {
+    const { data } = await supabase
+      .from("business_categories")
+      .select("id")
+      .eq("slug", row.slug)
+      .maybeSingle();
+    if (data?.id) continue;
+    await supabase.from("business_categories").insert(row);
+  }
 }
 
 export function loadBundledKoreanDirectorySeeds(): KoreanDirectorySeedFile {
@@ -161,7 +172,7 @@ export async function runKoreanDirectoryMatch(
   const seedFile = options.seeds ?? loadBundledKoreanDirectorySeeds();
   const categoryFilter = options.categories?.map((c) => c.toLowerCase());
 
-  await ensureRestaurantCategory(supabase);
+  await ensureMarketplaceCategories(supabase);
 
   const target: GoogleImportTarget = {
     city,
@@ -199,7 +210,7 @@ export async function runKoreanDirectoryMatch(
 
     for (const seed of seeds) {
       result.queried += 1;
-      if (!seed.address) {
+      if (!seed.address && !seed.phone && !seed.name) {
         unmatched.push({
           name: seed.name,
           address: null,
@@ -209,7 +220,9 @@ export async function runKoreanDirectoryMatch(
         continue;
       }
 
-      const textQuery = `${seed.name} ${seed.address}`;
+      const textQuery = seed.address
+        ? `${seed.name} ${seed.address}`
+        : `${seed.name} Brisbane Queensland`;
       try {
         const page = await searchTextPlaces({
           textQuery,
@@ -228,15 +241,25 @@ export async function runKoreanDirectoryMatch(
             ),
           );
           if (phoneOk) chosen = phoneOk;
-          else if (
-            !phoneCompatible(
-              seed.phone,
-              chosen.nationalPhoneNumber ??
-                chosen.internationalPhoneNumber ??
-                null,
-            )
-          ) {
-            // Soft fail: still take first if name/address query was specific.
+        }
+
+        // Phone-only seeds: require phone match when possible.
+        if (!seed.address && seed.phone && chosen) {
+          const ok = phoneCompatible(
+            seed.phone,
+            chosen.nationalPhoneNumber ??
+              chosen.internationalPhoneNumber ??
+              null,
+          );
+          if (!ok) {
+            unmatched.push({
+              name: seed.name,
+              address: seed.address,
+              reason: "phone_mismatch",
+            });
+            result.skipped += 1;
+            await sleep(200);
+            continue;
           }
         }
 

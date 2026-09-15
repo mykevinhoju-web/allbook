@@ -11,6 +11,11 @@ export const MARKETPLACE_CATEGORY_SLUGS = [
   "facial",
   "waxing",
   "restaurant",
+  "mart",
+  "medical",
+  "academy",
+  "entertainment",
+  "services",
 ] as const;
 
 export type MarketplaceCategorySlug =
@@ -136,6 +141,69 @@ export const MARKETPLACE_CATEGORIES: readonly MarketplaceCategory[] = [
     heroImage:
       "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1600&q=80",
   },
+  {
+    slug: "mart",
+    label: "Mart",
+    service: "Mart",
+    resultsNoun: "Marts & Groceries",
+    headline: "Korean marts near you",
+    description: "Korean groceries, butcher shops, and specialty food stores.",
+    seoTitle: "Marts",
+    seoDescription: "Find Korean marts and grocery stores near you on AllBook.",
+    heroImage:
+      "https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=1600&q=80",
+  },
+  {
+    slug: "medical",
+    label: "Medical",
+    service: "Medical",
+    resultsNoun: "Clinics",
+    headline: "Korean-speaking clinics near you",
+    description: "Doctors, dentists, optical, and counselling services.",
+    seoTitle: "Medical",
+    seoDescription:
+      "Find Korean-speaking medical and dental clinics near you on AllBook.",
+    heroImage:
+      "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1600&q=80",
+  },
+  {
+    slug: "academy",
+    label: "Academy",
+    service: "Academy",
+    resultsNoun: "Academies",
+    headline: "Academies & lessons near you",
+    description: "Study abroad agencies, hagwons, and private lessons.",
+    seoTitle: "Academy",
+    seoDescription: "Find academies and lesson studios near you on AllBook.",
+    heroImage:
+      "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1600&q=80",
+  },
+  {
+    slug: "entertainment",
+    label: "Entertainment",
+    service: "Entertainment",
+    resultsNoun: "Entertainment",
+    headline: "Karaoke & leisure near you",
+    description: "Karaoke, billiards, sports, and leisure venues.",
+    seoTitle: "Entertainment",
+    seoDescription:
+      "Find karaoke and entertainment venues near you on AllBook.",
+    heroImage:
+      "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1600&q=80",
+  },
+  {
+    slug: "services",
+    label: "Services",
+    service: "Services",
+    resultsNoun: "Services",
+    headline: "Korean local services near you",
+    description:
+      "Lawyers, accountants, real estate, auto, cleaning, travel, and more.",
+    seoTitle: "Services",
+    seoDescription: "Find Korean local professional services near you on AllBook.",
+    heroImage:
+      "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1600&q=80",
+  },
 ] as const;
 
 /** Map primary_service / search service → category slug */
@@ -150,6 +218,11 @@ const SERVICE_TO_CATEGORY: Record<string, MarketplaceCategorySlug> = {
   Brows: "facial",
   Lashes: "facial",
   Restaurant: "restaurant",
+  Mart: "mart",
+  Medical: "medical",
+  Academy: "academy",
+  Entertainment: "entertainment",
+  Services: "services",
 };
 
 export function isMarketplaceCategorySlug(

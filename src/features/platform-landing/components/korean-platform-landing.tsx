@@ -21,9 +21,9 @@ const QUICK_MENUS = ["FREE", "예약", "내 주변", "DEAL"] as const;
 const EXAMPLE_QUERIES = [
   "써니뱅크 근처 한식당",
   "브리즈번 한인 미용실",
-  "써니뱅크에서 가까우면서 평점 4.5 이상이고 50불 이하인 미용실",
-  "오늘 5시 이후 예약 가능한 평점 좋은 미용실",
-  "브리즈번에서 가장 저렴하면서 예약 가능한 미용실",
+  "써니뱅크 병원",
+  "브리즈번 회계사",
+  "써니뱅크 노래방",
 ] as const;
 
 function wantsDeviceNearby(text: string) {

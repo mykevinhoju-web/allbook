@@ -69,6 +69,25 @@ function detectService(
   if (/한식당|한식|식당|레스토랑|\brestaurants?\b|\bkorean\s*bbq\b/.test(normalized)) {
     return { service: "Restaurant", label: "한식당" };
   }
+  if (/마트|정육|떡집|슈퍼|grocery|\bmart\b/.test(normalized)) {
+    return { service: "Mart", label: "마트" };
+  }
+  if (/병원|치과|안경|의원|클리닉|상담|치료|\bdentist\b|\bclinic\b|\bdoctor\b/.test(normalized)) {
+    return { service: "Medical", label: "병원" };
+  }
+  if (/학원|유학|레슨|과외|\bacademy\b|\btutor/.test(normalized)) {
+    return { service: "Academy", label: "학원" };
+  }
+  if (/노래방|당구|골프|스포츠|karaoke|\bbilliard/.test(normalized)) {
+    return { service: "Entertainment", label: "노래방" };
+  }
+  if (
+    /변호사|회계|부동산|정비|청소|이사|택배|여행|픽업|에어컨|전기|솔라|인테리어|통역|번역|보험|파이낸스|변호사|lawyer|accountant/.test(
+      normalized,
+    )
+  ) {
+    return { service: "Services", label: "생활서비스" };
+  }
   if (/네일|마니큐어|manicure|\bnails?\b/.test(normalized)) {
     return { service: "Nails", label: "네일" };
   }

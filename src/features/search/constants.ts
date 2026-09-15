@@ -41,6 +41,11 @@ export const SEARCH_SERVICE_FILTERS = [
   "Brows",
   "Lashes",
   "Restaurant",
+  "Mart",
+  "Medical",
+  "Academy",
+  "Entertainment",
+  "Services",
 ] as const;
 
 export type SearchServiceFilter = (typeof SEARCH_SERVICE_FILTERS)[number];
@@ -72,6 +77,11 @@ export function resolveServiceFilterValues(service: string): string[] | null {
     Lashes: ["Brows", "Lashes"],
     Brows: ["Brows", "Lashes"],
     Restaurant: ["Restaurant"],
+    Mart: ["Mart"],
+    Medical: ["Medical"],
+    Academy: ["Academy"],
+    Entertainment: ["Entertainment"],
+    Services: ["Services"],
   };
 
   return aliases[key] ?? [key];

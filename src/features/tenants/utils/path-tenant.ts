@@ -42,6 +42,11 @@ export const RESERVED_PATH_SEGMENTS = new Set([
   "staff",
   "waxing",
   "restaurant",
+  "mart",
+  "medical",
+  "academy",
+  "entertainment",
+  "services",
 ]);
 
 const TENANT_SLUG_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;

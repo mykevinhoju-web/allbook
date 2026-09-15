@@ -5,7 +5,8 @@ import { getMarketplaceCategory } from "@/features/category";
 export type PlacesCategoryMapping = {
   categorySlug: MarketplaceCategorySlug;
   primaryService: string;
-  includedType: string;
+  /** Optional Places (New) includedType — omit for broader text matching. */
+  includedType?: string;
   textNoun: string;
 };
 
@@ -57,6 +58,32 @@ const CATEGORY_MAP: Record<string, PlacesCategoryMapping> = {
     primaryService: "Restaurant",
     includedType: "restaurant",
     textNoun: "Korean restaurant",
+  },
+  mart: {
+    categorySlug: "mart",
+    primaryService: "Mart",
+    includedType: "supermarket",
+    textNoun: "Korean grocery",
+  },
+  medical: {
+    categorySlug: "medical",
+    primaryService: "Medical",
+    textNoun: "clinic",
+  },
+  academy: {
+    categorySlug: "academy",
+    primaryService: "Academy",
+    textNoun: "academy",
+  },
+  entertainment: {
+    categorySlug: "entertainment",
+    primaryService: "Entertainment",
+    textNoun: "karaoke",
+  },
+  services: {
+    categorySlug: "services",
+    primaryService: "Services",
+    textNoun: "service",
   },
 };
 
