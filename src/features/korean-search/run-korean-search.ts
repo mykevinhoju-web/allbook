@@ -112,6 +112,7 @@ export async function runKoreanSearch(
       radiusKm: intent.radiusKm,
       latitude: userOrigin?.lat,
       longitude: userOrigin?.lng,
+      keyword: "korean",
       page: 1,
       pageSize: extraFilters ? 100 : 20,
     },

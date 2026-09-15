@@ -10,6 +10,7 @@
     "lint": "eslint",
     "import:brisbane-hair": "npx tsx scripts/import-brisbane-hair.ts",
     "import:google-places": "npx tsx scripts/import-google-places.ts",
+    "import:brisbane-korean": "npx tsx scripts/import-brisbane-korean.ts",
     "import:brisbane-suburbs": "npx tsx scripts/fill-brisbane-suburbs-from-google.ts"
   },
   "dependencies": {

@@ -10,6 +10,7 @@ export const MARKETPLACE_CATEGORY_SLUGS = [
   "massage",
   "facial",
   "waxing",
+  "restaurant",
 ] as const;
 
 export type MarketplaceCategorySlug =
@@ -122,6 +123,19 @@ export const MARKETPLACE_CATEGORIES: readonly MarketplaceCategory[] = [
     heroImage:
       "https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&w=1600&q=80",
   },
+  {
+    slug: "restaurant",
+    label: "Restaurant",
+    service: "Restaurant",
+    resultsNoun: "Restaurants",
+    headline: "Restaurants near you",
+    description: "Korean and local restaurants near you.",
+    seoTitle: "Restaurants",
+    seoDescription:
+      "Find Korean and local restaurants near you on AllBook.",
+    heroImage:
+      "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1600&q=80",
+  },
 ] as const;
 
 /** Map primary_service / search service → category slug */
@@ -135,6 +149,7 @@ const SERVICE_TO_CATEGORY: Record<string, MarketplaceCategorySlug> = {
   Waxing: "waxing",
   Brows: "facial",
   Lashes: "facial",
+  Restaurant: "restaurant",
 };
 
 export function isMarketplaceCategorySlug(

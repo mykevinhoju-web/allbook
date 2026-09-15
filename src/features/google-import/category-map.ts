@@ -52,6 +52,12 @@ const CATEGORY_MAP: Record<string, PlacesCategoryMapping> = {
     includedType: "beauty_salon",
     textNoun: "waxing salon",
   },
+  restaurant: {
+    categorySlug: "restaurant",
+    primaryService: "Restaurant",
+    includedType: "restaurant",
+    textNoun: "Korean restaurant",
+  },
 };
 
 export function resolvePlacesCategoryMapping(

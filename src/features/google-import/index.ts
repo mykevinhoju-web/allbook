@@ -24,6 +24,11 @@ export {
   importSelectedGooglePlaces,
   runGoogleBusinessImport,
 } from "./run-import";
+export {
+  BRISBANE_KOREAN_DISCOVERY_QUERIES,
+  runKoreanBusinessDiscovery,
+} from "./run-korean-discovery";
+export type { KoreanDiscoveryQuery } from "./run-korean-discovery";
 export { upsertGoogleSalon } from "./upsert-google-salon";
 export type {
   GoogleImportGeoScope,

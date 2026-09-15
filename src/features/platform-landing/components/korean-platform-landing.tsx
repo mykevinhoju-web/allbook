@@ -19,11 +19,11 @@ import { KoreanSearchResults } from "./korean-search-results";
 const QUICK_MENUS = ["FREE", "예약", "내 주변", "DEAL"] as const;
 
 const EXAMPLE_QUERIES = [
+  "써니뱅크 근처 한식당",
+  "브리즈번 한인 미용실",
   "써니뱅크에서 가까우면서 평점 4.5 이상이고 50불 이하인 미용실",
   "오늘 5시 이후 예약 가능한 평점 좋은 미용실",
   "브리즈번에서 가장 저렴하면서 예약 가능한 미용실",
-  "싼 미용실 찾아줘",
-  "Sunnybank 근처 미용실",
 ] as const;
 
 function wantsNearby(text: string) {
@@ -149,9 +149,14 @@ export function KoreanPlatformLanding() {
         />
 
         {!hasResults ? (
-          <h1 className="text-center text-2xl font-semibold tracking-tight text-neutral-900 sm:text-[1.75rem]">
-            무엇을 찾고 계세요?
-          </h1>
+          <>
+            <h1 className="text-center text-2xl font-semibold tracking-tight text-neutral-900 sm:text-[1.75rem]">
+              무엇을 찾고 계세요?
+            </h1>
+            <p className="mt-2 text-center text-sm text-neutral-500">
+              지금은 브리즈번만 지원합니다
+            </p>
+          </>
         ) : null}
 
         <form onSubmit={onSearch} className={`w-full ${hasResults ? "mt-0" : "mt-7 sm:mt-8"}`}>
@@ -171,7 +176,7 @@ export function KoreanPlatformLanding() {
               onChange={(event) => setQuery(event.target.value)}
               enterKeyHint="search"
               autoComplete="off"
-              placeholder="싼 미용실 찾아줘"
+              placeholder="써니뱅크 한식당 / 미용실"
               className="h-11 border-0 bg-transparent px-1 text-base shadow-none focus-visible:border-0 focus-visible:ring-0 md:h-12 md:text-base dark:bg-transparent"
             />
             <Button

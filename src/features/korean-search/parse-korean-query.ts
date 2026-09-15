@@ -27,6 +27,12 @@ export type KoreanSearchCriterionChip = {
   value: string;
 };
 
+const DEFAULT_LOCATION = "Brisbane City";
+
+/** Other AU cities are hidden for kor v1 (Brisbane-only). */
+const OTHER_CITY_PATTERN =
+  /시드니|sydney|멜버른|melbourne|퍼스|perth|애들레이드|adelaide|캔버라|canberra|골드코스트|gold\s*coast|호바트|hobart|다윈|darwin/i;
+
 const SUBURB_ALIASES: Array<{ pattern: RegExp; location: string }> = [
   { pattern: /브리즈번|브리스번|\bbrisbane\b/i, location: "Brisbane City" },
   {
@@ -58,6 +64,9 @@ function brisbaneTodayIso(daysFromToday = 0): string {
 function detectService(
   normalized: string,
 ): { service: string; label: string } | null {
+  if (/한식당|한식|식당|레스토랑|\brestaurants?\b|\bkorean\s*bbq\b/.test(normalized)) {
+    return { service: "Restaurant", label: "한식당" };
+  }
   if (/네일|마니큐어|manicure|\bnails?\b/.test(normalized)) {
     return { service: "Nails", label: "네일" };
   }
@@ -248,7 +257,7 @@ export function formatKoreanSearchCriteria(
 
 /**
  * Rule-based Korean query parser. Combines all matched filters.
- * Missing fields stay empty — no guessed suburbs or star cutoffs.
+ * kor v1 is Brisbane-only: default location Brisbane City; other cities are ignored.
  */
 export function parseKoreanQuery(rawQuery: string): KoreanSearchIntent {
   const query = rawQuery.trim();
@@ -256,7 +265,9 @@ export function parseKoreanQuery(rawQuery: string): KoreanSearchIntent {
   const notes: string[] = [];
 
   const serviceHit = detectService(normalized);
-  const location = detectLocation(query) ?? "";
+  const otherCity = OTHER_CITY_PATTERN.test(query);
+  const detectedLocation = detectLocation(query);
+  const location = detectedLocation || DEFAULT_LOCATION;
   const near = detectNearby(normalized);
   const priceLow = detectPriceLow(normalized);
   const minRating = detectMinRating(normalized);
@@ -267,7 +278,10 @@ export function parseKoreanQuery(rawQuery: string): KoreanSearchIntent {
   const timeAfter = detectTimeAfter(normalized);
 
   if (serviceHit) notes.push(`업종: ${serviceHit.label}`);
-  if (location) notes.push(`지역: ${location}`);
+  notes.push(`지역: ${location}`);
+  if (otherCity) {
+    notes.push("지금은 브리즈번만 지원합니다");
+  }
   if (near) notes.push("거리: 가까운 순");
   if (minRating != null) notes.push(`최소 평점: ${minRating} 이상`);
   else if (ratingHigh) notes.push("평점: 높은 순");
@@ -280,7 +294,7 @@ export function parseKoreanQuery(rawQuery: string): KoreanSearchIntent {
   let sort: SearchSort = "distance";
   let radiusKm: SearchDistanceKm = 20;
 
-  if (near || location) {
+  if (near || detectedLocation) {
     radiusKm = 10;
   }
 
@@ -290,7 +304,7 @@ export function parseKoreanQuery(rawQuery: string): KoreanSearchIntent {
     sort = "price";
   } else if (ratingHigh || minRating != null) {
     sort = "rating";
-  } else if (location) {
+  } else {
     sort = "distance";
   }
 
