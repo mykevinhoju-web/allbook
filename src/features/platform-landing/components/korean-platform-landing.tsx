@@ -26,8 +26,18 @@ const EXAMPLE_QUERIES = [
   "브리즈번에서 가장 저렴하면서 예약 가능한 미용실",
 ] as const;
 
-function wantsNearby(text: string) {
-  return /가까운|근처|내 주변|가까이|near me|nearby|closest/i.test(text);
+function wantsDeviceNearby(text: string) {
+  // Named suburb/city → search around that place, not the phone GPS.
+  if (
+    /서니뱅크|써니뱅크|sunnybank|브리즈번|브리스번|brisbane|인두루|indooroopilly|처머사이드|chermside|뉴팜|new farm|포티튜드|fortitude/i.test(
+      text,
+    )
+  ) {
+    return false;
+  }
+  return /가까운|가까우면서|근처|내 주변|가까이|near me|nearby|closest/i.test(
+    text,
+  );
 }
 
 function requestBrowserOrigin(): Promise<KoreanSearchOrigin | null> {
@@ -68,7 +78,7 @@ export function KoreanPlatformLanding() {
     setBusy(true);
     setError(null);
     try {
-      const geo = wantsNearby(q) ? await requestBrowserOrigin() : null;
+      const geo = wantsDeviceNearby(q) ? await requestBrowserOrigin() : null;
       const response = await fetch("/api/kor/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -230,7 +240,14 @@ export function KoreanPlatformLanding() {
 
         {results ? (
           <section className="mt-8 w-full" aria-live="polite">
-            <p className="text-sm text-neutral-500">{total}곳</p>
+            <p className="text-sm font-medium text-neutral-700">
+              {total}곳 찾음
+              {total > 3 ? (
+                <span className="ml-2 font-normal text-neutral-500">
+                  · 아래로 스크롤하면 더 있어요
+                </span>
+              ) : null}
+            </p>
             {intent ? (
               <ul className="mt-2 flex flex-wrap gap-2">
                 {formatKoreanSearchCriteria(intent).map((chip) => (

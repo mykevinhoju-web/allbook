@@ -97,11 +97,8 @@ export async function runKoreanSearch(
   };
 
   const supabase = await createClient();
-  const extraFilters =
-    bookableOnly ||
-    intent.maxPrice != null ||
-    intent.minRating != null ||
-    hasDate;
+  // Named suburb/city wins over device GPS ("써니뱅크 근처" ≠ "내 GPS 근처").
+  const effectiveOrigin = intent.locationExplicit ? null : userOrigin ?? null;
   const result = await searchSalons(
     supabase,
     {
@@ -110,23 +107,26 @@ export async function runKoreanSearch(
       sort: intent.sort,
       minRating: intent.minRating,
       radiusKm: intent.radiusKm,
-      latitude: userOrigin?.lat,
-      longitude: userOrigin?.lng,
+      latitude: effectiveOrigin?.lat,
+      longitude: effectiveOrigin?.lng,
       keyword: "korean",
       page: 1,
-      pageSize: extraFilters ? 100 : 20,
+      pageSize: 100,
     },
     { skipGoogleFill: true },
   );
 
+  const sourceSalons =
+    result.mapSalons.length > 0 ? result.mapSalons : result.salons;
+
   const bookingById = await loadBookingEnabledById(
     supabase,
-    result.salons.map((salon) => salon.id),
+    sourceSalons.map((salon) => salon.id),
   );
 
   const funnel: KoreanSearchFunnelStep[] = [];
 
-  let results: KoreanSearchHit[] = result.salons
+  let results: KoreanSearchHit[] = sourceSalons
     .filter(
       (salon) =>
         Number.isFinite(salon.latitude) && Number.isFinite(salon.longitude),

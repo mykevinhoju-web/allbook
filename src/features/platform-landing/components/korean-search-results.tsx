@@ -154,7 +154,7 @@ export function KoreanSearchResults({
         )}
       </div>
 
-      <div className="sticky top-4 h-[min(70vh,560px)] min-h-[280px]">
+      <div className="mt-6 h-[240px] lg:sticky lg:top-4 lg:mt-0 lg:h-[min(70vh,560px)] lg:min-h-[280px]">
         <GoogleMap
           salons={salons}
           selectedId={selectedId}

@@ -6,6 +6,8 @@ export type KoreanSearchIntent = {
   service: string;
   serviceLabel: string | null;
   location: string;
+  /** True when the query named a suburb/city (not the Brisbane default). */
+  locationExplicit: boolean;
   sort: SearchSort;
   minRating: number | null;
   maxPrice: number | null;
@@ -267,6 +269,7 @@ export function parseKoreanQuery(rawQuery: string): KoreanSearchIntent {
   const serviceHit = detectService(normalized);
   const otherCity = OTHER_CITY_PATTERN.test(query);
   const detectedLocation = detectLocation(query);
+  const locationExplicit = Boolean(detectedLocation);
   const location = detectedLocation || DEFAULT_LOCATION;
   const near = detectNearby(normalized);
   const priceLow = detectPriceLow(normalized);
@@ -294,7 +297,7 @@ export function parseKoreanQuery(rawQuery: string): KoreanSearchIntent {
   let sort: SearchSort = "distance";
   let radiusKm: SearchDistanceKm = 20;
 
-  if (near || detectedLocation) {
+  if (near || locationExplicit) {
     radiusKm = 10;
   }
 
@@ -313,6 +316,7 @@ export function parseKoreanQuery(rawQuery: string): KoreanSearchIntent {
     service: serviceHit?.service ?? "",
     serviceLabel: serviceHit?.label ?? null,
     location,
+    locationExplicit,
     sort,
     minRating,
     maxPrice,
