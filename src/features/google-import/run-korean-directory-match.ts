@@ -1,4 +1,5 @@
-import seedFileJson from "./data/brisbane-korean-directory-seeds.json";
+import qldvisionSeedFileJson from "./data/brisbane-korean-directory-seeds.json";
+import sundayweeklySeedFileJson from "./data/sundayweekly-qld-directory-seeds.json";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/types/database";
@@ -29,6 +30,7 @@ export type KoreanDirectorySeed = {
   category: string;
   directoryCategory?: string;
   source: string;
+  confidence?: string | null;
 };
 
 export type KoreanDirectorySeedFile = {
@@ -39,6 +41,8 @@ export type KoreanDirectorySeedFile = {
   categories: Record<string, KoreanDirectorySeed[]>;
 };
 
+export type KoreanDirectorySeedBundle = "qldvision" | "sundayweekly";
+
 export type KoreanDirectoryMatchOptions = {
   categories?: string[];
   dryRun?: boolean;
@@ -47,6 +51,11 @@ export type KoreanDirectoryMatchOptions = {
   state?: string;
   country?: string;
   seeds?: KoreanDirectorySeedFile;
+  /** Which bundled seed file to use when `seeds` is omitted. */
+  seedBundle?: KoreanDirectorySeedBundle;
+  /** Slice seeds inside each selected category (for Vercel time limits). */
+  limit?: number;
+  offset?: number;
 };
 
 function digits(value: string | null | undefined) {
@@ -143,13 +152,18 @@ async function ensureMarketplaceCategories(supabase: AnySupabase) {
   }
 }
 
-export function loadBundledKoreanDirectorySeeds(): KoreanDirectorySeedFile {
-  return seedFileJson as KoreanDirectorySeedFile;
+export function loadBundledKoreanDirectorySeeds(
+  bundle: KoreanDirectorySeedBundle = "qldvision",
+): KoreanDirectorySeedFile {
+  if (bundle === "sundayweekly") {
+    return sundayweeklySeedFileJson as KoreanDirectorySeedFile;
+  }
+  return qldvisionSeedFileJson as KoreanDirectorySeedFile;
 }
 
 /**
- * Match QLDVision-style directory seeds to Google Places, then upsert.
- * Only seeds with addresses are matched (Maps-linkable).
+ * Match directory seeds (QLDVision / Sunday Weekly) to Google Places, then upsert.
+ * Phone-only seeds require a phone match before address/geo is trusted.
  */
 export async function runKoreanDirectoryMatch(
   supabase: AnySupabase,
@@ -162,6 +176,9 @@ export async function runKoreanDirectoryMatch(
       string,
       { seeds: number; matched: number; inserted: number; updated: number }
     >;
+    seedBundle: KoreanDirectorySeedBundle;
+    offset: number;
+    limit: number | null;
   }
 > {
   const city = options.city ?? "Brisbane";
@@ -169,8 +186,15 @@ export async function runKoreanDirectoryMatch(
   const country = options.country ?? "Australia";
   const dryRun = Boolean(options.dryRun);
   const maxPhotos = options.maxPhotos ?? 4;
-  const seedFile = options.seeds ?? loadBundledKoreanDirectorySeeds();
+  const seedBundle = options.seedBundle ?? "qldvision";
+  const seedFile =
+    options.seeds ?? loadBundledKoreanDirectorySeeds(seedBundle);
   const categoryFilter = options.categories?.map((c) => c.toLowerCase());
+  const offset = Math.max(0, options.offset ?? 0);
+  const limit =
+    options.limit != null && Number.isFinite(options.limit)
+      ? Math.max(1, Math.floor(options.limit))
+      : null;
 
   await ensureMarketplaceCategories(supabase);
 
@@ -178,7 +202,7 @@ export async function runKoreanDirectoryMatch(
     city,
     state,
     country,
-    category: "korean-directory",
+    category: `korean-directory:${seedBundle}`,
     scope: "city",
   };
   const result = emptyResult(target);
@@ -199,7 +223,10 @@ export async function runKoreanDirectoryMatch(
     return categoryFilter.includes(cat.toLowerCase());
   });
 
-  for (const [category, seeds] of entries) {
+  for (const [category, allSeeds] of entries) {
+    const seeds = limit
+      ? allSeeds.slice(offset, offset + limit)
+      : allSeeds.slice(offset);
     byCategory[category] = {
       seeds: seeds.length,
       matched: 0,
@@ -214,26 +241,30 @@ export async function runKoreanDirectoryMatch(
         unmatched.push({
           name: seed.name,
           address: null,
-          reason: "missing_address",
+          reason: "missing_contact",
         });
         result.skipped += 1;
         continue;
       }
 
+      const phoneOnly = !seed.address && Boolean(seed.phone);
       const textQuery = seed.address
         ? `${seed.name} ${seed.address}`
-        : `${seed.name} Brisbane Queensland`;
+        : seedBundle === "sundayweekly"
+          ? `${seed.name} Queensland Australia`
+          : `${seed.name} Brisbane Queensland`;
       try {
+        // Phone-only: omit includedType so Places can match across types.
         const page = await searchTextPlaces({
           textQuery,
-          pageSize: 5,
+          pageSize: 8,
           regionCode: "AU",
-          includedType: mapping.includedType,
+          includedType: phoneOnly ? undefined : mapping.includedType,
         });
         const candidates = page.places ?? [];
         let chosen = candidates[0] ?? null;
 
-        if (chosen && seed.phone) {
+        if (seed.phone) {
           const phoneOk = candidates.find((p) =>
             phoneCompatible(
               seed.phone,
@@ -243,8 +274,8 @@ export async function runKoreanDirectoryMatch(
           if (phoneOk) chosen = phoneOk;
         }
 
-        // Phone-only seeds: require phone match when possible.
-        if (!seed.address && seed.phone && chosen) {
+        // Phone-only seeds: require phone match.
+        if (phoneOnly && chosen) {
           const ok = phoneCompatible(
             seed.phone,
             chosen.nationalPhoneNumber ??
@@ -258,7 +289,7 @@ export async function runKoreanDirectoryMatch(
               reason: "phone_mismatch",
             });
             result.skipped += 1;
-            await sleep(200);
+            await sleep(180);
             continue;
           }
         }
@@ -270,14 +301,14 @@ export async function runKoreanDirectoryMatch(
             reason: "no_places_match",
           });
           result.skipped += 1;
-          await sleep(200);
+          await sleep(180);
           continue;
         }
 
         const placeId = chosen.id.replace(/^places\//, "");
         if (seenPlaceIds.has(placeId)) {
           result.skipped += 1;
-          await sleep(120);
+          await sleep(100);
           continue;
         }
         seenPlaceIds.add(placeId);
@@ -315,7 +346,13 @@ export async function runKoreanDirectoryMatch(
           if (upsert.action === "inserted") byCategory[category]!.inserted += 1;
           if (upsert.action === "updated") byCategory[category]!.updated += 1;
           if (upsert.salonId && upsert.action !== "failed") {
-            await mergeSearchKeywords(supabase, upsert.salonId, ["korean"]);
+            await mergeSearchKeywords(
+              supabase,
+              upsert.salonId,
+              seedBundle === "sundayweekly"
+                ? ["korean", "sundayweekly"]
+                : ["korean"],
+            );
           }
         }
       } catch (error) {
@@ -330,10 +367,18 @@ export async function runKoreanDirectoryMatch(
         result.errors.push(`${seed.name}: ${message}`);
       }
 
-      await sleep(250);
+      await sleep(220);
     }
   }
 
   result.cellsProcessed = entries.length;
-  return { ...result, matched, unmatched, byCategory };
+  return {
+    ...result,
+    matched,
+    unmatched,
+    byCategory,
+    seedBundle,
+    offset,
+    limit,
+  };
 }

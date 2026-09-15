@@ -36,6 +36,7 @@ export {
 export type {
   KoreanDirectoryMatchOptions,
   KoreanDirectorySeed,
+  KoreanDirectorySeedBundle,
   KoreanDirectorySeedFile,
 } from "./run-korean-directory-match";
 export { upsertGoogleSalon } from "./upsert-google-salon";

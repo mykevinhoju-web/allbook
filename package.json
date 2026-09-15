@@ -13,6 +13,7 @@
     "import:brisbane-korean": "npx tsx scripts/import-brisbane-korean.ts",
     "import:korean-directory": "npx tsx scripts/import-korean-directory.ts",
     "parse:qldvision-directory": "npx tsx scripts/parse-qldvision-directory.ts",
+    "parse:sundayweekly-csv": "npx tsx scripts/parse-sundayweekly-csv.ts",
     "import:brisbane-suburbs": "npx tsx scripts/fill-brisbane-suburbs-from-google.ts"
   },
   "dependencies": {

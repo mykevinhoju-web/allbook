@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { runKoreanDirectoryMatch } from "@/features/google-import/run-korean-directory-match";
+import {
+  runKoreanDirectoryMatch,
+  type KoreanDirectorySeedBundle,
+} from "@/features/google-import/run-korean-directory-match";
 import {
   PlatformAuthError,
   requirePlatformAdmin,
@@ -11,8 +14,13 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 /**
- * Match QLDVision Brisbane directory seeds → Google Places → salons upsert.
+ * Match directory seeds → Google Places → salons upsert.
  * Auth: platform admin session OR Bearer MAINTENANCE_TOKEN.
+ *
+ * body:
+ *  - seedBundle: qldvision | sundayweekly (default qldvision)
+ *  - categories: string[]
+ *  - limit / offset: batching for large seed files
  */
 export async function POST(request: Request) {
   try {
@@ -25,16 +33,22 @@ export async function POST(request: Request) {
     }
 
     const body = (await request.json().catch(() => ({}))) as {
+      seedBundle?: KoreanDirectorySeedBundle;
       categories?: string[];
       dryRun?: boolean;
       maxPhotos?: number;
+      limit?: number;
+      offset?: number;
     };
 
     const supabase = createServiceSupabase();
     const result = await runKoreanDirectoryMatch(supabase, {
+      seedBundle: body.seedBundle ?? "qldvision",
       categories: body.categories,
       dryRun: body.dryRun,
       maxPhotos: body.maxPhotos,
+      limit: body.limit,
+      offset: body.offset,
     });
 
     return NextResponse.json(result);

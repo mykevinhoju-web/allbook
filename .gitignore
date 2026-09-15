@@ -49,3 +49,5 @@ tmp/
 # Local QLDVision HTML scrapes (seeds JSON lives under src/features/google-import/data)
 data/korean-directory/*.html
 data/korean-directory/brisbane-seeds.json
+data/korean-directory/sundayweekly*.csv
+data/korean-directory/sundayweekly-qld-seeds.json
