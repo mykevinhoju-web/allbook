@@ -28,6 +28,11 @@ export async function POST(request: Request) {
       maxPages?: number;
       pageSize?: number;
       dryRun?: boolean;
+      queries?: Array<{
+        textQuery: string;
+        category: string;
+        includedType?: string;
+      }>;
     };
 
     const supabase = createServiceSupabase();
@@ -38,6 +43,7 @@ export async function POST(request: Request) {
       maxPages: body.maxPages ?? 3,
       pageSize: body.pageSize ?? 20,
       dryRun: body.dryRun,
+      queries: body.queries,
     });
 
     return NextResponse.json(result);

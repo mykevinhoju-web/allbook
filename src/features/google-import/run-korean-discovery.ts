@@ -56,6 +56,27 @@ export const BRISBANE_KOREAN_DISCOVERY_QUERIES: KoreanDiscoveryQuery[] = [
     category: "restaurant",
     includedType: "restaurant",
   },
+  // Sunnybank corridor — major Korean dining hub; city-wide queries under-fill it.
+  {
+    textQuery: "Korean restaurant Sunnybank",
+    category: "restaurant",
+    includedType: "restaurant",
+  },
+  {
+    textQuery: "한식당 Sunnybank",
+    category: "restaurant",
+    includedType: "restaurant",
+  },
+  {
+    textQuery: "Korean BBQ Sunnybank",
+    category: "restaurant",
+    includedType: "restaurant",
+  },
+  {
+    textQuery: "Korean restaurant Sunnybank Hills",
+    category: "restaurant",
+    includedType: "restaurant",
+  },
 ];
 
 async function ensureRestaurantCategory(supabase: AnySupabase): Promise<void> {
