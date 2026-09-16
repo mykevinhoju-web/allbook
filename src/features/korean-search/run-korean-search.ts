@@ -98,8 +98,10 @@ export async function runKoreanSearch(
   };
 
   const supabase = await createClient();
-  // Named suburb/city wins over device GPS ("써니뱅크 근처" ≠ "내 GPS 근처").
-  const effectiveOrigin = intent.locationExplicit ? null : userOrigin ?? null;
+  // Named suburb wins over device GPS. Metro / default never uses GPS unless
+  // the query asked for nearby ("근처" / "내 주변").
+  const effectiveOrigin =
+    intent.near && !intent.locationExplicit ? userOrigin ?? null : null;
   const result = await searchSalons(
     supabase,
     {

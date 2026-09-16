@@ -6,8 +6,13 @@ export type KoreanSearchIntent = {
   service: string;
   serviceLabel: string | null;
   location: string;
-  /** True when the query named a suburb/city (not the Brisbane default). */
+  /**
+   * True when the query named a specific suburb (e.g. Sunnybank).
+   * False for default / “브리즈번” metro-wide searches.
+   */
   locationExplicit: boolean;
+  /** Greater-Brisbane search (default or named 브리즈번) — not a single suburb. */
+  metroWide: boolean;
   sort: SearchSort;
   minRating: number | null;
   maxPrice: number | null;
@@ -29,20 +34,58 @@ export type KoreanSearchCriterionChip = {
   value: string;
 };
 
-const DEFAULT_LOCATION = "Brisbane City";
+/** Greater Brisbane metro — not CBD-only. */
+const DEFAULT_LOCATION = "Brisbane";
+const METRO_RADIUS_KM: SearchDistanceKm = 50;
+const SUBURB_RADIUS_KM: SearchDistanceKm = 10;
 
 /** Other AU cities are hidden for kor v1 (Brisbane-only). */
 const OTHER_CITY_PATTERN =
   /시드니|sydney|멜버른|melbourne|퍼스|perth|애들레이드|adelaide|캔버라|canberra|골드코스트|gold\s*coast|호바트|hobart|다윈|darwin/i;
 
-const SUBURB_ALIASES: Array<{ pattern: RegExp; location: string }> = [
-  { pattern: /브리즈번|브리스번|\bbrisbane\b/i, location: "Brisbane City" },
+type LocationHit = {
+  location: string;
+  /** suburb = named locality; metro = all of Brisbane */
+  scope: "suburb" | "metro";
+};
+
+const LOCATION_ALIASES: Array<{ pattern: RegExp } & LocationHit> = [
+  {
+    pattern: /브리즈번|브리스번|\bbrisbane\b/i,
+    location: "Brisbane",
+    scope: "metro",
+  },
   {
     pattern: /서니뱅크\s*힐스|써니뱅크\s*힐스|sunnybank\s*hills/i,
     location: "Sunnybank Hills",
+    scope: "suburb",
   },
-  { pattern: /서니뱅크|써니뱅크|\bsunnybank\b/i, location: "Sunnybank" },
+  {
+    pattern: /서니뱅크|써니뱅크|\bsunnybank\b/i,
+    location: "Sunnybank",
+    scope: "suburb",
+  },
 ];
+
+function detectLocation(query: string): LocationHit | null {
+  for (const alias of LOCATION_ALIASES) {
+    if (alias.pattern.test(query)) {
+      return { location: alias.location, scope: alias.scope };
+    }
+  }
+  // Longer suburb names first (Sunnybank Hills before Sunnybank).
+  const names = [...BRISBANE_SUBURB_NAMES].sort((a, b) => b.length - a.length);
+  const lower = query.toLowerCase();
+  for (const name of names) {
+    if (name.length < 3) continue;
+    if (!lower.includes(name.toLowerCase())) continue;
+    if (/^brisbane(\s*city)?$/i.test(name)) {
+      return { location: "Brisbane", scope: "metro" };
+    }
+    return { location: name, scope: "suburb" };
+  }
+  return null;
+}
 
 function brisbaneTodayIso(daysFromToday = 0): string {
   const now = new Date();
@@ -111,24 +154,6 @@ function detectService(
   }
   if (/미용|헤어|머리|한인\s*미용|\bhair\b|salon/.test(normalized)) {
     return { service: "Hair", label: "미용실" };
-  }
-  return null;
-}
-
-function detectLocation(text: string): string | null {
-  for (const alias of SUBURB_ALIASES) {
-    if (alias.pattern.test(text)) {
-      return alias.location;
-    }
-  }
-
-  const lower = text.toLowerCase();
-  const names = [...BRISBANE_SUBURB_NAMES].sort((a, b) => b.length - a.length);
-  for (const name of names) {
-    if (name.length < 3) continue;
-    if (lower.includes(name.toLowerCase())) {
-      return name;
-    }
   }
   return null;
 }
@@ -233,7 +258,11 @@ export function formatKoreanSearchCriteria(
     chips.push({ key: "service", label: "업종", value: intent.serviceLabel });
   }
   if (intent.location) {
-    chips.push({ key: "location", label: "지역", value: intent.location });
+    chips.push({
+      key: "location",
+      label: "지역",
+      value: intent.metroWide ? "브리즈번 전체" : intent.location,
+    });
   }
   if (intent.near) {
     chips.push({ key: "distance", label: "거리", value: "가까운 순" });
@@ -278,7 +307,7 @@ export function formatKoreanSearchCriteria(
 
 /**
  * Rule-based Korean query parser. Combines all matched filters.
- * kor v1 is Brisbane-only: default location Brisbane City; other cities are ignored.
+ * kor v1 is Brisbane-only: default is greater Brisbane metro (not CBD-only).
  */
 export function parseKoreanQuery(rawQuery: string): KoreanSearchIntent {
   const query = rawQuery.trim();
@@ -287,9 +316,10 @@ export function parseKoreanQuery(rawQuery: string): KoreanSearchIntent {
 
   const serviceHit = detectService(normalized);
   const otherCity = OTHER_CITY_PATTERN.test(query);
-  const detectedLocation = detectLocation(query);
-  const locationExplicit = Boolean(detectedLocation);
-  const location = detectedLocation || DEFAULT_LOCATION;
+  const detected = detectLocation(query);
+  const metroWide = !detected || detected.scope === "metro";
+  const locationExplicit = detected?.scope === "suburb";
+  const location = detected?.location ?? DEFAULT_LOCATION;
   const near = detectNearby(normalized);
   const priceLow = detectPriceLow(normalized);
   const minRating = detectMinRating(normalized);
@@ -300,7 +330,9 @@ export function parseKoreanQuery(rawQuery: string): KoreanSearchIntent {
   const timeAfter = detectTimeAfter(normalized);
 
   if (serviceHit) notes.push(`업종: ${serviceHit.label}`);
-  notes.push(`지역: ${location}`);
+  notes.push(
+    metroWide ? "지역: 브리즈번 전체" : `지역: ${location}`,
+  );
   if (otherCity) {
     notes.push("지금은 브리즈번만 지원합니다");
   }
@@ -314,14 +346,16 @@ export function parseKoreanQuery(rawQuery: string): KoreanSearchIntent {
   if (timeAfter) notes.push(`시간: ${timeAfter} 이후`);
 
   let sort: SearchSort = "distance";
-  let radiusKm: SearchDistanceKm = 20;
-
-  if (near || locationExplicit) {
-    radiusKm = 10;
-  }
+  // Metro default / “브리즈번 …” → whole city. Named suburb → local radius.
+  let radiusKm: SearchDistanceKm = metroWide
+    ? METRO_RADIUS_KM
+    : near || locationExplicit
+      ? SUBURB_RADIUS_KM
+      : 20;
 
   if (near) {
     sort = "distance";
+    if (!metroWide) radiusKm = SUBURB_RADIUS_KM;
   } else if (priceLow || maxPrice != null) {
     sort = "price";
   } else if (ratingHigh || minRating != null) {
@@ -336,6 +370,7 @@ export function parseKoreanQuery(rawQuery: string): KoreanSearchIntent {
     serviceLabel: serviceHit?.label ?? null,
     location,
     locationExplicit,
+    metroWide,
     sort,
     minRating,
     maxPrice,

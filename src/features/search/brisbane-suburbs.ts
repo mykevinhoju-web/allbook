@@ -11,6 +11,8 @@ export type BrisbaneSuburb = {
 };
 
 export const BRISBANE_SUBURBS: readonly BrisbaneSuburb[] = [
+  // Metro anchor for kor “브리즈번 전체” (CBD + 50km covers Greater Brisbane).
+  { name: "Brisbane", postcode: "4000", latitude: -27.4705, longitude: 153.026 },
   { name: "Brisbane City", postcode: "4000", latitude: -27.4705, longitude: 153.026 },
   { name: "Spring Hill", postcode: "4000", latitude: -27.4614, longitude: 153.024 },
   { name: "Fortitude Valley", postcode: "4006", latitude: -27.457, longitude: 153.035 },
