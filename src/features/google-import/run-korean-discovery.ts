@@ -109,6 +109,8 @@ export const BRISBANE_KOREAN_MART_QUERIES: KoreanDiscoveryQuery[] = [
   { textQuery: "Hoju Mart Brisbane", category: "mart" },
   { textQuery: "K Fresh Mart Brisbane", category: "mart" },
   { textQuery: "K Fresh Mart Sunnybank", category: "mart" },
+  { textQuery: "K Fresh Mart Stafford Heights Rode Road", category: "mart" },
+  { textQuery: "K Fresh mart Chermside Stafford Heights", category: "mart" },
   { textQuery: "Moamart Brisbane", category: "mart" },
   { textQuery: "Good Morning Mart Brisbane", category: "mart" },
   { textQuery: "Lucky Mart Eight Mile Plains", category: "mart" },

@@ -22,7 +22,7 @@ const POSITIVE_NAME_RE =
 
 /** Directory / verified seed provenance tags. */
 const VERIFIED_KEYWORD_RE =
-  /^(sundayweekly|qldvision|korean_verified|hanaromart)$/i;
+  /^(sundayweekly|qldvision|korean_verified|hanaromart|kfresh)$/i;
 
 /**
  * Non-Korean cuisine / venue cues.

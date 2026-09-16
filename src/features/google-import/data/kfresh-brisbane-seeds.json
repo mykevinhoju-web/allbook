@@ -1,0 +1,46 @@
+{
+  "source": "kfresh-official",
+  "generatedAt": "2026-03-26",
+  "scope": "brisbane-metro",
+  "counts": { "mart": 3 },
+  "categories": {
+    "mart": [
+      {
+        "name": "K Fresh mart Chermside",
+        "phone": null,
+        "address": "Shop 2/734 Rode Rd, Stafford Heights QLD 4053",
+        "mapsQuery": "K Fresh Mart 734 Rode Rd Stafford Heights",
+        "website": null,
+        "detailUrl": null,
+        "category": "mart",
+        "directoryCategory": "K Fresh",
+        "source": "kfresh",
+        "confidence": "확인"
+      },
+      {
+        "name": "K Fresh mart Brisbane City",
+        "phone": null,
+        "address": "Brisbane City QLD 4000",
+        "mapsQuery": "K Fresh mart Brisbane City",
+        "website": null,
+        "detailUrl": null,
+        "category": "mart",
+        "directoryCategory": "K Fresh",
+        "source": "kfresh",
+        "confidence": "확인"
+      },
+      {
+        "name": "K Fresh mart Sunnybank hills",
+        "phone": null,
+        "address": "Shop 59-63 Sunnybank Hills Shoppingtown, 661 Compton Rd, Sunnybank Hills QLD 4109",
+        "mapsQuery": "K Fresh Mart Sunnybank Hills Shoppingtown Compton Road",
+        "website": "https://kfreshmall.com.au/",
+        "detailUrl": null,
+        "category": "mart",
+        "directoryCategory": "K Fresh",
+        "source": "kfresh",
+        "confidence": "확인"
+      }
+    ]
+  }
+}

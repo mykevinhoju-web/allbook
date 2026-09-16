@@ -1,5 +1,6 @@
 import qldvisionSeedFileJson from "./data/brisbane-korean-directory-seeds.json";
 import hanaromartSeedFileJson from "./data/hanaromart-brisbane-seeds.json";
+import kfreshSeedFileJson from "./data/kfresh-brisbane-seeds.json";
 import sundayweeklySeedFileJson from "./data/sundayweekly-qld-directory-seeds.json";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -47,7 +48,8 @@ export type KoreanDirectorySeedFile = {
 export type KoreanDirectorySeedBundle =
   | "qldvision"
   | "sundayweekly"
-  | "hanaromart";
+  | "hanaromart"
+  | "kfresh";
 
 export type KoreanDirectoryMatchOptions = {
   categories?: string[];
@@ -166,6 +168,9 @@ export function loadBundledKoreanDirectorySeeds(
   }
   if (bundle === "hanaromart") {
     return hanaromartSeedFileJson as KoreanDirectorySeedFile;
+  }
+  if (bundle === "kfresh") {
+    return kfreshSeedFileJson as KoreanDirectorySeedFile;
   }
   return qldvisionSeedFileJson as KoreanDirectorySeedFile;
 }
@@ -293,6 +298,12 @@ export async function runKoreanDirectoryMatch(
           if (/woolworths|coles|aldi|costco|\biga\b/.test(n)) return false;
           if (seedTokens.some((t) => n.includes(t))) return true;
           if (/hanaro/.test(seedNameKey) && /hanaro/.test(n)) return true;
+          if (
+            /k\s*fresh|kfresh/.test(seedNameKey) &&
+            /k\s*-?\s*fresh|kfresh/.test(n)
+          ) {
+            return true;
+          }
           return false;
         });
         if (nameMatched) chosen = nameMatched;
@@ -399,7 +410,9 @@ export async function runKoreanDirectoryMatch(
                 ? ["sundayweekly"]
                 : seedBundle === "hanaromart"
                   ? ["hanaromart", "korean_verified"]
-                  : ["qldvision"];
+                  : seedBundle === "kfresh"
+                    ? ["kfresh", "korean_verified"]
+                    : ["qldvision"];
             const tagKorean = shouldTagKoreanKeyword({
               name: snapshot.name,
               suburb: snapshot.suburb,
