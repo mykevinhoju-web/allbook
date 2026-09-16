@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/types/database";
 
+import { shouldTagKoreanKeyword } from "@/features/korean-search/korean-relevance";
+
 import { resolvePlacesCategoryMapping } from "./category-map";
 import { mapPlaceToSnapshot } from "./map-place";
 import {
@@ -192,7 +194,7 @@ function tally(
 
 /**
  * Discover + upsert Korean businesses with custom Places text queries.
- * Tags every successful row with search_keywords including "korean".
+ * Tags `korean` only when relevance passes; otherwise `korean_candidate`.
  */
 export async function runKoreanBusinessDiscovery(
   supabase: AnySupabase,
@@ -292,7 +294,24 @@ export async function runKoreanBusinessDiscovery(
     const upsert = await upsertGoogleSalon(supabase, snapshot);
     tally(result, upsert);
     if (upsert.salonId && upsert.action !== "failed") {
-      await mergeSearchKeywords(supabase, upsert.salonId, ["korean"]);
+      const hairLike = /^(Hair|Barber|Nails|Spa)$/i.test(
+        snapshot.primaryService,
+      );
+      const tagKorean = shouldTagKoreanKeyword({
+        name: snapshot.name,
+        suburb: snapshot.suburb,
+        city: snapshot.city,
+        state: snapshot.state,
+        service: snapshot.primaryService,
+        googleCategories: snapshot.googleCategories,
+        // Hair discovery queries are Korean-intent; allow soft keyword path.
+        searchKeywords: hairLike ? ["korean"] : [],
+      });
+      await mergeSearchKeywords(
+        supabase,
+        upsert.salonId,
+        tagKorean ? ["korean"] : ["korean_candidate"],
+      );
     }
     await sleep(80);
   }

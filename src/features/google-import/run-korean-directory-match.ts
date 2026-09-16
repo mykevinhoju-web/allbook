@@ -4,6 +4,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/types/database";
 
+import { shouldTagKoreanKeyword } from "@/features/korean-search/korean-relevance";
+
 import { resolvePlacesCategoryMapping } from "./category-map";
 import { mapPlaceToSnapshot } from "./map-place";
 import {
@@ -346,12 +348,23 @@ export async function runKoreanDirectoryMatch(
           if (upsert.action === "inserted") byCategory[category]!.inserted += 1;
           if (upsert.action === "updated") byCategory[category]!.updated += 1;
           if (upsert.salonId && upsert.action !== "failed") {
+            const provenance =
+              seedBundle === "sundayweekly" ? ["sundayweekly"] : ["qldvision"];
+            const tagKorean = shouldTagKoreanKeyword({
+              name: snapshot.name,
+              suburb: snapshot.suburb,
+              city: snapshot.city,
+              state: snapshot.state,
+              service: snapshot.primaryService,
+              googleCategories: snapshot.googleCategories,
+              searchKeywords: provenance,
+            });
             await mergeSearchKeywords(
               supabase,
               upsert.salonId,
-              seedBundle === "sundayweekly"
-                ? ["korean", "sundayweekly"]
-                : ["korean"],
+              tagKorean
+                ? ["korean", ...provenance]
+                : ["korean_candidate", ...provenance],
             );
           }
         }

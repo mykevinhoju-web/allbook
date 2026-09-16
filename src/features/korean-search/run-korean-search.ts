@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 
 import { filterHitsByBookingSlot, filterHitsOpenOnDate } from "./filter-by-booking-slot";
+import { isKoreanRelevant } from "./korean-relevance";
 import { parseKoreanQuery } from "./parse-korean-query";
 import type {
   KoreanSearchFunnelStep,
@@ -136,42 +137,55 @@ export async function runKoreanSearch(
     "Services",
   ]);
 
-  let results: KoreanSearchHit[] = sourceSalons
-    .filter(
-      (salon) =>
-        Number.isFinite(salon.latitude) && Number.isFinite(salon.longitude),
-    )
-    .map((salon) => {
-      const catalogueOnly = NON_BOOKABLE_SERVICES.has(salon.service);
-      const bookingEnabled =
-        !catalogueOnly && bookingById.get(salon.id) === true;
-      const detailPath = buildSalonPathFromService(salon.service, salon.slug);
-      return {
-        id: salon.id,
+  const located = sourceSalons.filter(
+    (salon) =>
+      Number.isFinite(salon.latitude) && Number.isFinite(salon.longitude),
+  );
+  pushFunnel(funnel, "검색", located.length);
+
+  const relevant = located.filter((salon) =>
+    isKoreanRelevant(
+      {
         name: salon.name,
-        rating: salon.rating,
-        reviewCount: salon.reviewCount,
-        price: salon.price,
-        location: [salon.suburb, salon.city].filter(Boolean).join(", "),
         suburb: salon.suburb,
         city: salon.city,
-        slug: salon.slug,
         service: salon.service,
-        detailPath,
-        coverImage: salon.coverImage,
-        logo: salon.logo,
-        latitude: salon.latitude,
-        longitude: salon.longitude,
-        distanceKm:
-          salon.distanceKm != null && Number.isFinite(salon.distanceKm)
-            ? Number(salon.distanceKm)
-            : null,
-        bookingEnabled,
-        bookPath: bookingEnabled ? `${detailPath}/book` : null,
-      };
-    });
+        searchKeywords: salon.searchKeywords ?? [],
+      },
+      salon.service,
+    ),
+  );
+  pushFunnel(funnel, "한인/한식 적합성", relevant.length);
 
-  pushFunnel(funnel, "검색", results.length);
+  let results: KoreanSearchHit[] = relevant.map((salon) => {
+    const catalogueOnly = NON_BOOKABLE_SERVICES.has(salon.service);
+    const bookingEnabled =
+      !catalogueOnly && bookingById.get(salon.id) === true;
+    const detailPath = buildSalonPathFromService(salon.service, salon.slug);
+    return {
+      id: salon.id,
+      name: salon.name,
+      rating: salon.rating,
+      reviewCount: salon.reviewCount,
+      price: salon.price,
+      location: [salon.suburb, salon.city].filter(Boolean).join(", "),
+      suburb: salon.suburb,
+      city: salon.city,
+      slug: salon.slug,
+      service: salon.service,
+      detailPath,
+      coverImage: salon.coverImage,
+      logo: salon.logo,
+      latitude: salon.latitude,
+      longitude: salon.longitude,
+      distanceKm:
+        salon.distanceKm != null && Number.isFinite(salon.distanceKm)
+          ? Number(salon.distanceKm)
+          : null,
+      bookingEnabled,
+      bookPath: bookingEnabled ? `${detailPath}/book` : null,
+    };
+  });
 
   if (intent.minRating != null) {
     results = results.filter((hit) => hit.rating >= intent.minRating!);
