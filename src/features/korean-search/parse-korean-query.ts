@@ -109,7 +109,7 @@ function detectService(
   if (/속눈썹|래쉬|\blash/.test(normalized)) {
     return { service: "Lashes", label: "속눈썹" };
   }
-  if (/미용|헤어|머리|\bhair\b|salon/.test(normalized)) {
+  if (/미용|헤어|머리|한인\s*미용|\bhair\b|salon/.test(normalized)) {
     return { service: "Hair", label: "미용실" };
   }
   return null;

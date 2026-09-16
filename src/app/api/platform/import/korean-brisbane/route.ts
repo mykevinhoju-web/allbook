@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { runKoreanBusinessDiscovery } from "@/features/google-import";
+import {
+  runKoreanBusinessDiscovery,
+  type KoreanDiscoveryPreset,
+} from "@/features/google-import";
 import {
   PlatformAuthError,
   requirePlatformAdmin,
@@ -11,7 +14,7 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 /**
- * Brisbane Korean hair + restaurant Places discovery.
+ * Brisbane Korean Places discovery (hair+restaurant, or incremental mart).
  * Auth: platform admin session OR Bearer MAINTENANCE_TOKEN.
  */
 export async function POST(request: Request) {
@@ -28,6 +31,7 @@ export async function POST(request: Request) {
       maxPages?: number;
       pageSize?: number;
       dryRun?: boolean;
+      preset?: KoreanDiscoveryPreset;
       queries?: Array<{
         textQuery: string;
         category: string;
@@ -40,9 +44,10 @@ export async function POST(request: Request) {
       city: "Brisbane",
       state: "Queensland",
       country: "Australia",
-      maxPages: body.maxPages ?? 3,
+      maxPages: body.maxPages ?? 2,
       pageSize: body.pageSize ?? 20,
       dryRun: body.dryRun,
+      preset: body.preset ?? "hair-restaurant",
       queries: body.queries,
     });
 

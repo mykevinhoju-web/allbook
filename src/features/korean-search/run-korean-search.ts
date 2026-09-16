@@ -126,13 +126,25 @@ export async function runKoreanSearch(
 
   const funnel: KoreanSearchFunnelStep[] = [];
 
+  /** Catalogue / directory businesses — list, map, phone only (no AllBook booking). */
+  const NON_BOOKABLE_SERVICES = new Set([
+    "Restaurant",
+    "Mart",
+    "Medical",
+    "Academy",
+    "Entertainment",
+    "Services",
+  ]);
+
   let results: KoreanSearchHit[] = sourceSalons
     .filter(
       (salon) =>
         Number.isFinite(salon.latitude) && Number.isFinite(salon.longitude),
     )
     .map((salon) => {
-      const bookingEnabled = bookingById.get(salon.id) === true;
+      const catalogueOnly = NON_BOOKABLE_SERVICES.has(salon.service);
+      const bookingEnabled =
+        !catalogueOnly && bookingById.get(salon.id) === true;
       const detailPath = buildSalonPathFromService(salon.service, salon.slug);
       return {
         id: salon.id,

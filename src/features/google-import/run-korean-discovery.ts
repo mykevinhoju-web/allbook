@@ -79,22 +79,62 @@ export const BRISBANE_KOREAN_DISCOVERY_QUERIES: KoreanDiscoveryQuery[] = [
   },
 ];
 
-async function ensureRestaurantCategory(supabase: AnySupabase): Promise<void> {
-  const { data } = await supabase
-    .from("business_categories")
-    .select("id")
-    .eq("slug", "restaurant")
-    .maybeSingle();
-  if (data?.id) return;
+/**
+ * Next incremental category after Brisbane hair + restaurant quality check:
+ * Korean marts / groceries (plan: Brisbane 마트).
+ */
+export const BRISBANE_KOREAN_MART_QUERIES: KoreanDiscoveryQuery[] = [
+  {
+    textQuery: "Korean grocery Brisbane",
+    category: "mart",
+    includedType: "supermarket",
+  },
+  {
+    textQuery: "Korean supermarket Brisbane",
+    category: "mart",
+    includedType: "supermarket",
+  },
+  {
+    textQuery: "한인 마트 Brisbane",
+    category: "mart",
+  },
+  {
+    textQuery: "Korean mart Sunnybank",
+    category: "mart",
+    includedType: "supermarket",
+  },
+  {
+    textQuery: "Asian grocery Sunnybank Korean",
+    category: "mart",
+    includedType: "supermarket",
+  },
+];
 
-  const { error } = await supabase.from("business_categories").insert({
-    name: "Restaurant",
-    slug: "restaurant",
-    icon: "utensils",
-    sort_order: 7,
-  });
-  if (error && !/duplicate|unique/i.test(error.message)) {
-    throw new Error(`Failed to seed restaurant category: ${error.message}`);
+export type KoreanDiscoveryPreset = "hair-restaurant" | "mart";
+
+export function resolveKoreanDiscoveryQueries(
+  preset: KoreanDiscoveryPreset = "hair-restaurant",
+): KoreanDiscoveryQuery[] {
+  if (preset === "mart") return BRISBANE_KOREAN_MART_QUERIES;
+  return BRISBANE_KOREAN_DISCOVERY_QUERIES;
+}
+
+async function ensureMarketplaceCategories(supabase: AnySupabase): Promise<void> {
+  const rows = [
+    { name: "Restaurant", slug: "restaurant", icon: "utensils", sort_order: 7 },
+    { name: "Mart", slug: "mart", icon: "shopping-bag", sort_order: 8 },
+  ];
+  for (const row of rows) {
+    const { data } = await supabase
+      .from("business_categories")
+      .select("id")
+      .eq("slug", row.slug)
+      .maybeSingle();
+    if (data?.id) continue;
+    const { error } = await supabase.from("business_categories").insert(row);
+    if (error && !/duplicate|unique/i.test(error.message)) {
+      throw new Error(`Failed to seed category ${row.slug}: ${error.message}`);
+    }
   }
 }
 
@@ -161,6 +201,8 @@ export async function runKoreanBusinessDiscovery(
     state?: string;
     country?: string;
     queries?: KoreanDiscoveryQuery[];
+    /** Named preset when `queries` omitted. */
+    preset?: KoreanDiscoveryPreset;
     maxPages?: number;
     pageSize?: number;
     biasRadiusMeters?: number;
@@ -171,20 +213,22 @@ export async function runKoreanBusinessDiscovery(
   const city = options.city ?? "Brisbane";
   const state = options.state ?? "Queensland";
   const country = options.country ?? "Australia";
-  const queries = options.queries ?? BRISBANE_KOREAN_DISCOVERY_QUERIES;
+  const queries =
+    options.queries ??
+    resolveKoreanDiscoveryQueries(options.preset ?? "hair-restaurant");
   const maxPages = Math.max(1, options.maxPages ?? 3);
   const pageSize = Math.min(20, Math.max(1, options.pageSize ?? 20));
   const biasRadiusMeters = options.biasRadiusMeters ?? 35_000;
   const maxPhotos = Math.max(0, options.maxPhotos ?? 4);
   const dryRun = Boolean(options.dryRun);
 
-  await ensureRestaurantCategory(supabase);
+  await ensureMarketplaceCategories(supabase);
 
   const target: GoogleImportTarget = {
     city,
     state,
     country,
-    category: "korean-discovery",
+    category: `korean-discovery:${options.preset ?? "hair-restaurant"}`,
     scope: "city",
   };
   const result = emptyResult(target);

@@ -26,9 +26,14 @@ export {
 } from "./run-import";
 export {
   BRISBANE_KOREAN_DISCOVERY_QUERIES,
+  BRISBANE_KOREAN_MART_QUERIES,
+  resolveKoreanDiscoveryQueries,
   runKoreanBusinessDiscovery,
 } from "./run-korean-discovery";
-export type { KoreanDiscoveryQuery } from "./run-korean-discovery";
+export type {
+  KoreanDiscoveryPreset,
+  KoreanDiscoveryQuery,
+} from "./run-korean-discovery";
 export {
   loadBundledKoreanDirectorySeeds,
   runKoreanDirectoryMatch,

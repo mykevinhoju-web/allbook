@@ -21,8 +21,8 @@ const QUICK_MENUS = ["FREE", "예약", "내 주변", "DEAL"] as const;
 const EXAMPLE_QUERIES = [
   "써니뱅크 근처 한식당",
   "브리즈번 한인 미용실",
-  "써니뱅크 병원",
-  "브리즈번 회계사",
+  "써니뱅크 한국 마트",
+  "브리즈번 병원",
   "써니뱅크 노래방",
 ] as const;
 

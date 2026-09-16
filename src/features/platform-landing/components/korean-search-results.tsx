@@ -62,18 +62,33 @@ export function KoreanSearchResults({
       ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [selectedId, focusToken]);
 
+  const catalogueOnlySearch = [
+    "Restaurant",
+    "Mart",
+    "Medical",
+    "Academy",
+    "Entertainment",
+    "Services",
+  ].includes(intent?.service ?? "");
+
   return (
     <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-start">
       <div>
-        <label className="mb-3 flex cursor-pointer items-center gap-2 text-sm text-neutral-700">
-          <input
-            type="checkbox"
-            className="size-4"
-            checked={bookableOnly}
-            onChange={(event) => onBookableOnlyChange(event.target.checked)}
-          />
-          예약 가능한 업체만
-        </label>
+        {!catalogueOnlySearch ? (
+          <label className="mb-3 flex cursor-pointer items-center gap-2 text-sm text-neutral-700">
+            <input
+              type="checkbox"
+              className="size-4"
+              checked={bookableOnly}
+              onChange={(event) => onBookableOnlyChange(event.target.checked)}
+            />
+            예약 가능한 업체만
+          </label>
+        ) : (
+          <p className="mb-3 text-sm text-neutral-500">
+            목록 · 지도 · 상세(전화) — 온라인 예약 없음
+          </p>
+        )}
         {results.length === 0 ? (
           <p className="text-sm text-neutral-600">
             조건에 맞는 업체를 찾지 못했습니다.
