@@ -101,9 +101,51 @@ export const BRISBANE_KOREAN_MART_QUERIES: KoreanDiscoveryQuery[] = [
     category: "mart",
   },
   {
+    textQuery: "하나로마트 Brisbane",
+    category: "mart",
+  },
+  {
+    textQuery: "Hanaro Mart Brisbane",
+    category: "mart",
+    includedType: "supermarket",
+  },
+  {
+    textQuery: "Hoju Mart Brisbane",
+    category: "mart",
+  },
+  {
+    textQuery: "K Fresh Mart Brisbane",
+    category: "mart",
+  },
+  {
     textQuery: "Korean mart Sunnybank",
     category: "mart",
     includedType: "supermarket",
+  },
+  {
+    textQuery: "Hanaro Mart Sunnybank",
+    category: "mart",
+    includedType: "supermarket",
+  },
+  {
+    textQuery: "Korean grocery Toowong",
+    category: "mart",
+  },
+  {
+    textQuery: "Korean grocery Spring Hill Brisbane",
+    category: "mart",
+  },
+  {
+    textQuery: "Korean grocery Underwood Brisbane",
+    category: "mart",
+  },
+  {
+    textQuery: "Korean grocery Chermside",
+    category: "mart",
+  },
+  {
+    textQuery: "Korean grocery Inala",
+    category: "mart",
   },
   {
     textQuery: "Asian grocery Sunnybank Korean",
