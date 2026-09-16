@@ -86,72 +86,37 @@ export const BRISBANE_KOREAN_DISCOVERY_QUERIES: KoreanDiscoveryQuery[] = [
  * Korean marts / groceries (plan: Brisbane 마트).
  */
 export const BRISBANE_KOREAN_MART_QUERIES: KoreanDiscoveryQuery[] = [
-  {
-    textQuery: "Korean grocery Brisbane",
-    category: "mart",
-    includedType: "supermarket",
-  },
-  {
-    textQuery: "Korean supermarket Brisbane",
-    category: "mart",
-    includedType: "supermarket",
-  },
-  {
-    textQuery: "한인 마트 Brisbane",
-    category: "mart",
-  },
-  {
-    textQuery: "하나로마트 Brisbane",
-    category: "mart",
-  },
-  {
-    textQuery: "Hanaro Mart Brisbane",
-    category: "mart",
-    includedType: "supermarket",
-  },
-  {
-    textQuery: "Hoju Mart Brisbane",
-    category: "mart",
-  },
-  {
-    textQuery: "K Fresh Mart Brisbane",
-    category: "mart",
-  },
-  {
-    textQuery: "Korean mart Sunnybank",
-    category: "mart",
-    includedType: "supermarket",
-  },
-  {
-    textQuery: "Hanaro Mart Sunnybank",
-    category: "mart",
-    includedType: "supermarket",
-  },
-  {
-    textQuery: "Korean grocery Toowong",
-    category: "mart",
-  },
-  {
-    textQuery: "Korean grocery Spring Hill Brisbane",
-    category: "mart",
-  },
-  {
-    textQuery: "Korean grocery Underwood Brisbane",
-    category: "mart",
-  },
-  {
-    textQuery: "Korean grocery Chermside",
-    category: "mart",
-  },
-  {
-    textQuery: "Korean grocery Inala",
-    category: "mart",
-  },
-  {
-    textQuery: "Asian grocery Sunnybank Korean",
-    category: "mart",
-    includedType: "supermarket",
-  },
+  { textQuery: "Korean grocery Brisbane", category: "mart", includedType: "supermarket" },
+  { textQuery: "Korean supermarket Brisbane", category: "mart", includedType: "supermarket" },
+  { textQuery: "Korean mart Brisbane", category: "mart" },
+  { textQuery: "한인 마트 Brisbane", category: "mart" },
+  { textQuery: "하나로마트 Brisbane", category: "mart" },
+  { textQuery: "Hanaro Mart Brisbane", category: "mart", includedType: "supermarket" },
+  { textQuery: "Hanaromart Chermside", category: "mart" },
+  { textQuery: "Hanaromart Carindale", category: "mart" },
+  { textQuery: "Hanaromart Indooroopilly", category: "mart" },
+  { textQuery: "Hanaromart North Lakes", category: "mart" },
+  { textQuery: "Hanaromart Garden City Upper Mount Gravatt", category: "mart" },
+  { textQuery: "Hanaromart Browns Plains", category: "mart" },
+  { textQuery: "Hanaromart Pinelands Sunnybank Hills", category: "mart" },
+  { textQuery: "Hanaromart Hyperdome Loganholme", category: "mart" },
+  { textQuery: "Hanaromart Calamvale", category: "mart" },
+  { textQuery: "Hanaromart Underwood", category: "mart" },
+  { textQuery: "Hanaromart Toowong", category: "mart" },
+  { textQuery: "Hanaromart Buranda", category: "mart" },
+  { textQuery: "Hanaromart Spring Hill", category: "mart" },
+  { textQuery: "Hanaromart Sunnybank", category: "mart" },
+  { textQuery: "Hoju Mart Brisbane", category: "mart" },
+  { textQuery: "K Fresh Mart Brisbane", category: "mart" },
+  { textQuery: "K Fresh Mart Sunnybank", category: "mart" },
+  { textQuery: "Moamart Brisbane", category: "mart" },
+  { textQuery: "Good Morning Mart Brisbane", category: "mart" },
+  { textQuery: "Lucky Mart Eight Mile Plains", category: "mart" },
+  { textQuery: "Korean grocery Sunnybank", category: "mart", includedType: "supermarket" },
+  { textQuery: "Korean grocery Chermside", category: "mart" },
+  { textQuery: "Korean grocery Carindale", category: "mart" },
+  { textQuery: "Korean grocery Indooroopilly", category: "mart" },
+  { textQuery: "Korean grocery North Lakes", category: "mart" },
 ];
 
 export type KoreanDiscoveryPreset = "hair-restaurant" | "mart";
@@ -336,7 +301,7 @@ export async function runKoreanBusinessDiscovery(
     const upsert = await upsertGoogleSalon(supabase, snapshot);
     tally(result, upsert);
     if (upsert.salonId && upsert.action !== "failed") {
-      const hairLike = /^(Hair|Barber|Nails|Spa)$/i.test(
+      const softKeywordService = /^(Hair|Barber|Nails|Spa|Mart)$/i.test(
         snapshot.primaryService,
       );
       const tagKorean = shouldTagKoreanKeyword({
@@ -346,8 +311,8 @@ export async function runKoreanBusinessDiscovery(
         state: snapshot.state,
         service: snapshot.primaryService,
         googleCategories: snapshot.googleCategories,
-        // Hair discovery queries are Korean-intent; allow soft keyword path.
-        searchKeywords: hairLike ? ["korean"] : [],
+        // Hair + Mart discovery queries are Korean-intent; allow soft keyword path.
+        searchKeywords: softKeywordService ? ["korean"] : [],
       });
       await mergeSearchKeywords(
         supabase,
