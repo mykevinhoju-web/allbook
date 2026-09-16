@@ -34,9 +34,12 @@ const NEGATIVE_RESTAURANT_RE =
 const NEGATIVE_HAIR_RE =
   /\bjapanese\b|\btokyo\b|\b日本\b|\bjapan\b\s*hair|\baria\s*japanese\b/i;
 
-/** Gold Coast / non–Greater Brisbane localities that leaked into kor results. */
+/**
+ * Localities outside Brisbane City / inner southside Korean corridor.
+ * Import often stamps city="Brisbane" even for Logan/Moreton Bay — suburb wins.
+ */
 const OUTSIDE_BRISBANE_RE =
-  /southport|surfers\s*paradise|broadbeach|robina|burleigh|varsity|parkwood|coolum|noosa|mudgeeraba|helensvale|oxenford|coomera|mermaid|palm\s*beach|nerang|labrador|ashmore|toowoomba/i;
+  /southport|surfers\s*paradise|broadbeach|robina|burleigh|varsity|parkwood|coolum|noosa|mudgeeraba|helensvale|oxenford|coomera|mermaid|palm\s*beach|nerang|labrador|ashmore|toowoomba|gold\s*coast|loganholme|logan\s*central|logan\s*lea|logan\s*reserve|springwood|woodridge|browns\s*plains|beenleigh|shailer\s*park|daisy\s*hill|waterford|meadowbrook|tanah\s*merah|slacks\s*creek|marsden|heritage\s*park|park\s*ridge|regents\s*park|north\s*lakes|mango\s*hill|redcliffe|caboolture|morayfield|kippa[\s-]*ring|deception\s*bay|ipswich|springfield|goodna|redbank|booval|riverview|yamanto/i;
 
 function haystack(input: KoreanRelevanceInput): string {
   return [
@@ -54,8 +57,15 @@ function haystack(input: KoreanRelevanceInput): string {
 export function isBrisbaneMetro(input: KoreanRelevanceInput): boolean {
   const place = `${input.suburb ?? ""} ${input.city ?? ""} ${input.state ?? ""}`;
   if (OUTSIDE_BRISBANE_RE.test(place)) return false;
-  // Explicit Gold Coast state/city labels
   if (/gold\s*coast/i.test(place)) return false;
+  // Reject explicit non-Brisbane LGA labels even if suburb looks local.
+  if (
+    /\b(logan\s*city|moreton\s*bay|ipswich|gold\s*coast|toowoomba|sunshine\s*coast)\b/i.test(
+      place,
+    )
+  ) {
+    return false;
+  }
   return true;
 }
 

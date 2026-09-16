@@ -2,7 +2,7 @@
   "source": "hanaromart-official",
   "generatedAt": "2026-03-26",
   "scope": "brisbane-metro",
-  "counts": { "mart": 16 },
+  "counts": { "mart": 13 },
   "categories": {
     "mart": [
       {
@@ -138,18 +138,6 @@
         "confidence": "확인"
       },
       {
-        "name": "Hanaromart North Lakes",
-        "phone": null,
-        "address": "Westfield North Lakes, Cnr Anzac Ave & N Lakes Dr, North Lakes QLD 4509",
-        "mapsQuery": "Hanaromart Westfield North Lakes",
-        "website": "https://www.hanaromartonline.com/",
-        "detailUrl": null,
-        "category": "mart",
-        "directoryCategory": "하나로마트",
-        "source": "hanaromart-official",
-        "confidence": "확인"
-      },
-      {
         "name": "Hanaromart Garden City",
         "phone": null,
         "address": "Shop 2071 Westfield Garden City, Cnr Logan & Kessels Rd, Upper Mount Gravatt QLD 4122",
@@ -166,30 +154,6 @@
         "phone": null,
         "address": "The Village, 21/1932 Logan Rd, Upper Mount Gravatt QLD 4122",
         "mapsQuery": "Hanaromart The Village Logan Road Upper Mount Gravatt",
-        "website": "https://www.hanaromartonline.com/",
-        "detailUrl": null,
-        "category": "mart",
-        "directoryCategory": "하나로마트",
-        "source": "hanaromart-official",
-        "confidence": "확인"
-      },
-      {
-        "name": "Hanaromart Browns Plains",
-        "phone": null,
-        "address": "Grand Plaza, 27-49 Browns Plains Rd, Browns Plains QLD 4118",
-        "mapsQuery": "Hanaromart Grand Plaza Browns Plains",
-        "website": "https://www.hanaromartonline.com/",
-        "detailUrl": null,
-        "category": "mart",
-        "directoryCategory": "하나로마트",
-        "source": "hanaromart-official",
-        "confidence": "확인"
-      },
-      {
-        "name": "Hanaromart Hyperdome",
-        "phone": "0493 136 541",
-        "address": "Shop 25 Hyperdome Shopping Centre, Bryants Rd, Loganholme QLD 4129",
-        "mapsQuery": "Hanaromart Hyperdome Loganholme",
         "website": "https://www.hanaromartonline.com/",
         "detailUrl": null,
         "category": "mart",

@@ -95,11 +95,8 @@ export const BRISBANE_KOREAN_MART_QUERIES: KoreanDiscoveryQuery[] = [
   { textQuery: "Hanaromart Chermside", category: "mart" },
   { textQuery: "Hanaromart Carindale", category: "mart" },
   { textQuery: "Hanaromart Indooroopilly", category: "mart" },
-  { textQuery: "Hanaromart North Lakes", category: "mart" },
   { textQuery: "Hanaromart Garden City Upper Mount Gravatt", category: "mart" },
-  { textQuery: "Hanaromart Browns Plains", category: "mart" },
   { textQuery: "Hanaromart Pinelands Sunnybank Hills", category: "mart" },
-  { textQuery: "Hanaromart Hyperdome Loganholme", category: "mart" },
   { textQuery: "Hanaromart Calamvale", category: "mart" },
   { textQuery: "Hanaromart Underwood", category: "mart" },
   { textQuery: "Hanaromart Toowong", category: "mart" },
@@ -118,7 +115,6 @@ export const BRISBANE_KOREAN_MART_QUERIES: KoreanDiscoveryQuery[] = [
   { textQuery: "Korean grocery Chermside", category: "mart" },
   { textQuery: "Korean grocery Carindale", category: "mart" },
   { textQuery: "Korean grocery Indooroopilly", category: "mart" },
-  { textQuery: "Korean grocery North Lakes", category: "mart" },
 ];
 
 export type KoreanDiscoveryPreset = "hair-restaurant" | "mart";
