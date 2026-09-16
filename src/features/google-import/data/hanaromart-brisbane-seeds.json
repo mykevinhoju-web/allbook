@@ -1,0 +1,202 @@
+{
+  "source": "hanaromart-official",
+  "generatedAt": "2026-03-26",
+  "scope": "brisbane-metro",
+  "counts": { "mart": 16 },
+  "categories": {
+    "mart": [
+      {
+        "name": "Hanaromart Uptown",
+        "phone": null,
+        "address": "Shop 116 Myer Centre Brisbane, 91 Queen St, Brisbane City QLD 4000",
+        "mapsQuery": "Hanaromart Uptown Myer Centre Brisbane",
+        "website": "https://www.hanaromartonline.com/",
+        "detailUrl": null,
+        "category": "mart",
+        "directoryCategory": "하나로마트",
+        "source": "hanaromart-official",
+        "confidence": "확인"
+      },
+      {
+        "name": "Hanaromart Spring Hill",
+        "phone": "(07) 3839 7778",
+        "address": "215 Wharf St, Spring Hill QLD 4000",
+        "mapsQuery": "Hanaromart Spring Hill Wharf Street",
+        "website": "https://www.hanaromartonline.com/",
+        "detailUrl": null,
+        "category": "mart",
+        "directoryCategory": "하나로마트",
+        "source": "hanaromart-official",
+        "confidence": "확인"
+      },
+      {
+        "name": "Hanaromart Sunnybank",
+        "phone": "(07) 3345 9650",
+        "address": "250 McCullough St, Sunnybank QLD 4109",
+        "mapsQuery": "Hanaromart 250 McCullough St Sunnybank",
+        "website": "https://www.hanaromartonline.com/",
+        "detailUrl": null,
+        "category": "mart",
+        "directoryCategory": "하나로마트",
+        "source": "hanaromart-official",
+        "confidence": "확인"
+      },
+      {
+        "name": "Hanaromart Pinelands",
+        "phone": "(07) 3345 7455",
+        "address": "Shop 40 Centro Pinelands, Beenleigh Rd & Mains Rd, Sunnybank Hills QLD 4109",
+        "mapsQuery": "Hanaromart Centro Pinelands Sunnybank Hills",
+        "website": "https://www.hanaromartonline.com/",
+        "detailUrl": null,
+        "category": "mart",
+        "directoryCategory": "하나로마트",
+        "source": "hanaromart-official",
+        "confidence": "확인"
+      },
+      {
+        "name": "Hanaromart Toowong",
+        "phone": "(07) 3876 8858",
+        "address": "LEVEL 1/9 Sherwood Rd, Toowong QLD 4066",
+        "mapsQuery": "Hanaromart Toowong Sherwood Road",
+        "website": "https://www.hanaromartonline.com/",
+        "detailUrl": null,
+        "category": "mart",
+        "directoryCategory": "하나로마트",
+        "source": "hanaromart-official",
+        "confidence": "확인"
+      },
+      {
+        "name": "Hanaromart Buranda",
+        "phone": null,
+        "address": "Tenancy 10, Park Central, Corner O'Keefe & Gillingham St, Buranda QLD 4102",
+        "mapsQuery": "Hanaromart Buranda Park Central",
+        "website": "https://www.hanaromartonline.com/",
+        "detailUrl": null,
+        "category": "mart",
+        "directoryCategory": "하나로마트",
+        "source": "hanaromart-official",
+        "confidence": "확인"
+      },
+      {
+        "name": "Hanaromart Underwood",
+        "phone": null,
+        "address": "Underwood Big Market, Underwood QLD 4119",
+        "mapsQuery": "Hanaromart Underwood Big Market",
+        "website": "https://www.hanaromartonline.com/",
+        "detailUrl": null,
+        "category": "mart",
+        "directoryCategory": "하나로마트",
+        "source": "hanaromart-official",
+        "confidence": "확인"
+      },
+      {
+        "name": "Hanaromart Calamvale",
+        "phone": null,
+        "address": "Calamvale Central, 662 Compton Rd, Calamvale QLD 4116",
+        "mapsQuery": "Hanaromart Calamvale Central Compton Road",
+        "website": "https://www.hanaromartonline.com/",
+        "detailUrl": null,
+        "category": "mart",
+        "directoryCategory": "하나로마트",
+        "source": "hanaromart-official",
+        "confidence": "확인"
+      },
+      {
+        "name": "Hanaromart Chermside",
+        "phone": null,
+        "address": "Shop 231/2, Westfield Chermside, Gympie Rd, Chermside QLD 4032",
+        "mapsQuery": "Hanaromart Asian Grocery Westfield Chermside",
+        "website": "https://www.hanaromartonline.com/",
+        "detailUrl": null,
+        "category": "mart",
+        "directoryCategory": "하나로마트",
+        "source": "hanaromart-official",
+        "confidence": "확인"
+      },
+      {
+        "name": "Hanaromart Carindale",
+        "phone": null,
+        "address": "Level 1 near Woolworths, Westfield Carindale, Carindale QLD 4152",
+        "mapsQuery": "Hanaromart Asian Grocery Westfield Carindale",
+        "website": "https://www.hanaromartonline.com/",
+        "detailUrl": null,
+        "category": "mart",
+        "directoryCategory": "하나로마트",
+        "source": "hanaromart-official",
+        "confidence": "확인"
+      },
+      {
+        "name": "Hanaromart Indooroopilly",
+        "phone": null,
+        "address": "Indooroopilly Shopping Centre, Indooroopilly QLD 4068",
+        "mapsQuery": "Hanaromart Indooroopilly Shopping Centre",
+        "website": "https://www.hanaromartonline.com/",
+        "detailUrl": null,
+        "category": "mart",
+        "directoryCategory": "하나로마트",
+        "source": "hanaromart-official",
+        "confidence": "확인"
+      },
+      {
+        "name": "Hanaromart North Lakes",
+        "phone": null,
+        "address": "Westfield North Lakes, Cnr Anzac Ave & N Lakes Dr, North Lakes QLD 4509",
+        "mapsQuery": "Hanaromart Westfield North Lakes",
+        "website": "https://www.hanaromartonline.com/",
+        "detailUrl": null,
+        "category": "mart",
+        "directoryCategory": "하나로마트",
+        "source": "hanaromart-official",
+        "confidence": "확인"
+      },
+      {
+        "name": "Hanaromart Garden City",
+        "phone": null,
+        "address": "Shop 2071 Westfield Garden City, Cnr Logan & Kessels Rd, Upper Mount Gravatt QLD 4122",
+        "mapsQuery": "Hanaromart Westfield Garden City Upper Mount Gravatt",
+        "website": "https://www.hanaromartonline.com/",
+        "detailUrl": null,
+        "category": "mart",
+        "directoryCategory": "하나로마트",
+        "source": "hanaromart-official",
+        "confidence": "확인"
+      },
+      {
+        "name": "Hanaromart Upper Mount Gravatt",
+        "phone": null,
+        "address": "The Village, 21/1932 Logan Rd, Upper Mount Gravatt QLD 4122",
+        "mapsQuery": "Hanaromart The Village Logan Road Upper Mount Gravatt",
+        "website": "https://www.hanaromartonline.com/",
+        "detailUrl": null,
+        "category": "mart",
+        "directoryCategory": "하나로마트",
+        "source": "hanaromart-official",
+        "confidence": "확인"
+      },
+      {
+        "name": "Hanaromart Browns Plains",
+        "phone": null,
+        "address": "Grand Plaza, 27-49 Browns Plains Rd, Browns Plains QLD 4118",
+        "mapsQuery": "Hanaromart Grand Plaza Browns Plains",
+        "website": "https://www.hanaromartonline.com/",
+        "detailUrl": null,
+        "category": "mart",
+        "directoryCategory": "하나로마트",
+        "source": "hanaromart-official",
+        "confidence": "확인"
+      },
+      {
+        "name": "Hanaromart Hyperdome",
+        "phone": "0493 136 541",
+        "address": "Shop 25 Hyperdome Shopping Centre, Bryants Rd, Loganholme QLD 4129",
+        "mapsQuery": "Hanaromart Hyperdome Loganholme",
+        "website": "https://www.hanaromartonline.com/",
+        "detailUrl": null,
+        "category": "mart",
+        "directoryCategory": "하나로마트",
+        "source": "hanaromart-official",
+        "confidence": "확인"
+      }
+    ]
+  }
+}

@@ -21,7 +21,8 @@ const POSITIVE_NAME_RE =
   /\bkorean\b|\bk-?bbq\b|\bk-?beauty\b|\bk-?food\b|\bk-?chicken\b|\bk-?mart\b|\bhanaro|\bhoju\b|\bk\s*-?\s*fresh\b|\bkfresh\b|\bseoul\b|\bbusan\b|\bdaegu\b|\bincheon\b|\bkimchi\b|\bjokbal\b|\bmandu\b|\bbibimbap\b|\bbulgogi\b|\bgalbi\b|\bsamgyeops?al\b|\bgopchang\b|\bsoondae\b|\bsundubu\b|\btteok\b|\btopokki\b|\bjjigae\b|\bpocha\b|\bchimaek\b|\bsoju\b|\bmakgeolli\b|\bkorilla\b|\bbornga\b|\bgamdang\b|\bhanjan\b|\bjokchelin\b|\bnangam\b|\bmanjok\b|\bhanwoori\b|\bzizigo\b|\bseoul\s*garden\b|\bseoul\s*bistro\b|\bkcs\s*chicken\b|\bbapboi\b|\bmokkoji\b|\bhwaro\b|\bnoonane\b|\bomupapa\b|\bsunnypocha\b|\bgwangjang\b|\bsul\.?zip\b|\byido\b|\bhanseong\b|\bholy\s*hock\b|\bqueens\s*gimbap\b|\bpark\s*bong\s*sook\b|\bbori\s*korean\b|\bmanok\s*park\b|\blucky\s*mart\b|\bsmile\s*mart\b|\buni\s*mart\b|\bwestie\s*market\b|\bk\s*basket\b|\bkbasket\b|\bmanna\s*rice\b|\bhappy\s*market\b|\bmoa\s*mart\b|\bmoamart\b|\bgood\s*morning\s*(asian\s*)?(grocery|mart|market)?\b|\basiamart\b|한국|한식|한인|한식당|족발|만두|비빔|불고기|김치|포차|치킨|분식|해장|곱창|순대|한라|하나로|마트|굿모닝|럭키|모아/i;
 
 /** Directory / verified seed provenance tags. */
-const VERIFIED_KEYWORD_RE = /^(sundayweekly|qldvision|korean_verified)$/i;
+const VERIFIED_KEYWORD_RE =
+  /^(sundayweekly|qldvision|korean_verified|hanaromart)$/i;
 
 /**
  * Non-Korean cuisine / venue cues.

@@ -1,4 +1,5 @@
 import qldvisionSeedFileJson from "./data/brisbane-korean-directory-seeds.json";
+import hanaromartSeedFileJson from "./data/hanaromart-brisbane-seeds.json";
 import sundayweeklySeedFileJson from "./data/sundayweekly-qld-directory-seeds.json";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -43,7 +44,10 @@ export type KoreanDirectorySeedFile = {
   categories: Record<string, KoreanDirectorySeed[]>;
 };
 
-export type KoreanDirectorySeedBundle = "qldvision" | "sundayweekly";
+export type KoreanDirectorySeedBundle =
+  | "qldvision"
+  | "sundayweekly"
+  | "hanaromart";
 
 export type KoreanDirectoryMatchOptions = {
   categories?: string[];
@@ -160,6 +164,9 @@ export function loadBundledKoreanDirectorySeeds(
   if (bundle === "sundayweekly") {
     return sundayweeklySeedFileJson as KoreanDirectorySeedFile;
   }
+  if (bundle === "hanaromart") {
+    return hanaromartSeedFileJson as KoreanDirectorySeedFile;
+  }
   return qldvisionSeedFileJson as KoreanDirectorySeedFile;
 }
 
@@ -250,11 +257,13 @@ export async function runKoreanDirectoryMatch(
       }
 
       const phoneOnly = !seed.address && Boolean(seed.phone);
-      const textQuery = seed.address
-        ? `${seed.name} ${seed.address}`
-        : seedBundle === "sundayweekly"
-          ? `${seed.name} Queensland Australia`
-          : `${seed.name} Brisbane Queensland`;
+      const textQuery = seed.mapsQuery
+        ? `${seed.mapsQuery} Queensland Australia`
+        : seed.address
+          ? `${seed.name} ${seed.address}`
+          : seedBundle === "sundayweekly"
+            ? `${seed.name} Queensland Australia`
+            : `${seed.name} Brisbane Queensland`;
       try {
         // Phone-only: omit includedType so Places can match across types.
         const page = await searchTextPlaces({
@@ -265,6 +274,24 @@ export async function runKoreanDirectoryMatch(
         });
         const candidates = page.places ?? [];
         let chosen = candidates[0] ?? null;
+
+        // Prefer a candidate whose name overlaps the seed (avoid Coles/Woolworths).
+        const seedNameKey = seed.name
+          .toLowerCase()
+          .replace(/[^a-z0-9가-힣]+/g, " ")
+          .trim();
+        const seedTokens = seedNameKey
+          .split(/\s+/)
+          .filter((t) => t.length >= 4);
+        const nameMatched = candidates.find((p) => {
+          const n = (p.displayName?.text ?? "").toLowerCase();
+          if (!n) return false;
+          if (/woolworths|coles|aldi|costco|\biga\b/.test(n)) return false;
+          if (seedTokens.some((t) => n.includes(t))) return true;
+          if (/hanaro/.test(seedNameKey) && /hanaro/.test(n)) return true;
+          return false;
+        });
+        if (nameMatched) chosen = nameMatched;
 
         if (seed.phone) {
           const phoneOk = candidates.find((p) =>
@@ -289,6 +316,21 @@ export async function runKoreanDirectoryMatch(
               name: seed.name,
               address: seed.address,
               reason: "phone_mismatch",
+            });
+            result.skipped += 1;
+            await sleep(180);
+            continue;
+          }
+        }
+
+        // Address seeds for branded marts: reject supermarket chains.
+        if (chosen && seed.address) {
+          const n = (chosen.displayName?.text ?? "").toLowerCase();
+          if (/woolworths|coles|aldi|costco|\biga\b/.test(n)) {
+            unmatched.push({
+              name: seed.name,
+              address: seed.address,
+              reason: "chain_mismatch",
             });
             result.skipped += 1;
             await sleep(180);
@@ -349,7 +391,11 @@ export async function runKoreanDirectoryMatch(
           if (upsert.action === "updated") byCategory[category]!.updated += 1;
           if (upsert.salonId && upsert.action !== "failed") {
             const provenance =
-              seedBundle === "sundayweekly" ? ["sundayweekly"] : ["qldvision"];
+              seedBundle === "sundayweekly"
+                ? ["sundayweekly"]
+                : seedBundle === "hanaromart"
+                  ? ["hanaromart", "korean_verified"]
+                  : ["qldvision"];
             const tagKorean = shouldTagKoreanKeyword({
               name: snapshot.name,
               suburb: snapshot.suburb,
