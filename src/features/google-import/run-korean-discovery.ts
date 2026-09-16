@@ -301,7 +301,7 @@ export async function runKoreanBusinessDiscovery(
     const upsert = await upsertGoogleSalon(supabase, snapshot);
     tally(result, upsert);
     if (upsert.salonId && upsert.action !== "failed") {
-      const softKeywordService = /^(Hair|Barber|Nails|Spa|Mart)$/i.test(
+      const softKeywordService = /^(Hair|Barber|Nails|Spa)$/i.test(
         snapshot.primaryService,
       );
       const tagKorean = shouldTagKoreanKeyword({
@@ -311,7 +311,7 @@ export async function runKoreanBusinessDiscovery(
         state: snapshot.state,
         service: snapshot.primaryService,
         googleCategories: snapshot.googleCategories,
-        // Hair + Mart discovery queries are Korean-intent; allow soft keyword path.
+        // Hair discovery queries are Korean-intent; allow soft keyword path.
         searchKeywords: softKeywordService ? ["korean"] : [],
       });
       await mergeSearchKeywords(

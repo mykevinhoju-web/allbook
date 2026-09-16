@@ -28,7 +28,7 @@ const VERIFIED_KEYWORD_RE = /^(sundayweekly|qldvision|korean_verified)$/i;
  * Applied strongly for Restaurant + Mart; milder for Hair.
  */
 const NEGATIVE_RESTAURANT_RE =
-  /\bjapanese\b|\byakiniku\b|\bizakaya\b|\bramen\b|\bうどん\b|\bsushi\b|\btempura\b|\btonkatsu\b|\bfuji\s*mart\b|\bgenki\b|\bベトナム\b|\bvietnamese\b|\bviet\s*ha\b|\bviet\b|\bthai\b|\bindian\b|\bmalaysian\b|\bindonesian\b|\bkrishna\b|\bshiv\s*shakti\b|\btan\s*phat\b|\bvan\s*long\b|\bvu\s*hai\b|\bkim\s*loan\b|\btennis\s*club\b|\bgolf\s*club\b|\bりょうり\b|\b日本\b|\byori\b|\bgoukai\b|\bren\s*yakiniku\b|\bthat\s*viet\b|\bhu\s*shang\b|\bmilki\s*desserts\b/i;
+  /\bjapanese\b|\byakiniku\b|\bizakaya\b|\bramen\b|\bうどん\b|\bsushi\b|\btempura\b|\btonkatsu\b|\bfuji\s*mart\b|\bgenki\b|\bwoolworths\b|\bcoles\b|\baldi\b|\bcostco\b|\biga\b|\bベトナム\b|\bvietnamese\b|\bviet\s*ha\b|\bviet\b|\bthai\b|\bindian\b|\bmalaysian\b|\bindonesian\b|\bkrishna\b|\bshiv\s*shakti\b|\btan\s*phat\b|\bvan\s*long\b|\bvu\s*hai\b|\bkim\s*loan\b|\btennis\s*club\b|\bgolf\s*club\b|\bりょうり\b|\b日本\b|\byori\b|\bgoukai\b|\bren\s*yakiniku\b|\bthat\s*viet\b|\bhu\s*shang\b|\bmilki\s*desserts\b/i;
 
 const NEGATIVE_HAIR_RE =
   /\bjapanese\b|\btokyo\b|\b日本\b|\bjapan\b\s*hair|\baria\s*japanese\b/i;
@@ -78,14 +78,14 @@ function hasPositiveSignal(
   if ((input.googleCategories ?? []).some((c) => /korean/i.test(c))) {
     return true;
   }
-  // Hair/beauty + Mart: Places “Korean …” hits often omit “Korean” in the trade name.
+  // Hair/beauty: Places "Korean salon" hits rarely put "Korean" in the trade name.
   // Trust the korean keyword when cuisine-style negatives don't apply.
+  // Mart stays name/verified only — soft keyword pulled Woolworths / random Asian shops.
   if (
     (service === "Hair" ||
       service === "Barber" ||
       service === "Nails" ||
-      service === "Spa" ||
-      service === "Mart") &&
+      service === "Spa") &&
     hasKoreanKeyword(input)
   ) {
     return true;
