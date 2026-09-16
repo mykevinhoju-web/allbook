@@ -270,7 +270,11 @@ export async function runKoreanDirectoryMatch(
           textQuery,
           pageSize: 8,
           regionCode: "AU",
-          includedType: phoneOnly ? undefined : mapping.includedType,
+          // Address / mapsQuery seeds: don't force supermarket type (misses Hanaromart Asian Grocery).
+          includedType:
+            phoneOnly || seed.mapsQuery || seed.address
+              ? undefined
+              : mapping.includedType,
         });
         const candidates = page.places ?? [];
         let chosen = candidates[0] ?? null;
