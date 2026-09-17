@@ -35,11 +35,14 @@ const NEGATIVE_HAIR_RE =
   /\bjapanese\b|\btokyo\b|\b日本\b|\bjapan\b\s*hair|\baria\s*japanese\b/i;
 
 /**
- * Localities outside Brisbane City / inner southside Korean corridor.
- * Import often stamps city="Brisbane" even for Logan/Moreton Bay — suburb wins.
+ * kor geographic scope: Queensland only (Brisbane + nearby QLD is OK).
+ * Block interstate cities (Sydney / Melbourne / etc.), not Logan/GC/North Lakes.
  */
-const OUTSIDE_BRISBANE_RE =
-  /southport|surfers\s*paradise|broadbeach|robina|burleigh|varsity|parkwood|coolum|noosa|mudgeeraba|helensvale|oxenford|coomera|mermaid|palm\s*beach|nerang|labrador|ashmore|toowoomba|gold\s*coast|loganholme|logan\s*central|logan\s*lea|logan\s*reserve|springwood|woodridge|browns\s*plains|beenleigh|shailer\s*park|daisy\s*hill|waterford|meadowbrook|tanah\s*merah|slacks\s*creek|marsden|heritage\s*park|park\s*ridge|regents\s*park|north\s*lakes|mango\s*hill|redcliffe|caboolture|morayfield|kippa[\s-]*ring|deception\s*bay|ipswich|springfield|goodna|redbank|booval|riverview|yamanto/i;
+const INTERSTATE_PLACE_RE =
+  /\bsydney\b|\bmelbourne\b|\bpenrith\b|\bparramatta\b|\bchatswood\b|\bstrathfield\b|\bbondi\b|\beastern\s*creek\b|\bchadstone\b|\bepping\b(?!\s*qld)|\bbox\s*hill\b|\bdandenong\b|\bbundoora\b|\badelaide\b|\bperth\b|\bcanberra\b|\bhobart\b|\bdarwin\b|\bauckland\b/i;
+
+const INTERSTATE_STATE_RE =
+  /^(nsw|vic|sa|wa|tas|nt|act|new\s*south\s*wales|victoria|south\s*australia|western\s*australia|tasmania|northern\s*territory|australian\s*capital\s*territory)$/i;
 
 function haystack(input: KoreanRelevanceInput): string {
   return [
@@ -54,15 +57,21 @@ function haystack(input: KoreanRelevanceInput): string {
     .toLowerCase();
 }
 
+/** True when the business is in Queensland (not Sydney/Melbourne/etc.). */
 export function isBrisbaneMetro(input: KoreanRelevanceInput): boolean {
+  const state = (input.state ?? "").trim();
+  if (state && INTERSTATE_STATE_RE.test(state)) return false;
+  if (state && /^(qld|queensland)$/i.test(state)) {
+    // Explicit QLD — allow even if name/suburb looks interstate-ish.
+    return true;
+  }
+
   const place = `${input.suburb ?? ""} ${input.city ?? ""} ${input.state ?? ""}`;
-  if (OUTSIDE_BRISBANE_RE.test(place)) return false;
-  if (/gold\s*coast/i.test(place)) return false;
-  // Reject explicit non-Brisbane LGA labels even if suburb looks local.
+  if (INTERSTATE_PLACE_RE.test(place)) return false;
+  // Loose interstate state tokens in address text
   if (
-    /\b(logan\s*city|moreton\s*bay|ipswich|gold\s*coast|toowoomba|sunshine\s*coast)\b/i.test(
-      place,
-    )
+    /\b(nsw|vic|sa|wa|tas|nt|act)\b/i.test(place) &&
+    !/\b(qld|queensland)\b/i.test(place)
   ) {
     return false;
   }

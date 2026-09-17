@@ -151,6 +151,7 @@ export async function runKoreanSearch(
         name: salon.name,
         suburb: salon.suburb,
         city: salon.city,
+        state: salon.state,
         service: salon.service,
         searchKeywords: salon.searchKeywords ?? [],
       },
