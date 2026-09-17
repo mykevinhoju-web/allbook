@@ -59,23 +59,17 @@ function haystack(input: KoreanRelevanceInput): string {
 
 /** True when the business is in Queensland (not Sydney/Melbourne/etc.). */
 export function isBrisbaneMetro(input: KoreanRelevanceInput): boolean {
+  const suburbCity = `${input.suburb ?? ""} ${input.city ?? ""}`;
+  // Suburb/city beat forced import state (Places often stamped Queensland).
+  if (INTERSTATE_PLACE_RE.test(suburbCity)) return false;
+
   const state = (input.state ?? "").trim();
   if (state && INTERSTATE_STATE_RE.test(state)) return false;
-  if (state && /^(qld|queensland)$/i.test(state)) {
-    // Explicit QLD — allow even if name/suburb looks interstate-ish.
-    return true;
-  }
 
-  const place = `${input.suburb ?? ""} ${input.city ?? ""} ${input.state ?? ""}`;
-  if (INTERSTATE_PLACE_RE.test(place)) return false;
-  // Loose interstate state tokens in address text
-  if (
-    /\b(nsw|vic|sa|wa|tas|nt|act)\b/i.test(place) &&
-    !/\b(qld|queensland)\b/i.test(place)
-  ) {
-    return false;
-  }
-  return true;
+  if (!state || /^(qld|queensland)$/i.test(state)) return true;
+  if (/brisbane/i.test(input.city ?? "")) return true;
+
+  return false;
 }
 
 function hasVerifiedKeyword(input: KoreanRelevanceInput): boolean {
