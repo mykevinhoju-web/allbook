@@ -25,7 +25,7 @@ export function EverLogo({
   const image = (
     <Image
       src={EVER_BRAND.logoPath}
-      alt="Everwell Massage & Wellness"
+      alt="Everwell Wellness Massage"
       width={width}
       height={height}
       priority={priority}

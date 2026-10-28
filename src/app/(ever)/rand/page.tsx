@@ -4,9 +4,9 @@ import { EverHomePage } from "@/features/ever";
 import { requireEverTenant } from "@/features/ever/server/require-ever-tenant";
 
 export const metadata: Metadata = {
-  title: "Everwell Massage — WIP landing",
+  title: "Everwell Wellness Massage — WIP landing",
   description:
-    "Work-in-progress marketing site for Everwell Massage, Brisbane.",
+    "Work-in-progress marketing site for Everwell Wellness Massage, Brendale.",
   robots: { index: false, follow: false },
 };
 

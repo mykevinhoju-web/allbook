@@ -331,7 +331,7 @@ export function EverHomePage() {
             <SectionIntro
               eyebrow="Why Everwell"
               title="Why choose us"
-              copy="A welcoming Brisbane CBD space dedicated to helping you slow down, recharge, and reconnect with your best self."
+              copy="A welcoming Brendale space dedicated to helping you slow down, recharge, and reconnect with your best self."
             />
             <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
               {EVER_WHY.map((item) => (
@@ -505,7 +505,7 @@ export function EverHomePage() {
             <SectionIntro
               eyebrow="Visit us"
               title="Location &amp; hours"
-              copy="Find us at 120 Mary Street, Brisbane City — easy to reach, calm once you’re inside."
+              copy="Find us at Shop 8/640 S Pine Rd, Brendale — easy to reach, calm once you’re inside."
             />
             <div className="mt-12 grid gap-8 lg:grid-cols-2">
               <div className="space-y-8">
@@ -554,7 +554,7 @@ export function EverHomePage() {
               </div>
               <div className="overflow-hidden rounded-3xl border border-white/8">
                 <iframe
-                  title="Everwell Massage location on Google Maps"
+                  title="Everwell Wellness Massage location on Google Maps"
                   src={EVER_CONTACT.mapsEmbed}
                   className="h-[320px] w-full border-0 sm:h-full sm:min-h-[420px]"
                   loading="lazy"
@@ -592,7 +592,7 @@ export function EverHomePage() {
           <div>
             <EverLogo href="/" width={96} />
             <p className="mt-4 max-w-xs text-sm text-[#E9EDE8]/40">
-              Your escape to total relaxation in Brisbane CBD.
+              Your escape to total relaxation in Brendale.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-8 text-sm sm:gap-12">
@@ -632,7 +632,7 @@ export function EverHomePage() {
           </div>
         </div>
         <div className="mx-auto mt-10 max-w-6xl border-t border-white/8 pt-6 text-xs text-[#E9EDE8]/30">
-          © {new Date().getFullYear()} Everwell Massage &amp; Wellness. All
+          © {new Date().getFullYear()} Everwell Wellness Massage. All
           rights reserved.
         </div>
       </footer>

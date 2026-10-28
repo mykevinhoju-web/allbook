@@ -134,7 +134,7 @@ export function EverLandingVerdant() {
             data-rise="3"
             className="mt-6 max-w-md text-base leading-relaxed text-[#E9EDE8]/65 sm:text-lg"
           >
-            Personalized massage in Brisbane CBD — where health, peace, and
+            Personalized massage in Brendale — where health, peace, and
             comfort come first.
           </h1>
           <div data-rise="4" className="mt-10 flex flex-wrap items-center gap-4">
@@ -191,7 +191,7 @@ export function EverLandingVerdant() {
             Make your time golden
           </p>
           <p className="mx-auto mt-4 max-w-md text-sm text-[#E9EDE8]/50">
-            1/120 Mary Street, Brisbane · Mon–Sun 9 AM – Late
+            Shop 8/640 S Pine Rd, Brendale · Mon–Sun 9 AM – Late
           </p>
           <Link
             href={BOOK}
@@ -204,7 +204,7 @@ export function EverLandingVerdant() {
 
       <footer className="border-t border-white/8 px-5 py-8 text-xs text-[#E9EDE8]/30 sm:px-10">
         <div className="mx-auto flex max-w-5xl justify-between gap-3">
-          <span>Everwell Massage &amp; Wellness</span>
+          <span>Everwell Wellness Massage</span>
           <span>Selected · Verdant</span>
         </div>
       </footer>

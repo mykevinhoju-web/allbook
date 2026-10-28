@@ -17,8 +17,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
   if (tenant && isEverTenant(tenant.slug)) {
     return {
-      title: "Book — Everwell Massage",
-      description: "Request an appointment at Everwell Massage.",
+      title: "Book — Everwell Wellness Massage",
+      description: "Request an appointment at Everwell Wellness Massage.",
       robots: { index: true, follow: true },
     };
   }

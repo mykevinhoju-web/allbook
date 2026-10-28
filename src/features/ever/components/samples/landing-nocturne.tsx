@@ -115,7 +115,7 @@ export function EverLandingNocturne() {
             data-rise="2"
             className="font-[family-name:var(--font-ever-nocturne-display)] text-[clamp(3.25rem,11vw,7.5rem)] leading-[0.9] tracking-[-0.02em] text-[#F2EFE8]"
           >
-            Everwell Massage
+            Everwell Wellness Massage
           </p>
           <h1
             data-rise="3"
@@ -175,10 +175,10 @@ export function EverLandingNocturne() {
         <div className="mx-auto flex max-w-5xl flex-col gap-8 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[11px] uppercase tracking-[0.28em] text-[#F2EFE8]/40">
-              Brisbane CBD
+              Brendale
             </p>
             <p className="mt-3 font-[family-name:var(--font-ever-nocturne-display)] text-2xl">
-              1/120 Mary Street
+              Shop 8/640 S Pine Rd
             </p>
             <p className="mt-2 text-sm text-[#F2EFE8]/50">
               Mon–Sun · 9 AM – Late
@@ -195,7 +195,7 @@ export function EverLandingNocturne() {
 
       <footer className="border-t border-white/10 px-5 py-8 text-xs text-[#F2EFE8]/35 sm:px-10">
         <div className="mx-auto flex max-w-5xl justify-between gap-3">
-          <span>Everwell Massage</span>
+          <span>Everwell Wellness Massage</span>
           <span>Ever /rand · Nocturne</span>
         </div>
       </footer>

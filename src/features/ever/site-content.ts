@@ -1,14 +1,15 @@
-/** Public site copy for Everwell Massage — aligned with Time Massage Day Spa (Mary St). */
+/** Public site copy for Everwell Wellness Massage (Brendale). */
 
 export const EVER_CONTACT = {
-  addressLine: "120 Mary Street",
-  suburb: "Brisbane City QLD 4000",
-  phoneDisplay: "0468 887 626",
-  phoneTel: "+61468887626",
+  businessName: "Everwell Wellness Massage",
+  addressLine: "Shop 8/640 S Pine Rd",
+  suburb: "Brendale QLD 4500",
+  phoneDisplay: "0468 365 859",
+  phoneTel: "+61468365859",
   email: "hello@everwellmassage.com.au",
-  mapsQuery: "120+Mary+Street,+Brisbane+City+QLD+4000",
+  mapsQuery: "Shop+8/640+South+Pine+Road,+Brendale+QLD+4500",
   mapsEmbed:
-    "https://maps.google.com/maps?q=120+Mary+Street,+Brisbane+City+QLD+4000&t=&z=15&ie=UTF8&iwloc=&output=embed",
+    "https://maps.google.com/maps?q=Shop+8/640+South+Pine+Road,+Brendale+QLD+4500&t=&z=15&ie=UTF8&iwloc=&output=embed",
   hours: [
     { days: "Monday – Friday", hours: "9:00 AM – Late" },
     { days: "Saturday – Sunday", hours: "9:00 AM – Late" },
@@ -26,7 +27,7 @@ export const EVER_NAV = [
 ] as const;
 
 export const EVER_HERO = {
-  eyebrow: "Everwell Massage · Brisbane CBD",
+  eyebrow: "Everwell Wellness Massage · Brendale",
   title: "Your Escape to Total Relaxation",
   description:
     "Your health, peace, and comfort are our highest priority. Whether you need deep relief, glowing skin, or just a quiet escape — we’re here to make your time golden.",
@@ -36,7 +37,7 @@ export const EVER_ABOUT = {
   eyebrow: "About us",
   title: "Care that helps you slow down",
   paragraphs: [
-    "Everwell Massage is your sanctuary of calm in the middle of life’s busyness. We create personalised experiences that go beyond a simple massage, blending therapeutic techniques with restorative spa care to support body, mind, and spirit.",
+    "Everwell Wellness Massage is your sanctuary of calm in the middle of life’s busyness. We create personalised experiences that go beyond a simple massage, blending therapeutic techniques with restorative spa care to support body, mind, and spirit.",
     "Our mission is to give you more than relaxation — space to pause, breathe, and rediscover your inner balance. With every visit, our team helps you let go of stress, restore your energy, and leave with a renewed sense of well-being.",
   ],
 } as const;
@@ -191,7 +192,7 @@ export const EVER_WHY = [
 export const EVER_REVIEWS = [
   {
     name: "Sarah M.",
-    text: "The most restorative massage I’ve had in Brisbane. Calm space, skilled hands, and I left feeling completely reset.",
+    text: "The most restorative massage I’ve had in Brendale. Calm space, skilled hands, and I left feeling completely reset.",
   },
   {
     name: "James T.",

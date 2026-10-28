@@ -49,7 +49,7 @@ export async function generateMetadata(): Promise<Metadata> {
   if (tenant) {
     if (isEverTenant(tenant.slug)) {
       return {
-        title: "Everwell Massage",
+        title: "Everwell Wellness Massage",
         description: "Under construction — please check back soon.",
         robots: { index: false, follow: false },
       };

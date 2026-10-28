@@ -96,7 +96,7 @@ export function EverLandingStill() {
             data-rise="1"
             className="text-[11px] uppercase tracking-[0.24em] text-[#1C211E]/45"
           >
-            Brisbane
+            Brendale
           </span>
           <nav
             data-rise="1"
@@ -194,7 +194,7 @@ export function EverLandingStill() {
               Ready when you are
             </p>
             <p className="mt-2 text-sm text-[#E8EBE7]/55">
-              1/120 Mary St · Open late every day
+              Shop 8/640 S Pine Rd · Open late every day
             </p>
           </div>
           <Link
@@ -208,7 +208,7 @@ export function EverLandingStill() {
 
       <footer className="bg-[#F4F6F3] px-5 py-8 text-xs text-[#1C211E]/40 sm:px-10">
         <div className="mx-auto flex max-w-5xl justify-between gap-3">
-          <span>Everwell Massage</span>
+          <span>Everwell Wellness Massage</span>
           <span>Ever /rand · Still</span>
         </div>
       </footer>
