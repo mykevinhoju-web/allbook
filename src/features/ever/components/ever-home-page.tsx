@@ -276,9 +276,9 @@ export function EverHomePage() {
         >
           <div className="mx-auto max-w-6xl">
             <SectionIntro
-              eyebrow="Popular services"
+              eyebrow="Price list"
               title="Transparent pricing"
-              copy="Wellness should feel both accessible and luxurious. Explore our clear rates and choose the treatment that suits you."
+              copy="Current Everwell Massage & Wellness rates. Choose the treatment and duration that suits you, then book online."
             />
             <div className="mt-12 grid gap-6 lg:grid-cols-2">
               {EVER_PRICE_MENUS.map((menu) => (
@@ -289,7 +289,7 @@ export function EverHomePage() {
                   <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-[#C4A862]">
                     {menu.note}
                   </p>
-                  <h3 className="mt-4 font-[family-name:var(--font-ever-verdant-display)] text-3xl">
+                  <h3 className="mt-4 font-[family-name:var(--font-ever-verdant-display)] text-2xl sm:text-3xl">
                     {menu.name}
                   </h3>
                   <p className="mt-3 text-sm leading-relaxed text-[#E9EDE8]/55">
@@ -298,11 +298,16 @@ export function EverHomePage() {
                   <ul className="mt-6 space-y-3">
                     {menu.tiers.map((tier) => (
                       <li
-                        key={`${menu.name}-${tier.duration}`}
-                        className="flex items-baseline justify-between gap-4 border-b border-white/8 pb-3 text-sm last:border-0 last:pb-0"
+                        key={`${menu.name}-${tier.name}-${tier.duration}`}
+                        className="flex items-start justify-between gap-4 border-b border-white/8 pb-3 text-sm last:border-0 last:pb-0"
                       >
-                        <span className="text-[#E9EDE8]/75">{tier.duration}</span>
-                        <span className="text-lg font-medium tracking-tight text-[#C4A862]">
+                        <span className="min-w-0">
+                          <span className="block text-[#E9EDE8]/85">{tier.name}</span>
+                          <span className="mt-0.5 block text-xs text-[#E9EDE8]/45">
+                            {tier.duration}
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-base font-medium tracking-tight text-[#C4A862] sm:text-lg">
                           {tier.price}
                         </span>
                       </li>

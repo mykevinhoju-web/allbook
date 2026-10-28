@@ -99,29 +99,72 @@ export const EVER_SERVICES = [
   },
 ] as const;
 
-/** Transparent pricing matched to Time Massage Day Spa popular services. */
+/** Current Everwell Massage & Wellness menu pricing. */
 export const EVER_PRICE_MENUS = [
   {
-    name: "Full Body Massage",
-    note: "Most popular",
-    description: "Single-therapist treatments across our core massage styles.",
+    name: "Relaxation Massage",
+    note: "No health fund rebate · Chair massage",
+    description: "Gentle relaxation focused on neck, shoulders, back, and whole body care.",
     tiers: [
-      { duration: "20 min", price: "$50" },
-      { duration: "30 min", price: "$60" },
-      { duration: "45 min", price: "$80" },
-      { duration: "60 min", price: "$90" },
-      { duration: "90 min", price: "$140" },
+      { name: "Neck & Shoulders", duration: "20 / 30 mins", price: "$40 / $50" },
+      { name: "Neck, Shoulders & Head", duration: "30 mins", price: "$50" },
+      { name: "Neck, Shoulders, Arms & Hands", duration: "45 mins", price: "$75" },
+      { name: "Neck, Shoulders & Back", duration: "45 mins", price: "$80" },
+      { name: "Whole Body", duration: "60 / 75 mins", price: "$95 / $120" },
+      { name: "Whole Body", duration: "90 / 120 mins", price: "$145 / $185" },
     ],
   },
   {
-    name: "4 Hands Massage",
-    note: "Premium duo",
-    description: "Two therapists working together for deeper, more immersive relief.",
+    name: "Deep Tissue & Remedial",
+    note: "Therapeutic care",
+    description: "Firm remedial work, cupping, dry needling, and sports-focused treatments.",
     tiers: [
-      { duration: "20 min", price: "$90" },
-      { duration: "30 min", price: "$110" },
-      { duration: "45 min", price: "$160" },
-      { duration: "60 min", price: "$180" },
+      { name: "Deep Tissue / Remedial Massage", duration: "30 / 45 mins", price: "$60 / $85" },
+      { name: "Deep Tissue / Remedial Massage", duration: "60 / 75 mins", price: "$105 / $135" },
+      { name: "Deep Tissue / Remedial Massage", duration: "90 / 120 mins", price: "$165 / $200" },
+      { name: "Remedial Massage + Cupping", duration: "75 mins", price: "$115" },
+      { name: "Remedial Massage + Moving Cupping", duration: "75 mins", price: "$135" },
+      { name: "Remedial Massage + Dry Needling", duration: "60 / 90 mins", price: "$120 / $180" },
+      { name: "Remedial Massage + Chinese Herbal Oil", duration: "60 mins", price: "$125" },
+      { name: "Remedial Thai & Sports Massage", duration: "60 / 90 mins", price: "$130 / $170" },
+    ],
+  },
+  {
+    name: "Additional Signature Services",
+    note: "Extras & specialty",
+    description: "Lymphatic care, pregnancy massage, cupping, and massage add-ons.",
+    tiers: [
+      { name: "Lymphatic Drainage Massage", duration: "60 / 90 mins", price: "$130 / $180" },
+      { name: "Abdominal Massage", duration: "45 mins", price: "$85" },
+      { name: "Pregnancy Massage", duration: "60 / 90 mins", price: "$120 / $160" },
+      { name: "Cupping", duration: "15 mins", price: "$35" },
+      { name: "Herbal Hot Compress", duration: "15 mins", price: "$30" },
+      { name: "Single Dry Needling Session", duration: "30 mins", price: "$70" },
+      { name: "Hot Stone Massage – Add-on", duration: "Add-on", price: "+$15" },
+      { name: "Waxing (Add on to Massage)", duration: "Add-on", price: "+$30" },
+      { name: "Body Scrub (Add on to Massage)", duration: "15 mins", price: "$50" },
+    ],
+  },
+  {
+    name: "Reflexology & Packages",
+    note: "No health fund rebate · Includes 5-min foot bath",
+    description: "Reflexology and facial relaxation packages for deeper restoration.",
+    tiers: [
+      { name: "Reflexology", duration: "45 / 60 mins", price: "$80 / $95" },
+      { name: "Reflexology + Neck & Shoulders", duration: "60 mins", price: "$95" },
+      { name: "Reflexology + Neck, Shoulders, Head & Arms", duration: "75 mins", price: "$120" },
+      { name: "Reflexology + Whole Body Massage", duration: "90 / 120 mins", price: "$145 / $190" },
+      { name: "Facial Relaxation Massage", duration: "30 / 45 mins", price: "$90 / $110" },
+      {
+        name: "Facial Relaxation Massage + Neck & Shoulders",
+        duration: "60 / 90 mins",
+        price: "$130 / $170",
+      },
+      {
+        name: "Facial Relaxation Massage + Luxury Whole Body Massage",
+        duration: "120 mins",
+        price: "$200",
+      },
     ],
   },
 ] as const;
