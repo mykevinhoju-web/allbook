@@ -21,8 +21,8 @@ import {
   isPrivatePreviewEnabled,
 } from "@/features/private-preview";
 import {
+  EverHomePage,
   EverLandingFonts,
-  EverUnderConstruction,
   isEverTenant,
 } from "@/features/ever";
 import { getTenantOptional } from "@/features/tenants/server";
@@ -49,9 +49,10 @@ export async function generateMetadata(): Promise<Metadata> {
   if (tenant) {
     if (isEverTenant(tenant.slug)) {
       return {
-        title: "Everwell Wellness Massage",
-        description: "Under construction — please check back soon.",
-        robots: { index: false, follow: false },
+        title: "Everwell Wellness Massage | Massage & Wellness in Brendale",
+        description:
+          "Relaxing, remedial, and signature massage treatments in Brendale. Book online at Everwell Wellness Massage — Shop 8/640 S Pine Rd.",
+        robots: { index: true, follow: true },
       };
     }
     return {
@@ -179,7 +180,7 @@ export default async function HomePage() {
   if (isEverTenant(tenant.slug)) {
     return (
       <EverLandingFonts>
-        <EverUnderConstruction />
+        <EverHomePage />
       </EverLandingFonts>
     );
   }
