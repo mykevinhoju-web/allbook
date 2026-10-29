@@ -123,7 +123,7 @@ export const EVER_PRICE_MENUS = [
       { name: "Deep Tissue / Remedial Massage", duration: "30 / 45 mins", price: "$60 / $85" },
       { name: "Deep Tissue / Remedial Massage", duration: "60 / 75 mins", price: "$105 / $135" },
       { name: "Deep Tissue / Remedial Massage", duration: "90 / 120 mins", price: "$165 / $200" },
-      { name: "Remedial Massage + Cupping", duration: "75 mins", price: "$115" },
+      { name: "Remedial Massage + Cupping", duration: "60 mins", price: "$115" },
       { name: "Remedial Massage + Moving Cupping", duration: "75 mins", price: "$135" },
       { name: "Remedial Massage + Dry Needling", duration: "60 / 90 mins", price: "$120 / $180" },
       { name: "Remedial Massage + Chinese Herbal Oil", duration: "60 mins", price: "$125" },
