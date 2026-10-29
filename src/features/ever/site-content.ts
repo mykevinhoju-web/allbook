@@ -6,7 +6,7 @@ export const EVER_CONTACT = {
   suburb: "Brendale QLD 4500",
   phoneDisplay: "0468 365 859",
   phoneTel: "+61468365859",
-  email: "hello@everwellmassage.com.au",
+  email: "Everwellwellness3@gmail.com",
   mapsQuery: "Shop+8/640+South+Pine+Road,+Brendale+QLD+4500",
   mapsEmbed:
     "https://maps.google.com/maps?q=Shop+8/640+South+Pine+Road,+Brendale+QLD+4500&t=&z=15&ie=UTF8&iwloc=&output=embed",
