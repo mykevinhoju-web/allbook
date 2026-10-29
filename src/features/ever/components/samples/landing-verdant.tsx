@@ -191,7 +191,7 @@ export function EverLandingVerdant() {
             Make your time golden
           </p>
           <p className="mx-auto mt-4 max-w-md text-sm text-[#E9EDE8]/50">
-            Shop 8/640 S Pine Rd, Brendale · Mon–Sun 9 AM – Late
+            Shop 8/640 S Pine Rd, Brendale · Sun–Wed 9 AM–6 PM · Thu–Sat 9 AM–9 PM
           </p>
           <Link
             href={BOOK}

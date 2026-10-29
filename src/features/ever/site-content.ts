@@ -11,8 +11,8 @@ export const EVER_CONTACT = {
   mapsEmbed:
     "https://maps.google.com/maps?q=Shop+8/640+South+Pine+Road,+Brendale+QLD+4500&t=&z=15&ie=UTF8&iwloc=&output=embed",
   hours: [
-    { days: "Monday – Friday", hours: "9:00 AM – Late" },
-    { days: "Saturday – Sunday", hours: "9:00 AM – Late" },
+    { days: "Sunday – Wednesday", hours: "9:00 AM – 6:00 PM" },
+    { days: "Thursday – Saturday", hours: "9:00 AM – 9:00 PM" },
   ],
 } as const;
 

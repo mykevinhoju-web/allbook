@@ -194,7 +194,7 @@ export function EverLandingStill() {
               Ready when you are
             </p>
             <p className="mt-2 text-sm text-[#E8EBE7]/55">
-              Shop 8/640 S Pine Rd · Open late every day
+              Shop 8/640 S Pine Rd · Sun–Wed 9–6 · Thu–Sat 9–9
             </p>
           </div>
           <Link

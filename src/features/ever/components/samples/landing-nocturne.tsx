@@ -181,7 +181,7 @@ export function EverLandingNocturne() {
               Shop 8/640 S Pine Rd
             </p>
             <p className="mt-2 text-sm text-[#F2EFE8]/50">
-              Mon–Sun · 9 AM – Late
+              Sun–Wed 9 AM–6 PM · Thu–Sat 9 AM–9 PM
             </p>
           </div>
           <Link
