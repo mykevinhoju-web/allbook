@@ -48,7 +48,7 @@ values (
   'DaySpa',
   'Premium day spa and massage bookings in Sydney.',
   'dayspa.allbook.com.au',
-  'Australia/Sydney',
+  'Australia/Brisbane',
   'AUD',
   'en-AU',
   true

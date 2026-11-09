@@ -174,7 +174,7 @@ const getBookingStaffForTenant = unstable_cache(
 
     return { staff, currency };
   },
-  ["booking-staff-list-v8"],
+  ["booking-staff-list-v9"],
   { revalidate: 30, tags: ["booking-staff"] },
 );
 
