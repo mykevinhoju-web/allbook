@@ -168,7 +168,7 @@ export async function resolveTenantBySlug(slug: string): Promise<Tenant> {
 
   return unstable_cache(
     async () => loadTenantBySlug(slug),
-    ["tenant-by-slug", slug],
+    ["tenant-by-slug-v2", slug],
     { revalidate: 300, tags: [`tenant:${slug}`, "tenants"] },
   )();
 }
