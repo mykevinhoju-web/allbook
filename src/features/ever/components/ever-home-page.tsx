@@ -142,6 +142,8 @@ export function EverHomePage() {
           <div className="flex items-center gap-2">
             <Link
               href={BOOK}
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex h-9 items-center rounded-full bg-[#C4A862] px-3.5 text-[12px] font-medium text-[#16140C] transition hover:bg-[#D2B872] sm:h-10 sm:px-5 sm:text-[13px]"
             >
               Book
@@ -178,6 +180,8 @@ export function EverHomePage() {
               ))}
               <Link
                 href={BOOK}
+              target="_blank"
+              rel="noopener noreferrer"
                 onClick={closeMenu}
                 className="mt-3 inline-flex h-12 items-center justify-center rounded-full bg-[#C4A862] text-sm font-medium text-[#16140C]"
               >
@@ -218,6 +222,8 @@ export function EverHomePage() {
             <div data-rise="4" className="mt-8 flex w-full flex-col gap-3 sm:mt-9 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
               <Link
                 href={BOOK}
+              target="_blank"
+              rel="noopener noreferrer"
                 className="inline-flex h-12 w-full items-center justify-center rounded-full bg-[#C4A862] px-8 text-sm font-medium text-[#16140C] transition hover:bg-[#D2B872] sm:w-auto"
               >
                 Book Now
@@ -316,6 +322,8 @@ export function EverHomePage() {
                   </ul>
                   <Link
                     href={BOOK}
+              target="_blank"
+              rel="noopener noreferrer"
                     className="mt-8 inline-flex h-11 items-center justify-center rounded-full bg-[#C4A862] text-sm font-medium text-[#16140C] transition hover:bg-[#D2B872]"
                   >
                     Book Now
@@ -383,6 +391,8 @@ export function EverHomePage() {
               </div>
               <Link
                 href={BOOK}
+              target="_blank"
+              rel="noopener noreferrer"
                 className="mt-8 inline-flex h-11 items-center justify-center rounded-full border border-[#C4A862]/50 px-7 text-sm text-[#E9EDE8] transition hover:border-[#C4A862] hover:bg-[#C4A862]/10"
               >
                 Book a session
@@ -579,6 +589,8 @@ export function EverHomePage() {
             </p>
             <Link
               href={BOOK}
+              target="_blank"
+              rel="noopener noreferrer"
               className="mt-9 inline-flex h-12 items-center justify-center rounded-full bg-[#C4A862] px-10 text-sm font-medium text-[#16140C] transition hover:bg-[#D2B872]"
             >
               Book Now
@@ -624,7 +636,9 @@ export function EverHomePage() {
                   </a>
                 </li>
                 <li>
-                  <Link href={BOOK} className="hover:text-[#E9EDE8]/70">
+                  <Link href={BOOK}
+              target="_blank"
+              rel="noopener noreferrer" className="hover:text-[#E9EDE8]/70">
                     Book online
                   </Link>
                 </li>
@@ -642,6 +656,8 @@ export function EverHomePage() {
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:hidden">
         <Link
           href={BOOK}
+              target="_blank"
+              rel="noopener noreferrer"
           className="pointer-events-auto flex h-12 w-full items-center justify-center rounded-full bg-[#C4A862] text-sm font-semibold text-[#16140C] shadow-[0_10px_40px_rgba(0,0,0,0.45)]"
         >
           Book Now

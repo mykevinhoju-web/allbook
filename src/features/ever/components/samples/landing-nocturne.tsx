@@ -105,6 +105,8 @@ export function EverLandingNocturne() {
           </nav>
           <Link
             href={BOOK}
+            target="_blank"
+            rel="noopener noreferrer"
             data-rise="1"
             className="text-[11px] uppercase tracking-[0.22em] text-[#D4B87A] transition hover:text-[#E4C98A]"
           >
@@ -134,6 +136,8 @@ export function EverLandingNocturne() {
           <div data-rise="4" className="mt-10">
             <Link
               href={BOOK}
+            target="_blank"
+            rel="noopener noreferrer"
               className="inline-flex h-12 items-center justify-center rounded-full bg-[#D4B87A] px-9 text-[13px] font-medium tracking-wide text-[#1A150C] transition hover:bg-[#E0C48A]"
             >
               Make an appointment
@@ -188,6 +192,8 @@ export function EverLandingNocturne() {
           </div>
           <Link
             href={BOOK}
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex h-11 items-center text-[13px] uppercase tracking-[0.2em] text-[#D4B87A] transition hover:text-[#E4C98A]"
           >
             Book now →

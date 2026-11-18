@@ -107,7 +107,9 @@ export function EverLandingStill() {
             <a href="#services" className="transition hover:text-[#1C211E]">
               Services
             </a>
-            <Link href={BOOK} className="transition hover:text-[#1C211E]">
+            <Link href={BOOK}
+              target="_blank"
+              rel="noopener noreferrer" className="transition hover:text-[#1C211E]">
               Book
             </Link>
           </nav>
@@ -131,6 +133,8 @@ export function EverLandingStill() {
           <div data-rise="4" className="mt-9 flex flex-wrap gap-3">
             <Link
               href={BOOK}
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex h-12 items-center justify-center rounded-full bg-[#1C211E] px-8 text-sm font-medium text-[#E8EBE7] transition hover:bg-[#2A322E]"
             >
               Book a session
@@ -201,6 +205,8 @@ export function EverLandingStill() {
           </div>
           <Link
             href={BOOK}
+              target="_blank"
+              rel="noopener noreferrer"
             className="inline-flex h-12 items-center justify-center rounded-full bg-[#E8EBE7] px-8 text-sm font-medium text-[#1C211E] transition hover:bg-white"
           >
             Make an appointment

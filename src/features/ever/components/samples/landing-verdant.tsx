@@ -114,6 +114,8 @@ export function EverLandingVerdant() {
           </div>
           <Link
             href={BOOK}
+            target="_blank"
+            rel="noopener noreferrer"
             data-rise="1"
             className="inline-flex h-10 items-center rounded-full border px-5 text-[12px] tracking-wide transition hover:bg-[#C4A862]/10"
             style={{
@@ -142,6 +144,8 @@ export function EverLandingVerdant() {
           <div data-rise="4" className="mt-10 flex flex-wrap items-center gap-4">
             <Link
               href={BOOK}
+            target="_blank"
+            rel="noopener noreferrer"
               className="inline-flex h-12 items-center justify-center rounded-full bg-[#C4A862] px-8 text-sm font-medium text-[#16140C] transition hover:bg-[#D2B872]"
             >
               Reserve your time
@@ -197,6 +201,8 @@ export function EverLandingVerdant() {
           </p>
           <Link
             href={BOOK}
+            target="_blank"
+            rel="noopener noreferrer"
             className="mt-8 inline-flex h-12 items-center justify-center rounded-full border border-[#C4A862]/50 px-9 text-sm text-[#E9EDE8] transition hover:border-[#C4A862] hover:bg-[#C4A862]/10"
           >
             Make an appointment
