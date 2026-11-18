@@ -6,11 +6,13 @@ import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
+import { EVER_BOOKING_URL } from "../../config";
 import { EverLandingSwitcher } from "../landing-switcher";
 
 const HERO =
   "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=2400&q=80";
-const BOOK = "/booking";
+
+const BOOK = EVER_BOOKING_URL;
 
 /**
  * Sample 1 — Nocturne

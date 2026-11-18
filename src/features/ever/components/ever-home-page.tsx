@@ -8,6 +8,7 @@ import { Menu, Star, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { EverLogo } from "./ever-logo";
+import { EVER_BOOKING_URL } from "../config";
 import { EVER_BRAND } from "../theme";
 import {
   EVER_ABOUT,
@@ -23,7 +24,7 @@ import {
   EVER_WHY,
 } from "../site-content";
 
-const BOOK = "/booking";
+const BOOK = EVER_BOOKING_URL;
 
 /** Hero playlist: `public/ever/hero1.mp4`, `public/ever/hero2.mp4` */
 const HERO_VIDEOS = ["/ever/hero1.mp4", "/ever/hero2.mp4"] as const;

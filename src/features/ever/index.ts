@@ -1,4 +1,9 @@
-export { EVER_TENANT_SLUG, EVER_SITE_URL, isEverTenant } from "./config";
+export {
+  EVER_BOOKING_URL,
+  EVER_TENANT_SLUG,
+  EVER_SITE_URL,
+  isEverTenant,
+} from "./config";
 export { EVER_BRAND } from "./theme";
 export type { EverBookingStatus, EverService, EverSiteBooking } from "./types";
 export { EverUnderConstruction } from "./components/ever-under-construction";

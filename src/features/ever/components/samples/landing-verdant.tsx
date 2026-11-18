@@ -6,13 +6,15 @@ import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
-import { EverLogo } from "../ever-logo";
+import { EVER_BOOKING_URL } from "../../config";
 import { EVER_BRAND } from "../../theme";
+import { EverLogo } from "../ever-logo";
 import { EverLandingSwitcher } from "../landing-switcher";
 
 const HERO =
   "https://images.unsplash.com/photo-1519823551278-64ac92734fb1?auto=format&fit=crop&w=2400&q=80";
-const BOOK = "/booking";
+
+const BOOK = EVER_BOOKING_URL;
 
 /**
  * Sample 3 — Verdant

@@ -9,10 +9,10 @@ alwaysApply: true
 
 ## Product model
 
-- Public site with a **simple booking form** (customer requests from the website).
-- Admin receives **only bookings that came in from the site** — no walk-in / room / complex dayspa flows.
-- **Do not link or share data with dayspa.** Separate tenant, separate bookings, separate branding.
-- Keep the product **simple**: site → form → admin inbox. Avoid dayspa schedule/staff-portal complexity unless Ever explicitly needs it later.
+- Public site CTAs book via **BookRelax**: `https://bookrelax.com.au/shop/everwell-wellness-massage`.
+- `/booking` on the Ever domain redirects to that BookRelax URL.
+- **Do not link or share data with dayspa.** Separate tenant, separate branding.
+- Keep the product **simple**. Avoid dayspa schedule/staff-portal complexity unless Ever explicitly needs it later.
 
 ## Naming
 
@@ -30,7 +30,7 @@ Do **not** add Ever pages under `src/app/(landing)/` or AllBook platform paths. 
 
 - Site (live): `https://everwellmassage.com.au`
 - Design samples: `/rand/1`, `/rand/2`, `/rand/3` (Verdant selected); `/rand` mirrors the live landing
-- Booking: `https://everwellmassage.com.au/booking`
+- Booking: `https://bookrelax.com.au/shop/everwell-wellness-massage` (`/booking` redirects here)
 - Admin: `https://everwellmassage.com.au/admin`
 
 ## Landing workflow

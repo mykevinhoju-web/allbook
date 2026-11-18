@@ -1,13 +1,10 @@
 ﻿import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 import { BookingStaffPicker } from "@/features/booking/components/booking-staff-picker";
 import { PlatformDemoBooking } from "@/features/booking/components/platform-demo-booking";
-import {
-  EverBookingForm,
-  EverLandingFonts,
-  isEverTenant,
-} from "@/features/ever";
+import { EVER_BOOKING_URL, isEverTenant } from "@/features/ever";
 import { isPrivatePreviewEnabled } from "@/features/private-preview";
 import { isPlatformHost } from "@/features/tenants";
 import { getTenantOptional } from "@/features/tenants/server";
@@ -18,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
   if (tenant && isEverTenant(tenant.slug)) {
     return {
       title: "Book — Everwell Wellness Massage",
-      description: "Request an appointment at Everwell Wellness Massage.",
+      description: "Book an appointment at Everwell Wellness Massage.",
       robots: { index: true, follow: true },
     };
   }
@@ -38,11 +35,7 @@ export default async function BookingPage() {
   const tenant = await getTenantOptional();
 
   if (tenant && isEverTenant(tenant.slug)) {
-    return (
-      <EverLandingFonts>
-        <EverBookingForm />
-      </EverLandingFonts>
-    );
+    redirect(EVER_BOOKING_URL);
   }
 
   if (isPlatformHost(host)) {
